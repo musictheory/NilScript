@@ -1,0 +1,136 @@
+//@opts = { }
+
+var assert = require("assert");
+
+var sInitializeWasCalled = false;
+
+@implementation TheClass {
+    var     _ivar1_shouldBeNull;
+    Number  _ivar2_shouldBeNull;
+    String  _ivar3_shouldBeNull;
+    id      _ivar4_shouldBeNull;
+    BOOL    _ivar5_shouldBeFalse;
+    Boolean _ivar6_shouldBeFalse;
+    Number  _ivar7_shouldBeZero;
+    Boolean _falseThenTrue;
+    Boolean _ivarsOnALine, _ivarsOnALine2, _ivarsOnALine3;
+    Boolean _ivarsWithoutSemicolon
+    Boolean _moreIvarsWithoutSemicolon
+}
+
+@property (getter=isHidden) Boolean hidden;
+
++ (void) initialize
+{
+    sInitializeWasCalled = true;
+}
+
+- (void) init { }
+
+- (void) twiddle
+{
+    _hidden = !_hidden;
+}
+
+- (BOOL) runTests
+{
+    // Test nil/NULL/NO/YES
+    assert.strictEqual(false, NO);
+    assert.strictEqual(true, YES);
+    assert.strictEqual(nil, null);
+    assert.strictEqual(nil, NULL);
+
+    // Test ivar initialization
+    assert.strictEqual(_ivar1_shouldBeNull,  null);
+    assert.strictEqual(_ivar2_shouldBeNull,  null);
+    assert.strictEqual(_ivar3_shouldBeNull,  null);
+    assert.strictEqual(_ivar4_shouldBeNull,  null);
+    assert.strictEqual(_ivar1_shouldBeNull,  NULL);
+    assert.strictEqual(_ivar2_shouldBeNull,  NULL);
+    assert.strictEqual(_ivar3_shouldBeNull,  NULL);
+    assert.strictEqual(_ivar4_shouldBeNull,  NULL);
+    assert.strictEqual(_ivar1_shouldBeNull,  nil);
+    assert.strictEqual(_ivar2_shouldBeNull,  nil);
+    assert.strictEqual(_ivar3_shouldBeNull,  nil);
+    assert.strictEqual(_ivar4_shouldBeNull,  nil);
+    assert.strictEqual(_ivar5_shouldBeFalse, false);
+    assert.strictEqual(_ivar6_shouldBeFalse, false);
+    assert.strictEqual(_ivar5_shouldBeFalse, NO);
+    assert.strictEqual(_ivar6_shouldBeFalse, NO);
+    assert.strictEqual(_falseThenTrue, NO);
+    assert.strictEqual(_ivar7_shouldBeZero,  0);
+
+    assert.ok(sInitializeWasCalled);
+
+    return YES;
+}
+
+@end
+
+
+
+@implementation Moo : Object {
+    var    _ivar1;
+    Number _ivar2;
+
+
+    String _ivar3;
+    id     _ivar4;
+
+    BOOL   _ivar5;
+    Boolean _ivar6;
+}
+
+// Class Method
++ (void) initialize
+{
+
+}
+
+// Vars are allowed in @implementation block (treated as static variables in C)
+var sStaticVariable;
+
+// Functions are also allowed (similar to static functions in C)
+function sStaticFunction(argument) {
+    // body...
+}
+
+// Class Method
++ (void) initialize
+{
+
+}
+
++ clsMethodWithoutReturnType
+{
+
+}
+
++ (void) clsMethodWithVoidReturnType { }  
++ (String) clsMethodWithStringReturnType { return "Moo"; }
+
+- (void) instanceMethod {} 
+
+- (Number) addNumber:(Number)a andNumber:(Number)b
+{
+    return a + b;
+}
+
+@end
+
+
+
+function main()
+{
+    assert.ok(!sInitializeWasCalled);
+
+    var test = [[TheClass alloc] init];
+
+    assert.strictEqual([test runTests], true);
+
+    assert.strictEqual(9, [test addNumber:5 andNumber:3]);
+
+}
+
+main();
+
