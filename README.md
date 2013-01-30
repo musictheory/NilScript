@@ -2,6 +2,8 @@
 
 OJ is a superset of the JavaScript language that adds Objective-C-style class definitions and method names.  It also supports Objective-C features such as `@property` and both explicit and default `@synthesize`.
 
+*Note: oj is currently a work in progress and isn't functional yet*
+
 ## Why?
 
 
