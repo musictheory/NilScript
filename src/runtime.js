@@ -1,5 +1,7 @@
 
-function $oj_class(superClass, callback)
+var $oj = (function() {
+
+function makeClass(superClass, name, callback)
 {
     var initializeClassMethod;
     var didCallInitialize = false;
@@ -16,6 +18,7 @@ function $oj_class(superClass, callback)
         }
     };
 
+    cls.$oj_name = name;
     cls.prototype.$oj_super = superClass;
 
     callback(cls, cls.prototype, ivars);
@@ -24,7 +27,7 @@ function $oj_class(superClass, callback)
     loadFunction = cls.load;
 
     if (Object.keys(ivars).length) {
-        cls.$oj_ivars = ivars;
+        cls.$oj_default_ivars = ivars;
     }
 
     Object.freeze(cls);
@@ -34,15 +37,42 @@ function $oj_class(superClass, callback)
 }
 
 
-var $oj_msgSend;
+function sel_getName(selector)
+{
+    var name = Object.keys && Object.keys(selector)[0];
 
-var $oj_class_createInstance = function(cls)
+    if (!name) {
+        for (var key in selector) { if (selector.hasOwnProperty(key)) {
+            return key;
+        }}
+    }
+
+    return name;
+}
+
+
+function class_getName(cls)
+{
+    // Class names are encoded using the same { selectorName : 1 } syntax
+    // as selectors.  Thus, pass through sel_getName
+    //
+    return sel_getName(cls.$oj_name);
+}
+
+
+function class_getSuperclass(cls)
+{
+
+}
+
+
+function class_createInstance(cls)
 {
     var instance = new cls();
     var k = cls;
 
     while (k) {
-        var ivars = k.$oj_ivars;
+        var ivars = k.$oj_default_ivars;
 
         if (ivars) {
             for (var key in ivars) { if (ivars.hasOwnProperty(key)) {
@@ -53,34 +83,38 @@ var $oj_class_createInstance = function(cls)
         k = k.$oj_super;
     } 
 
-    Object.seal(instance);
+    Object.freeze(instance);
 
     return instance;
 }
 
 
-if (Object.keys) {
-    $oj_msgSend = function(target, selector) {
-        if (!target) return target;
-
-        var name = Object.keys(selector)[0];
-        var imp = target[name];
-        if (!imp) throw new Error("Undefined selector: " + name);
-
-        return imp.apply(target, Array.prototype.slice.call(arguments, 2));
-    };
-
-} else {
-    $oj_msgSend = function(target, selector) {
-        if (!target) return target;
-
-        for (var key in selector) { if (selector.hasOwnProperty(key)) {
-            var imp = target[key];
-            if (!imp) throw new Error("Undefined selector: " + key);
-
-            return imp.apply(target, Array.prototype.slice.call(arguments, 2));
-        }}
-    };
+function class_respondsToSelector(cls, selector)
+{
+    return !!cls.prototype[sel_getName(selector)];
 }
 
 
+function msgSend(target, selector)
+{
+    if (!target) return target;
+
+    var name = sel_getName(selector);
+    var imp  = target[name];
+    if (!imp) throw new Error("Undefined selector: " + name);
+
+    return imp.apply(target, Array.prototype.slice.call(arguments, 2));
+}
+
+return {
+    makeClass:                makeClass,
+    sel_getName:              sel_getName,
+    class_getName:            class_getName,
+    class_getSuperclass:      class_getSuperclass,
+    class_createInstance:     class_createInstance,
+    class_respondsToSelector: class_respondsToSelector,
+    msgSend:                  msgSend
+}
+
+
+}(this));

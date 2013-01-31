@@ -2,7 +2,6 @@
 var fs        = require('fs');
 var util      = require("util");
 var esprima   = require('esprima');
-var escodegen = require('escodegen');
 var Modifier  = require("./modifier").Modifier;
 var Syntax    = esprima.Syntax;
 
@@ -23,6 +22,15 @@ function OJClass(name)
     this._instanceMethods   = { };
     this._classMethods      = { };
     this._ivars             = { };
+}
+
+
+OJClass.prototype.registerIvarDeclaration = function(node)
+{
+    for (var i = 0, length = node.ivars.length; i < length; i++) {
+        var name = node.ivars[i].name;
+        this._ivars[name] = true;
+    }
 }
 
 
@@ -97,7 +105,6 @@ OJClass.prototype.isInstanceVariable = function(name)
         var atPropertyNodes   = this._atPropertyNodes;
         var propertyToIvarMap = this._propertyToIvarMap;
 
-
         for (var propertyName in this._atPropertyNodes) { if (this._atPropertyNodes.hasOwnProperty(propertyName)) {
             if (!propertyToIvarMap[propertyName]) {
                 this._ivars["_" + propertyName] = true;
@@ -112,15 +119,34 @@ OJClass.prototype.isInstanceVariable = function(name)
 }
 
 
-OJClass.prototype.generateInitIvar = function(name)
+OJClass.prototype.generateDefaultIvar = function(name)
 {
-    return "$oj_default_ivars." + this.name + "_" + name;
+    return "$oj_default_ivars.$oj_ivar_" + this.name + "_" + name;
+}
+
+
+OJClass.prototype.generateDefaultIvarAssignments = function(names, parameterType)
+{
+    var defaultValue = "null";
+
+    if (parameterType == "Boolean" || parameterType == "BOOL") {
+        defaultValue = "false";
+    } else if (parameterType == "Number") {
+        defaultValue = "0";
+    }
+
+    var result = "";
+    for (var i = 0, length = names.length; i < length; i++) {
+        result += this.generateDefaultIvar(names[i]) + " = " + defaultValue + "; ";
+    }
+
+    return result;
 }
 
 
 OJClass.prototype.generateThisIvar = function(name)
 {
-    return "this._" + this.name + "_" + name;
+    return "this.$oj_ivar_" + this.name + "_" + name;
 }
 
 
@@ -239,6 +265,9 @@ OJCompiler.prototype._firstPass = function()
             currentClass = new OJClass(node.id.name);
             classes[node.id.name] = currentClass;
 
+        } else if (node.type === Syntax.OJInstanceVariableDeclaration) {
+            currentClass.registerIvarDeclaration(node);
+
         } else if (node.type === Syntax.OJAtPropertyDirective) {
             currentClass.registerAtProperty(node);
 
@@ -275,12 +304,16 @@ OJCompiler.prototype._secondPass = function()
     }
 
 
-    function collapseSelectors(selectorNodes)
+    function handle_message_expression(node)
     {
+        var receiver = node.receiver.value;
+        var methodName = getMethodNameForSelectorName(node.selectorName);
+        var hasArguments;
+
         var firstSelectorStart, lastSelectorEnd;
 
-        for (var i = 0, length = selectorNodes.length; i < length; i++) {
-            var messageSelector = selectorNodes[i];
+        for (var i = 0, length = node.messageSelectors.length; i < length; i++) {
+            var messageSelector = node.messageSelectors[i];
             if (!firstSelectorStart) {
                 firstSelectorStart = messageSelector.loc.start;
             }
@@ -299,20 +332,6 @@ OJCompiler.prototype._secondPass = function()
                 lastSelectorEnd = messageSelector.loc.end;
             }
         }        
-
-        return [ firstSelectorStart, lastSelectorEnd ];
-    }
-
-
-    function handle_message_expression(node)
-    {
-        var receiver = node.receiver.value;
-        var methodName = getMethodNameForSelectorName(node.selectorName);
-        var hasArguments;
-
-        var ranges = collapseSelectors(node.messageSelectors);
-        var firstSelectorStart = ranges[0];
-        var lastSelectorEnd    = ranges[1];
 
         if (receiver.type == Syntax.Identifier) {
             receiver = receiver.name;
@@ -347,7 +366,7 @@ OJCompiler.prototype._secondPass = function()
 
         var superClass = ((node.superClass && node.superClass.name) || "Object");
 
-        var startText = "var " + node.id.name + " = $oj_class(" + superClass + ", function($oj_class_methods, $oj_instance_methods, $oj_default_ivars) {";
+        var startText = "var " + node.id.name + " = $oj.makeClass(" + superClass + ", { " + node.id.name + ":1 }, function($oj_class_methods, $oj_instance_methods, $oj_default_ivars) {";
 
         modifier.insert(node.body.loc.end, "});");
         modifier.insert(node.loc.start, startText);
@@ -356,20 +375,15 @@ OJCompiler.prototype._secondPass = function()
     function handle_class_ivar_declaration(node)
     {
         var parameterType = node.parameterType ? node.parameterType.value : null;
-        var defaultValue  = "null";
-        var replacement = "";
 
-        if (parameterType == "Boolean" || parameterType == "BOOL") {
-            defaultValue = "false";
-        } else if (parameterType == "Number") {
-            defaultValue = "0";
-        }
-
+        var names = [ ];
         for (var i = 0, length = node.ivars.length; i < length; i++) {
-            replacement += currentClass.generateInitIvar(node.ivars[i].name) + " = " + defaultValue + "; ";
+            names.push(node.ivars[i].name);
         }
 
-        modifier.replace(node.loc.start, node.loc.end, replacement);
+        modifier.replace(node.loc.start, node.loc.end, 
+            currentClass.generateDefaultIvarAssignments(names, parameterType)
+        );
     }
 
     function handle_class_ivar_declarations(node)
@@ -426,8 +440,12 @@ OJCompiler.prototype._secondPass = function()
     function handle_at_property(node)
     {
         var name = node.id.name;
+        var parameterType = node.parameterType.value;
+
         var accessors = currentClass.generateAccessorsForProperty(name);
-        modifier.replace(node.loc.start, node.loc.end, accessors);
+        var init = currentClass.generateDefaultIvarAssignments([ name ], parameterType);
+
+        modifier.replace(node.loc.start, node.loc.end, accessors + " " + init);
     }
 
     function handle_identifier(node)
