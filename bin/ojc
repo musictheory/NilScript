@@ -3,7 +3,7 @@
 var fs       = require("fs");
 var util     = require("util");
 var esprima  = require("esprima");
-var ojc      = require("../src/ojc");
+var ojc      = require("../src/compiler");
 
 var args = process.argv.slice(2);
 var filename;
@@ -35,7 +35,7 @@ if (filename) {
     try {
         outContent = ojc.compile(inContent, options);
     } catch (e) { 
-        console.log(e);
+        console.log(e.stack);
     }
 
     if (options.output) {

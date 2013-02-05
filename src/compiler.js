@@ -164,7 +164,7 @@ OJClass.prototype.generateAccessorsForProperty = function(name)
 
     var node       = this._atPropertyNodes[name];
     var getter     = name;
-    var setter     = "set" + name.substr(0,1).toUpperCase() + name.substr(1, name.length);
+    var setter     = "set" + name.substr(0,1).toUpperCase() + name.substr(1, name.length) + "_";
     var makeSetter = true; // Default to readwrite
     var makeGetter = true; // Default to readwrite
 
@@ -226,7 +226,6 @@ function traverse(node, pre, post)
     var result = pre(node);
 
     if (node.skip) {
-        console.log(node);
         return null;
     }
 
@@ -258,9 +257,9 @@ function traverse(node, pre, post)
 function OJCompiler(src, options)
 {
     this._modifier = new Modifier(src);
-    this._ast = this._modifier.ast;
-    this._options = options || { };
-    this._classes = { };
+    this._ast      = esprima.parse(src, { loc: true });
+    this._options  = options || { };
+    this._classes  = { };
 }
 
 
@@ -319,27 +318,30 @@ OJCompiler.prototype._secondPass = function()
         var methodName = getMethodNameForSelectorName(node.selectorName);
         var hasArguments;
 
-        var firstSelectorStart, lastSelectorEnd;
+        var firstSelector, lastSelector;
 
         for (var i = 0, length = node.messageSelectors.length; i < length; i++) {
             var messageSelector = node.messageSelectors[i];
-            if (!firstSelectorStart) {
-                firstSelectorStart = messageSelector.loc.start;
+
+            if (!firstSelector) {
+                firstSelector = messageSelector;
             }
 
             if (messageSelector.argument) {
                 hasArguments = true;
-                modifier.remove(messageSelector.loc.start, messageSelector.argument.loc.start);
-                lastSelectorEnd = messageSelector.argument.loc.end;
+                modifier.from(messageSelector).to(messageSelector.argument).remove();
+                lastSelector = messageSelector.argument;
 
                 if (i < (length - 1)) {
-                    modifier.insert(messageSelector.argument.loc.end, ",");
+                    modifier.after(messageSelector.argument).insert(",");
                 }
 
             } else {
-                modifier.remove(messageSelector.loc.start, messageSelector.loc.end);
-                lastSelectorEnd = messageSelector.loc.end;
+                modifier.select(messageSelector).remove()
+                lastSelector = messageSelector;
             }
+
+            messageSelector.skip = true;
         }        
 
         if (receiver.type == Syntax.Identifier) {
@@ -350,7 +352,7 @@ OJCompiler.prototype._secondPass = function()
             if (receiver == "self") {
                 startReplacement = "this." + methodName + "(";
             } else if (receiver == "super") {
-                startReplacement = "this.$oj_super." + methodName + ".call(this" + (hasArguments ? ", " : "");
+                startReplacement = "this.$oj_isa.$oj_isa.prototype." + methodName + ".call(this" + (hasArguments ? ", " : "");
             } else if (currentClass && currentClass.isInstanceVariable(receiver)) {
                 startReplacement = currentClass.generateThisIvar(receiver);
             } else {
@@ -360,28 +362,23 @@ OJCompiler.prototype._secondPass = function()
             // The receiver node has been accounted for above, skip it in traversal
             node.receiver.skip = true;
 
-            modifier.replace(node.loc.start, firstSelectorStart, startReplacement);
-            modifier.replace(lastSelectorEnd, node.loc.end, endReplacement);
+            modifier.from(node).to(firstSelector).replace(startReplacement);
+            modifier.from(lastSelector).to(node).replace(endReplacement);
 
         } else {
-            modifier.replace(node.loc.start, receiver.loc.start, "(");
-            modifier.insert(receiver.loc.end, ")."  + methodName + "(");
-            modifier.replace(lastSelectorEnd, node.loc.end, ")");
+            modifier.from(node).to(receiver).replace("(");
+            modifier.after(receiver).insert(")." + methodName + "(");
+            modifier.from(lastSelector).to(node).replace(")");
         }
     }
 
     function handle_class_implementation(node)
     {
-        // Remove everything except for body and ivar storage
-        modifier.remove(node.loc.start, node.ivarDeclarations ? node.ivarDeclarations.loc.start : node.body.loc.start);
-        modifier.remove(node.body.loc.end, node.loc.end);
-
         var superClass = ((node.superClass && node.superClass.value) || "null");
-
         var startText = "var " + node.id.name + " = $oj.makeClass(" + superClass + ", { " + node.id.name + ":1 }, function($oj_class_methods, $oj_instance_methods, $oj_default_ivars) {";
 
-        modifier.insert(node.body.loc.end, "});");
-        modifier.insert(node.loc.start, startText);
+        modifier.from(node).to(node.ivarDeclarations || node.body).replace(startText);
+        modifier.from(node.body).to(node).replace("});");
     }
 
     function handle_class_ivar_declaration(node)
@@ -393,7 +390,7 @@ OJCompiler.prototype._secondPass = function()
             names.push(node.ivars[i].name);
         }
 
-        modifier.replace(node.loc.start, node.loc.end, 
+        modifier.select(node).replace(
             currentClass.generateDefaultIvarAssignments(names, parameterType)
         );
     }
@@ -406,11 +403,11 @@ OJCompiler.prototype._secondPass = function()
             var firstIvar = node.declarations[0];
             var lastIvar  = node.declarations[length - 1];
 
-            modifier.replace(node.loc.start, firstIvar.loc.start, "$oj_default_ivars." + currentClass.name + " = { }; ");
-            modifier.remove(lastIvar.loc.end, node.loc.end);
+            modifier.from(node).to(firstIvar).replace("$oj_default_ivars." + currentClass.name + " = { }; ");
+            modifier.from(lastIvar).to(node).remove();
 
         } else {
-            modifier.remove(node.loc.start, node.loc.end);
+            modifier.select(node).remove();
         }
     }
 
@@ -427,8 +424,8 @@ OJCompiler.prototype._secondPass = function()
             }
         }
 
-        modifier.replace(node.loc.start, node.body.loc.start, where + "." + methodName + " = function(" + args.join(", ") + ") ");
-        modifier.remove(node.body.loc.end, node.loc.end);
+        modifier.from(node).to(node.body).replace(where + "." + methodName + " = function(" + args.join(", ") + ") ");
+        modifier.from(node.body).to(node).remove();
     }
 
     function handle_literal(node)
@@ -444,7 +441,7 @@ OJCompiler.prototype._secondPass = function()
         }
 
         if (replacement) {
-            modifier.replace(node.loc.start, node.loc.end, replacement);
+            modifier.select(node).replace(replacement);
         }
     }
 
@@ -457,7 +454,7 @@ OJCompiler.prototype._secondPass = function()
         var ivar = currentClass.getIvarNameForPropertyName(name);
         var init = currentClass.generateDefaultIvarAssignments([ ivar ], parameterType);
 
-        modifier.replace(node.loc.start, node.loc.end, accessors + " " + init);
+        modifier.select(node).replace(accessors + " " + init);
 
         node.skip = true;
     }
@@ -472,7 +469,7 @@ OJCompiler.prototype._secondPass = function()
             replacement = currentClass.generateThisIvar(node.name);
         }
 
-        modifier.replace(node.loc.start, node.loc.end, replacement);
+        modifier.select(node).replace(replacement);
     }
 
     this._ast = traverse(this._ast, function(node) {
@@ -497,7 +494,7 @@ OJCompiler.prototype._secondPass = function()
             handle_at_property(node);
 
         } else if (node.type === Syntax.OJAtSynthesizeDirective || node.type == Syntax.OJAtDynamicDirective) {
-            modifier.remove(node.loc.start, node.loc.end);
+            modifier.select(node).remove();
 
         } else if (node.type === Syntax.Literal) {
             handle_literal(node);
