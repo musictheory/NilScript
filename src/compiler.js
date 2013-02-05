@@ -339,9 +339,8 @@ OJCompiler.prototype._secondPass = function()
             } else {
                 modifier.select(messageSelector).remove()
                 lastSelector = messageSelector;
+                messageSelector.skip = true;
             }
-
-            messageSelector.skip = true;
         }        
 
         if (receiver.type == Syntax.Identifier) {

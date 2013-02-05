@@ -1,6 +1,39 @@
 
 @implementation MultilineMethodClass
 
+// Test JavaScript reserved keywords as method names
+- (BOOL) break      { return YES; }
+- (BOOL) case       { return YES; }
+- (BOOL) catch      { return YES; }
+- (BOOL) continue   { return YES; }
+- (BOOL) debugger   { return YES; }
+- (BOOL) default    { return YES; }
+- (BOOL) delete     { return YES; }
+- (BOOL) do         { return YES; }
+- (BOOL) else       { return YES; }
+- (BOOL) finally    { return YES; }
+- (BOOL) for        { return YES; }
+- (BOOL) function   { return YES; }
+- (BOOL) if         { return YES; }
+// in and instanceof do not currently work due to being special cases in binaryPrecedence()
+// - (BOOL) in         { return YES; }
+// - (BOOL) instanceof { return YES; }
+- (BOOL) new        { return YES; }
+- (BOOL) return     { return YES; }
+- (BOOL) switch     { return YES; }
+- (BOOL) this       { return YES; }
+- (BOOL) throw      { return YES; }
+- (BOOL) try        { return YES; }
+- (BOOL) typeof     { return YES; }
+- (BOOL) var        { return YES; }
+- (BOOL) void       { return YES; }
+- (BOOL) while      { return YES; }
+- (BOOL) with       { return YES; }
+
+- (Number) three { return 3; }
+- (Number) five  { return 5; }
+- (void) add:(Number)a with:(Number)b { return a + b }
+
 - (BOOL) doMultilineMethodWithArg: (Number) arg0
                               arg: (Number) arg1
                               arg: (Number) arg2
@@ -24,19 +57,55 @@
 - (BOOL) compactMethod2 { return YES; }
 - (BOOL) compactMethod3 { return YES; }
 
+- (BOOL) checkClass:(Class)cls
+{
+    return YES;
+}
 
 - (BOOL) runTests
 {
-    var yn1 = [self doMultilineMethodWithArg: 0
-                                         arg: 1
-                                         arg: 2];
+    var result = true;
 
-    var yn2 = [self doSinglelineMethodWithArg:0 arg:1 arg:2];
+    result = result && [self doMultilineMethodWithArg: 0
+                                                  arg: 1
+                                                  arg: 2];
 
-    return yn1 && yn2 &&
-        [self compactMethod] &&
-        [self compactMethod2] &&
-        [self compactMethod3];
+    result = result && [self doSinglelineMethodWithArg:0 arg:1 arg:2];
+
+    result = result && [self compactMethod];
+    result = result && [self compactMethod2];
+    result = result && [self compactMethod3];
+    result = result && [self break];
+    result = result && [self case];
+    result = result && [self catch];
+    result = result && [self continue];
+    result = result && [self debugger];
+    result = result && [self default];
+    result = result && [self delete];
+    result = result && [self do];
+    result = result && [self else];
+    result = result && [self finally];
+    result = result && [self for];
+    result = result && [self function];
+    result = result && [self if];
+//  result = result && [self in];
+//  result = result && [self instanceof];
+    result = result && [self new];
+    result = result && [self return];
+    result = result && [self switch];
+    result = result && [self this];
+    result = result && [self throw];
+    result = result && [self try];
+    result = result && [self typeof];
+    result = result && [self var];
+    result = result && [self void];
+    result = result && [self while];
+    result = result && [self with];
+
+    // Check nested
+    assert.equal(8, [self add:[self five] with:[self three]]);
+
+    return result;
 }
 
 @end
