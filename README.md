@@ -12,39 +12,24 @@ OJ is a superset of the JavaScript language that adds Objective-C-style class de
 In contrast to [Objective-J](http://en.wikipedia.org/wiki/Objective-J): 
   1. OJ always uses [consistent property names](https://developers.google.com/closure/compiler/docs/api-tutorial3#propnames).
    This allows the resulting JavaScript code to be optimized using Closure Compiler's ADVANCED_OPTIMIZATIONS or the Mauler in [our branch of UglifyJS](https://github.com/musictheory/uglifyjs).
-  2. OJ calls methods directly rather than using a dynamic dispatch.  Support for `@selector` and `-performSelector:...` is present for the target/action paradigm.
+  2. OJ uses the native Javascript runtime to call methods rather than imitating the Objective-C runtime (see below).
   3. OJ has full support of @property and the default synthesis of ivars/getters/setters.
-  4. OJ uses ECMAScript 5's strict mode to freeze instances (using `Object.freeze`) after `+alloc` is called.
+  4. OJ uses ECMAScript 5's strict mode to seal instances (using `Object.seal`) after `+alloc` is called.
 
 
-## Why is the runtime simple (with no dynamic dispatch)?
+## Why is the runtime simple (with no message forwarding, dynamic resolution of methods, NSInvocation, NSMethodSignature, etc)?
 
-Mainly, I'm concerned about the performance impact of sending every method call through $oj_msgSend.  
+Mainly, I don't use those features.  I'm not opposed to their addition, as long as there isn't a performance hit.
 
-For my code base, the one big benefit of using $oj_msgSend would be the ability to message undefined/null
-objects and receive a falsey value back.  However, I'm worried about subtle bugs appearing due to this.
-
-For example:
-
-    if ([object isSelected] == [anotherObject isSelected]) {
-    
-    }
-
-If object is undefined or null, this will result in a comparison of undefined/null to a boolean true/false, which will
-always fail.
-
-    if (null == false) {
-       // Code never reached!
-    }
-  
-
-That said, I'm open to adding an *option* for dynamic dispatch in the future.
+That said, oj supports:
+1) null/nil/undefined messaging (returns null)
+2) Using @selector and performSelector: (thus supporting the target/action paradigm) 
 
 
 ## Instance variables
 
 By default, a `@property` named `foo` will automatically declare a backing instance 
-variable (ivar) named `_foo`.  At `+alloc`/`$oj_class_createInstance` time, This ivar will
+variable (ivar) named `_foo`.  At `+alloc`/`$oj.class_createInstance` time, This ivar will
 be initialized to one of the following values based on its type:
 
     Boolean, BOOL   -> false
@@ -61,6 +46,25 @@ Additional instance variables may be added to an `@implementation` as follows:
 
     // Makes _myString ivar and -setString:/-string methods.  Initialized to null
     @property (strong) String myString;
+
+
+## Selectors
+
+In order to support  [consistent property names](https://developers.google.com/closure/compiler/docs/api-tutorial3#propnames), 
+selectors are not encoded as strings (as in Objective-C and Objective-J).  Instead, they use an object literal syntax:
+
+    @selector(foo:bar:baz:) -> { foo_bar_baz_: 1 }
+
+Thus, a call such as:
+    
+    [object foo:7 bar:8 baz:9]
+    
+May (depending on optimizations) be turned into:
+
+    $oj.msg_send(object, { fo_bar_baz_: 1 }, 7, 8, 9)
+
+Use `$oj.sel_getName()` to obtain a string representation of the object literal.
+
 
 ## Properties and Synthesis
 
