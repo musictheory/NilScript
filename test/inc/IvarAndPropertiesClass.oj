@@ -1,0 +1,74 @@
+//@opts = { }
+
+var assert = require("assert");
+
+@implementation IvarAndPropertiesClass {
+    var     _ivar1_shouldBeNull;
+    Number  _ivar2_shouldBeZero;
+    String  _ivar3_shouldBeNull;
+    id      _ivar4_shouldBeNull;
+    BOOL    _ivar5_shouldBeFalse;
+    Boolean _ivar6_shouldBeFalse;
+    Number  _ivar7_shouldBeZero;
+    Boolean _ivarsOnALine, _ivarsOnALine2, _ivarsOnALine3;
+    Boolean _ivarsWithoutSemicolon
+    Boolean _ivarsWithoutSemicolon2
+}
+
+@property var     property1_shouldBeNull;
+@property Number  property2_shouldBeZero;
+@property String  property3_shouldBeNull;
+@property id      property4_shouldBeNull;
+@property BOOL    property5_shouldBeFalse;
+@property Boolean property6_shouldBeFalse;
+@property Number  property7_shouldBeZero;
+@property Boolean propertyWithoutSemicolon
+@property Boolean propertyWithoutSemicolon2
+
+@property Number synthesizeTest1;
+@synthesize synthesizeTest1=_foo;
+
+@property Number synthesizeTest2;
+@synthesize synthesizeTest2;
+
+@property Number synthesizeTest3;
+@synthesize synthesizeTest3 = _synthesizeTest3;
+
+- (BOOL) runTests
+{
+    assert.strictEqual(_ivar1_shouldBeNull,  nil);
+    assert.strictEqual(_ivar2_shouldBeZero,  0  );
+    assert.strictEqual(_ivar3_shouldBeNull,  nil);
+    assert.strictEqual(_ivar4_shouldBeNull,  nil);
+    assert.strictEqual(_ivar5_shouldBeFalse, false);
+    assert.strictEqual(_ivar6_shouldBeFalse, false);
+    assert.strictEqual(_ivar7_shouldBeZero,  0);
+
+    assert.strictEqual(_ivarsOnALine,           NO);
+    assert.strictEqual(_ivarsOnALine2,          NO);
+    assert.strictEqual(_ivarsOnALine3,          NO);
+    assert.strictEqual(_ivarsWithoutSemicolon,  NO);
+    assert.strictEqual(_ivarsWithoutSemicolon2, NO);
+
+    assert.strictEqual(_property1_shouldBeNull,  nil,   "_property1_shouldBeNull is not null");
+    assert.strictEqual(_property2_shouldBeZero,  0,     "_property2_shouldBeZero is not 0"  );
+    assert.strictEqual(_property3_shouldBeNull,  nil,   "_property3_shouldBeNull is not null");
+    assert.strictEqual(_property4_shouldBeNull,  nil,   "_property4_shouldBeNull is not null");
+    assert.strictEqual(_property5_shouldBeFalse, false, "_property5_shouldBeFalse is not false");
+    assert.strictEqual(_property6_shouldBeFalse, false, "_property6_shouldBeFalse is not false");
+    assert.strictEqual(_property7_shouldBeZero,  0,     "_property7_shouldBeZero is not 0");
+
+    assert.strictEqual(_propertyWithoutSemicolon,  NO);
+    assert.strictEqual(_propertyWithoutSemicolon2, NO);
+
+    assert.strictEqual(_foo,             0);
+    assert.strictEqual(synthesizeTest2,  0);
+    assert.strictEqual(_synthesizeTest3, 0);
+
+    return YES;
+}
+
+@end
+
+var instance = [[IvarAndPropertiesClass alloc] init];
+instance.runTests();

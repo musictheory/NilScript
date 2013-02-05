@@ -1,0 +1,38 @@
+var assert = require("assert");
+
+@implementation InheritanceSuperclass
+
+- (void) doSomething
+{
+    _superclassProperty = true;
+}
+
+@property BOOL superclassProperty;
+
+@end
+
+
+
+@implementation InheritanceSubclass : InheritanceSuperclass
+
+- (void) doSomething
+{
+    [super doSomething];
+    _subclassIvar = true;
+}
+
+@property BOOL subclassProperty;
+
+@end
+
+
+function runTests()
+{
+    var instance1 = [[InheritanceSubclass alloc] init];
+
+    instance.doSomething();
+    assert.equal([instance subclassProperty], true);
+    assert.equal([instance superclassProperty], true);
+}
+
+
