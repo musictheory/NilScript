@@ -1,3 +1,0 @@
-[submodule "node_modules/esprima"]
-	path = node_modules/esprima
-	url = https://github.com/musictheory/esprima

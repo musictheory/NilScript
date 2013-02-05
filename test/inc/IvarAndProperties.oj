@@ -25,6 +25,9 @@ var assert = require("assert");
 @property Boolean propertyWithoutSemicolon
 @property Boolean propertyWithoutSemicolon2
 
+@property Number synthesizeTest0;
+// Use default synthesize
+
 @property Number synthesizeTest1;
 @synthesize synthesizeTest1=_foo;
 
@@ -64,6 +67,22 @@ var assert = require("assert");
     assert.strictEqual(_foo,             0);
     assert.strictEqual(synthesizeTest2,  0);
     assert.strictEqual(_synthesizeTest3, 0);
+
+    [self setSynthesizeTest0:40];
+    assert.strictEqual([self synthesizeTest0], 40);
+    assert.strictEqual(_synthesizeTest0,       40);
+
+    [self setSynthesizeTest1:41];
+    assert.strictEqual([self synthesizeTest1], 41);
+    assert.strictEqual(_foo,                   41);
+
+    [self setSynthesizeTest2:42];
+    assert.strictEqual([self synthesizeTest2], 42);
+    assert.strictEqual(synthesizeTest2,        42);
+
+    [self setSynthesizeTest3:43];
+    assert.strictEqual([self synthesizeTest3], 43);
+    assert.strictEqual(_synthesizeTest3,       43);
 
     return YES;
 }
