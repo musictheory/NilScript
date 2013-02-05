@@ -1,0 +1,38 @@
+//@opts = { }
+
+@implementation MultilineMethodClass
+
+- (BOOL) doMultilineMethodWithArg: (Number) arg0
+                              arg: (Number) arg1
+                              arg: (Number) arg2
+{
+    return YES;
+}
+
+- (BOOL) doMultilineMethodWithArg: (Number) arg0
+                              arg: (Number) arg2
+{
+    return YES;
+}
+
+- (BOOL) doSinglelineMethodWithArg:(Number)arg0 arg:(Number)arg1 arg:(Number)arg2
+{
+    return YES;
+}
+
+- (BOOL) runTests
+{
+    var yn1 = [self doMultilineMethodWithArg: 0
+                                         arg: 1
+                                         arg: 2];
+
+    var yn2 = [self doSinglelineMethodWithArg:0 arg:1 arg:2];
+
+    return yn1 && yn2;
+}
+
+@end
+
+
+var instance = [[MultilineMethodClass alloc] init];
+instance.runTests();
