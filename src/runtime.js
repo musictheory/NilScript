@@ -1,6 +1,27 @@
 
 var $oj = (function() {
 
+var create = function(o) {
+    function f() {}
+    f.prototype = o;
+    return new f();
+};
+
+
+function hop(obj, prop)
+{
+    return Object.prototype.hasOwnProperty.call(obj, prop);
+}
+
+
+function mixin(from, to)
+{
+    for (var key in from) { if (hop(from, key) && !hop(to, key)) {
+        to[key] = from[key];
+    }}
+}
+
+
 function makeClass(superClass, name, callback)
 {
     var initializeClassMethod;
@@ -18,13 +39,16 @@ function makeClass(superClass, name, callback)
         }
     };
 
+    if (!superClass) superClass = BaseObject;
+    cls.prototype = (Object.create || create)(superClass.prototype);
+
     cls.$oj_name = name;
-    cls.prototype.$oj_super = superClass;
+    cls.$oj_isa  = superClass;
+    mixin(superClass, cls);
 
     callback(cls, cls.prototype, ivars);
 
     initializeClassMethod = cls.initialize;
-    loadFunction = cls.load;
 
     if (Object.keys(ivars).length) {
         cls.$oj_default_ivars = ivars;
@@ -69,6 +93,8 @@ function class_getSuperclass(cls)
 function class_createInstance(cls)
 {
     var instance = new cls();
+    instance.$oj_isa = cls;
+
     var k = cls;
 
     while (k) {
@@ -80,10 +106,10 @@ function class_createInstance(cls)
             }}
         };
 
-        k = k.$oj_super;
+        k = k.$oj_isa;
     } 
 
-    Object.freeze(instance);
+    Object.seal(instance);
 
     return instance;
 }
@@ -95,9 +121,9 @@ function class_respondsToSelector(cls, selector)
 }
 
 
-function msgSend(target, selector)
+function oj_msgSend(target, selector)
 {
-    if (!target) return target;
+    if (target == null) return null;
 
     var name = sel_getName(selector);
     var imp  = target[name];
@@ -106,6 +132,19 @@ function msgSend(target, selector)
     return imp.apply(target, Array.prototype.slice.call(arguments, 2));
 }
 
+
+function BaseObject() { }
+
+BaseObject.alloc = function() { return class_createInstance(this); }
+BaseObject.instancesRespondToSelector_ = function(aSelector) { return class_respondsToSelector(this, aSelector); }
+BaseObject.prototype.init = function() { return this; }
+BaseObject.prototype.mutableCopy = function() { return this; }
+BaseObject.prototype.copy = function() { return this; }
+BaseObject.prototype.performSelector_ = function(aSelector) { oj_msgSend(this, aSelector); }
+BaseObject.prototype.performSelector_withObject_ = function(aSelector, object) { oj_msgSend(this, aSelector, object); }
+BaseObject.prototype.performSelector_withObject_withObject_ = function(aSelector, o1, o2) { oj_msgSend(this, aSelector, o1, o2); }
+
+
 return {
     makeClass:                makeClass,
     sel_getName:              sel_getName,
@@ -113,7 +152,7 @@ return {
     class_getSuperclass:      class_getSuperclass,
     class_createInstance:     class_createInstance,
     class_respondsToSelector: class_respondsToSelector,
-    msgSend:                  msgSend
+    oj_msgSend:               oj_msgSend
 }
 
 

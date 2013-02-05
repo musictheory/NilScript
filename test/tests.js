@@ -24,6 +24,7 @@ function runTest(name)
     });
 }
 
-runTest("IvarAndPropertiesClass");
-runTest("InheritanceSuite");
-runTest("MultilineMethodClass");
+
+runTest("IvarAndProperties");
+runTest("Inheritance");
+runTest("Methods");

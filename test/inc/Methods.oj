@@ -1,4 +1,3 @@
-//@opts = { }
 
 @implementation MultilineMethodClass
 
@@ -20,6 +19,12 @@
     return YES;
 }
 
+
+- (BOOL) compactMethod  { return YES; }
+- (BOOL) compactMethod2 { return YES; }
+- (BOOL) compactMethod3 { return YES; }
+
+
 - (BOOL) runTests
 {
     var yn1 = [self doMultilineMethodWithArg: 0
@@ -28,7 +33,10 @@
 
     var yn2 = [self doSinglelineMethodWithArg:0 arg:1 arg:2];
 
-    return yn1 && yn2;
+    return yn1 && yn2 &&
+        [self compactMethod] &&
+        [self compactMethod2] &&
+        [self compactMethod3];
 }
 
 @end
