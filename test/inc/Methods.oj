@@ -105,6 +105,20 @@
     // Check nested
     assert.equal(8, [self add:[self five] with:[self three]]);
 
+
+    assert.equal(30, [self add:(5 + 5) with:(10 + 10)]);
+
+    assert.equal(30, [self add:
+        (5 + 5) with:
+        (10 + 10)]);
+
+    assert.equal(30, [self add
+        :
+        (5 + 5) with:
+        (10 + 10)]);
+
+    assert.equal(30, [self add:(5+5)with:(10 + 10)]);
+
     return result;
 }
 

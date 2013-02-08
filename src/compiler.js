@@ -266,7 +266,7 @@ function OJCompiler(src, options)
 OJCompiler.prototype._firstPass = function()
 {
     var classes = this._classes;
-    var currentClass;
+    var currentClass, currentMethodNode, functionInMethodCount = 0;
 
     traverse(this._ast, function(node) {
         if (node.type === Syntax.OJClassImplementation) {
@@ -287,11 +287,42 @@ OJCompiler.prototype._firstPass = function()
 
         } else if (node.type === Syntax.OJMethodDefinition) {
             currentClass.registerMethodDefinition(node);
+            currentMethodNode = node;
+
+        // Check for self = expression (for initializers)
+        } else if (node.type == Syntax.AssignmentExpression) {
+            if (currentMethodNode &&
+                node.left &&
+                node.left.type == Syntax.Identifier &&
+                node.left.name == "self")
+            {
+                currentMethodNode.usesSelfVar = true;
+            }
+
+        } else if (node.type === Syntax.FunctionDeclaration ||
+                   node.type === Syntax.FunctionExpression)
+        {
+            if (currentMethodNode) {
+                functionInMethodCount++;
+            }
+
+        } else if (node.type == Syntax.Identifier) {
+            if (node.name == "self" && functionInMethodCount) {
+                currentMethodNode.usesSelfVar = true;
+            }
         }
 
     }, function(node) {
         if (node.type === Syntax.OJClassImplementation) {
             currentClass = null;
+            currentMethodNode = null;
+
+        } else if (node.type === Syntax.FunctionDeclaration ||
+                   node.type === Syntax.FunctionExpression)
+        {
+            if (currentMethodNode) {
+                functionInMethodCount--;
+            }
         }
     });
 }
@@ -304,7 +335,7 @@ OJCompiler.prototype._secondPass = function()
     var classes  = this._classes;
     var modifier = this._modifier;
     var currentClass;
-    var inMethod;
+    var currentMethodNode;
 
     function getSelectorForMethodName(methodName)
     {
@@ -320,6 +351,10 @@ OJCompiler.prototype._secondPass = function()
 
         var firstSelector, lastSelector;
 
+        if (!node.messageSelectors) {
+            console.log(node);
+        }
+
         for (var i = 0, length = node.messageSelectors.length; i < length; i++) {
             var messageSelector = node.messageSelectors[i];
 
@@ -333,7 +368,8 @@ OJCompiler.prototype._secondPass = function()
                 lastSelector = messageSelector.argument;
 
                 if (i < (length - 1)) {
-                    modifier.after(messageSelector.argument).insert(",");
+                    var nextSelector = node.messageSelectors[i+1];
+                    modifier.from(messageSelector.argument).to(nextSelector).replace(",");
                 }
 
             } else {
@@ -424,6 +460,14 @@ OJCompiler.prototype._secondPass = function()
         }
 
         modifier.from(node).to(node.body).replace(where + "." + methodName + " = function(" + args.join(", ") + ") ");
+
+        if (node.usesSelfVar) {
+            // Need a better way to add variables to a method declaration
+            if (node.body.body.length) {
+                modifier.before(node.body.body[0]).insert("var self = this;");
+            }
+        }
+
         modifier.from(node.body).to(node).remove();
     }
 
@@ -458,6 +502,14 @@ OJCompiler.prototype._secondPass = function()
         node.skip = true;
     }
 
+
+    function handle_at_selector(node)
+    {
+        var name = getMethodNameForSelectorName(node.name);
+        modifier.select(node).replace("{ " + name + ": 1 }");
+    }
+
+
     function handle_identifier(node)
     {
         var replacement;
@@ -486,7 +538,7 @@ OJCompiler.prototype._secondPass = function()
             handle_class_ivar_declarations(node);
 
         } else if (node.type === Syntax.OJMethodDefinition) {
-            inMethod = true;
+            currentMethodNode = node;
             handle_method_definition(node);
 
         } else if (node.type === Syntax.OJAtPropertyDirective) {
@@ -495,11 +547,16 @@ OJCompiler.prototype._secondPass = function()
         } else if (node.type === Syntax.OJAtSynthesizeDirective || node.type == Syntax.OJAtDynamicDirective) {
             modifier.select(node).remove();
 
+        } else if (node.type === Syntax.OJAtSelectorDirective) {
+            handle_at_selector(node);
+
         } else if (node.type === Syntax.Literal) {
             handle_literal(node);
 
         } else if (node.type === Syntax.Identifier) {
-            if (inMethod && currentClass && (currentClass.isInstanceVariable(node.name) || node.name == "self")) {
+            if ((currentMethodNode && currentClass && currentClass.isInstanceVariable(node.name)) ||
+                (node.name == "self" && !currentMethodNode.usesSelfVar))
+            {
                 handle_identifier(node);
             }
         }
@@ -508,7 +565,7 @@ OJCompiler.prototype._secondPass = function()
         if (node.type === Syntax.OJClassImplementation) {
             currentClass = null;
         } else if (node.type == Syntax.OJMethodDefinition) {
-            inMethod = false;
+            currentMethodNode = null;
         }
     });
 }

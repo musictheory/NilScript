@@ -34,7 +34,7 @@ function Modifier(src, options)
     this._lines0 = src.split('\n');
     this._current = { };
     this._replacements = [ ];
-    this._debug = (options && options.debug);
+    this._debug = false || (options && options.debug);
 }
 
 
@@ -62,7 +62,7 @@ Modifier.prototype._doReplacements = function()
             } else if (toRemove) {
                 console.log("" + r.line + ": deleting '" + toRemove + "'");
             } else if (r.text) {
-                console.log("" + r.line + ": inserting '" + r.text + "'");
+                console.log("" + r.line + ": inserting '" + r.text + "'" + " between '" + before + "' and '" + after + "'");
             }
         }
         this._setLine(r.line, before + (r.text || "") + after);
@@ -114,8 +114,8 @@ Modifier.prototype._flush = function()
             end   = c.to.loc.end;
 
         } else {
-            start = c.from.loc.start;
-            end   = c.to.loc.end;
+            start = c.from.loc.end;
+            end   = c.to.loc.start;
         }
 
     } else if (c.select) {
