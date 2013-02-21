@@ -1,6 +1,6 @@
 # oj
 
-OJ is a superset of the JavaScript language that adds Objective-C-style class definitions and method names.  It also supports Objective-C features such as `@property` and both explicit and default `@synthesize`.
+oj is a superset of the JavaScript language that adds Objective-C-style class definitions and method names.  It also supports Objective-C features such as `@property` and both explicit and default `@synthesize`.
 
 *Note: oj is currently a work in progress.  That said:  Things compile!  Tests pass!*
 
@@ -15,11 +15,11 @@ is an added bonus :)
 ## Differences from Objective-J
 
 In contrast to [Objective-J](http://en.wikipedia.org/wiki/Objective-J): 
-  1. OJ always uses [consistent property names](https://developers.google.com/closure/compiler/docs/api-tutorial3#propnames).
+  1. oj always uses [consistent property names](https://developers.google.com/closure/compiler/docs/api-tutorial3#propnames).
    This allows the resulting JavaScript code to be optimized using Closure Compiler's ADVANCED_OPTIMIZATIONS or the Mauler in [our branch of UglifyJS](https://github.com/musictheory/uglifyjs).
-  2. OJ uses the native Javascript runtime to call methods rather than imitating the Objective-C runtime (see below).
-  3. OJ has full support of @property and the default synthesis of ivars/getters/setters.
-  4. OJ uses ECMAScript 5's strict mode to seal instances (using `Object.seal`) after `+alloc` is called.
+  2. oj uses the native JavaScript runtime to call methods rather than imitating the Objective-C runtime (see below).
+  3. oj has full support of @property and the default synthesis of ivars/getters/setters.
+  4. oj uses ECMAScript 5's strict mode to seal instances (using `Object.seal`) after `+alloc` is called.
 
 
 ## Why is the runtime simple (with no message forwarding, dynamic resolution of methods, NSInvocation, NSMethodSignature, etc)?
@@ -29,6 +29,48 @@ Mainly, I don't use those features.  I'm not opposed to their addition, as long 
 That said, oj supports:
 1) null/nil/undefined messaging (returns null)
 2) Using @selector and performSelector: (thus supporting the target/action paradigm) 
+
+
+## Inheritance and the Built-in Base Class
+
+To inherit from a superclass, use a colon followed by the superclass name:
+
+    @implementation MySubClass : TheSuperClass {
+        id _anIvar;
+    }
+
+    // MySubClass inherits from TheSuperClass
+    
+    @end
+
+If no superclass is provided, oj uses a built-in base class:
+
+    @implementation MySubClass
+    // MySubClass inherits from a built-in base class
+    @end
+
+The built in base class provides the following methods:
+
+    + (id) alloc
+    + (Class) class
+    + (String) className
+
+    + (BOOL) instancesRespondToSelector:(SEL)aSelector
+
+    - (id) init
+    - (id) copy
+
+    - (Class) class
+    - (Class) superclass
+    - (String) className 
+
+    - (String) description 
+    - (String) toString (for compatibility with JavaScript)
+
+    - (BOOL) respondsToSelector:(SEL)aSelector
+    - (id) performSelector:(SEL)aSelector
+    - (id) performSelector:(SEL)aSelector withObject:(id)object;
+    - (id) performSelector:(SEL)aSelector withObject:(id)object withObject:(id)object2;
 
 
 ## Instance variables
@@ -43,7 +85,7 @@ be initialized to one of the following values based on its type:
 
 Additional instance variables may be added to an `@implementation` as follows:
 
-    @implementation MyClass : OJObject {
+    @implementation MyClass {
         BOOL   _additionalBoolean;  // Initialized to false
         Number _additionalNumber;   // Initialized to 0
         var    _additionalObject;   // Initialized to null
