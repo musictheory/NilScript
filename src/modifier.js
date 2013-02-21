@@ -42,7 +42,11 @@ Modifier.prototype._doReplacements = function()
 {
     this._replacements.sort(function(a, b) {
         if (a.line == b.line) {
-            return b.toColumn - a.toColumn;
+            if (a.toColumn == b.toColumn) {
+                return (a.text ? a.text.length : 0) - (b.text ? b.text.length : 0);
+            } else {
+                return b.toColumn - a.toColumn;
+            }
         } else {
             return b.line - a.line;
         }
@@ -66,6 +70,9 @@ Modifier.prototype._doReplacements = function()
             }
         }
         this._setLine(r.line, before + (r.text || "") + after);
+        if (this._debug) {
+            console.log("Line " + r.line + " is now " + this._getLine(r.line));
+        }
     }
 
     this._replacements = [ ];

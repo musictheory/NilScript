@@ -14,13 +14,19 @@ out: while (args.length > 0) {
     var v = args.shift();
     switch (v) {
     case "--ast":
-        options.ast = true;
+        options["ast"] = true;
         break;
     case "--check-ivars":
-        options.checkIvars = true;
+        options["check-ivars"] = true;
+        break;
+    case "--check-this":
+        options["check-this"] = true;
+        break;
+    case "--no-strict":
+        options["no-strict"] = true;
         break;
     case "--output":
-        options.output = args.shift();
+        options["output"] = args.shift();
         break;
     default:
         filename = v;
@@ -35,8 +41,8 @@ if (filename) {
     try {
         outContent = ojc.compile(inContent, options);
     } catch (e) {
-        console.log(filename + ":" + e.lineNumber + " " + e.description)
-        console.log(e.stack);
+        console.log(filename + ":" + e.lineNumber + " " + e.description);
+        if (!e.errorType) console.log(e.stack);
         process.exit(2);
     }
 

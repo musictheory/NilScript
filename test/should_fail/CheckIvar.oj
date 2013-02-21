@@ -1,0 +1,10 @@
+
+@implementation ShouldFail0
+
+- (void) testCheckIvar
+{
+     // The next line should produce an error as long as --check-ivars is set
+     _moo;
+}
+
+@end

@@ -1,0 +1,8 @@
+
+@implementation PropertyAlreadyDynamic
+
+@property id foo;
+@dynamic foo;
+@dynamic foo;
+
+@end

@@ -3,7 +3,7 @@
 var ojc = require("../src/compiler");
 var fs  = require("fs");
 var assert = require("assert");
-
+var OJError = require("../src/errors.js").OJError;
 
 var compile = function(inFile, options) {
     var inContent = "";
@@ -25,6 +25,34 @@ function runTest(name)
 }
 
 
+function shouldFailToCompile(name, errorType, options) {
+    var didFailWithCorrectType = false;
+
+    try {
+        var src = compile(__dirname + "/should_fail/" + name + ".oj", options);
+
+    } catch (e) {
+        didFailWithCorrectType = (e.errorType == errorType);
+    }
+
+    test(name, function() {
+        assert(didFailWithCorrectType, name + " compiled, but shouldn't have");
+    });
+}
+
+
 runTest("IvarAndProperties");
 runTest("Inheritance");
 runTest("Methods");
+
+shouldFailToCompile("CheckIvar",                       OJError.UndeclaredInstanceVariable, { "check-ivars": true });
+shouldFailToCompile("UseOfThisInMethod",               OJError.UseOfThisInMethod,          { "check-this": true  });
+shouldFailToCompile("DuplicateProperty",               OJError.DuplicatePropertyDefinition);
+shouldFailToCompile("DuplicateMethod",                 OJError.DuplicateMethodDefinition);
+shouldFailToCompile("DuplicateJavascriptFunction",     OJError.DuplicateJavascriptFunction);
+shouldFailToCompile("PropertyAlreadyDynamic",          OJError.PropertyAlreadyDynamic);
+shouldFailToCompile("PropertyAlreadyDynamic2",         OJError.PropertyAlreadyDynamic);
+shouldFailToCompile("PropertyAlreadySynthesized",      OJError.PropertyAlreadySynthesized);
+shouldFailToCompile("InstanceVariableAlreadyClaimed",  OJError.InstanceVariableAlreadyClaimed);
+shouldFailToCompile("InstanceVariableAlreadyClaimed2", OJError.InstanceVariableAlreadyClaimed);
+
