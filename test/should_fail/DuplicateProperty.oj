@@ -1,0 +1,7 @@
+
+@implementation DuplicateProperty
+
+@property id foo;
+@property id foo;
+
+@end
