@@ -26,6 +26,28 @@ function getMethodNameForSelectorName(selectorName)
 }
 
 
+function isJScriptReservedWord(id)
+{
+    switch (id.length) {
+    case 2:  return (id === 'if')       || (id === 'in')       || (id === 'do');
+    case 3:  return (id === 'var')      || (id === 'for')      || (id === 'new')    ||
+                    (id === 'try')      || (id === 'let');
+    case 4:  return (id === 'this')     || (id === 'else')     || (id === 'case')   ||
+                    (id === 'void')     || (id === 'with')     || (id === 'enum');
+    case 5:  return (id === 'while')    || (id === 'break')    || (id === 'catch')  ||
+                    (id === 'throw')    || (id === 'const')    || (id === 'yield')  ||
+                    (id === 'class')    || (id === 'super');
+    case 6:  return (id === 'return')   || (id === 'typeof')   || (id === 'delete') ||
+                    (id === 'switch')   || (id === 'export')   || (id === 'import');
+    case 7:  return (id === 'default')  || (id === 'finally')  || (id === 'extends');
+    case 8:  return (id === 'function') || (id === 'continue') || (id === 'debugger');
+    case 10: return (id === 'instanceof');
+    default:
+        return false;
+    }
+}
+
+
 var OJClass = (function () {
 
 var OJDynamicProperty     = " OJDynamicProperty ";
@@ -190,7 +212,13 @@ OJClass.prototype.generateThisIvar = function(name, useSelf)
 OJClass.prototype.generateMethodDeclaration = function(type, selector)
 {
     var where = (type == "+") ? "$oj_class_methods" : "$oj_instance_methods";
-    return where + "." + getMethodNameForSelectorName(selector);
+
+    if (isJScriptReservedWord(selector)) {
+        // For IE8
+        return where + "[\"" + getMethodNameForSelectorName(selector) + "\"]";
+    } else {
+        return where + "." + getMethodNameForSelectorName(selector);
+    }
 }
 
 
@@ -341,7 +369,11 @@ OJCompiler.prototype._secondPass = function()
 
     function getSelectorForMethodName(methodName)
     {
-        return "{ " + methodName + ": " + "1 }";
+        if (isJScriptReservedWord(methodName)) {
+            return "{ \"" + methodName + "\": " + "1 }";
+        } else {
+            return "{ " + methodName + ": " + "1 }";
+        }
     }
 
 
@@ -372,8 +404,9 @@ OJCompiler.prototype._secondPass = function()
 
     function handle_message_expression(node)
     {
-        var receiver = node.receiver.value;
+        var receiver   = node.receiver.value;
         var methodName = getMethodNameForSelectorName(node.selectorName);
+        var reserved   = isJScriptReservedWord(methodName);
         var hasArguments;
 
         var firstSelector, lastSelector;
@@ -416,7 +449,7 @@ OJCompiler.prototype._secondPass = function()
         }        
 
         var startReplacement;
-        if (receiver.type == Syntax.Identifier && currentMethodNode) {
+        if (receiver.type == Syntax.Identifier && currentMethodNode && !reserved) {
             var selfOrThis = (currentMethodNode && currentMethodNode.usesSelfVar) ? "self" : "this";
             var useProto   = (currentMethodNode.selectorType != "+");
 
