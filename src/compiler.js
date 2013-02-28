@@ -289,8 +289,11 @@ var OJCompiler = (function () {
 
 function OJCompiler(src, options)
 {
+    var parserOptions = { loc: true }
+    if (options && options["enum"])  parserOptions.oj_enum  = true;
+
     this._modifier  = new Modifier(src);
-    this._ast       = esprima.parse(src, { loc: true });
+    this._ast       = esprima.parse(src, parserOptions);
     this._options   = options || { };
     this._classes   = { };
     this._traverser = null;
@@ -578,6 +581,50 @@ OJCompiler.prototype._secondPass = function()
     }
 
 
+    function handle_enum_declaration(node)
+    {
+        var length = node.declarations ? node.declarations.length : 0;
+
+        if (length) {
+            var firstDeclaration = node.declarations[0];
+            var lastDeclaration  = node.declarations[length - 1];
+            var currentValue = 0;
+
+            modifier.from(node).to(firstDeclaration.id).insert("/** @const */ var ");
+
+            for (var i = 0; i < length; i++) {
+                var declaration = node.declarations[i];
+
+                if (declaration.value === undefined) {
+                    modifier.after(declaration.id).insert("=" + currentValue);
+                    currentValue++;
+                } else {
+                    currentValue = declaration.value + 1;
+                }
+            }
+
+            modifier.from(lastDeclaration).to(node).replace(";");
+
+        } else {
+            modifier.select(node).remove();
+        }
+    }
+
+
+    function handle_const_declaration(node)
+    {
+        var length = node.declarations ? node.declarations.length : 0;
+
+        if (length) {
+            var firstDeclaration = node.declarations[0];
+            modifier.from(node).to(firstDeclaration.id).replace("/** @const */ var ");
+
+        } else {
+            modifier.select(node).remove();
+        }
+    }
+
+
     function handle_instance_variable_or_self(node, useSelf)
     {
         var replacement;
@@ -622,6 +669,12 @@ OJCompiler.prototype._secondPass = function()
 
         } else if (node.type === Syntax.OJAtSelectorDirective) {
             handle_at_selector(node);
+
+        } else if (node.type === Syntax.OJEnumDeclaration) {
+            handle_enum_declaration(node);
+
+        } else if (node.type === Syntax.VariableDeclaration && node.kind == "const" && options["const"]) {
+            handle_const_declaration(node);
 
         } else if (node.type === Syntax.Literal) {
             handle_literal(node);
