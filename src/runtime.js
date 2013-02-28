@@ -52,7 +52,7 @@ function makeClass(superClass, name, callback)
         this.$oj_id  = sIDCounter++;
         mixin(cls.$oj_default_ivars, this);
 
-        Object.seal(this);
+        if (Object.seal) Object.seal(this);
 
         return this;
     };
@@ -100,6 +100,8 @@ function makeClass(superClass, name, callback)
 
 function sel_getName(selector)
 {
+    if (!selector) return null;
+
     var name = Object.keys && Object.keys(selector)[0];
 
     if (!name) {
@@ -109,6 +111,12 @@ function sel_getName(selector)
     }
 
     return name;
+}
+
+
+function sel_isEqual(sel1, sel2)
+{
+    return sel_getName(sel1) == sel_getName(sel2);
 }
 
 
@@ -124,6 +132,17 @@ function class_getName(cls)
 function class_getSuperclass(cls)
 {
     return cls.$oj_super;
+}
+
+
+function class_isSubclassOf(cls, superclass)
+{
+    while (cls) {
+        if (cls === superclass) return true;
+        cls = class_getSuperclass(cls);
+    }
+
+    return false;
 }
 
 
@@ -175,8 +194,10 @@ BaseObject.prototype.toString = function() { return this.description(); }
 return {
     makeClass:                makeClass,
     sel_getName:              sel_getName,
+    sel_isEqual:              sel_isEqual,
     class_getName:            class_getName,
     class_getSuperclass:      class_getSuperclass,
+    class_isSubclassOf:       class_isSubclassOf,
     class_respondsToSelector: class_respondsToSelector,
     object_getClass:          object_getClass,
     oj_msgSend:               oj_msgSend
