@@ -164,7 +164,9 @@ function oj_msgSend(target, selector)
 
     var name = sel_getName(selector);
     var imp  = target[name];
-    if (!imp) throw new Error("Undefined selector: " + name);
+    if (!imp) {
+        throw new Error("Unrecognized selector: " + name + " sent to instance " + target);
+    }
 
     return imp.apply(target, Array.prototype.slice.call(arguments, 2));
 }
@@ -173,23 +175,29 @@ function oj_msgSend(target, selector)
 function BaseObject() { }
 
 BaseObject.alloc = function() { return new this(); }
-BaseObject.class = function() { return this; }
+BaseObject["class"] = function() { return this; }
+BaseObject.superclass = function() { return class_getSuperclass(this); }
 BaseObject.className = function() { return class_getName(this); }
 BaseObject.instancesRespondToSelector_ = function(aSelector) { return class_respondsToSelector(this, aSelector); }
+BaseObject.isKindOfClass_ = function(cls) { return class_isSubclassOf(this, cls); }
+BaseObject.isMemberOfClass_ = function(cls) { return this === cls; }
+BaseObject.isSubclassOfClass_ = function(cls) { return class_isSubclassOf(this, cls); }
+BaseObject.isEqual_ = function(other) { return this === other; }
+
 BaseObject.prototype.init = function() { return this; }
-BaseObject.prototype.mutableCopy = function() { return this; }
-BaseObject.prototype.copy = function() { return this; }
+BaseObject.prototype.copy = function() { return object_getClass(this).alloc().init(); }
 BaseObject.prototype.superclass = function() { return class_getSuperclass(object_getClass(this)); }
-BaseObject.prototype.class = function() { return object_getClass(this); }
+BaseObject.prototype["class"] = function() { return object_getClass(this); }
 BaseObject.prototype.className = function() { return class_getName(object_getClass(this)); }
 BaseObject.prototype.respondsToSelector_ = function(aSelector) { return class_respondsToSelector(object_getClass(this), aSelector); }
-BaseObject.prototype.performSelector_ = function(aSelector) { oj_msgSend(this, aSelector); }
-BaseObject.prototype.performSelector_withObject_ = function(aSelector, object) { oj_msgSend(this, aSelector, object); }
-BaseObject.prototype.performSelector_withObject_withObject_ = function(aSelector, o1, o2) { oj_msgSend(this, aSelector, o1, o2); }
+BaseObject.prototype.performSelector_ = function(aSelector) { return oj_msgSend(this, aSelector); }
+BaseObject.prototype.performSelector_withObject_ = function(aSelector, object) { return oj_msgSend(this, aSelector, object); }
+BaseObject.prototype.performSelector_withObject_withObject_ = function(aSelector, o1, o2) { return oj_msgSend(this, aSelector, o1, o2); }
 BaseObject.prototype.description = function() { return "<" + this.className() + " " + this.$oj_id + ">" }
 BaseObject.prototype.toString = function() { return this.description(); }
-
-
+BaseObject.prototype.isKindOfClass_ = function(cls) { return class_isSubclassOf(object_getClass(this), cls); }
+BaseObject.prototype.isMemberOfClass_ = function(cls) { return object_getClass(this) === cls; }
+BaseObject.prototype.isEqual_ = function(other) { return this === other; }
 
 return {
     makeClass:                makeClass,
