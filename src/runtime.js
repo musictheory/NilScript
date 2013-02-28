@@ -158,17 +158,17 @@ function class_respondsToSelector(cls, selector)
 }
 
 
-function oj_msgSend(target, selector)
+function oj_msgSend(receiver, selector)
 {
-    if (target == null) return null;
+    if (!receiver) return receiver;
 
     var name = sel_getName(selector);
-    var imp  = target[name];
+    var imp  = receiver[name];
     if (!imp) {
-        throw new Error("Unrecognized selector: " + name + " sent to instance " + target);
+        throw new Error("Unrecognized selector: " + name + " sent to instance " + receiver);
     }
 
-    return imp.apply(target, Array.prototype.slice.call(arguments, 2));
+    return imp.apply(receiver, Array.prototype.slice.call(arguments, 2));
 }
 
 
