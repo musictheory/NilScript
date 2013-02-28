@@ -41,11 +41,11 @@ In contrast to [Objective-J](http://en.wikipedia.org/wiki/Objective-J):
 
 ---
 
-## <a id="class"></a>Classes
+## <a name="class"></a>Classes
 
 While Objective-C uses `@interface` to define a class interface and `@implementation` for its implementation, oj only uses `@implementation` (due to the lack of header files in JavaScript).  Information that would normally appear in the `@interface` block, such as `@property` declarations or the inherited superclass instead appear in `@implementation`.
 
-### <a id="class-syntax"></a>Basic syntax
+### <a name="class-syntax"></a>Basic syntax
 
 The syntax to create an empty oj class looks like this:
 
@@ -69,29 +69,29 @@ Additional [instance variables](#ivar) can be added by using a block after class
     }
     @end
 
-### <a id="class-compiler"></a>Behind the scenes (Class)
+### <a name="class-compiler"></a>Behind the scenes (Class)
 
 Behind the scenes, the oj compiler changes the `@implementation`/`@end` block into a JavaScript function block.  Hence, private functions and variables may be declared inside of an `@implementation` without polluting the global namespace.
 
     @implementation TheClass {
-	var sPrivateStaticVariable = "Private";
-	function sPrivate() { }
+    var sPrivateStaticVariable = "Private";
+    function sPrivate() { }
     @end
 
 becomes:
 
     var TheClass = $oj.makeClass(…, function(…) {
-	    var sPrivateStaticVariable = "Private";
-	    function sPrivate() { }
+        var sPrivateStaticVariable = "Private";
+        function sPrivate() { }
     });
 
 ---
 
-## <a id="base-class"></a>The Built-in Base Class
+## <a name="base-class"></a>The Built-in Base Class
 
 Unlike Objective-C, all oj classes inherit from a private root base class.  There is no way to specify your own root class (how often do you *not* inherit from NSObject in your code?).
 
-### <a id="base-class-provided"></a>Provided Methods
+### <a name="base-class-provided"></a>Provided Methods
 
 The root base class provides the following methods:
 
@@ -116,7 +116,7 @@ The root base class provides the following methods:
     - (id) performSelector:(SEL)aSelector withObject:(id)object withObject:(id)object2;
 
 
-### <a id="base-class-reserved"></a>Reserved Method Names
+### <a name="base-class-reserved"></a>Reserved Method Names
 
 In order to support certain compiler optimizations, the following method names are reserved and may not be overridden/implemented in subclasses):
 
@@ -124,11 +124,11 @@ In order to support certain compiler optimizations, the following method names a
     class
     className
     instancesRespondToSelector:
-	respondsToSelector:
+    respondsToSelector:
     superclass
 
 ---
-### <a id="method"></a>Methods
+### <a name="method"></a>Methods
 
 Methods are defined in an `@implementation` block and use standard Objective-C syntax:
 
@@ -139,10 +139,10 @@ Methods are defined in an `@implementation` block and use standard Objective-C s
         return string + "-" + number;    
     }
 
-	// Returns "Foo-5"
+    // Returns "Foo-5"
     - (String) anotherMethod
     {
-    	return [self doSomethingWithString:"Foo" andNumber:5];
+        return [self doSomethingWithString:"Foo" andNumber:5];
     }
     
     @end
@@ -159,17 +159,17 @@ Since JavaScript is an untyped language, the types indicated in the parenthesis 
     @end
 
 
-### <a id="method-falsy"></a>Falsy Messaging
+### <a name="method-falsy"></a>Falsy Messaging
 
 Just as Objective-C supports messaging `nil`, oj supports the concept of "Falsy Messaging".
 
 Any message to a falsy JavaScript value (false / undefined / null / 0 / "" / NaN ) will return that value.  
 
-	var foo = null;
-	var result = [foo doSomething];  // result is null
+    var foo = null;
+    var result = [foo doSomething];  // result is null
 
 
-### <a id="method-compiler"></a>Behind the Scenes (Methods)
+### <a name="method-compiler"></a>Behind the Scenes (Methods)
 
 Behind the scenes, oj methods are simply renamed JavaScript functions.  Each colon (`:`) in a method name is replaced by an underscore.
 
@@ -206,7 +206,7 @@ The compiler will produce slightly different output depending on:
 Sometimes the compiler will choose to use `oj_msgSend()` rather than a direct function call.
 
 ---
-## <a id="property"></a>Properties and Instance Variables
+## <a name="property"></a>Properties and Instance Variables
 
 oj uses the Objective-C 2.0 `@property` syntax which originally appeared in Mac OS X 10.5 Leopard.  It also supports the concept of default property synthesis added in Xcode 4.4.
 
@@ -214,21 +214,21 @@ In addition, oj allows storage for additional instance variables (ivars) to be d
 
 A class that uses a property, private ivar, and accesses them in a method may look like this:
 
-	@implementation TheClass {
-	    Number _privateNumberIvar;
-	}
-	
-	@property Number publicNumberProperty; // Generates publicNumberProperty ivar
-	
-	- (Number) addPublicAndPrivateNumbers
-	{
-		return _privateNumberIvar + _publicNumberIvar;
-	}
-	
-	@end
+    @implementation TheClass {
+        Number _privateNumberIvar;
+    }
+    
+    @property Number publicNumberProperty; // Generates publicNumberProperty ivar
+    
+    - (Number) addPublicAndPrivateNumbers
+    {
+        return _privateNumberIvar + _publicNumberIvar;
+    }
+    
+    @end
 
 
-### <a id="property-synthesis"></a>Synthesis 
+### <a name="property-synthesis"></a>Synthesis 
 
 Properties are defined using the `@property` keyword in an `@implementation` block:
 
@@ -260,28 +260,28 @@ The `@dynamic` directive suppresses the generation of both the backing instance 
 
     @implementation TheClass
     @property String myStringProperty;
-	@dynamic myStringProperty; // No instance variable, getter, nor setter is synthesized
-	@end
+    @dynamic myStringProperty; // No instance variable, getter, nor setter is synthesized
+    @end
 
 
 In addition, multiple properties may be specified in `@synthesize` and `@dynamic`:
 
     @synthesize prop1, prop2, prop3=m_prop3;
-	@dynamic dynamic1,dynamic2;
+    @dynamic dynamic1,dynamic2;
 
 
-### <a id="property-using"></a>Using
+### <a name="property-using"></a>Using
 
 To access any instance variable, simply use its name.  No `this.` or `self.` prefix is needed:
 
-	- (void) logSheepCount
-	{
-		console.log(_numberOfSheep);
-	}
+    - (void) logSheepCount
+    {
+        console.log(_numberOfSheep);
+    }
 
 _Note:_ If the `--check-ivars` command-line option is passed into the compiler, JavaScript identifiers that look like instance variables (with a underscore prefix) but are not defined will produce a warning.    
 
-### <a id="property-attributes"></a>Property Attributes
+### <a name="property-attributes"></a>Property Attributes
 
 All valid Objective-C attributes may be used on a declared property:
 
@@ -298,7 +298,7 @@ However, some are ignored due to differences between JavaScript and Objective-C:
     readonly, readwrite  -> Default is readwrite, readonly suppresses the generation of a setter
 
 
-### <a id="property-init"></a>Initialization
+### <a name="property-init"></a>Initialization
 
 At `+alloc`/`$oj.class_createInstance` time, oj initializes all instance variables to one of the following values based on its type:
 
@@ -309,7 +309,7 @@ At `+alloc`/`$oj.class_createInstance` time, oj initializes all instance variabl
 This allows Number instance variables to be used in math operations  without the fear of `undefined` being converted to `NaN` by the JavaScript engine.
 
 
-### <a id="property-compiler"></a>Behind the Scenes (Properties/ivars)
+### <a name="property-compiler"></a>Behind the Scenes (Properties/ivars)
 
 Unlike other parts of the oj runtime, properties and instance variables aren't intended to be accessed from non-oj JavaScript (they should be private to the subclass which defines them).  However, they may need to be accessed in the debugger.
 
@@ -322,7 +322,7 @@ Hence, the following oj code:
 
     @interface TheClass
 
-	@property (Number) counter;
+    @property (Number) counter;
 
     - (void) incrementCounter
     {
@@ -338,14 +338,14 @@ would compile into:
     … // Compiler generates -setCounter: and -counter here
 
     ….incrementCounter = function() {
-		this.$oj_ivar_TheClass__counter++;
+        this.$oj_ivar_TheClass__counter++;
     }
 
     });
 
 
 ---
-## <a id="selector"></a>Selectors
+## <a name="selector"></a>Selectors
 
 In order to support  [consistent property names](https://developers.google.com/closure/compiler/docs/api-tutorial3#propnames), 
 selectors are not encoded as strings (as in Objective-C and Objective-J).  Instead, they use an object literal syntax:
@@ -364,13 +364,13 @@ Use `$oj.sel_getName()` to obtain a string representation of the object literal.
 
 
 ---
-## <a id="aliases"></a>Boolean/null aliases
+## <a name="aliases"></a>Boolean/null aliases
 
 The oj compiler adds the following keywords for Boolean/null values and replaces them to their JavaScript equivalent:
 
-    BOOL 	->	Boolean
-    YES 	->	true
-    NO 		->	false
+    BOOL    ->  Boolean
+    YES     ->  true
+    NO      ->  false
 
     nil     ->  null
     Nil     ->  null
@@ -389,25 +389,25 @@ becomes:
     var anObject = null;
       
 ---
-## <a id="enum"></a>enum and const
+## <a name="enum"></a>enum and const
 
 If `--use-enum` is passed into the oj compiler, the reserved  keyword `enum` is interpreted with C-style semantics:
 
     enum OptionalName {
-	    zero = 0,
-	    one,
-	    two,
-	    three = 3,
-	    four
+        zero = 0,
+        one,
+        two,
+        three = 3,
+        four
     }
 
 becomes:
 
-	/** @const */ var zero  = 0;
-	/** @const */ var one   = 1;
-	/** @const */ var two   = 2;
-	/** @const */ var three = 3;
-	/** @const */ var four  = 4;
+    /** @const */ var zero  = 0;
+    /** @const */ var one   = 1;
+    /** @const */ var two   = 2;
+    /** @const */ var three = 3;
+    /** @const */ var four  = 4;
 
 If `--use-const` is passed into the oj compiler, the ECMAScript 6 keyword `const` is interpreted with the following semantics:
 
@@ -415,6 +415,6 @@ If `--use-const` is passed into the oj compiler, the ECMAScript 6 keyword `const
 
 becomes:
 
-	/** @const */ var TheConstant = 42;
+    /** @const */ var TheConstant = 42;
 
 In both cases, the output includes the `/** @const */` annotation, allowing the variable to be inlined by the compiler (closure/UglifyJS/etc) in the build process.
