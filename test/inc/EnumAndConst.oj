@@ -18,6 +18,7 @@ enum {
     negative_two
 }
 
+enum { a,b,c,d,e,f,g }
 
 const the_answer = 42;
 
@@ -42,6 +43,14 @@ function runTests()
 
     assert.equal(one_line, 0);
     assert.equal(extra_comma, 0);
+
+    assert.equal(a, 0);
+    assert.equal(b, 1);
+    assert.equal(c, 2);
+    assert.equal(d, 3);
+    assert.equal(e, 4);
+    assert.equal(f, 5);
+    assert.equal(g, 6);
 
     assert.equal(the_answer, 42);
 

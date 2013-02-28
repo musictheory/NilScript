@@ -289,10 +289,20 @@ var OJCompiler = (function () {
 
 function OJCompiler(src, options)
 {
-    var parserOptions = { loc: true }
-    if (options && options["enum"])  parserOptions.oj_enum  = true;
+    var parserOptions   = { loc: true }
+    var modifierOptions = { };
 
-    this._modifier  = new Modifier(src);
+    if (options) {
+        if (options["use-enum"]) {
+            parserOptions.oj_enum  = true;
+        }
+
+        if (options["debug-modifier"]) {
+            modifierOptions.debug = true;
+        }
+    }
+
+    this._modifier  = new Modifier(src, modifierOptions);
     this._ast       = esprima.parse(src, parserOptions);
     this._options   = options || { };
     this._classes   = { };
@@ -584,13 +594,13 @@ OJCompiler.prototype._secondPass = function()
     function handle_enum_declaration(node)
     {
         var length = node.declarations ? node.declarations.length : 0;
+        var last = node;
 
         if (length) {
             var firstDeclaration = node.declarations[0];
             var lastDeclaration  = node.declarations[length - 1];
             var currentValue = 0;
 
-            modifier.from(node).to(firstDeclaration.id).insert("/** @const */ var ");
 
             for (var i = 0; i < length; i++) {
                 var declaration = node.declarations[i];
@@ -601,9 +611,21 @@ OJCompiler.prototype._secondPass = function()
                 } else {
                     currentValue = declaration.value + 1;
                 }
+
+                if (last == node) {
+                    modifier.before(declaration.id).insert("/** @const */ var ");
+                    modifier.from(last).to(declaration.id).remove();
+
+                } else {
+                    modifier.after(last).insert("; ");
+                    modifier.from(last).to(declaration.id).insert("/** @const */ var ");
+                }
+
+                last = declaration;
             }
 
-            modifier.from(lastDeclaration).to(node).replace(";");
+            modifier.after(lastDeclaration).insert(";");
+            modifier.from(lastDeclaration).to(node).replace("");
 
         } else {
             modifier.select(node).remove();
@@ -673,7 +695,7 @@ OJCompiler.prototype._secondPass = function()
         } else if (node.type === Syntax.OJEnumDeclaration) {
             handle_enum_declaration(node);
 
-        } else if (node.type === Syntax.VariableDeclaration && node.kind == "const" && options["const"]) {
+        } else if (node.type === Syntax.VariableDeclaration && node.kind == "const" && options["use-const"]) {
             handle_const_declaration(node);
 
         } else if (node.type === Syntax.Literal) {
@@ -727,7 +749,7 @@ OJCompiler.prototype.compile = function()
 
 OJCompiler.prototype.finish = function()
 {
-    if (this._options["ast"]) {
+    if (this._options["debug-ast"]) {
         return JSON.stringify(this._ast, null, 4);
     } else {
         return this._modifier.finish();
