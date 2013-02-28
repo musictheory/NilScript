@@ -2,6 +2,26 @@
 
 var Modifier = (function() {
 
+var sTimestampCounter = 0;
+
+function _colorString(string, from, to, color)
+{
+    var gray   = "\033[37m";
+    var reset  = "\033[1;0m";
+
+    var result = color + "\"" + string + "\"";
+
+    if (from !== undefined && to !== undefined) {
+        result += reset + " " + gray + "(" + from + "," + to + ")";
+    }
+
+    return result + reset;
+}
+
+function _red   (string, from, to) { return _colorString(string, from, to, "\033[1;31m"); }
+function _green (string, from, to) { return _colorString(string, from, to, "\033[1;32m"); }
+function _yellow(string, from, to) { return _colorString(string, from, to, "\033[1;33m");    }
+
 
 function _clone(loc)
 {
@@ -34,7 +54,7 @@ function Modifier(src, options)
     this._lines0 = src.split('\n');
     this._current = { };
     this._replacements = [ ];
-    this._debug = false || (options && options.debug);
+    this._debug = (options && options.debug);
 }
 
 
@@ -43,7 +63,26 @@ Modifier.prototype._doReplacements = function()
     this._replacements.sort(function(a, b) {
         if (a.line == b.line) {
             if (a.toColumn == b.toColumn) {
-                return (a.text ? a.text.length : 0) - (b.text ? b.text.length : 0);
+                if (a.text && b.text) {
+                    // Both insertions, base on timestamp
+
+                    if (a.text.length == b.text.length) {
+                        return b.timestamp - a.timestamp; // same length = base on timestamp
+                    } else {
+                        return a.text.length - b.text.length; // else base on length
+                    }
+
+                } else if (!a.text && !b.text) {
+                    // Is this right for both removals?
+                    return b.timestamp - a.timestamp;
+
+                } else if (!a.text && b.text) {
+                    return 1;
+
+                } else {
+                    return -1;
+                }
+
             } else {
                 return b.toColumn - a.toColumn;
             }
@@ -62,16 +101,17 @@ Modifier.prototype._doReplacements = function()
             var toRemove = line.substring(r.fromColumn, r.toColumn);
 
             if (r.text && toRemove) {
-                console.log("" + r.line + ": replacing '" + toRemove + "' with '" + r.text +"'");
+                console.log("" + r.line + ": replacing " + _red(toRemove, r.fromColumn, r.toColumn) + " with " + _green(r.text));
             } else if (toRemove) {
-                console.log("" + r.line + ": deleting '" + toRemove + "'");
+                console.log("" + r.line + ": deleting " + _red(toRemove, r.fromColumn, r.toColumn));
             } else if (r.text) {
-                console.log("" + r.line + ": inserting '" + r.text + "'" + " between '" + before + "' and '" + after + "'");
+                console.log("" + r.line + ": inserting " + _green(r.text, r.fromColumn, r.toColumn) + " between " + _yellow(before) + " and " + _yellow(after));
             }
         }
         this._setLine(r.line, before + (r.text || "") + after);
         if (this._debug) {
             console.log("Line " + r.line + " is now " + this._getLine(r.line));
+            console.log();
         }
     }
 
@@ -97,7 +137,7 @@ Modifier.prototype._addReplacement = function(line, fromColumn, toColumn, text)
         return;
     }
 
-    var replacement = { line: line, fromColumn: fromColumn, toColumn: toColumn };
+    var replacement = { line: line, fromColumn: fromColumn, toColumn: toColumn, timestamp: sTimestampCounter++ };
     if (text) replacement.text = text;
     this._replacements.push(replacement);
 }

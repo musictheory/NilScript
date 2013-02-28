@@ -44,7 +44,7 @@ function shouldFailToCompile(name, errorType, options) {
 runTest("IvarAndProperties");
 runTest("Inheritance");
 runTest("Methods");
-runTest("EnumAndConst", { "enum": true, "const": true });
+runTest("EnumAndConst", { "use-enum": true, "use-const": true });
 
 shouldFailToCompile("CheckIvar",                       OJError.UndeclaredInstanceVariable, { "check-ivars": true });
 shouldFailToCompile("UseOfThisInMethod",               OJError.UseOfThisInMethod,          { "check-this": true  });

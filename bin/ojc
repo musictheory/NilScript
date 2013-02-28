@@ -11,26 +11,26 @@ var options = { };
 
 
 out: while (args.length > 0) {
-    var v = args.shift();
-    switch (v) {
-    case "--ast":
-        options["ast"] = true;
-        break;
-    case "--check-ivars":
-        options["check-ivars"] = true;
-        break;
-    case "--check-this":
-        options["check-this"] = true;
-        break;
-    case "--no-strict":
-        options["no-strict"] = true;
-        break;
-    case "--output":
-        options["output"] = args.shift();
-        break;
-    default:
-        filename = v;
-        break;
+    var arg = args.shift();
+
+    if      (arg == "--no-strict")      options["no-strict"] = true;
+    else if (arg == "--output")         options["output"] = args.shift();
+
+    // Additional warnings
+    else if (arg == "--check-ivars")    options["check-ivars"] = true;
+    else if (arg == "--check-this")     options["check-this"] = true;
+
+    // Optional language features
+    else if (arg == "--use-enum")       options["use-enum"] = true;
+    else if (arg == "--use-const")      options["use-const"] = true;
+
+    // Internal development
+    else if (arg == "--debug")          options["debug"] = true;
+    else if (arg == "--debug-ast")      options["debug"] = options["debug-ast"] = true;
+    else if (arg == "--debug-modifier") options["debug"] = options["debug-modifier"] = true;
+
+    else {
+        filename = arg;
     }
 }
 
