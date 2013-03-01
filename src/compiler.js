@@ -1,5 +1,5 @@
 
-var esprima   = require && require('esprima');
+var esprima   = require && require("esprima-oj");
 var Modifier  = require && require("./modifier").Modifier;
 var OJError   = require && require("./errors").OJError;
 var Traverser = require && require("./traverser").Traverser;
