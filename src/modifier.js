@@ -1,4 +1,11 @@
-/* Based on Modifier from harmonizr (http://github.com/jdiamond/harmonizr) */
+/*
+    modifier.js
+    (c) 2013 musictheory.net, LLC
+    MIT license, http://www.opensource.org/licenses/mit-license.php
+
+    Based on Modifier from harmonizr (http://github.com/jdiamond/harmonizr)
+*/
+
 
 var Modifier = (function() {
 

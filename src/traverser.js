@@ -1,3 +1,9 @@
+/*
+    traverser.js
+    (c) 2013 musictheory.net, LLC
+    MIT license, http://www.opensource.org/licenses/mit-license.php
+*/
+
 
 var Traverser = (function() {
 

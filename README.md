@@ -6,6 +6,9 @@ oj is designed to ease the pain of syncing class interfaces (not necessarily imp
 
 In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) with the [musictheory.net exercises](http://www.musictheory.net/exercises), and [Theory Lessons](http://musictheory.local/buy/lessons) with the [musictheory.net lessons](http://www.musictheory.net/lessons).
 
+### Installation
+
+    npm install ojc
 
 ### Main Features
 
@@ -27,6 +30,7 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 - [Selectors](#selector)
 - [Boolean/null aliases](#aliases)
 - [enum and const](#enum)
+- [License](#license)
 
 
 ### Differences from Objective-J
@@ -427,3 +431,11 @@ becomes:
     /** @const */ var TheConstant = 42;
 
 In both cases, the output includes the `/** @const */` annotation, allowing the variable to be inlined by the compiler (closure/UglifyJS/etc) in the build process.
+
+---
+## <a name="license"></a>License
+
+runtime.js is public domain.
+
+All other files in this project are licensed under the [MIT license](http://github.com/musictheory/oj/raw/master/LICENSE.MIT).
+
