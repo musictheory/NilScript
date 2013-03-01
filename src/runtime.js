@@ -1,3 +1,9 @@
+/*
+    runtime.js, runtime for the oj language
+    by musictheory.net, LLC.
+
+    Public Domain.
+*/
 
 var $oj = (function() {
 
