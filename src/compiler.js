@@ -461,26 +461,36 @@ OJCompiler.prototype._secondPass = function()
             }
         }        
 
-        var startReplacement;
+        var startReplacement, endReplacement = ")";
         if (receiver.type == Syntax.Identifier && currentMethodNode && !reserved) {
             var selfOrThis = (currentMethodNode && currentMethodNode.usesSelfVar) ? "self" : "this";
             var useProto   = (currentMethodNode.selectorType != "+");
 
             if (receiver.name == "self") {
                 startReplacement = selfOrThis + "." + methodName + "(";
+
             } else if (receiver.name == "super") {
                 startReplacement = currentClass.name + ".$oj_super." + (useProto ? "prototype." : "") + methodName + ".call(this" + (hasArguments ? "," : "");
+
+            } else if (currentClass.isInstanceVariable(receiver.name)) {
+                var ivar = currentClass.generateThisIvar(receiver.name, currentMethodNode.usesSelfVar);
+                startReplacement = "(" + ivar + " && " + ivar + "." + methodName + "(";
+                endReplacement = "))";
+
+            } else {
+                startReplacement = "(" + receiver.name + " && " + receiver.name + "." + methodName + "(";
+                endReplacement = "))";
             }
         }
 
         if (startReplacement) {
             node.receiver.skip = true;
             modifier.from(node).to(firstSelector).replace(startReplacement);
-            modifier.from(lastSelector).to(node).replace(")");
+            modifier.from(lastSelector).to(node).replace(endReplacement);
         } else {
             modifier.from(node).to(receiver).replace("$oj.oj_msgSend(");
             modifier.from(receiver).to(firstSelector).replace("," + getSelectorForMethodName(methodName) + (hasArguments ? "," : ""));
-            modifier.from(lastSelector).to(node).replace(")");
+            modifier.from(lastSelector).to(node).replace(endReplacement);
         }
     }
 
