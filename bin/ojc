@@ -2,7 +2,7 @@
 
 var fs       = require("fs");
 var util     = require("util");
-var esprima  = require("esprima");
+var esprima  = require("esprima-oj");
 var ojc      = require("../src/compiler");
 
 var args = process.argv.slice(2);

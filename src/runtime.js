@@ -34,6 +34,12 @@ function getDisplayName(className, methodName, prefix)
 }
 
 
+function throwUnrecognizedSelector(receiver, selector)
+{
+    throw new Error("Unrecognized selector: " + sel_getName(selector) + " sent to instance " + receiver);
+}
+
+
 function makeClass(superClass, name, callback)
 {
     var initializeClassMethod;
@@ -158,17 +164,23 @@ function class_respondsToSelector(cls, selector)
 }
 
 
+var Array_prototype_slice = Array.prototype.slice;
+
 function oj_msgSend(receiver, selector)
 {
-    if (!receiver) return receiver;
+    return receiver ? (
+        receiver[sel_getName(selector)] ||
+        throwUnrecognizedSelector(receiver, selector)
+    ).apply(receiver, Array_prototype_slice.call(arguments, 2)) : receiver;
+}
 
-    var name = sel_getName(selector);
-    var imp  = receiver[name];
-    if (!imp) {
-        throw new Error("Unrecognized selector: " + name + " sent to instance " + receiver);
-    }
 
-    return imp.apply(receiver, Array.prototype.slice.call(arguments, 2));
+function oj_msgSend_Object_keys(receiver, selector)
+{
+    return receiver ? (
+        receiver[Object.keys(selector)[0]] ||
+        throwUnrecognizedSelector(receiver, selector)
+    ).apply(receiver, Array_prototype_slice.call(arguments, 2)) : receiver;
 }
 
 
@@ -208,7 +220,7 @@ return {
     class_isSubclassOf:       class_isSubclassOf,
     class_respondsToSelector: class_respondsToSelector,
     object_getClass:          object_getClass,
-    oj_msgSend:               oj_msgSend
+    oj_msgSend:               Object.keys ? oj_msgSend_Object_keys : oj_msgSend
 }
 
 

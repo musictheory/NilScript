@@ -97,7 +97,9 @@ The root base class provides the following methods:
 
     + (id) alloc
     + (Class) class
+    + (Class) superclass
     + (String) className
+    + (BOOL) isSubclassOfClass:(Class)cls
 
     + (BOOL) instancesRespondToSelector:(SEL)aSelector
 
@@ -107,13 +109,17 @@ The root base class provides the following methods:
     - (Class) class
     - (Class) superclass
     - (String) className 
+    - (BOOL) isKindOfClass:(Class)cls
+    - (BOOL) isMemberOfClass:(Class)cls
 
     - (String) description 
 
     - (BOOL) respondsToSelector:(SEL)aSelector
     - (id) performSelector:(SEL)aSelector
-    - (id) performSelector:(SEL)aSelector withObject:(id)object;
-    - (id) performSelector:(SEL)aSelector withObject:(id)object withObject:(id)object2;
+    - (id) performSelector:(SEL)aSelector withObject:(id)object
+    - (id) performSelector:(SEL)aSelector withObject:(id)object withObject:(id)object2
+
+    - (BOOL) isEqual:(id)anotherObject
 
 
 ### <a name="base-class-reserved"></a>Reserved Method Names
@@ -126,6 +132,9 @@ In order to support certain compiler optimizations, the following method names a
     instancesRespondToSelector:
     respondsToSelector:
     superclass
+    isSubclassOfClass:
+    isKindOfClass:
+    isMemberOfClass:
 
 ---
 ### <a name="method"></a>Methods
