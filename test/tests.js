@@ -45,6 +45,7 @@ runTest("IvarAndProperties");
 runTest("Inheritance");
 runTest("Methods");
 runTest("EnumAndConst", { "use-enum": true, "use-const": true });
+runTest("LoadAndInitialize");
 
 shouldFailToCompile("CheckIvar",                       OJError.UndeclaredInstanceVariable, { "check-ivars": true });
 shouldFailToCompile("UseOfThisInMethod",               OJError.UseOfThisInMethod,          { "check-this": true  });
