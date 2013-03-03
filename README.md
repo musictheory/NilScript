@@ -18,6 +18,7 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 - [The Built-in Base Class](#base-class)
   - [Provided Methods](#base-class-provided)
   - [Reserved Method Names](#base-class-reserved)
+  - [+load and +initialize](#base-class-load-initialize)
 - [Methods](#method)
   - [Falsy Messaging](#method-falsy)
   - [Behind the Scenes](#method-compiler)
@@ -139,6 +140,14 @@ In order to support certain compiler optimizations, the following method names a
     isSubclassOfClass:
     isKindOfClass:
     isMemberOfClass:
+
+
+### <a name="base-class-load-initialize"></a>+load and +initialize
+
+oj supports both `+load` and `+initialize`.  `+load` is called immediately upon the
+creation of a class (in `oj._makeClass`),  `+initialize` is called the first time a message
+is sent to the class (whether it be `+alloc` or another class method)
+
 
 ---
 ### <a name="method"></a>Methods
