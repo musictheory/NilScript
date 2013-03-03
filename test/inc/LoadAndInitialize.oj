@@ -75,7 +75,7 @@ assert.equal(sX_initializeCount, 0);
 @implementation XClass : AClass
 + (void) load       { sLoadOrder.push("X"); sX_loadCount++;       }
 + (void) initialize { sInitOrder.push("X"); sX_initializeCount++; }
-+ (void) foo { }
++ (String) foo { return "Foo"; }
 @end
 
 function runTests()
@@ -135,7 +135,7 @@ function runTests()
     assert.equal(sC_initializeCount, 3);
 
     assert.equal(sX_initializeCount, 0);
-    [XClass foo];
+    assert.equal([XClass foo], "Foo");
     assert.equal(sX_initializeCount, 1);
 
     assert.deepEqual(sInitOrder, [ "A", "B", "C", "C", "C", "D2", "D2", "X" ]);
