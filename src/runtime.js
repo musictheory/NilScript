@@ -57,7 +57,7 @@ function makeInitializeWrapper(original)
             this.$oj_needs_initialized = false;
         }
 
-        original.call(this);
+        return original.call(this);
     }
 
     f.displayName = original.displayName;
