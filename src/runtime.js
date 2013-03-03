@@ -12,11 +12,6 @@ var sIDCounter = 0;
 var sDebugStackDepth = 0;
 var sDebugCallbacks = null;
 
-var methodName_load       = sel_getName({ load:1       });
-var methodName_initialize = sel_getName({ initialize:1 });
-var methodName_$oj_super  = sel_getName({ $oj_super:1  });
-var methodName_$oj_name   = sel_getName({ $oj_name:1   });
-
 function create(o)
 {
     function f() {}
@@ -31,9 +26,9 @@ function hop(obj, prop)
 }
 
 
-function mixin(from, to, callback)
+function mixin(from, to, overwrite, callback)
 {
-    for (var key in from) { if (hop(from, key) && !hop(to, key)) {
+    for (var key in from) { if (hop(from, key) && (overwrite || !hop(to, key))) {
         var value = from[key];
         if (callback) callback(key, value);
         to[key] = value;
@@ -54,10 +49,40 @@ function throwUnrecognizedSelector(receiver, selector)
 }
 
 
-function createNamedFunction(name) {
-    var result;
-    eval("result = function " + name + " () {}")
-    return result;
+function makeInitializeWrapper(original)
+{
+    var f = function() {
+        if (this.$oj_needs_initialized) {
+            class_initialize(this);
+            this.$oj_needs_initialized = false;
+        }
+
+        original.call(this);
+    }
+
+    f.displayName = original.displayName;
+
+    return f;
+}
+
+
+function makeInitializeWrapperForClass(cls, methods)
+{
+    var methodName_load       = sel_getName({ load:1       });
+    var methodName_initialize = sel_getName({ initialize:1 });
+
+    for (var key in methods) { if (hop(methods, key)) {
+        if (key == methodName_load || key == methodName_initialize) {
+            continue;
+        }
+
+        var original = methods[key];
+        if (typeof original != "function") {
+            continue;
+        }
+
+        cls[key] = makeInitializeWrapper(methods[key]);
+    }}
 }
 
 
@@ -67,54 +92,38 @@ function _makeClass(superClass, name, callback)
     var class_methods    = { };
     var key;
 
+    var displayName = sel_getName(name);
     var cls = callback(class_methods, instance_methods);
 
-    var initializeMethod = class_methods.initialize;
-
     if (!superClass) superClass = BaseObject;
+
+    cls.displayName = displayName;
+    cls.$oj_name    = name;
+    cls.$oj_super   = superClass;
+    cls.prototype   = new superClass();
+
     mixin(superClass, cls);
 
-    mixin(class_methods, cls, function(key, method) {
-        method.displayName = getDisplayName(cls.displayName, key, "+");
+    mixin(class_methods, cls, true, function(key, method) {
+        method.displayName = getDisplayName(displayName, key, "+");
     });
 
-    // If we have a +initialize, wrap each class method
-    if (initializeMethod) {
-        var didInitialize = false;
+    mixin(instance_methods, cls.prototype, true, function(key, method) {
+        method.displayName = getDisplayName(displayName, key, "-");
+    });
 
-        for (var key in cls) { if (hop(cls, key)) {
-            if (key == methodName_load || key == methodName_initialize ||
-                key == "prototype"     || key == "displayName"         ||
-                key == methodName_$oj_super ||
-                key == methodName_$oj_name)
-            {
-                continue;
-            }
 
-            var original = cls[key];
+    // If we have a +initialize, wrap each new class method
+    var initialize = cls.initialize;
+    if (initialize) {
+        cls.$oj_needs_initialized = true;
 
-            cls[key] = function() {
-                if (initializeMethod) {
-                    initializeMethod.call(this);
-                    initializeMethod = null;
-                }
+        makeInitializeWrapperForClass(cls, class_methods);
 
-                original.call(this);
-            }
-
-            cls[key].displayName = original.displayName;
-        }}
+        if (superClass == BaseObject) {
+            makeInitializeWrapperForClass(cls, BaseObject);
+        }
     }
-
-    cls.prototype   = new superClass();
-    cls.displayName = sel_getName(name);
-
-    cls.$oj_super = superClass;
-    cls.$oj_name  = name;
-
-    mixin(instance_methods, cls.prototype, function(key, method) {
-        method.displayName = getDisplayName(cls.displayName, key, "-");
-    });
 
     sRoot[sel_getName(name)] = cls;
 
@@ -164,6 +173,27 @@ function class_getName(cls)
     // as selectors.  Thus, pass through sel_getName
     //
     return sel_getName(cls.$oj_name);
+}
+
+
+function class_initialize(cls)
+{
+    var chain = [ cls ];
+    var initialize = cls.initialize;
+
+    while ((cls = class_getSuperclass(cls))) {
+        chain.push(cls);
+    }
+
+
+    for (var i = chain.length - 1; i >= 0; i--) {
+        cls = chain[i];
+
+        if (cls.$oj_needs_initialized && cls.initialize) {
+            cls.initialize.call(cls);
+            cls.$oj_needs_initialized = false;
+        }
+    }
 }
 
 

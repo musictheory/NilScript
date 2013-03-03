@@ -9,6 +9,9 @@ var sC_initializeCount = 0;
 var sX_loadCount       = 0;
 var sX_initializeCount = 0;
 
+var sLoadOrder = [ ];
+var sInitOrder = [ ];
+
 assert.equal(sA_loadCount,       0);
 assert.equal(sA_initializeCount, 0);
 assert.equal(sB_loadCount,       0);
@@ -23,16 +26,17 @@ assert.equal(sX_initializeCount, 0);
 //  +----+----+
 //  B    C    X
 //       |
-//       D
-//       |
-//       E
+//       +------
+//       D     D2
+//       |     |
+//       E     E2
 
 
 
 @implementation AClass
 
-+ (id) load       { sA_loadCount++;       }
-+ (id) initialize { sA_initializeCount++; }
++ (void) load       { sLoadOrder.push("A"); sA_loadCount++;       }
++ (void) initialize { sInitOrder.push("A"); sA_initializeCount++; }
 
 @end
 
@@ -40,16 +44,16 @@ assert.equal(sX_initializeCount, 0);
 
 @implementation BClass : AClass
 
-+ (id) load       { sB_loadCount++;       }
-+ (id) initialize { sB_initializeCount++; }
++ (void) load       { sLoadOrder.push("B"); sB_loadCount++;       }
++ (void) initialize { sInitOrder.push("B"); sB_initializeCount++; }
 
 @end
 
 
 @implementation CClass : AClass
 
-+ (id) load       { sC_loadCount++;       }
-+ (id) initialize { sC_initializeCount++; }
++ (void) load       { sLoadOrder.push("C"); sC_loadCount++;       }
++ (void) initialize { sInitOrder.push("C"); sC_initializeCount++; }
 
 @end
 
@@ -58,13 +62,20 @@ assert.equal(sX_initializeCount, 0);
 @end
 
 
+@implementation D2Class : CClass
++ (void) initialize { sInitOrder.push("D2");}
+@end
+
 @implementation EClass : DClass
 @end
 
+@implementation E2Class : D2Class
+@end
+
 @implementation XClass : AClass
-+ (id) load       { sX_loadCount++;       }
-+ (id) initialize { sX_initializeCount++; }
-+ (id) foo { }
++ (void) load       { sLoadOrder.push("X"); sX_loadCount++;       }
++ (void) initialize { sInitOrder.push("X"); sX_initializeCount++; }
++ (void) foo { }
 @end
 
 function runTests()
@@ -76,6 +87,8 @@ function runTests()
     assert.equal(sC_loadCount,       1);
     assert.equal(sC_initializeCount, 0);
 
+    assert.deepEqual(sLoadOrder, [ "A", "B", "C", "X" ]);
+
     var instance = [[BClass alloc] init];
     assert.equal(sA_loadCount,       1);
     assert.equal(sA_initializeCount, 1);
@@ -84,6 +97,8 @@ function runTests()
     assert.equal(sC_loadCount,       1);
     assert.equal(sC_initializeCount, 0);
 
+    assert.deepEqual(sInitOrder, [ "A", "B" ]);
+
     // This should trigger OtherSubclass's +initialize
     var instance2 = [[EClass alloc] init];
     assert.equal(sA_loadCount,       1);
@@ -91,8 +106,19 @@ function runTests()
     assert.equal(sB_loadCount,       1);
     assert.equal(sB_initializeCount, 1);
     assert.equal(sC_loadCount,       1);
-    assert.equal(sC_initializeCount, 1);
+    assert.equal(sC_initializeCount, 3);  // 3 instead of 1, as D and E both inherit C's +initialize
 
+    assert.deepEqual(sInitOrder, [ "A", "B", "C", "C", "C" ]);
+
+    var instance3 = [[E2Class alloc] init];
+    assert.equal(sA_loadCount,       1);
+    assert.equal(sA_initializeCount, 1);
+    assert.equal(sB_loadCount,       1);
+    assert.equal(sB_initializeCount, 1);
+    assert.equal(sC_loadCount,       1);
+    assert.equal(sC_initializeCount, 3);
+
+    assert.deepEqual(sInitOrder, [ "A", "B", "C", "C", "C", "D2", "D2" ]);
 
     // Initialize only gets called once, so all these should still be 1
     var anotherA = [[AClass alloc] init];
@@ -106,11 +132,13 @@ function runTests()
     assert.equal(sB_loadCount,       1);
     assert.equal(sB_initializeCount, 1);
     assert.equal(sC_loadCount,       1);
-    assert.equal(sC_initializeCount, 1);
+    assert.equal(sC_initializeCount, 3);
 
     assert.equal(sX_initializeCount, 0);
     [XClass foo];
     assert.equal(sX_initializeCount, 1);
+
+    assert.deepEqual(sInitOrder, [ "A", "B", "C", "C", "C", "D2", "D2", "X" ]);
 
     return true;
 }
