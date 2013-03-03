@@ -1,0 +1,119 @@
+var assert = require("assert");
+
+var sA_loadCount       = 0;
+var sA_initializeCount = 0;
+var sB_loadCount       = 0;
+var sB_initializeCount = 0;
+var sC_loadCount       = 0;
+var sC_initializeCount = 0;
+var sX_loadCount       = 0;
+var sX_initializeCount = 0;
+
+assert.equal(sA_loadCount,       0);
+assert.equal(sA_initializeCount, 0);
+assert.equal(sB_loadCount,       0);
+assert.equal(sB_initializeCount, 0);
+assert.equal(sC_loadCount,       0);
+assert.equal(sC_initializeCount, 0);
+assert.equal(sX_loadCount,       0);
+assert.equal(sX_initializeCount, 0);
+
+//
+//  A
+//  +----+----+
+//  B    C    X
+//       |
+//       D
+//       |
+//       E
+
+
+
+@implementation AClass
+
++ (id) load       { sA_loadCount++;       }
++ (id) initialize { sA_initializeCount++; }
+
+@end
+
+
+
+@implementation BClass : AClass
+
++ (id) load       { sB_loadCount++;       }
++ (id) initialize { sB_initializeCount++; }
+
+@end
+
+
+@implementation CClass : AClass
+
++ (id) load       { sC_loadCount++;       }
++ (id) initialize { sC_initializeCount++; }
+
+@end
+
+
+@implementation DClass : CClass
+@end
+
+
+@implementation EClass : DClass
+@end
+
+@implementation XClass : AClass
++ (id) load       { sX_loadCount++;       }
++ (id) initialize { sX_initializeCount++; }
++ (id) foo { }
+@end
+
+function runTests()
+{
+    assert.equal(sA_loadCount,       1);
+    assert.equal(sA_initializeCount, 0);
+    assert.equal(sB_loadCount,       1);
+    assert.equal(sB_initializeCount, 0);
+    assert.equal(sC_loadCount,       1);
+    assert.equal(sC_initializeCount, 0);
+
+    var instance = [[BClass alloc] init];
+    assert.equal(sA_loadCount,       1);
+    assert.equal(sA_initializeCount, 1);
+    assert.equal(sB_loadCount,       1);
+    assert.equal(sB_initializeCount, 1);
+    assert.equal(sC_loadCount,       1);
+    assert.equal(sC_initializeCount, 0);
+
+    // This should trigger OtherSubclass's +initialize
+    var instance2 = [[EClass alloc] init];
+    assert.equal(sA_loadCount,       1);
+    assert.equal(sA_initializeCount, 1);
+    assert.equal(sB_loadCount,       1);
+    assert.equal(sB_initializeCount, 1);
+    assert.equal(sC_loadCount,       1);
+    assert.equal(sC_initializeCount, 1);
+
+
+    // Initialize only gets called once, so all these should still be 1
+    var anotherA = [[AClass alloc] init];
+    var anotherB = [[BClass alloc] init];
+    var anotherC = [[CClass alloc] init];
+    var anotherD = [[DClass alloc] init];
+    var anotherE = [[EClass alloc] init];
+
+    assert.equal(sA_loadCount,       1);
+    assert.equal(sA_initializeCount, 1);
+    assert.equal(sB_loadCount,       1);
+    assert.equal(sB_initializeCount, 1);
+    assert.equal(sC_loadCount,       1);
+    assert.equal(sC_initializeCount, 1);
+
+    assert.equal(sX_initializeCount, 0);
+    [XClass foo];
+    assert.equal(sX_initializeCount, 1);
+
+    return true;
+}
+
+
+runTests();

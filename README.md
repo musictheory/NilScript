@@ -84,7 +84,7 @@ Behind the scenes, the oj compiler changes the `@implementation`/`@end` block in
 
 becomes:
 
-    var TheClass = $oj.makeClass(…, function(…) {
+    var TheClass = oj.makeClass(…, function(…) {
         var sPrivateStaticVariable = "Private";
         function sPrivate() { }
     });
@@ -216,7 +216,7 @@ The compiler will produce slightly different output depending on:
  - if the message receiver is `self`
  - if the message receiver is `super`
 
-Sometimes the compiler will choose to use `oj_msgSend()` rather than a direct function call.
+Sometimes the compiler will choose to use `oj.msgSend()` rather than a direct function call.
 
 ---
 ## <a name="property"></a>Properties and Instance Variables
@@ -313,7 +313,7 @@ However, some are ignored due to differences between JavaScript and Objective-C:
 
 ### <a name="property-init"></a>Initialization
 
-At `+alloc`/`$oj.class_createInstance` time, oj initializes all instance variables to one of the following values based on its type:
+At `+alloc`/`oj.class_createInstance` time, oj initializes all instance variables to one of the following values based on its type:
 
     Boolean         -> false
     Number          -> 0
@@ -346,7 +346,7 @@ Hence, the following oj code:
     
 would compile into:
     
-    var TheClass = $oj.makeClass(…, function(…) {
+    var TheClass = oj.makeClass(…, function(…) {
     
     … // Compiler generates -setCounter: and -counter here
 
@@ -371,9 +371,9 @@ Thus, a call such as:
     
 May (depending on optimizations) be turned into:
 
-    $oj.msg_send(object, { fo_bar_baz_: 1 }, 7, 8, 9)
+    oj.msg_send(object, { fo_bar_baz_: 1 }, 7, 8, 9)
 
-Use `$oj.sel_getName()` to obtain a string representation of the object literal.
+Use `oj.sel_getName()` to obtain a string representation of the object literal.
 
 
 ---

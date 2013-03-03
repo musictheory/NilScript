@@ -5,9 +5,17 @@
     Public Domain.
 */
 
-var $oj = (function() {
+var oj = (function() {
 
+var sRoot = this;
 var sIDCounter = 0;
+var sDebugStackDepth = 0;
+var sDebugCallbacks = null;
+
+var methodName_load       = sel_getName({ load:1       });
+var methodName_initialize = sel_getName({ initialize:1 });
+var methodName_$oj_super  = sel_getName({ $oj_super:1  });
+var methodName_$oj_name   = sel_getName({ $oj_name:1   });
 
 function create(o)
 {
@@ -46,67 +54,85 @@ function throwUnrecognizedSelector(receiver, selector)
 }
 
 
-function makeClass(superClass, name, callback)
+function createNamedFunction(name) {
+    var result;
+    eval("result = function " + name + " () {}")
+    return result;
+}
+
+
+function _makeClass(superClass, name, callback)
 {
-    var initializeClassMethod;
-    var didCallInitialize = false;
-
-    var cls = function() {
-        if (!didCallInitialize) {
-            if (initializeClassMethod) {
-                initializeClassMethod();
-            }
-
-            didCallInitialize = true;
-        }
-
-        this.$oj_isa = cls;
-        this.$oj_id  = sIDCounter++;
-        mixin(cls.$oj_default_ivars, this);
-
-        if (Object.seal) Object.seal(this);
-
-        return this;
-    };
-
-    if (!superClass) superClass = BaseObject;
-    cls.prototype   = (Object.create || create)(superClass.prototype);
-    cls.displayName = sel_getName(name);
-
-    cls.$oj_super = superClass;
-    cls.$oj_name  = name;
-
-    mixin(superClass, cls);
-
     var instance_methods = { };
     var class_methods    = { };
-    var ivars            = { };
     var key;
 
-    callback(class_methods, instance_methods, ivars);
+    var cls = callback(class_methods, instance_methods);
+
+    var initializeMethod = class_methods.initialize;
+
+    if (!superClass) superClass = BaseObject;
+    mixin(superClass, cls);
 
     mixin(class_methods, cls, function(key, method) {
         method.displayName = getDisplayName(cls.displayName, key, "+");
     });
 
+    // If we have a +initialize, wrap each class method
+    if (initializeMethod) {
+        var didInitialize = false;
+
+        for (var key in cls) { if (hop(cls, key)) {
+            if (key == methodName_load || key == methodName_initialize ||
+                key == "prototype"     || key == "displayName"         ||
+                key == methodName_$oj_super ||
+                key == methodName_$oj_name)
+            {
+                continue;
+            }
+
+            var original = cls[key];
+
+            cls[key] = function() {
+                if (initializeMethod) {
+                    initializeMethod.call(this);
+                    initializeMethod = null;
+                }
+
+                original.call(this);
+            }
+
+            cls[key].displayName = original.displayName;
+        }}
+    }
+
+    cls.prototype   = new superClass();
+    cls.displayName = sel_getName(name);
+
+    cls.$oj_super = superClass;
+    cls.$oj_name  = name;
+
     mixin(instance_methods, cls.prototype, function(key, method) {
         method.displayName = getDisplayName(cls.displayName, key, "-");
     });
 
-    initializeClassMethod = cls.initialize;
+    sRoot[sel_getName(name)] = cls;
 
-    var k = superClass;
-    while (k) {
-        if (k.$oj_default_ivars) {
-            mixin(k.$oj_default_ivars, ivars);
-        }
-
-        k = k.$oj_super;
-    } 
-
-    cls.$oj_default_ivars = ivars;
+    if (class_methods.load) class_methods.load(this);
 
     return cls;
+}
+
+
+function isObject(object)
+{
+    return !!(object && object.constructor.$oj_name);
+}
+
+
+function setDebugCallbacks(callbacks)
+{
+    sDebugCallbacks = callbacks;
 }
 
 
@@ -160,7 +186,7 @@ function class_isSubclassOf(cls, superclass)
 
 function object_getClass(object)
 {
-    return object.$oj_isa;
+    return object.constructor;
 }
 
 
@@ -172,25 +198,57 @@ function class_respondsToSelector(cls, selector)
 
 var Array_prototype_slice = Array.prototype.slice;
 
-function oj_msgSend(receiver, selector)
+function msgSend(receiver, selector)
 {
     return receiver ? (
         receiver[sel_getName(selector)] ||
         throwUnrecognizedSelector(receiver, selector)
     ).apply(receiver, Array_prototype_slice.call(arguments, 2)) : receiver;
 }
+msgSend.displayName = "oj.msgSend";
 
 
-function oj_msgSend_Object_keys(receiver, selector)
+function msgSend_Object_keys(receiver, selector)
 {
     return receiver ? (
         receiver[Object.keys(selector)[0]] ||
         throwUnrecognizedSelector(receiver, selector)
     ).apply(receiver, Array_prototype_slice.call(arguments, 2)) : receiver;
 }
+msgSend_Object_keys.displayName = "oj.msgSend";
 
 
-function BaseObject() { }
+function msgSend_debug(receiver, selector)
+{
+    if (!receiver) return receiver;
+
+    var name = sel_getName(selector);
+    var imp  = receiver[imp];
+
+    if (!imp) {
+        throwUnrecognizedSelector(receiver, selector)
+    }
+
+    if (++sDebugStackDepth > 256) {
+        throw new Error("Maximum call stack depth exceeded.");
+    }
+
+    var result;
+    try {
+        if (sDebugCallbacks && sDebugCallbacks.willSendMessage) sDebugCallbacks.willSendMessage(arguments);
+        result = receiver.apply(Array_prototype_slice.call(arguments, 2));
+        if (sDebugCallbacks && sDebugCallbacks.didSendMessage)  sDebugCallbacks.didSendMessage(arguments);
+
+    } finally {
+        sDebugStackDepth--;
+    }
+
+    return result;
+}
+msgSend_debug.displayName = "oj.msgSend";
+
+
+var BaseObject = function BaseObject() { }
 
 BaseObject.alloc = function() { return new this(); }
 BaseObject["class"] = function() { return this; }
@@ -208,9 +266,9 @@ BaseObject.prototype.superclass = function() { return class_getSuperclass(object
 BaseObject.prototype["class"] = function() { return object_getClass(this); }
 BaseObject.prototype.className = function() { return class_getName(object_getClass(this)); }
 BaseObject.prototype.respondsToSelector_ = function(aSelector) { return class_respondsToSelector(object_getClass(this), aSelector); }
-BaseObject.prototype.performSelector_ = function(aSelector) { return oj_msgSend(this, aSelector); }
-BaseObject.prototype.performSelector_withObject_ = function(aSelector, object) { return oj_msgSend(this, aSelector, object); }
-BaseObject.prototype.performSelector_withObject_withObject_ = function(aSelector, o1, o2) { return oj_msgSend(this, aSelector, o1, o2); }
+BaseObject.prototype.performSelector_ = function(aSelector) { return oj.msgSend(this, aSelector); }
+BaseObject.prototype.performSelector_withObject_ = function(aSelector, object) { return oj.msgSend(this, aSelector, object); }
+BaseObject.prototype.performSelector_withObject_withObject_ = function(aSelector, o1, o2) { return oj.msgSend(this, aSelector, o1, o2); }
 BaseObject.prototype.description = function() { return "<" + this.className() + " " + this.$oj_id + ">" }
 BaseObject.prototype.toString = function() { return this.description(); }
 BaseObject.prototype.isKindOfClass_ = function(cls) { return class_isSubclassOf(object_getClass(this), cls); }
@@ -218,7 +276,9 @@ BaseObject.prototype.isMemberOfClass_ = function(cls) { return object_getClass(t
 BaseObject.prototype.isEqual_ = function(other) { return this === other; }
 
 return {
-    makeClass:                makeClass,
+    _makeClass:               _makeClass,
+
+    isObject:                 isObject,
     sel_getName:              sel_getName,
     sel_isEqual:              sel_isEqual,
     class_getName:            class_getName,
@@ -226,8 +286,10 @@ return {
     class_isSubclassOf:       class_isSubclassOf,
     class_respondsToSelector: class_respondsToSelector,
     object_getClass:          object_getClass,
-    oj_msgSend:               Object.keys ? oj_msgSend_Object_keys : oj_msgSend
+    msgSend:                  Object.keys ? msgSend_Object_keys : msgSend,
+    msgSend_debug:            msgSend_debug,
+    setDebugCallbacks:        setDebugCallbacks
 }
 
 
-}(this));
+}());

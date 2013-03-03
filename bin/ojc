@@ -20,6 +20,7 @@ out: while (args.length > 0) {
 
     if      (arg == "--no-strict")      options["no-strict"] = true;
     else if (arg == "--output")         options["output"] = args.shift();
+    else if (arg == "--always-message") options["always-message"] = true;
 
     // Additional warnings
     else if (arg == "--check-ivars")    options["check-ivars"] = true;
