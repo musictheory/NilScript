@@ -741,6 +741,28 @@ OJCompiler.prototype._secondPass = function()
         modifier.select(node).replace(replacement);
     }
 
+    function check_this(thisNode, path)
+    {
+        var inFunction = false;
+        var inMethod   = true;
+
+        for (var i = path.length - 1; i >= 0; i--) {
+            var node = path[i];
+
+            if (node.type == Syntax.OJMethodDefinition ||
+                node.type == Syntax.OJClassImplementation ||
+                node.type == Syntax.OJMessageExpression)
+            {
+                throwError(thisNode, OJError.UseOfThisInMethod, "Use of 'this' keyword in oj method definition");
+
+            } else if (node.type == Syntax.FunctionDeclaration ||
+                       node.type == Syntax.FunctionExpression) {
+                break;
+            }
+        }
+    }
+
+
     var traverser = new Traverser(this._ast);
     this._traverser = traverser;
 
@@ -792,8 +814,8 @@ OJCompiler.prototype._secondPass = function()
             }
 
         } else if (node.type === Syntax.ThisExpression) {
-            if (currentMethodNode && currentClass && options["check-this"]) {
-                throwError(node, OJError.UseOfThisInMethod, "Use of 'this' keyword in oj method definition");
+            if (options["check-this"]) {
+                check_this(node, traverser.getPath());
             }
         }
 
