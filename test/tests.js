@@ -17,7 +17,7 @@ var compile = function(inFile, options) {
 
 function runTest(name, options)
 {
-    var src = compile(__dirname + "/inc/" + name + ".oj", options);
+    var src = compile(__dirname + "/" + name + ".oj", options);
 
     test(name, function() {
         assert(eval(src), true);
@@ -41,11 +41,14 @@ function shouldFailToCompile(name, errorType, options) {
 }
 
 
-runTest("IvarAndProperties");
-runTest("Inheritance");
-runTest("Methods");
-runTest("EnumAndConst", { "use-enum": true, "use-const": true });
-runTest("LoadAndInitialize");
+runTest("inc/IvarAndProperties");
+runTest("inc/Inheritance");
+runTest("inc/Methods");
+runTest("inc/EnumAndConst", { "use-enum": true, "use-const": true });
+runTest("inc/LoadAndInitialize");
+
+runTest("issues/issue1");
+
 
 shouldFailToCompile("CheckIvar",                       OJError.UndeclaredInstanceVariable, { "check-ivars": true });
 shouldFailToCompile("UseOfThisInMethod",               OJError.UseOfThisInMethod,          { "check-this": true  });
