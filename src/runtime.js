@@ -284,6 +284,7 @@ BaseObject.alloc = function() { return new this(); }
 BaseObject["class"] = function() { return this; }
 BaseObject.superclass = function() { return class_getSuperclass(this); }
 BaseObject.className = function() { return class_getName(this); }
+BaseObject.respondsToSelector_ = function(aSelector) { return !!this[sel_getName(aSelector)]; }
 BaseObject.instancesRespondToSelector_ = function(aSelector) { return class_respondsToSelector(this, aSelector); }
 BaseObject.isKindOfClass_ = function(cls) { return class_isSubclassOf(this, cls); }
 BaseObject.isMemberOfClass_ = function(cls) { return this === cls; }
