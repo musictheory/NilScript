@@ -492,7 +492,7 @@ OJCompiler.prototype._secondPass = function()
             }
         }
 
-        if (parentNode.type == Syntax.MemberExpression) {
+        if (parentNode.type == Syntax.MemberExpression && !parentNode.computed) {
             return parentNode.object == idNode;
         }
 
