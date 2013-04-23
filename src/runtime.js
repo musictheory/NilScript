@@ -7,7 +7,6 @@
 
 var oj = (function() { "use strict";
 
-var sIDCounter = 0;
 var sDebugStackDepth = 0;
 var sDebugCallbacks = null;
 var sPendingClasses = { };
@@ -334,6 +333,7 @@ BaseObject.prototype.isMemberOfClass_ = function(cls) { return object_getClass(t
 BaseObject.prototype.isEqual_ = function(other) { return this === other; }
 
 return {
+    _id:                      0,
     _makeClass:               _makeClass,
     classes:                  sAllClasses,
 
