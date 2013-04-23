@@ -4,7 +4,7 @@
     "homepage": "http://github.com/musictheory/oj",
     "main": "esprima.js",
     "bin": "./bin/ojc",
-    "version": "0.1.0-4",
+    "version": "0.1.0-5",
     "engines": {
         "node": ">=0.8.0"
     },
