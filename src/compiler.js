@@ -247,7 +247,12 @@ OJClass.prototype.generateIvarAssignments = function()
     var i, length, ivar, type;
 
     for (ivar in this._ivarToPropertyMap) { if (this._ivarToPropertyMap.hasOwnProperty(ivar)) {
+        if (ivar == OJDynamicProperty) {
+            continue;
+        }
+
         type = this._ivarToTypeMap[ivar];
+
 
         if (isNumeric(type)) {
             numericIvars.push(ivar);
@@ -402,12 +407,30 @@ OJCompiler.prototype._firstPass = function()
     var traverser = new Traverser(this._ast);
     this._traverser = traverser;
 
+    function registerClass(name, overrideExisting) {
+        var result;
+
+        if (!classes[name] || overrideExisting) {
+            classes[name] = result = new OJClass(name);
+        }
+
+        return result;
+    }
+
     traverser.traverse(function() {
         var node = traverser.getNode();
 
         if (node.type === Syntax.OJClassImplementation) {
-            currentClass = new OJClass(node.id.name);
-            classes[node.id.name] = currentClass;
+            currentClass = registerClass(node.id.name, true);
+
+            if (node.superClass && node.superClass.value) {
+                registerClass(node.superClass.value);
+            }
+
+        } else if (node.type === Syntax.OJAtClassDirective) {
+            node.ids.forEach(function(id) {
+                registerClass(id.name);
+            });
 
         } else if (node.type === Syntax.OJInstanceVariableDeclaration) {
             currentClass.registerIvarDeclaration(node);
@@ -553,6 +576,9 @@ OJCompiler.prototype._secondPass = function()
             if (receiver.name == "super") {
                 startReplacement = currentClass.name + ".$oj_super." + (useProto ? "prototype." : "") + methodName + ".call(this" + (hasArguments ? "," : "");
 
+            } else if (classes[receiver.name]) {
+                startReplacement = "oj.classes." + receiver.name + "." + methodName + "(";
+
             } else if (!options["always-message"]) {
                 if (receiver.name == "self") {
                     startReplacement = selfOrThis + "." + methodName + "(";
@@ -575,6 +601,11 @@ OJCompiler.prototype._secondPass = function()
             modifier.from(lastSelector).to(node).replace(endReplacement);
         } else {
             modifier.from(node).to(receiver).replace("oj.msgSend(");
+
+            if (receiver.type == Syntax.Identifier && classes[receiver.name]) {
+                modifier.select(receiver).replace("oj.classes." + receiver.name);
+            }
+
             modifier.from(receiver).to(firstSelector).replace("," + getSelectorForMethodName(methodName) + (hasArguments ? "," : ""));
             modifier.from(lastSelector).to(node).replace(endReplacement);
         }
@@ -584,20 +615,21 @@ OJCompiler.prototype._secondPass = function()
     {
         var superClass = (node.superClass && node.superClass.value);
 
+        var superSelector = "{ " + superClass   + ":1 }";
+        var clsSelector   = "{ " + node.id.name + ":1 }";
+
         var constructorCallSuper = "";
         if (superClass) {
-            constructorCallSuper = superClass + ".call(this);";
+            constructorCallSuper = "oj.classes." + superClass + ".call(this);";
         }
 
-        var useStrict = (!options || !options["no-strict"]) ? " \"use strict\"; " : "";
 
         var constructorSetIvars = currentClass.generateIvarAssignments();
 
         var startText = "var " + node.id.name + " = oj._makeClass(" +
-            (superClass || "null") + ", " +
-            "{ " + node.id.name + ":1 }, " +
+            clsSelector + ", " +
+            (superClass ? superSelector : "null") + ", " +
             "function($oj_class_methods, $oj_instance_methods) { " +
-            useStrict + 
             "function " + node.id.name + "() { " +
             constructorCallSuper +
             constructorSetIvars  +
@@ -605,7 +637,7 @@ OJCompiler.prototype._secondPass = function()
             "}";
 
         modifier.from(node).to(node.ivarDeclarations || node.body).replace(startText);
-        modifier.from(node.body).to(node).replace(";return " + node.id.name + ";});");
+        modifier.from(node.body).to(node).replace("return " + node.id.name + ";});");
     }
 
     function handle_method_definition(node)
@@ -650,6 +682,7 @@ OJCompiler.prototype._secondPass = function()
             modifier.select(node).replace(replacement);
         }
     }
+
 
     function handle_at_property(node)
     {
@@ -775,6 +808,9 @@ OJCompiler.prototype._secondPass = function()
         } else if (node.type === Syntax.OJClassImplementation) {
             currentClass = classes[node.id.name];
             handle_class_implementation(node);
+
+        } else if (node.type === Syntax.OJAtClassDirective) {
+            modifier.select(node).remove();
 
         } else if (node.type === Syntax.OJInstanceVariableDeclarations) {
             modifier.select(node).remove();

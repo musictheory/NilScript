@@ -37,6 +37,12 @@ var assert = require("assert");
 @property Number synthesizeTest3;
 @synthesize synthesizeTest3 = _synthesizeTest3;
 
+@property Number withoutSemicolon
+@synthesize withoutSemicolon
+
+@property Number withoutSemicolon2
+@dynamic withoutSemicolon2
+
 - (BOOL) runTests
 {
     assert.strictEqual(_ivar1_shouldBeNull,  nil);

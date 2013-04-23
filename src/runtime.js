@@ -5,19 +5,21 @@
     Public Domain.
 */
 
-var oj = (function() {
+var oj = (function() { "use strict";
 
-var sRoot = this;
 var sIDCounter = 0;
 var sDebugStackDepth = 0;
 var sDebugCallbacks = null;
+var sPendingClasses = { };
+var sAllClasses = { };
+
 
 function create(o)
 {
     function f() {}
-    f.prototype = o;
-    return new f();
-};
+    f.prototype = o;
+    return new f();
+}
 
 
 function hop(obj, prop)
@@ -86,30 +88,45 @@ function makeInitializeWrapperForClass(cls, methods)
 }
 
 
-function _makeClass(superClass, name, callback)
+function _makeClass(nameObject, superObject, callback, cls, class_methods, instance_methods)
 {
-    var instance_methods = { };
-    var class_methods    = { };
-    var key;
+    // nameObject and superObject are passed in with {name:1}
+    // object-literal syntax.
+    //
+    var superName = sel_getName(superObject); 
+    var superclass = oj.classes[superName];
 
-    var displayName = sel_getName(name);
-    var cls = callback(class_methods, instance_methods);
+    if (!instance_methods) instance_methods = { };
+    if (!class_methods)    class_methods    = { };
+    if (!cls) cls = callback(class_methods, instance_methods);
 
-    if (!superClass) superClass = BaseObject;
+    // We have a superclass specified, but it hasn't been _makeClass'd yet.
+    if (superName && !superclass) {
+        var pending = sPendingClasses[superName];
+        if (!pending) pending = sPendingClasses[superName] = [ ];
 
-    cls.displayName = displayName;
+        pending.push([ nameObject, superObject, callback, cls, class_methods, instance_methods ]);
+
+        return cls;
+    }
+
+    if (!superclass) superclass = BaseObject;
+
+    var name = sel_getName(nameObject);
+
+    cls.displayName = name;
     cls.$oj_name    = name;
-    cls.$oj_super   = superClass;
-    cls.prototype   = new superClass();
+    cls.$oj_super   = superclass;
+    cls.prototype   = new superclass();
 
-    mixin(superClass, cls);
+    mixin(superclass, cls);
 
     mixin(class_methods, cls, true, function(key, method) {
-        method.displayName = getDisplayName(displayName, key, "+");
+        method.displayName = getDisplayName(name, key, "+");
     });
 
     mixin(instance_methods, cls.prototype, true, function(key, method) {
-        method.displayName = getDisplayName(displayName, key, "-");
+        method.displayName = getDisplayName(name, key, "-");
     });
 
 
@@ -120,14 +137,27 @@ function _makeClass(superClass, name, callback)
 
         makeInitializeWrapperForClass(cls, class_methods);
 
-        if (superClass == BaseObject) {
+        if (superclass == BaseObject) {
             makeInitializeWrapperForClass(cls, BaseObject);
         }
     }
 
-    sRoot[sel_getName(name)] = cls;
+    sAllClasses[name] = cls;
 
-    if (class_methods.load) class_methods.load(this);
+    if (class_methods.load) class_methods.load.apply(cls);
+
+    // Make pending classes classes
+    (function() {
+        var pending = sPendingClasses[name];
+
+        if (pending) {
+            for (var i = 0, length = pending.length; i < length; i++) {
+                _makeClass.apply(null, pending[i]);
+            }
+
+            delete(sPendingClasses[name]);
+        }
+    }());
 
     return cls;
 }
@@ -169,10 +199,7 @@ function sel_isEqual(sel1, sel2)
 
 function class_getName(cls)
 {
-    // Class names are encoded using the same { selectorName : 1 } syntax
-    // as selectors.  Thus, pass through sel_getName
-    //
-    return sel_getName(cls.$oj_name);
+    return cls.$oj_name;
 }
 
 
@@ -308,6 +335,7 @@ BaseObject.prototype.isEqual_ = function(other) { return this === other; }
 
 return {
     _makeClass:               _makeClass,
+    classes:                  sAllClasses,
 
     isObject:                 isObject,
     sel_getName:              sel_getName,
