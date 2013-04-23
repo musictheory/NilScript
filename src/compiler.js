@@ -634,6 +634,7 @@ OJCompiler.prototype._secondPass = function()
             constructorCallSuper +
             constructorSetIvars  +
             "this.constructor = " + node.id.name + ";" +
+            "this.$oj_id = ++oj._id;" +
             "}";
 
         modifier.from(node).to(node.ivarDeclarations || node.body).replace(startText);
