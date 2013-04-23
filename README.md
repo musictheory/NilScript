@@ -15,6 +15,7 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 - [Classes](#class)
   - [Basic Syntax](#class-syntax)
   - [Behind the Scenes](#class-compiler)
+  - [Scope and @class](#class-scope)
 - [The Built-in Base Class](#base-class)
   - [Provided Methods](#base-class-provided)
   - [Reserved Method Names](#base-class-reserved)
@@ -42,7 +43,6 @@ In contrast to [Objective-J](http://en.wikipedia.org/wiki/Objective-J):
    This allows the resulting JavaScript code to be optimized using Closure Compiler's ADVANCED_OPTIMIZATIONS or the Mauler in [our branch of UglifyJS](https://github.com/musictheory/uglifyjs).
   - oj uses the native JavaScript runtime to call methods rather than imitating the Objective-C runtime (see below).
   - oj has full support of @property and the default synthesis of ivars/getters/setters.
-  - oj uses ECMAScript 5's strict mode to seal instances (using `Object.seal`) after `+alloc` is called.
 
 ---
 
@@ -85,10 +85,57 @@ Behind the scenes, the oj compiler changes the `@implementation`/`@end` block in
 
 becomes:
 
-    var TheClass = oj.makeClass(…, function(…) {
+    var TheClass = oj._makeClass(…, function(…) {
         var sPrivateStaticVariable = "Private";
         function sPrivate() { }
     });
+
+### <a name="class-scope"></a>Scope and @class
+
+When compiling oj files separately, the oj compiler needs a [forward declaration](http://en.wikipedia.org/wiki/Forward_declaration) 
+to know that a specific identifier is actually an oj class.  This is accomplished via the `@class` directive.
+
+For example, assume the following files:
+
+    // TheFirstClass.oj
+    @implementation TheFirstClass
+    @end
+
+and
+
+    // TheSecondClass.oj
+    @implementation TheSecondClass
+    
+    - (TheFirstClass) makeFirst {
+        return [[TheFirstClass alloc] init];
+    }
+
+    @end
+
+Without the forward declaration, the compiler will change `[[TheFirstClass alloc] init]` to:
+
+    TheFirstClass.alloc().init();
+    
+This works as long as TheFirstClass is in the global namespace.  If you are using functions to create various levels
+of scoping (a common JavaScript practice), it may break.
+
+In this class, use the `@class` directive:
+
+    // TheSecondClass.oj
+
+    @class TheFirstClass;
+
+    @implementation TheSecondClass
+    
+    - (TheFirstClass) makeFirst {
+        return [[TheFirstClass alloc] init];
+    }
+
+    @end
+
+Which causes the compiler to output:
+
+    oj.classes.TheFirstClass.alloc().init();
 
 ---
 
