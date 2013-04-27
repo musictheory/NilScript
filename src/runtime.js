@@ -93,7 +93,7 @@ function _makeClass(nameObject, superObject, callback, cls, class_methods, insta
     // object-literal syntax.
     //
     var superName = sel_getName(superObject); 
-    var superclass = oj.classes[superName];
+    var superclass = oj._classes[superName];
 
     if (!instance_methods) instance_methods = { };
     if (!class_methods)    class_methods    = { };
@@ -335,8 +335,9 @@ BaseObject.prototype.isEqual_ = function(other) { return this === other; }
 return {
     _id:                      0,
     _makeClass:               _makeClass,
-    classes:                  sAllClasses,
+    _classes:                 sAllClasses,
 
+    getClassList:             function() { return sAllClasses; },
     isObject:                 isObject,
     sel_getName:              sel_getName,
     sel_isEqual:              sel_isEqual,
