@@ -135,7 +135,7 @@ In this class, use the `@class` directive:
 
 Which causes the compiler to output:
 
-    oj.classes.TheFirstClass.alloc().init();
+    oj._classes.TheFirstClass.alloc().init();
 
 ---
 

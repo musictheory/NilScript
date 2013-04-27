@@ -577,7 +577,7 @@ OJCompiler.prototype._secondPass = function()
                 startReplacement = currentClass.name + ".$oj_super." + (useProto ? "prototype." : "") + methodName + ".call(this" + (hasArguments ? "," : "");
 
             } else if (classes[receiver.name]) {
-                startReplacement = "oj.classes." + receiver.name + "." + methodName + "(";
+                startReplacement = "oj._classes." + receiver.name + "." + methodName + "(";
 
             } else if (!options["always-message"]) {
                 if (receiver.name == "self") {
@@ -603,7 +603,7 @@ OJCompiler.prototype._secondPass = function()
             modifier.from(node).to(receiver).replace("oj.msgSend(");
 
             if (receiver.type == Syntax.Identifier && classes[receiver.name]) {
-                modifier.select(receiver).replace("oj.classes." + receiver.name);
+                modifier.select(receiver).replace("oj._classes." + receiver.name);
             }
 
             modifier.from(receiver).to(firstSelector).replace("," + getSelectorForMethodName(methodName) + (hasArguments ? "," : ""));
@@ -620,7 +620,7 @@ OJCompiler.prototype._secondPass = function()
 
         var constructorCallSuper = "";
         if (superClass) {
-            constructorCallSuper = "oj.classes." + superClass + ".call(this);";
+            constructorCallSuper = "oj._classes." + superClass + ".call(this);";
         }
 
 
