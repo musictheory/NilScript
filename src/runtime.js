@@ -5,13 +5,16 @@
     Public Domain.
 */
 
-var oj = (function() { "use strict";
+;(function() { "use strict";
+
+var root = this;
 
 var sDebugStackDepth = 0;
 var sDebugCallbacks = null;
-var sPendingClasses = { };
-var sAllClasses = { };
-
+var sClassGetters   = { };
+var sClassSupers    = { };
+var sHooks          = { };
+var sLoadedClasses  = [ ];
 
 function create(o)
 {
@@ -87,78 +90,133 @@ function makeInitializeWrapperForClass(cls, methods)
 }
 
 
-function _makeClass(nameObject, superObject, callback, cls, class_methods, instance_methods)
+function _registerClass(nameObject, superObject, callback)
 {
-    // nameObject and superObject are passed in with {name:1}
-    // object-literal syntax.
-    //
-    var superName = sel_getName(superObject); 
-    var superclass = oj._classes[superName];
+    var isSubclassOfBase = false;
 
-    if (!instance_methods) instance_methods = { };
-    if (!class_methods)    class_methods    = { };
-    if (!cls) cls = callback(class_methods, instance_methods);
+    if (!superObject) {
+        superObject = { BaseObject: 1 };
+        isSubclassOfBase = true;
+    }
 
-    // We have a superclass specified, but it hasn't been _makeClass'd yet.
-    if (superName && !superclass) {
-        var pending = sPendingClasses[superName];
-        if (!pending) pending = sPendingClasses[superName] = [ ];
+    var name = sel_getName(nameObject); 
+    var superName = sel_getName(superObject);
 
-        pending.push([ nameObject, superObject, callback, cls, class_methods, instance_methods ]);
+    var cls;
+
+    sClassSupers[name] = superName;
+
+    sClassGetters[name] = function() {
+        if (cls) return cls;
+
+        var superclass;
+        if (isSubclassOfBase) {
+            superclass = BaseObject;
+        } else {
+            var superCons = sClassGetters[superName];
+            if (!superCons) throw new Error("Could not find class " + superCons + "/" + superName);
+            superclass = superCons();
+        }        
+
+        var instance_methods = { };
+        var class_methods    = { };
+        
+        cls = callback(class_methods, instance_methods);
+
+        cls.displayName = name;
+        cls.$oj_name    = name;
+        cls.$oj_super   = superclass;
+        cls.prototype   = new superclass();
+
+        mixin(superclass, cls);
+
+        mixin(class_methods, cls, true, function(key, method) {
+            method.displayName = getDisplayName(name, key, "+");
+        });
+
+        mixin(instance_methods, cls.prototype, true, function(key, method) {
+            method.displayName = getDisplayName(name, key, "-");
+        });
+
+
+        // If we have a +initialize, wrap each new class method
+        var initialize = cls.initialize;
+        if (initialize) {
+            cls.$oj_needs_initialized = true;
+
+            makeInitializeWrapperForClass(cls, class_methods);
+
+            if (superclass == BaseObject) {
+                makeInitializeWrapperForClass(cls, BaseObject);
+            }
+        }
+
+        if (class_methods.load) class_methods.load.apply(cls);
+
+        if (sHooks.didRegisterClass) {
+            sHooks.didRegisterClass(cls);
+        }
+
+        sLoadedClasses.push(cls);
 
         return cls;
     }
-
-    if (!superclass) superclass = BaseObject;
-
-    var name = sel_getName(nameObject);
-
-    cls.displayName = name;
-    cls.$oj_name    = name;
-    cls.$oj_super   = superclass;
-    cls.prototype   = new superclass();
-
-    mixin(superclass, cls);
-
-    mixin(class_methods, cls, true, function(key, method) {
-        method.displayName = getDisplayName(name, key, "+");
-    });
-
-    mixin(instance_methods, cls.prototype, true, function(key, method) {
-        method.displayName = getDisplayName(name, key, "-");
-    });
+}
 
 
-    // If we have a +initialize, wrap each new class method
-    var initialize = cls.initialize;
-    if (initialize) {
-        cls.$oj_needs_initialized = true;
+function loadAllClasses()
+{
+    for (var key in sClassGetters) { if (hop(sClassGetters, key)) {
+        sClassGetters[key]();
+    }}
+}
 
-        makeInitializeWrapperForClass(cls, class_methods);
 
-        if (superclass == BaseObject) {
-            makeInitializeWrapperForClass(cls, BaseObject);
+function getClassList()
+{
+    var results = [ ];
+
+    for (var key in sClassGetters) { if (hop(sClassGetters, key)) {
+        results.append(sClassGetters[key]());
+    }}
+
+    return results;
+}
+
+
+function getLoadedClassList()
+{
+    return sLoadedClasses;
+}
+
+
+function getSubclassesOfClass(cls)
+{
+    var results = [ ];
+    var name = class_getName(cls);
+
+    for (var key in sClassSupers) { if (hop(sClassSupers, key)) {
+        var superName = sClassSupers[key];
+
+        if (superName == name) {
+            results.push(sClassGetters[key]());
         }
+    }}
+
+    return results;
+}
+
+
+function getClass(name)
+{
+    if (!name) return null;
+
+    if ((typeof name) != "string") {
+        name = sel_getName(name);
     }
 
-    sAllClasses[name] = cls;
-
-    if (class_methods.load) class_methods.load.apply(cls);
-
-    // Make pending classes classes
-    (function() {
-        var pending = sPendingClasses[name];
-
-        if (pending) {
-            for (var i = 0, length = pending.length; i < length; i++) {
-                _makeClass.apply(null, pending[i]);
-            }
-
-            delete(sPendingClasses[name]);
-        }
-    }());
-
-    return cls;
+    var g = sClassGetters[name];
+    return g ? g() : null;
 }
 
 
@@ -198,7 +256,7 @@ function sel_isEqual(sel1, sel2)
 
 function class_getName(cls)
 {
-    return cls.$oj_name;
+    return cls ? cls.$oj_name : null;
 }
 
 
@@ -304,6 +362,33 @@ function msgSend_debug(receiver, selector)
 msgSend_debug.displayName = "oj.msgSend";
 
 
+var oj = {
+    _id:                      0,
+    _registerClass:           _registerClass,
+    _cls:                     sClassGetters,
+
+    loadAllClasses:           loadAllClasses,
+
+    getClassList:             getClassList,
+    getLoadedClassList:       getLoadedClassList,
+    getSubclassesOfClass:     getSubclassesOfClass,
+    getClass:                 getClass,
+    isObject:                 isObject,
+    sel_getName:              sel_getName,
+    sel_isEqual:              sel_isEqual,
+    class_getName:            class_getName,
+    class_getSuperclass:      class_getSuperclass,
+    class_isSubclassOf:       class_isSubclassOf,
+    class_respondsToSelector: class_respondsToSelector,
+    object_getClass:          object_getClass,
+    msgSend:                  Object.keys ? msgSend_Object_keys : msgSend,
+
+    msgSend_debug:            msgSend_debug,
+    hooks:                    sHooks,
+    setDebugCallbacks:        setDebugCallbacks
+}
+
+
 var BaseObject = function BaseObject() { }
 
 BaseObject.alloc = function() { return new this(); }
@@ -332,24 +417,8 @@ BaseObject.prototype.isKindOfClass_ = function(cls) { return class_isSubclassOf(
 BaseObject.prototype.isMemberOfClass_ = function(cls) { return object_getClass(this) === cls; }
 BaseObject.prototype.isEqual_ = function(other) { return this === other; }
 
-return {
-    _id:                      0,
-    _makeClass:               _makeClass,
-    _classes:                 sAllClasses,
+if (typeof module != "undefined" && typeof module != "function") { module.exports = oj; }
+else if (typeof define === "function" && define.amd) { define(oj); }
+else { root.oj = oj; }
 
-    getClassList:             function() { return sAllClasses; },
-    isObject:                 isObject,
-    sel_getName:              sel_getName,
-    sel_isEqual:              sel_isEqual,
-    class_getName:            class_getName,
-    class_getSuperclass:      class_getSuperclass,
-    class_isSubclassOf:       class_isSubclassOf,
-    class_respondsToSelector: class_respondsToSelector,
-    object_getClass:          object_getClass,
-    msgSend:                  Object.keys ? msgSend_Object_keys : msgSend,
-    msgSend_debug:            msgSend_debug,
-    setDebugCallbacks:        setDebugCallbacks
-}
-
-
-}());
+}).call(this);
