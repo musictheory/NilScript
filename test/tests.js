@@ -4,13 +4,11 @@ var ojc = require("../src/compiler");
 var fs  = require("fs");
 var assert = require("assert");
 var OJError = require("../src/errors.js").OJError;
+var oj = require("../src/runtime.js");
 
 var compile = function(inFile, options) {
     var inContent = "";
-
-    inContent += fs.readFileSync(__dirname + "/../src/runtime.js");
     inContent += fs.readFileSync(inFile, "utf8");
-
     return ojc.compile(inContent, options);
 }
 
@@ -48,7 +46,7 @@ runTest("inc/EnumAndConst", { "use-enum": true, "use-const": true });
 runTest("inc/LoadAndInitialize");
 
 runTest("issues/issue1");
-
+runTest("issues/issue2");
 
 shouldFailToCompile("CheckIvar",                       OJError.UndeclaredInstanceVariable, { "check-ivars": true });
 shouldFailToCompile("UseOfThisInMethod",               OJError.UseOfThisInMethod,          { "check-this": true  });
