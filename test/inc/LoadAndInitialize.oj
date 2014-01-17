@@ -80,6 +80,8 @@ assert.equal(sX_initializeCount, 0);
 
 function runTests()
 {
+    oj.loadAllClasses();
+
     assert.equal(sA_loadCount,       1);
     assert.equal(sA_initializeCount, 0);
     assert.equal(sB_loadCount,       1);

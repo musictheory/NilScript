@@ -1,0 +1,33 @@
+var assert = require("assert");
+
+@implementation Issue2Class {
+
+}
+
+@property Number myDynamicNumber;
+@dynamic myDynamicNumber;
+
+@property String myDynamicString;
+@dynamic myDynamicString;
+
+- (Number) myDynamicNumber {
+    return 1;
+}
+
+- (String) myDynamicString {
+    return "foo";
+}
+
+- (BOOL) runTests
+{
+    var arr = [ ];
+
+    assert.equal([self myDynamicNumber], 1);
+    assert.equal([self myDynamicString], "foo");
+
+    return YES;
+}
+@end
+
+var instance = [[Issue2Class alloc] init];
+[instance runTests];

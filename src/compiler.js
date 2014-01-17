@@ -157,7 +157,7 @@ OJClass.prototype.linkPropertyToInstanceVariable = function(property, ivar, node
         }
     }
 
-    if (existingProperty && (existingProperty != OJIvarWithoutProperty)) {
+    if (existingProperty && (existingProperty != OJIvarWithoutProperty) && (ivar != OJDynamicProperty)) {
         throwError(node, OJError.InstanceVariableAlreadyClaimed, "Both '" + property + "' and '" + existingProperty + "' claim instance variable '" + ivar);
     }
 
