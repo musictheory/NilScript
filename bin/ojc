@@ -30,6 +30,7 @@ out: while (args.length > 0) {
 
     // Code Generation options
     else if (arg == "--function-name-style") options["function-name-style"] = parseInt(args.shift(), 10);
+    else if (arg == "--use-prefix")          options["use-prefix"] = true;
 
     // Optional language features
     else if (arg == "--use-enum")        options["use-enum"] = true;

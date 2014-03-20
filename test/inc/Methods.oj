@@ -126,4 +126,4 @@
 
 
 var instance = [[MultilineMethodClass alloc] init];
-instance.runTests();
+[instance runTests]

@@ -1,0 +1,68 @@
+#!/usr/bin/env node 
+
+/*
+  (c) 2014 musictheory.net, LLC
+  MIT license, http://www.opensource.org/licenses/mit-license.php
+*/
+
+var fs       = require("fs");
+var util     = require("util");
+var squeezer = require("../src/squeezer");
+
+var args = process.argv.slice(2);
+
+var inMapPath;
+var inContentPath;
+
+var outMapPath;
+var outContentPath;
+
+var options = { };
+
+
+out: while (args.length > 0) {
+    var arg = args.shift();
+
+    if      (arg == "--output")  outContentPath = args.shift();
+    else if (arg == "--in-map")  inMapPath  = args.shift();
+    else if (arg == "--out-map") outMapPath = args.shift();
+
+    else {
+        inContentPath = arg;
+    }
+}
+
+
+if (inContentPath) {
+    var inContent = fs.readFileSync(inContentPath, "utf8");
+    var result;
+
+    if (inMapPath) {
+        options["map"] = JSON.parse(fs.readFileSync(inMapPath, "utf8"));
+    }
+
+    var outContent;
+
+    try {
+        outContent = squeezer.squeeze(inContent, options);
+    } catch (e) {
+        console.log(inContentPath + ":" + e.lineNumber + " " + e.description);
+        if (!e.errorType) console.log(e.stack);
+        process.exit(2);
+    }
+
+    if (options.output) {
+        fs.writeFileSync(options.output, outContent, "utf8")
+    } else {
+        if (outContent) {
+            process.stdout.write(outContent);
+        }
+    }
+
+    if (outMapPath) {
+        fs.writeFileSync(outMapPath, JSON.stringify(options["map"], null, 4), "utf8")
+    }
+}
+
+process.exit(0);
+

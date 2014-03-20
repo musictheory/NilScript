@@ -44,6 +44,7 @@ runTest("inc/Inheritance");
 runTest("inc/Methods");
 runTest("inc/EnumAndConst", { "use-enum": true, "use-const": true });
 runTest("inc/LoadAndInitialize");
+runTest("inc/Methods",  { "use-prefix": true } );
 
 runTest("issues/issue1");
 runTest("issues/issue2");
