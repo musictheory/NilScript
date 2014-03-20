@@ -1,0 +1,21 @@
+var assert = require("assert");
+
+@implementation UsePrefixClass
+
+- (void) doSomething
+{
+    _superclassProperty = true;
+}
+
+@property BOOL superclassProperty;
+
+@end
+
+
+function runTests()
+{
+    var instance = [[UsePrefixClass alloc] init];
+    console.log(@selector(doSomething));
+}
+
+runTests();

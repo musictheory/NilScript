@@ -8,6 +8,7 @@ var esprima   = require && require("esprima-oj");
 var Modifier  = require && require("./modifier").Modifier;
 var OJError   = require && require("./errors").OJError;
 var Traverser = require && require("./traverser").Traverser;
+var Utils     = require && require("./utils");
 var Syntax    = esprima.Syntax;
 
 
@@ -25,44 +26,18 @@ function throwError(node, errorType, message)
 }
 
 
-function getMethodNameForSelectorName(selectorName)
-{
-    return selectorName.replace(/\:/g, "_");
-}
-
-
-function isJScriptReservedWord(id)
-{
-    switch (id.length) {
-    case 2:  return (id === 'if')       || (id === 'in')       || (id === 'do');
-    case 3:  return (id === 'var')      || (id === 'for')      || (id === 'new')    ||
-                    (id === 'try')      || (id === 'let');
-    case 4:  return (id === 'this')     || (id === 'else')     || (id === 'case')   ||
-                    (id === 'void')     || (id === 'with')     || (id === 'enum');
-    case 5:  return (id === 'while')    || (id === 'break')    || (id === 'catch')  ||
-                    (id === 'throw')    || (id === 'const')    || (id === 'yield')  ||
-                    (id === 'class')    || (id === 'super');
-    case 6:  return (id === 'return')   || (id === 'typeof')   || (id === 'delete') ||
-                    (id === 'switch')   || (id === 'export')   || (id === 'import');
-    case 7:  return (id === 'default')  || (id === 'finally')  || (id === 'extends');
-    case 8:  return (id === 'function') || (id === 'continue') || (id === 'debugger');
-    case 10: return (id === 'instanceof');
-    default:
-        return false;
-    }
-}
-
-
 var OJClass = (function () {
 
 var OJDynamicProperty     = " OJDynamicProperty ";
 var OJIvarWithoutProperty = " OJIvarWithoutProperty ";
 
 
-function OJClass(name, superclassName)
+function OJClass(name, superclassName, compiler)
 {
     this.name = name;
     this.superclassName = superclassName;
+
+    this._compiler = compiler;
 
     this._atPropertyNodes   = { };
     this._propertyToIvarMap = { };
@@ -134,7 +109,7 @@ OJClass.prototype.registerMethodDefinition = function(node)
     }
     map[name] = node;
 
-    var jsName = getMethodNameForSelectorName(name);
+    var jsName = this._compiler.getMethodName(name);
     var jsMap  = (node.selectorType == "+") ? this._jsNameToClassMethodMap : this._jsNameToInstanceMethodMap;
 
     if ((existing = jsMap[jsName])) {
@@ -304,11 +279,11 @@ OJClass.prototype.generateMethodDeclaration = function(type, selector)
 {
     var where = (type == "+") ? "$oj_class_methods" : "$oj_instance_methods";
 
-    if (isJScriptReservedWord(selector)) {
+    if (Utils.isJScriptReservedWord(selector)) {
         // For IE8
-        return where + "[\"" + getMethodNameForSelectorName(selector) + "\"]";
+        return where + "[\"" + this._compiler.getMethodName(selector) + "\"]";
     } else {
-        return where + "." + getMethodNameForSelectorName(selector);
+        return where + "." + this._compiler.getMethodName(selector);
     }
 }
 
@@ -383,6 +358,8 @@ function OJCompiler(src, options)
     var parserOptions   = { loc: true }
     var modifierOptions = { };
 
+    this._usePrefix = false;
+
     if (options) {
         if (options["use-enum"]) {
             parserOptions.oj_enum  = true;
@@ -390,6 +367,10 @@ function OJCompiler(src, options)
 
         if (options["debug-modifier"]) {
             modifierOptions.debug = true;
+        }
+
+        if (options["use-prefix"]) {
+            this._usePrefix = true;
         }
     }
 
@@ -401,8 +382,36 @@ function OJCompiler(src, options)
 }
 
 
+OJCompiler.prototype.getClassName = function(className)
+{
+    var result = className;
+
+    if (this._usePrefix) {
+        if (!Utils.isRuntimeDefinedClass(result)) {
+            result = "$oj_class_" + result;
+        }
+    }
+
+    return result;
+}
+
+
+OJCompiler.prototype.getMethodName = function(selectorName)
+{
+    var result = selectorName.replace(/\:/g, "_");
+    if (this._usePrefix) {
+        if (!Utils.isRuntimeDefinedMethod(result)) {
+            result = "$oj_method_" + result;
+        }
+    }
+
+    return result;
+}
+
+
 OJCompiler.prototype._firstPass = function()
 {
+    var compiler = this;
     var classes = this._classes;
     var currentClass, currentMethodNode, functionInMethodCount = 0;
 
@@ -413,7 +422,7 @@ OJCompiler.prototype._firstPass = function()
         var result;
 
         if (!classes[name] || overrideExisting) {
-            classes[name] = result = new OJClass(name, superclassName);
+            classes[name] = result = new OJClass(name, superclassName, compiler);
         }
 
         return result;
@@ -483,6 +492,7 @@ OJCompiler.prototype._firstPass = function()
 
 OJCompiler.prototype._secondPass = function()
 {
+    var compiler = this;
     var options  = this._options;
     var classes  = this._classes;
     var modifier = this._modifier;
@@ -514,7 +524,7 @@ OJCompiler.prototype._secondPass = function()
 
     function getSelectorForMethodName(methodName)
     {
-        if (isJScriptReservedWord(methodName)) {
+        if (Utils.isJScriptReservedWord(methodName)) {
             return "{ \"" + methodName + "\": " + "1 }";
         } else {
             return "{ " + methodName + ": " + "1 }";
@@ -550,8 +560,8 @@ OJCompiler.prototype._secondPass = function()
     function handle_message_expression(node)
     {
         var receiver   = node.receiver.value;
-        var methodName = getMethodNameForSelectorName(node.selectorName);
-        var reserved   = isJScriptReservedWord(methodName);
+        var methodName = compiler.getMethodName(node.selectorName);
+        var reserved   = Utils.isJScriptReservedWord(methodName);
         var hasArguments;
 
         var firstSelector, lastSelector;
@@ -602,7 +612,7 @@ OJCompiler.prototype._secondPass = function()
                 startReplacement = currentClass.name + ".$oj_super." + (useProto ? "prototype." : "") + methodName + ".call(this" + (hasArguments ? "," : "");
 
             } else if (classes[receiver.name]) {
-                startReplacement = "oj._cls." + receiver.name + "()." + methodName + "(";
+                startReplacement = "oj._cls." + compiler.getClassName(receiver.name) + "()." + methodName + "(";
 
             } else if (!options["always-message"]) {
                 if (receiver.name == "self") {
@@ -628,7 +638,7 @@ OJCompiler.prototype._secondPass = function()
             modifier.from(node).to(receiver).replace("oj.msgSend(");
 
             if (receiver.type == Syntax.Identifier && classes[receiver.name]) {
-                modifier.select(receiver).replace("oj._cls." + receiver.name + "()");
+                modifier.select(receiver).replace("oj._cls." + compiler.getClassName(receiver.name) + "()");
             }
 
             modifier.from(receiver).to(firstSelector).replace("," + getSelectorForMethodName(methodName) + (hasArguments ? "," : ""));
@@ -640,12 +650,12 @@ OJCompiler.prototype._secondPass = function()
     {
         var superClass = (node.superClass && node.superClass.value);
 
-        var superSelector = "{ " + superClass   + ":1 }";
-        var clsSelector   = "{ " + node.id.name + ":1 }";
+        var superSelector = "{ " + compiler.getClassName(superClass)   + ":1 }";
+        var clsSelector   = "{ " + compiler.getClassName(node.id.name) + ":1 }";
 
         var constructorCallSuper = "";
         if (superClass) {
-            constructorCallSuper = "oj._cls." + superClass + "().call(this);";
+            constructorCallSuper = "oj._cls." + compiler.getClassName(superClass) + "().call(this);";
         }
 
 
@@ -668,7 +678,7 @@ OJCompiler.prototype._secondPass = function()
 
     function handle_method_definition(node)
     {
-        var methodName = getMethodNameForSelectorName(node.selectorName);
+        var methodName = compiler.getMethodName(node.selectorName);
         var isClassMethod = node.selectorType == "+";
         var where = isClassMethod ? "$oj_class_methods" : "$oj_instance_methods";
         var args = [ ];
@@ -734,7 +744,7 @@ OJCompiler.prototype._secondPass = function()
 
     function handle_at_selector(node)
     {
-        var name = getMethodNameForSelectorName(node.name);
+        var name = compiler.getMethodName(node.name);
         modifier.select(node).replace("{ " + name + ": 1 }");
     }
 
