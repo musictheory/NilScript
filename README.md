@@ -78,14 +78,14 @@ Additional [instance variables](#ivar) can be added by using a block after class
 
 Behind the scenes, the oj compiler changes the `@implementation`/`@end` block into a JavaScript function block.  Hence, private functions and variables may be declared inside of an `@implementation` without polluting the global namespace.
 
-    @implementation TheClass {
+    @implementation TheClass
     var sPrivateStaticVariable = "Private";
     function sPrivate() { }
     @end
 
-becomes:
+becomes equivalent to:
 
-    var TheClass = oj._makeClass(…, function(…) {
+    oj_private_function(…, function() {
         var sPrivateStaticVariable = "Private";
         function sPrivate() { }
     });
@@ -112,30 +112,13 @@ and
 
     @end
 
-Without the forward declaration, the compiler will change `[[TheFirstClass alloc] init]` to:
+Without the forward declaration, the compiler thinks that `TheFirstClass` in `[[TheFirstClass alloc] init]` is a variable named `TheFirstClass`, not an oj class.  Hence, this causes an output such as the following:
 
-    TheFirstClass.alloc().init();
-    
-This works as long as TheFirstClass is in the global namespace.  If you are using functions to create various levels
-of scoping (a common JavaScript practice), it may break.
+    oj.msgSend(oj.msgSend(  TheFirstClass  …
 
-In this class, use the `@class` directive:
+With the `@class` directive, the compiler understands that `TheFirstClass` is an oj class, and properly outputs the equivalent of:
 
-    // TheSecondClass.oj
-
-    @class TheFirstClass;
-
-    @implementation TheSecondClass
-    
-    - (TheFirstClass) makeFirst {
-        return [[TheFirstClass alloc] init];
-    }
-
-    @end
-
-Which causes the compiler to output:
-
-    oj._cls.TheFirstClass.alloc().init();
+    oj.msgSend(oj.msgSend(  oj.getClass( oj_private_representation_of_TheFirstClass ) …
 
 ---
 
