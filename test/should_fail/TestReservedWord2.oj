@@ -1,0 +1,9 @@
+
+@implementation TestReservedWord
+
+- (void) test
+{
+	var $oj_foo = "foo";
+}
+
+@end

@@ -1,71 +1,120 @@
 #!/usr/bin/env node 
 
 /*
-  (c) 2013 musictheory.net, LLC
+  (c) 2013-2014 musictheory.net, LLC
   MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
 var fs       = require("fs");
 var util     = require("util");
 var esprima  = require("esprima-oj");
+var getopt   = require("node-getopt");
 var ojc      = require("../src/compiler");
 
-var args = process.argv.slice(2);
-var filename;
-var options = { };
+var opt = getopt.create([
+    [ "o", "output=FILE",               "output .js file"],
+    [ "",  "input-state=FILE",          "input file for compiler state" ],
+    [ "",  "output-state=FILE",         "output file for compiler state" ],
+
+    [ "s", "squeeze",                   "enable oj squeezer" ],
+
+    [ "",  "check-ivars",               "warn about potentially undefined ivars"   ],
+    [ "",  "check-this",                "warn about usage of 'this' in oj methods" ],
+    [ "",  "without-class=FILE+",       "strip specified class"                    ],
+
+    [ "",  "dump-ast",                 "(for development)" ],
+    [ "",  "dump-modifier",            "(for development)" ],
+
+    [ "h", "help",                     "display this help" ],
+    [ "v", "version",                  "show version"      ]
+]);
+
+//    else if (arg == "--function-name-style")  options["function-name-style"] = parseInt(args.shift(), 10);
+
+opt.setHelp(
+    "Usage: ojc [OPTIONS] INPUT_FILES\n" +
+    "\n" +
+    "[[OPTIONS]]\n" +
+    "\n" +
+    "Installation: npm install ojc\n" +
+    "Respository:  https://github.com/musictheory/oj"
+);
+
+opt.bindHelp();
+opt.parseSystem();
+
+var inputFiles = opt.parsedOption.argv;
+var options    = opt.parsedOption.options;
 
 
-out: while (args.length > 0) {
-    var arg = args.shift();
-
-    if      (arg == "--output")          options["output"] = args.shift();
-    else if (arg == "--always-message")  options["always-message"] = true;
-
-    // Additional warnings
-    else if (arg == "--check-ivars")     options["check-ivars"] = true;
-    else if (arg == "--check-this")      options["check-this"] = true;
-
-    // Class removal
-    else if (arg == "--without-classes") options["without-classes"] = args.shift().split(",");
-
-    // Code Generation options
-    else if (arg == "--function-name-style") options["function-name-style"] = parseInt(args.shift(), 10);
-    else if (arg == "--use-prefix")          options["use-prefix"] = true;
-
-    // Optional language features
-    else if (arg == "--use-enum")        options["use-enum"] = true;
-    else if (arg == "--use-const")       options["use-const"] = true;
-
-    // Internal development
-    else if (arg == "--debug")           options["debug"] = true;
-    else if (arg == "--debug-ast")       options["debug"] = options["debug-ast"] = true;
-    else if (arg == "--debug-modifier")  options["debug"] = options["debug-modifier"] = true;
-
-    else {
-        filename = arg;
-    }
+// Bail if no input files
+if (!inputFiles || inputFiles.length == 0) {
+    console.error("ojc: error: no input files");
+    process.exit(1);
 }
 
-if (filename) {
-    var inContent  = fs.readFileSync(filename, "utf8");
-    var outContent;
 
+// Read each input file and store in inContent
+var inContent = "";
+inputFiles.forEach(function(inputFile) {
     try {
-        outContent = ojc.compile(inContent, options);
+        inContent += fs.readFileSync(inputFile);
     } catch (e) {
-        console.log(filename + ":" + e.lineNumber + " " + e.description);
-        if (!e.errorType) console.log(e.stack);
-        process.exit(2);
+        console.error("ojc: error: " + e);
+        process.exit(1);
     }
+});
 
-    if (options.output) {
-        fs.writeFileSync(options.output, outContent, "utf8")
-    } else {
-        if (outContent) {
-            process.stdout.write(outContent);
-        }
+
+var inputStateFile  = options["input-state"];
+var outputStateFile = options["output-state"];
+var outputFile      = options["output"];
+
+delete(options["input-state"]);
+delete(options["output-state"]);
+delete(options["output"]);
+
+var inputState;
+
+if (inputStateFile) {
+    try {
+        inputState = JSON.parse(fs.readFileSync(inputStateFile));
+    } catch (e) {
+        console.error("ojc: error: " + e);
+        process.exit(1);
     }
 }
+
+var result;
+
+try {
+    result = ojc.compile(inContent, options, inputState);
+} catch (e) {
+    if (inputFiles.length == 1) {
+        console.log(inputFiles[0] + ":" + e.lineNumber + " " + e.description);
+    } else {
+        console.log(e.description);
+    }
+
+    if (!e.errorType) console.log(e.stack);
+    process.exit(2);
+}
+
+var outContent  = result.content;
+var outputState = result.state;
+
+if (outputFile) {
+    fs.writeFileSync(outputFile, outContent, "utf8")
+} else {
+    if (outContent) {
+        process.stdout.write(outContent);
+    }
+}
+
+if (outputStateFile) {
+    fs.writeFileSync(outputStateFile, JSON.stringify(outputState || { }, null, "    "), "utf8")
+}
+
 
 process.exit(0);
 

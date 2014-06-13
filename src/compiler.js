@@ -6,10 +6,22 @@
 
 var esprima   = require && require("esprima-oj");
 var Modifier  = require && require("./modifier").Modifier;
+var Squeezer  = require && require("./squeezer").Squeezer;
 var OJError   = require && require("./errors").OJError;
 var Traverser = require && require("./traverser").Traverser;
 var Utils     = require && require("./utils");
 var Syntax    = esprima.Syntax;
+
+
+var OJGlobalVariable          = "$oj_oj";
+
+var OJClassPrefix             = "$oj_c_";
+var OJMethodPrefix            = "$oj_f_";
+var OJIvarPrefix              = "$oj_i_";
+var OJClassMethodsVariable    = "$oj_s";
+var OJInstanceMethodsVariable = "$oj_m";
+var OJTemporaryReturnVariable = "$oj_r";
+var OJSuperVariable           = "$oj_super";
 
 
 function throwError(node, errorType, message)
@@ -30,14 +42,6 @@ var OJClass = (function () {
 
 var OJDynamicProperty     = " OJDynamicProperty ";
 var OJIvarWithoutProperty = " OJIvarWithoutProperty ";
-
-var OJClassPrefix             = "$oj_c_";
-var OJMethodPrefix            = "$oj_f_";
-var OJIvarPrefix              = "$oj_i_";
-var OJClassMethodsVariable    = "$oj_s";
-var OJInstanceMethodsVariable = "$oj_m";
-var OJSuperVariable           = "$oj_super";
-
 
 function OJClass(name, superclassName, compiler)
 {
@@ -175,7 +179,12 @@ OJClass.prototype.isInstanceVariable = function(ivar)
 
 OJClass.prototype.generateIvar = function(name)
 {
-    return OJIvarPrefix + this.name + "_" + name;
+    var squeezer = this._compiler._squeezer;
+    var result   = OJIvarPrefix + this.name + "_" + name;
+
+    if (squeezer) result = squeezer.squeeze(result);
+
+    return result;
 }
 
 
@@ -360,30 +369,26 @@ return OJClass; })();
 var OJCompiler = (function () {
 
 
-function OJCompiler(src, options)
+function OJCompiler(src, options, state)
 {
     var parserOptions   = { loc: true }
     var modifierOptions = { };
 
-    this._usePrefix = false;
+    options = options || { };
+    state   = state   || { };
 
-    if (options) {
-        if (options["use-enum"]) {
-            parserOptions.oj_enum  = true;
-        }
+    if (options["dump-modifier"]) {
+        modifierOptions.debug = true;
+    }
 
-        if (options["debug-modifier"]) {
-            modifierOptions.debug = true;
-        }
-
-        if (options["use-prefix"]) {
-            this._usePrefix = true;
-        }
+    if (options["squeeze"]) {
+        this._squeezer = new Squeezer(state["squeeze"]);
+        this._defines  = state["defines"] || { };
     }
 
     this._modifier  = new Modifier(src, modifierOptions);
     this._ast       = esprima.parse(src, parserOptions);
-    this._options   = options || { };
+    this._options   = options;
     this._classes   = { };
     this._traverser = null;
 }
@@ -391,28 +396,33 @@ function OJCompiler(src, options)
 
 OJCompiler.prototype.getClassName = function(className)
 {
-    var result = className;
+    if (!className) return;
 
-    if (this._usePrefix) {
-        if (!Utils.isRuntimeDefinedClass(result)) {
-            result = OJClassPrefix + result;
+    if (!Utils.isRuntimeDefinedClass(className)) {
+        if (this._squeezer) {
+            return this._squeezer.squeeze(OJClassPrefix + className);
+        } else {
+            return OJClassPrefix + className;
         }
     }
 
-    return result;
+    return className;
 }
 
 
 OJCompiler.prototype.getMethodName = function(selectorName)
 {
-    var result = selectorName.replace(/\:/g, "_");
-    if (this._usePrefix) {
-        if (!Utils.isRuntimeDefinedMethod(result)) {
-            result = OJMethodPrefix + result;
+    var replacedName = selectorName.replace(/\:/g, "_");
+
+    if (!Utils.isRuntimeDefinedMethod(replacedName)) {
+        if (this._squeezer) {
+            return this._squeezer.squeeze(OJMethodPrefix + replacedName);
+        } else {
+            return OJMethodPrefix + replacedName;
         }
     }
 
-    return result;
+    return replacedName;
 }
 
 
@@ -503,10 +513,10 @@ OJCompiler.prototype._secondPass = function()
     var options  = this._options;
     var classes  = this._classes;
     var modifier = this._modifier;
+    var defines  = this._defines;
     var methodNodes = [ ];
     var currentClass;
     var currentMethodNode;
-
 
     function should_remove_class(cls)
     {
@@ -620,21 +630,19 @@ OJCompiler.prototype._secondPass = function()
                 startReplacement = currentClass.name + "." + OJSuperVariable + "." + (useProto ? "prototype." : "") + methodName + ".call(this" + (hasArguments ? "," : "");
 
             } else if (classes[receiver.name]) {
-                startReplacement = "oj._cls." + compiler.getClassName(receiver.name) + "()." + methodName + "(";
+                startReplacement = OJGlobalVariable + "._cls." + compiler.getClassName(receiver.name) + "()." + methodName + "(";
 
-            } else if (!options["always-message"]) {
-                if (receiver.name == "self") {
-                    startReplacement = selfOrThis + "." + methodName + "(";
+            } else if (receiver.name == "self") {
+                startReplacement = selfOrThis + "." + methodName + "(";
 
-                } else if (currentClass.isInstanceVariable(receiver.name)) {
-                    var ivar = currentClass.generateThisIvar(receiver.name, currentMethodNode.usesSelfVar);
-                    startReplacement = "(" + ivar + " && " + ivar + "." + methodName + "(";
-                    endReplacement = "))";
+            } else if (currentClass.isInstanceVariable(receiver.name)) {
+                var ivar = currentClass.generateThisIvar(receiver.name, currentMethodNode.usesSelfVar);
+                startReplacement = "(" + ivar + " && " + ivar + "." + methodName + "(";
+                endReplacement = "))";
 
-                } else {
-                    startReplacement = "(" + receiver.name + " && " + receiver.name + "." + methodName + "(";
-                    endReplacement = "))";
-                }
+            } else {
+                startReplacement = "(" + receiver.name + " && " + receiver.name + "." + methodName + "(";
+                endReplacement = "))";
             }
         }
 
@@ -642,40 +650,30 @@ OJCompiler.prototype._secondPass = function()
             node.receiver.skip = true;
             modifier.from(node).to(firstSelector).replace(startReplacement);
             modifier.from(lastSelector).to(node).replace(endReplacement);
+
         } else {
             if (currentMethodNode) {
                 currentMethodNode.usesTemporaryVar = true;
 
-                modifier.from(node).to(receiver).replace("($ojr = (");
+                modifier.from(node).to(receiver).replace("(" + OJTemporaryReturnVariable + " = (");
 
                 if (receiver.type == Syntax.Identifier && classes[receiver.name]) {
-                    modifier.select(receiver).replace("oj._cls." + compiler.getClassName(receiver.name) + "()");
+                    modifier.select(receiver).replace(OJGlobalVariable + "._cls." + compiler.getClassName(receiver.name) + "()");
                 }
 
-                modifier.from(receiver).to(firstSelector).replace(")) && $ojr." + methodName + "(");
+                modifier.from(receiver).to(firstSelector).replace(")) && " + OJTemporaryReturnVariable + "." + methodName + "(");
                 modifier.from(lastSelector).to(node).replace(")");
 
             } else {
-                modifier.from(node).to(receiver).replace("oj.msgSend(");
+                modifier.from(node).to(receiver).replace(OJGlobalVariable + ".msgSend(");
 
                 if (receiver.type == Syntax.Identifier && classes[receiver.name]) {
-                    modifier.select(receiver).replace("oj._cls." + compiler.getClassName(receiver.name) + "()");
+                    modifier.select(receiver).replace(OJGlobalVariable + "._cls." + compiler.getClassName(receiver.name) + "()");
                 }
 
                 modifier.from(receiver).to(firstSelector).replace("," + getSelectorForMethodName(methodName) + (hasArguments ? "," : ""));
                 modifier.from(lastSelector).to(node).replace(endReplacement);
             }
-
-/*
-            modifier.from(node).to(receiver).replace("oj.msgSend(");
-
-            if (receiver.type == Syntax.Identifier && classes[receiver.name]) {
-                modifier.select(receiver).replace("oj._cls." + compiler.getClassName(receiver.name) + "()");
-            }
-
-            modifier.from(receiver).to(firstSelector).replace("," + getSelectorForMethodName(methodName) + (hasArguments ? "," : ""));
-            modifier.from(lastSelector).to(node).replace(endReplacement);
-*/
         }
     }
 
@@ -688,13 +686,13 @@ OJCompiler.prototype._secondPass = function()
 
         var constructorCallSuper = "";
         if (superClass) {
-            constructorCallSuper = "oj._cls." + compiler.getClassName(superClass) + "().call(this);";
+            constructorCallSuper = OJGlobalVariable + "._cls." + compiler.getClassName(superClass) + "().call(this);";
         }
 
 
         var constructorSetIvars = currentClass.generateIvarAssignments();
 
-        var startText = "var " + node.id.name + " = oj._registerClass(" +
+        var startText = "var " + node.id.name + " = " + OJGlobalVariable + "._registerClass(" +
             clsSelector + ", " +
             (superClass ? superSelector : "null") + ", " +
             "function(" + OJClassMethodsVariable + ", " + OJInstanceMethodsVariable + ") { " +
@@ -702,7 +700,7 @@ OJCompiler.prototype._secondPass = function()
             constructorCallSuper +
             constructorSetIvars  +
             "this.constructor = " + node.id.name + ";" +
-            "this.$oj_id = ++oj._id;" +
+            "this.$oj_id = ++" + OJGlobalVariable + "._id;" +
             "}";
 
         modifier.from(node).to(node.ivarDeclarations || node.body).replace(startText);
@@ -736,7 +734,7 @@ OJCompiler.prototype._secondPass = function()
         if (node.usesSelfVar || node.usesTemporaryVar) {
             var parts = [ ];
             if (node.usesSelfVar)      parts.push("self = this");
-            if (node.usesTemporaryVar) parts.push("$_ojr");
+            if (node.usesTemporaryVar) parts.push(OJTemporaryReturnVariable);
 
             if (parts.length && node.body.body.length) {
                 modifier.before(node.body.body[0]).insert("var " + parts.join(",") + ";");
@@ -763,6 +761,43 @@ OJCompiler.prototype._secondPass = function()
         }
     }
 
+    function handle_identifier(node)
+    {
+        var name = node.name;
+
+        if (name.indexOf("$oj") == 0) {
+            if (name[3] == "$" || name[3] == "_") {
+                throwError(node, OJError.DollarOJIsReserved, "Identifiers may not start with \"$oj_\" or \"$oj$\"");
+            }
+        }
+
+        if (currentMethodNode && currentClass && can_be_instance_variable_or_self(traverser.getPath())) {
+            if (currentClass.isInstanceVariable(name) || name == "self") {
+                var usesSelf = currentMethodNode && currentMethodNode.usesSelfVar;
+                var replacement;
+
+                if (name == "self") {
+                    replacement = usesSelf ? "self" : "this";
+                } else {
+                    replacement = currentClass.generateThisIvar(node.name, usesSelf);
+                }
+
+                modifier.select(node).replace(replacement);
+
+            } else {
+                if (name[0] == "_" && options["check-ivars"] && (name.length > 1)) {
+                    throwError(node, OJError.UndeclaredInstanceVariable, "Use of undeclared instance variable " + node.name);
+                }
+            } 
+        }
+
+        if (defines) {
+            var result = defines[name];
+            if (result !== undefined) {
+                modifier.select(node).replace("" + result);
+            }
+        }
+    }
 
     function handle_at_property(node)
     {
@@ -790,38 +825,86 @@ OJCompiler.prototype._secondPass = function()
         var length = node.declarations ? node.declarations.length : 0;
         var last = node;
 
+        // From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isInteger
+        function isInteger(nVal) {
+            return typeof nVal === "number" && isFinite(nVal) && nVal > -9007199254740992 && nVal < 9007199254740992 && Math.floor(nVal) === nVal;
+        }
+
+        function valueForInit(initNode) {
+            var literalNode;
+            var negative = false;
+
+            if (initNode.type == Syntax.UnaryExpression) {
+                literalNode = initNode.argument;
+                negative = true;
+            } else if (initNode.type == Syntax.Literal) {
+                literalNode = initNode;
+            }
+
+            if (!literalNode || (literalNode.type != Syntax.Literal)) {
+                throwError(literalNode || initNode, OJError.NonLiteralEnum, "Use of non-literal value with @enum");
+            }
+
+            var value = literalNode.value;
+            if (!isInteger(value)) {
+                throwError(literalNode || initNode, OJError.NonIntegerEnum, "Use of non-integer value with @enum");
+            }
+
+            return negative ? -value : value;
+        }
+
         if (length) {
             var firstDeclaration = node.declarations[0];
             var lastDeclaration  = node.declarations[length - 1];
             var currentValue = 0;
+            var declaration, i;
 
+            if (defines) {
+                for (i = 0; i < length; i++) {
+                    declaration = node.declarations[i];
 
-            for (var i = 0; i < length; i++) {
-                var declaration = node.declarations[i];
+                    if (declaration.init) {
+                        currentValue = valueForInit(declaration.init);
+                    }
 
-                if (declaration.value === undefined) {
-                    modifier.after(declaration.id).insert("=" + currentValue);
+                    defines[declaration.id.name] = currentValue;
+
                     currentValue++;
-                } else {
-                    currentValue = declaration.value + 1;
                 }
 
-                if (last == node) {
-                    modifier.before(declaration.id).insert("/** @const */ var ");
-                    modifier.from(last).to(declaration.id).remove();
+            } else {
+                for (i = 0; i < length; i++) {
+                    declaration = node.declarations[i];
 
-                } else {
-                    modifier.after(last).insert("; ");
-                    modifier.from(last).to(declaration.id).insert("/** @const */ var ");
+                    if (declaration.init) {
+                        currentValue = valueForInit(declaration.init);
+                    } else {
+                        modifier.after(declaration.id).insert("=" + currentValue);
+                    }
+
+                    currentValue++;
+
+                    if (last == node) {
+                        modifier.before(declaration.id).insert("var ");
+                        modifier.from(last).to(declaration.id).remove();
+
+                    } else {
+                        modifier.after(last).insert("; ");
+                        modifier.from(last).to(declaration.id).insert("var ");
+                    }
+
+                    last = declaration;
                 }
 
-                last = declaration;
+                modifier.after(lastDeclaration).insert(";");
+                modifier.from(lastDeclaration).to(node).replace("");
             }
 
-            modifier.after(lastDeclaration).insert(";");
-            modifier.from(lastDeclaration).to(node).replace("");
-
         } else {
+            modifier.select(node).remove();
+        }
+
+        if (defines) {
             modifier.select(node).remove();
         }
     }
@@ -831,28 +914,33 @@ OJCompiler.prototype._secondPass = function()
     {
         var length = node.declarations ? node.declarations.length : 0;
 
-        if (length) {
-            var firstDeclaration = node.declarations[0];
-            modifier.from(node).to(firstDeclaration.id).replace("/** @const */ var ");
+        for (var i = 0; i < length; i++) {
+            var declaration = node.declarations[i];
 
-        } else {
+            if (declaration.init.type !== Syntax.Literal) {
+                throwError(node, OJError.NonLiteralConst, "Use of non-literal value with @const");
+            }
+        }
+
+        if (defines) {
+            for (var i = 0; i < length; i++) {
+                var declaration = node.declarations[i];
+                defines[declaration.id.name] = declaration.init.raw;
+            }
+
             modifier.select(node).remove();
-        }
-    }
 
-
-    function handle_instance_variable_or_self(node, useSelf)
-    {
-        var replacement;
-
-        if (node.name == "self") {
-            replacement = useSelf ? "self" : "this";
         } else {
-            replacement = currentClass.generateThisIvar(node.name, useSelf);
-        }
+            if (length) {
+                var firstDeclaration = node.declarations[0];
+                modifier.from(node).to(firstDeclaration.id).replace("var ");
 
-        modifier.select(node).replace(replacement);
+            } else {
+                modifier.select(node).remove();
+            }
+        }
     }
+
 
     function check_this(thisNode, path)
     {
@@ -924,24 +1012,17 @@ OJCompiler.prototype._secondPass = function()
 
         } else if (node.type === Syntax.OJEnumDeclaration) {
             handle_enum_declaration(node);
+            traverser.skip();
 
-        } else if (node.type === Syntax.VariableDeclaration && node.kind == "const" && options["use-const"]) {
+        } else if (node.type === Syntax.OJConstDeclaration) {
             handle_const_declaration(node);
+            traverser.skip();
 
         } else if (node.type === Syntax.Literal) {
             handle_literal(node);
 
         } else if (node.type === Syntax.Identifier) {
-            if (currentMethodNode && currentClass && can_be_instance_variable_or_self(traverser.getPath())) {
-                if (currentClass.isInstanceVariable(node.name) || node.name == "self") {
-                    handle_instance_variable_or_self(node, currentMethodNode && currentMethodNode.usesSelfVar);
-
-                } else if (options["check-ivars"]) {
-                    if (node.name[0] == "_" && (node.name.length > 1)) {
-                        throwError(node, OJError.UndeclaredInstanceVariable, "Use of undeclared instance variable " + node.name);
-                    }
-                } 
-            }
+            handle_identifier(node);
 
         } else if (node.type === Syntax.ThisExpression) {
             if (options["check-this"]) {
@@ -981,11 +1062,21 @@ OJCompiler.prototype.compile = function()
 
 OJCompiler.prototype.finish = function()
 {
-    if (this._options["debug-ast"]) {
-        return JSON.stringify(this._ast, null, 4);
+    var result = { };
+
+    if (this._options["dump-ast"]) {
+        result.content = JSON.stringify(this._ast, null, 4);
     } else {
-        return this._modifier.finish();
+        result.content = this._modifier.finish();
     }
+
+    result.state = { };
+    if (this._squeezer) {
+        result.state["squeeze"] = this._squeezer.getState();
+        result.state["defines"] = this._defines;
+    }
+
+    return result;
 }
 
 return OJCompiler; })();

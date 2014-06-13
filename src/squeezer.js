@@ -4,25 +4,17 @@
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-var esprima   = require && require("esprima-oj");
-var Traverser = require && require("./traverser").Traverser;
-var Syntax    = esprima.Syntax;
-var Modifier  = require && require("./modifier").Modifier;
+
+var Squeezer = (function () {
 
 
-var OJSqueezer = (function () {
-
-
-function OJSqueezer(src, map)
+function Squeezer(state)
 {
-    if (!map) map = { };
+    if (!state) state = { };
 
-    this._toMap   = map["to"]   || { };
-    this._fromMap = map["from"] || { };
-    this._id      = map["id"]   || 0;
-
-    this._modifier  = new Modifier(src, { });
-    this._ast       = esprima.parse(src, { loc: true });
+    this._toMap   = state["to"]      || { };
+    this._fromMap = state["from"]    || { };
+    this._id      = state["id"]      || 0;
 }
 
 var sBase52Digits = "etnrisouaflchpdvmgybwESxTNCkLAOMDPHBjFIqRUzWXVJKQGYZ0516372984";
@@ -42,19 +34,8 @@ function sToBase52(index)
 }
 
 
-OJSqueezer.prototype.shouldReplaceIdentifier = function(node)
+Squeezer.prototype.squeeze = function(oldName)
 {
-    var name = node.name;
-
-    return  name.indexOf("$oj_ivar_"  ) === 0 ||
-            name.indexOf("$oj_method_") === 0 ||
-            name.indexOf("$oj_class_" ) === 0;
-}
-
-
-OJSqueezer.prototype.replaceIdentifier = function(node)
-{
-    var oldName = node.name;
     var newName = this._toMap[oldName];
 
     if (!newName) {
@@ -71,54 +52,21 @@ OJSqueezer.prototype.replaceIdentifier = function(node)
         this._fromMap[newName] = oldName;
     }
 
-    this._modifier.select(node).replace(newName);
+    return newName;
 }
 
 
-OJSqueezer.prototype.squeeze = function()
-{
-    var squeezer  = this;
-    var traverser = new Traverser(this._ast);
-    var modifier  = this._modifier;
-
-    traverser.traverse(function() {
-        var node = traverser.getNode();
-
-        if (node.type === Syntax.Identifier) {
-            if (squeezer.shouldReplaceIdentifier(node)) {
-                squeezer.replaceIdentifier(node);
-            }
-        }
-    });
-}
-
-
-OJSqueezer.prototype.getMap = function()
+Squeezer.prototype.getState = function()
 {
     return {
-        "to":   this._toMap,
-        "from": this._fromMap,
-        "id":   this._id
-    }
+        "to":      this._toMap,
+        "from":    this._fromMap,
+        "id":      this._id
+    };
 }
 
 
-OJSqueezer.prototype.finish = function()
-{
-    return this._modifier.finish();
-}
+return Squeezer; })();
 
+module.exports = { Squeezer: Squeezer };
 
-return OJSqueezer; })();
-
-
-module.exports = {
-    squeeze: function(src, opts) {
-        var squeezer = new OJSqueezer(src, opts["map"]);
-        squeezer.squeeze();
-
-        opts["map"] = squeezer.getMap();
-
-        return squeezer.finish();
-    }
-};

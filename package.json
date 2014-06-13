@@ -4,8 +4,7 @@
     "homepage": "http://github.com/musictheory/oj",
     "main": "esprima.js",
     "bin": {
-        "ojc": "./bin/ojc",
-        "ojsqueeze": "./bin/ojsqueeze"
+        "ojc": "./bin/ojc"
     },
     "version": "0.1.0-9",
     "engines": {
@@ -14,7 +13,7 @@
     "maintainers": [{
         "name": "Ricci Adams",
         "email": "npm@ricciadams.com",
-        "web": "http://iccir.com"
+        "web": "http://www.ricciadams.com"
     }],
     "repository": {
         "type": "git",
@@ -25,7 +24,8 @@
         "url": "http://github.com/musictheory/oj/raw/master/LICENSE.MIT"
     }],
     "dependencies": {
-        "esprima-oj": "*"
+        "esprima-oj": "*",
+        "node-getopt": "0.2*"
     },
     "scripts": {
         "test": "mocha"

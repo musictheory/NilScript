@@ -1,0 +1,4 @@
+
+function test() {
+	var $oj_foo;
+}
