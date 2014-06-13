@@ -452,6 +452,52 @@ However, when the `--squeeze` option is passed into the oj compiler, oj replaces
     someFunction(0, 1, 2, 3, 4, "Hello World");
 
 ---
+## <a name="runtime"></a>Runtime
+
+**noConflict** `oj.noConflict()`
+Returns: nothing
+
+**getClassList** `oj.getClassList()`
+Returns: Array of oj Class objects
+
+**getSubclassesOfClass**  `oj.getSubclassesOfClass(cls)`
+Returns: Array of oj Class objects
+
+**isObject**  `oj.isObject(object)`
+Returns: Boolean
+
+**sel_isEqual**  `oj.sel_isEqual(aSelector, bSelector)`
+Returns: Boolean
+    
+**class_getSuperclass**  `oj.class_getSuperclass(cls)`
+Returns: oj Class object
+
+**class_isSubclassOf**  `oj.class_isSubclassOf(cls, superclass)`
+Returns: true if `superclass` is the direct superclass of `cls`, false otherwise
+
+**class_respondsToSelector**  `oj.class_respondsToSelector(cls, aSelector)
+Returns: true if 
+
+**object_getClass**  `oj.object_getClass(object)
+
+**msgSend**  `oj.msgSend(receiver, aSelector, ...)
+
+    
+    # Remove these (due to load)    
+    loadAllClasses
+    getLoadedClassList
+
+    # Note danger since these involve String<->oj 
+    getClass
+    sel_getName
+    class_getName
+
+    # Debug only?  Expose to ojc via command line options?
+    msgSend_debug:            msgSend_debug,
+    hooks:                    sHooks,
+    setDebugCallbacks:        setDebugCallbacks
+
+---
 ## <a name="restrictions"></a>Restrictions
 
 All identifiers that start with `$oj_` or `$oj$` are classified as Reserved Words.
