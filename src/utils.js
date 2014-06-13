@@ -33,11 +33,13 @@ var sRuntimeDefinedMethods = {
     "copy": 1,
     "description": 1,
     "init": 1,
+    "initialize": 1,
     "instancesRespondToSelector_": 1,
     "isEqual_": 1,
     "isKindOfClass_": 1,
     "isMemberOfClass_": 1,
     "isSubclassOfClass_": 1,
+    "load": 1,
     "performSelector_": 1,
     "performSelector_withObject_": 1,
     "performSelector_withObject_withObject_": 1,
@@ -45,6 +47,7 @@ var sRuntimeDefinedMethods = {
     "superclass": 1,
     "toString": 1
 }
+
 
 function isRuntimeDefinedMethod(name)
 {

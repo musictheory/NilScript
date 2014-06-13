@@ -1,6 +1,6 @@
 var assert = require("assert");
 
-enum {
+@enum {
     zero = 0,
     one,
     two,
@@ -10,21 +10,42 @@ enum {
     thousand_one
 }
 
+@enum {
+    hex_255 = 0xff
+}
 
-enum {
+@enum {
     negative_five = -5,
     negative_four,
     negative_three,
     negative_two
 }
 
-enum { a,b,c,d,e,f,g }
+@enum { a,b,c,d,e,f,g }
 
-const the_answer = 42;
+@const the_answer = 42;
+@const the_string_answer = "Forty Two";
+@const the_null = null;
+@const the_true = true;
+@const the_false = false;
+@const the_regexp = /foo/g;
 
 
-enum { one_line }
-enum { extra_comma, }
+@enum { one_line }
+@enum { extra_comma, }
+
+function regexEqual(r1, r2)
+{
+    if (r1 instanceof RegExp && r2 instanceof RegExp) {
+        return r1.global     === r2.global &&
+               r1.multiline  === r2.multiline &&
+               r1.ignoreCase === r2.ignoreCase &&
+               r1.source     ==  r2.source;
+    }
+
+    return false;
+}
+
 
 function runTests()
 {
@@ -52,7 +73,12 @@ function runTests()
     assert.equal(f, 5);
     assert.equal(g, 6);
 
-    assert.equal(the_answer, 42);
+    assert.strictEqual(the_answer, 42);
+    assert.strictEqual(the_string_answer, "Forty Two");
+    assert.strictEqual(the_null, null);
+    assert.strictEqual(the_true, true);
+    assert.strictEqual(the_false, false);
+    regexEqual(the_regexp, /foo/g);
 
     return true;
 }

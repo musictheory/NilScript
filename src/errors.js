@@ -14,5 +14,10 @@ OJError.PropertyAlreadySynthesized     = "PropertyAlreadySynthesized";
 OJError.PropertyAlreadyDynamic         = "PropertyAlreadyDynamic";
 OJError.InstanceVariableAlreadyClaimed = "InstanceVariableAlreadyClaimed";
 OJError.UseOfThisInMethod              = "UseOfThisInMethod";
+OJError.NonLiteralConst                = "NonLiteralConst";
+OJError.NonLiteralEnum                 = "NonLiteralEnum";
+OJError.NonIntegerEnum                 = "NonIntegerEnum";
+OJError.SelfIsReserved                 = "SelfIsReserved";
+OJError.DollarOJIsReserved             = "DollarOJIsReserved";
 
 module.exports = { OJError: OJError };

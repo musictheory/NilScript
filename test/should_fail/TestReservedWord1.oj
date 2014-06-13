@@ -1,0 +1,9 @@
+
+@implementation TestReservedWord
+
+- (void) test
+{
+	var self = "foo";
+}
+
+@end

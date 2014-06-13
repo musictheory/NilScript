@@ -417,8 +417,17 @@ BaseObject.prototype.isKindOfClass_ = function(cls) { return class_isSubclassOf(
 BaseObject.prototype.isMemberOfClass_ = function(cls) { return object_getClass(this) === cls; }
 BaseObject.prototype.isEqual_ = function(other) { return this === other; }
 
-if (typeof module != "undefined" && typeof module != "function") { module.exports = oj; }
-else if (typeof define === "function" && define.amd) { define(oj); }
-else { root.oj = oj; }
+if (typeof module != "undefined" && typeof module != "function") {
+    module.exports = oj;
+
+    if (typeof global != "undefined" && typeof global != "function") {
+        global.$oj_oj = oj;
+    }
+
+} else if (typeof define === "function" && define.amd) {
+    define(oj);
+} else {
+    root.oj = root.$oj_oj = oj;
+}
 
 }).call(this);

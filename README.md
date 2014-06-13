@@ -31,7 +31,8 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
   - [Behind the Scenes](#property-compiler)
 - [Selectors](#selector)
 - [Boolean/null aliases](#aliases)
-- [enum and const](#enum)
+- [@enum and @const](#enum)
+- [Restrictions](#restrictions)
 - [License](#license)
 
 
@@ -112,13 +113,7 @@ and
 
     @end
 
-Without the forward declaration, the compiler thinks that `TheFirstClass` in `[[TheFirstClass alloc] init]` is a variable named `TheFirstClass`, not an oj class.  Hence, this causes an output such as the following:
-
-    oj.msgSend(oj.msgSend(  TheFirstClass  …
-
-With the `@class` directive, the compiler understands that `TheFirstClass` is an oj class, and properly outputs the equivalent of:
-
-    oj.msgSend(oj.msgSend(  oj.getClass( oj_private_representation_of_TheFirstClass ) …
+Without the forward declaration, the compiler thinks that `TheFirstClass` in `[[TheFirstClass alloc] init]` is a variable named `TheFirstClass`.  With the `@class` directive, the compiler understands that `TheFirstClass` is an oj class, and properly wraps access to it in `oj.getClass()`.
 
 ---
 
@@ -155,21 +150,6 @@ The root base class provides the following methods:
     - (id) performSelector:(SEL)aSelector withObject:(id)object withObject:(id)object2
 
     - (BOOL) isEqual:(id)anotherObject
-
-
-### <a name="base-class-reserved"></a>Reserved Method Names
-
-In order to support certain compiler optimizations, the following method names are reserved and may not be overridden/implemented in subclasses):
-
-    alloc
-    class
-    className
-    instancesRespondToSelector:
-    respondsToSelector:
-    superclass
-    isSubclassOfClass:
-    isKindOfClass:
-    isMemberOfClass:
 
 
 ### <a name="base-class-load-initialize"></a>+load and +initialize
@@ -223,7 +203,7 @@ Any message to a falsy JavaScript value (false / undefined / null / 0 / "" / NaN
 
 ### <a name="method-compiler"></a>Behind the Scenes (Methods)
 
-Behind the scenes, oj methods are simply renamed JavaScript functions.  Each colon (`:`) in a method name is replaced by an underscore.
+Behind the scenes, oj methods are simply renamed JavaScript functions.  Each colon (`:`) in a method name is replaced by an underscore and a prefix is added to the start of the method name.
 
 Hence:
 
@@ -234,7 +214,7 @@ Hence:
 
 becomes the equivalent of:
 
-    TheClass.prototype.doSomethingWithString_andNumber_ = function(string, number)
+    TheClass.prototype.$oj_f_doSomethingWithString_andNumber_ = function(string, number)
     {
         return string + "-" + number;    
     }
@@ -367,7 +347,7 @@ Unlike other parts of the oj runtime, properties and instance variables aren't i
 
 The compiler currently uses a JavaScript property on the instance with the follow name:
 
-    $oj_ivar_{{CLASS NAME}}_{{IVAR NAME}}
+    $oj_i_{{CLASS NAME}}_{{IVAR NAME}}
 
 
 Hence, the following oj code:
@@ -385,12 +365,12 @@ Hence, the following oj code:
     
 would compile into:
     
-    var TheClass = oj.makeClass(…, function(…) {
+    oj.makeClass(…, function(…) {
     
     … // Compiler generates -setCounter: and -counter here
 
     ….incrementCounter = function() {
-        this.$oj_ivar_TheClass__counter++;
+        this.$oj_i_TheClass__counter++;
     }
 
     });
@@ -402,7 +382,7 @@ would compile into:
 In order to support  [consistent property names](https://developers.google.com/closure/compiler/docs/api-tutorial3#propnames), 
 selectors are not encoded as strings (as in Objective-C and Objective-J).  Instead, they use an object literal syntax:
 
-    @selector(foo:bar:baz:) -> { foo_bar_baz_: 1 }
+    @selector(foo:bar:baz:) -> { $oj_f_foo_bar_baz_: 1 }
 
 Thus, a call such as:
     
@@ -410,9 +390,7 @@ Thus, a call such as:
     
 May (depending on optimizations) be turned into:
 
-    oj.msg_send(object, { fo_bar_baz_: 1 }, 7, 8, 9)
-
-Use `oj.sel_getName()` to obtain a string representation of the object literal.
+    oj.msg_send(object, { $oj_f_foo_bar_baz_: 1 }, 7, 8, 9)
 
 
 ---
@@ -441,11 +419,11 @@ becomes:
     var anObject = null;
       
 ---
-## <a name="enum"></a>enum and const
+## <a name="enum"></a>@enum and @const
 
-If `--use-enum` is passed into the oj compiler, the reserved  keyword `enum` is interpreted with C-style semantics:
+oj supports C-style enumerations via the `@enum` keyword and constants via the `@const` keyword:
 
-    enum OptionalName {
+    @enum OptionalName {
         zero = 0,
         one,
         two,
@@ -453,23 +431,47 @@ If `--use-enum` is passed into the oj compiler, the reserved  keyword `enum` is 
         four
     }
 
-becomes:
+    @const TheConstant = "Hello World";
 
-    /** @const */ var zero  = 0;
-    /** @const */ var one   = 1;
-    /** @const */ var two   = 2;
-    /** @const */ var three = 3;
-    /** @const */ var four  = 4;
+    someFunction(zero, one, two, three, four, TheConstant);
 
-If `--use-const` is passed into the oj compiler, the ECMAScript 6 keyword `const` is interpreted with the following semantics:
+By default, oj compiles the above to:
 
-    const TheConstant = 42;
+    var zero  = 0;
+    var one   = 1;
+    var two   = 2;
+    var three = 3;
+    var four  = 4;
 
-becomes:
+    var TheConstant = "Hello World";
 
-    /** @const */ var TheConstant = 42;
+    someFunction(zero, one, two, three, four, TheConstant);
 
-In both cases, the output includes the `/** @const */` annotation, allowing the variable to be inlined by the compiler (closure/UglifyJS/etc) in the build process.
+However, when the `--squeeze` option is passed into the oj compiler, oj replaces values at compile time:
+
+    someFunction(0, 1, 2, 3, 4, "Hello World");
+
+---
+## <a name="restrictions"></a>Restrictions
+
+All identifiers that start with `$oj_` or `$oj$` are classified as Reserved Words.
+
+Inside an oj method declaration, `self` is added to the list of Reserved Words.  Hence, it may not be used as a variable name.
+
+The global variable `$oj_oj` may not be modified.  In a web browser environment, runtime.js also defines a global variable `oj`.  You may use `oj.noConflict()` to restore the previous value of `oj`.
+
+In order to support compiler optimizations, the following method names are reserved and may not be overridden/implemented in subclasses:
+
+    alloc
+    class
+    className
+    instancesRespondToSelector:
+    respondsToSelector:
+    superclass
+    isSubclassOfClass:
+    isKindOfClass:
+    isMemberOfClass:
+
 
 ---
 ## <a name="license"></a>License
