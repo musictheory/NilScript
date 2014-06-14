@@ -452,6 +452,7 @@ However, when the `--squeeze` option is passed into the oj compiler, oj replaces
 ## <a name="runtime"></a>Runtime
 
 `oj.noConflict()`
+
 Restores the `oj` global variable to its previous value.
 
 `oj.getClassList()`
