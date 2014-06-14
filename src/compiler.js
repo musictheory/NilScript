@@ -1,6 +1,6 @@
 /*
     compiler.js
-    (c) 2013 musictheory.net, LLC
+    (c) 2013-2014 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
@@ -518,23 +518,29 @@ OJCompiler.prototype._secondPass = function()
     var currentClass;
     var currentMethodNode;
 
+    var optionDebugMessageSend = options["debug-message-send"];
+    var optionWithoutClasses   = options["without-classes"];
+    var optionCheckThis        = options["check-this"];
+    var optionCheckIvars       = options["check-ivars"];
+
     function should_remove_class(cls)
     {
         var original = cls.name;
-        var withoutClasses = options["without-classes"];
 
-        do {
-            if (withoutClasses.indexOf(cls.name) >= 0) {
-                return true;
-            }
+        if (optionWithoutClasses) { 
+            do {
+                if (optionWithoutClasses.indexOf(cls.name) >= 0) {
+                    return true;
+                }
 
-            if (cls.superclassName) {
-                cls = classes[cls.superclassName];
-            } else {
-                cls = null;
-            }
+                if (cls.superclassName) {
+                    cls = classes[cls.superclassName];
+                } else {
+                    cls = null;
+                }
 
-        } while (cls && cls.name);
+            } while (cls && cls.name);
+        }
 
         return false;
     }
@@ -638,9 +644,8 @@ OJCompiler.prototype._secondPass = function()
             modifier.from(lastSelector).to(node).replace(end);
         }
 
-        var alwaysMessage;
         // Optimization cases
-        if (!alwaysMessage) {
+        if (!optionDebugMessageSend) {
             if (receiver.type == Syntax.Identifier && currentMethodNode && !reserved) {
                 var selfOrThis = (currentMethodNode && currentMethodNode.usesSelfVar) ? "self" : "this";
                 var useProto   = (currentMethodNode.selectorType != "+");
@@ -696,7 +701,7 @@ OJCompiler.prototype._secondPass = function()
         // Slow path
         replaceMessageSelectors();
 
-        modifier.from(node).to(receiver).replace(OJGlobalVariable + ".msgSend(");
+        modifier.from(node).to(receiver).replace(OJGlobalVariable + "." + (optionDebugMessageSend ? "msgSend_debug" : "msgSend") + "(");
 
         if (receiver.type == Syntax.Identifier && classes[receiver.name]) {
             modifier.select(receiver).replace(OJGlobalVariable + "._cls." + compiler.getClassName(receiver.name));
@@ -810,7 +815,7 @@ OJCompiler.prototype._secondPass = function()
                 modifier.select(node).replace(replacement);
 
             } else {
-                if (name[0] == "_" && options["check-ivars"] && (name.length > 1)) {
+                if (name[0] == "_" && optionCheckIvars && (name.length > 1)) {
                     throwError(node, OJError.UndeclaredInstanceVariable, "Use of undeclared instance variable " + node.name);
                 }
             } 
@@ -1021,7 +1026,7 @@ OJCompiler.prototype._secondPass = function()
         } else if (node.type === Syntax.OJClassImplementation) {
             currentClass = classes[node.id.name];
 
-            if (options["without-classes"] && should_remove_class(currentClass)) {
+            if (optionWithoutClasses && should_remove_class(currentClass)) {
                 modifier.select(node).remove();
                 traverser.skip();
                 return null;
@@ -1064,7 +1069,7 @@ OJCompiler.prototype._secondPass = function()
             handle_identifier(node);
 
         } else if (node.type === Syntax.ThisExpression) {
-            if (options["check-this"]) {
+            if (optionCheckThis) {
                 check_this(node, traverser.getPath());
             }
         }
