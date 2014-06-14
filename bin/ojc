@@ -22,8 +22,9 @@ var opt = getopt.create([
     [ "",  "check-this",                "warn about usage of 'this' in oj methods" ],
     [ "",  "without-class=FILE+",       "strip specified class"                    ],
 
-    [ "",  "dump-ast",                 "(for development)" ],
-    [ "",  "dump-modifier",            "(for development)" ],
+    [ "",  "debug-message-send",        "use debug version of oj.msgSend" ],
+    [ "",  "dump-ast",                  "(for development)" ],
+    [ "",  "dump-modifier",             "(for development)" ],
 
     [ "h", "help",                     "display this help" ],
     [ "v", "version",                  "show version"      ]

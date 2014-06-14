@@ -71,18 +71,7 @@ function _registerClass(nameObject, superObject, callback)
     _classNameToSuperNameMap[name] = superName;
     var maker = function() {
         var superclass = isSubclassOfBase ? BaseObject : _classNameToClassMap[superName];
-        if (!superclass) return;
-
-        // if (isSubclassOfBase) {
-        //     superclass = ;
-        // } else {
-        //     superclass = ;
-        //     if (!superclass) return;
-
-        //     var superCons = _classNameToMakerMap[superName];
-        //     if (!superCons) throw new Error("Could not find class " + superCons + "/" + superName);
-        //     superclass = superCons();
-        // }        
+        if (!superclass) return;     
 
         var instance_methods = { };
         var class_methods    = { };
@@ -105,6 +94,13 @@ function _registerClass(nameObject, superObject, callback)
         });
 
         _classNameToClassMap[name] = cls;
+
+        var makerArray = _classNameToMakerArrayMap[name];
+        if (makerArray) {
+            for (var i = 0, length = makerArray.length; i < length; i++) {
+                makerArray[i]();
+            }
+        }
     }
 
     if (isSubclassOfBase || _classNameToClassMap[superName]) {
@@ -116,13 +112,6 @@ function _registerClass(nameObject, superObject, callback)
             makerArray.push(maker);
         } else {
             _classNameToMakerArrayMap[superName] = [ maker ]
-        }
-    }
-
-    makerArray = _classNameToMakerArrayMap[name];
-    if (makerArray) {
-        for (var i = 0, length = makerArray.length; i < length; i++) {
-            makerArray[i]();
         }
     }
 }
