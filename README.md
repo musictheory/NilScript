@@ -154,10 +154,7 @@ The root base class provides the following methods:
 
 ### <a name="base-class-load-initialize"></a>+load and +initialize
 
-oj supports both `+load` and `+initialize`.  `+load` is called immediately upon the
-creation of a class (in `oj._makeClass`),  `+initialize` is called the first time a message
-is sent to the class (whether it be `+alloc` or another class method)
-
+While oj 0.x supported `+load` and `+initialize`, this feature was removed in oj 1.x to optimize runtime performance.  
 
 ---
 ### <a name="method"></a>Methods
@@ -332,7 +329,7 @@ However, some are ignored due to differences between JavaScript and Objective-C:
 
 ### <a name="property-init"></a>Initialization
 
-At `+alloc`/`oj.class_createInstance` time, oj initializes all instance variables to one of the following values based on its type:
+During `+alloc`, oj initializes all instance variables to one of the following values based on its type:
 
     Boolean         -> false
     Number          -> 0
@@ -454,48 +451,40 @@ However, when the `--squeeze` option is passed into the oj compiler, oj replaces
 ---
 ## <a name="runtime"></a>Runtime
 
-**noConflict** `oj.noConflict()`
-Returns: nothing
+`oj.noConflict()`
+Restores the `oj` global variable to its previous value.
 
-**getClassList** `oj.getClassList()`
-Returns: Array of oj Class objects
+`oj.getClassList()`
+Returns an array of all known oj Class objects.
 
-**getSubclassesOfClass**  `oj.getSubclassesOfClass(cls)`
-Returns: Array of oj Class objects
+`oj.class_getSuperclass(cls)` `oj.getSuperclass(cls)`
+Returns the superclass of the specified `cls`.
 
-**isObject**  `oj.isObject(object)`
-Returns: Boolean
+`oj.getSubclassesOfClass(cls)`
+Returns an array of all subclasses of the specified `cls`.
 
-**sel_isEqual**  `oj.sel_isEqual(aSelector, bSelector)`
-Returns: Boolean
+`oj.isObject(object)`
+Returns true if `object` is an oj instance or Class, false otherwise.
+
+`oj.sel_isEqual(aSelector, bSelector)`
+Returns true if two selectors are equal to each other.
+
+`oj.class_isSubclassOf(cls, superclass)`
+Returns true if `superclass` is the direct superclass of `cls`, false otherwise.
+
+`oj.class_respondsToSelector(cls, aSelector)`
+Returns true if instances of `cls` respond to the selector `aSelector`, false otherwise.
+
+`oj.object_getClass(object)`
+Returns the Class of `object`.
+
+`oj.msgSend(receiver, aSelector, ...)`
+If `receiver` is non-falsy, invokes `aSelector` on it.
     
-**class_getSuperclass**  `oj.class_getSuperclass(cls)`
-Returns: oj Class object
-
-**class_isSubclassOf**  `oj.class_isSubclassOf(cls, superclass)`
-Returns: true if `superclass` is the direct superclass of `cls`, false otherwise
-
-**class_respondsToSelector**  `oj.class_respondsToSelector(cls, aSelector)
-Returns: true if 
-
-**object_getClass**  `oj.object_getClass(object)
-
-**msgSend**  `oj.msgSend(receiver, aSelector, ...)
-
-    
-    # Remove these (due to load)    
-    loadAllClasses
-    getLoadedClassList
-
-    # Note danger since these involve String<->oj 
-    getClass
-    sel_getName
-    class_getName
-
-    # Debug only?  Expose to ojc via command line options?
-    msgSend_debug:            msgSend_debug,
-    hooks:                    sHooks,
-    setDebugCallbacks:        setDebugCallbacks
+`oj.sel_getName(aSelector)`
+`oj.class_getName(cls)`
+`-[BaseObject className]`
+Returns a human-readable string of a class or selector.  Note that this is for debug purposes only!  When `--squeeze` is passed into the compiler, the resulting class/selector names will be obfuscated/shortened.
 
 ---
 ## <a name="restrictions"></a>Restrictions
