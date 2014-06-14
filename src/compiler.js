@@ -577,10 +577,10 @@ OJCompiler.prototype._secondPass = function()
 
     function handle_message_expression(node)
     {
-        var receiver   = node.receiver.value;
-        var methodName = compiler.getMethodName(node.selectorName);
-        var reserved   = Utils.isJScriptReservedWord(methodName);
-        var hasArguments;
+        var receiver     = node.receiver.value;
+        var methodName   = compiler.getMethodName(node.selectorName);
+        var reserved     = Utils.isJScriptReservedWord(methodName);
+        var hasArguments = false;
 
         var firstSelector, lastSelector;
 
@@ -591,90 +591,119 @@ OJCompiler.prototype._secondPass = function()
         for (var i = 0, length = node.messageSelectors.length; i < length; i++) {
             var messageSelector = node.messageSelectors[i];
 
-            if (!firstSelector) {
-                firstSelector = messageSelector;
-            }
-
-            if (messageSelector.arguments) {
-                var lastArgument = messageSelector.arguments[messageSelector.arguments.length - 1];
-
+            if (messageSelector.arguments || messageSelector.argument) {
                 hasArguments = true;
-                modifier.from(messageSelector).to(messageSelector.arguments[0]).replace("[");
-                modifier.after(lastArgument).insert("]");
-
-                lastSelector = lastArgument;
-
-            } else if (messageSelector.argument) {
-                hasArguments = true;
-                modifier.from(messageSelector).to(messageSelector.argument).remove();
-                lastSelector = messageSelector.argument;
-
-                if (i < (length - 1)) {
-                    var nextSelector = node.messageSelectors[i+1];
-                    modifier.from(messageSelector.argument).to(nextSelector).replace(",");
-                }
-
-            } else {
-                modifier.select(messageSelector).remove()
-                lastSelector = messageSelector;
-                messageSelector.skip = true;
-            }
-        }        
-
-        var startReplacement, endReplacement = ")";
-        if (receiver.type == Syntax.Identifier && currentMethodNode && !reserved) {
-            var selfOrThis = (currentMethodNode && currentMethodNode.usesSelfVar) ? "self" : "this";
-            var useProto   = (currentMethodNode.selectorType != "+");
-
-            if (receiver.name == "super") {
-                startReplacement = currentClass.name + "." + OJSuperVariable + "." + (useProto ? "prototype." : "") + methodName + ".call(this" + (hasArguments ? "," : "");
-
-            } else if (classes[receiver.name]) {
-                startReplacement = OJGlobalVariable + "._cls." + compiler.getClassName(receiver.name) + "()." + methodName + "(";
-
-            } else if (receiver.name == "self") {
-                startReplacement = selfOrThis + "." + methodName + "(";
-
-            } else if (currentClass.isInstanceVariable(receiver.name)) {
-                var ivar = currentClass.generateThisIvar(receiver.name, currentMethodNode.usesSelfVar);
-                startReplacement = "(" + ivar + " && " + ivar + "." + methodName + "(";
-                endReplacement = "))";
-
-            } else {
-                startReplacement = "(" + receiver.name + " && " + receiver.name + "." + methodName + "(";
-                endReplacement = "))";
             }
         }
 
-        if (startReplacement) {
-            node.receiver.skip = true;
-            modifier.from(node).to(firstSelector).replace(startReplacement);
-            modifier.from(lastSelector).to(node).replace(endReplacement);
+        function replaceMessageSelectors()
+        {
+            for (var i = 0, length = node.messageSelectors.length; i < length; i++) {
+                var messageSelector = node.messageSelectors[i];
 
-        } else {
-            if (currentMethodNode) {
+                if (!firstSelector) {
+                    firstSelector = messageSelector;
+                }
+
+                if (messageSelector.arguments) {
+                    var lastArgument = messageSelector.arguments[messageSelector.arguments.length - 1];
+
+                    modifier.from(messageSelector).to(messageSelector.arguments[0]).replace("[");
+                    modifier.after(lastArgument).insert("]");
+
+                    lastSelector = lastArgument;
+
+                } else if (messageSelector.argument) {
+                    modifier.from(messageSelector).to(messageSelector.argument).remove();
+                    lastSelector = messageSelector.argument;
+
+                    if (i < (length - 1)) {
+                        var nextSelector = node.messageSelectors[i+1];
+                        modifier.from(messageSelector.argument).to(nextSelector).replace(",");
+                    }
+
+                } else {
+                    modifier.select(messageSelector).remove()
+                    lastSelector = messageSelector;
+                    messageSelector.skip = true;
+                }
+            }        
+        }
+
+        function doCommonReplacement(start, end) {
+            replaceMessageSelectors();
+
+            node.receiver.skip = true;
+            modifier.from(node).to(firstSelector).replace(start);
+            modifier.from(lastSelector).to(node).replace(end);
+        }
+
+        var alwaysMessage;
+        // Optimization cases
+        if (!alwaysMessage) {
+            if (receiver.type == Syntax.Identifier && currentMethodNode && !reserved) {
+                var selfOrThis = (currentMethodNode && currentMethodNode.usesSelfVar) ? "self" : "this";
+                var useProto   = (currentMethodNode.selectorType != "+");
+
+                if (receiver.name == "super") {
+                    doCommonReplacement(currentClass.name + "." + OJSuperVariable + "." + (useProto ? "prototype." : "") + methodName + ".call(this" + (hasArguments ? "," : ""), ")");
+                    return;
+
+                } else if (classes[receiver.name]) {
+                    var classVariable = OJGlobalVariable + "._cls." + compiler.getClassName(receiver.name);
+
+                    if (methodName == "alloc") {
+                        node.receiver.skip = true;
+                        modifier.select(node).replace("new " + classVariable + "()");
+                        return;
+                    }
+
+                    doCommonReplacement(classVariable + "." + methodName + "(", ")");
+                    return;
+
+                } else if (receiver.name == "self") {
+                    doCommonReplacement(selfOrThis + "." + methodName + "(", ")");
+                    return;
+
+                } else if (currentClass.isInstanceVariable(receiver.name)) {
+                    var ivar = currentClass.generateThisIvar(receiver.name, currentMethodNode.usesSelfVar);
+                    doCommonReplacement("(" + ivar + " && " + ivar + "." + methodName + "(", "))");
+                    return;
+
+                } else {
+                    doCommonReplacement("(" + receiver.name + " && " + receiver.name + "." + methodName + "(", "))");
+                    return;
+                }
+
+            } else if (currentMethodNode) {
                 currentMethodNode.usesTemporaryVar = true;
+
+                replaceMessageSelectors();
 
                 modifier.from(node).to(receiver).replace("(" + OJTemporaryReturnVariable + " = (");
 
                 if (receiver.type == Syntax.Identifier && classes[receiver.name]) {
-                    modifier.select(receiver).replace(OJGlobalVariable + "._cls." + compiler.getClassName(receiver.name) + "()");
+                    modifier.select(receiver).replace(OJGlobalVariable + "._cls." + compiler.getClassName(receiver.name));
                 }
 
                 modifier.from(receiver).to(firstSelector).replace(")) && " + OJTemporaryReturnVariable + "." + methodName + "(");
                 modifier.from(lastSelector).to(node).replace(")");
 
-            } else {
-                modifier.from(node).to(receiver).replace(OJGlobalVariable + ".msgSend(");
-
-                if (receiver.type == Syntax.Identifier && classes[receiver.name]) {
-                    modifier.select(receiver).replace(OJGlobalVariable + "._cls." + compiler.getClassName(receiver.name) + "()");
-                }
-
-                modifier.from(receiver).to(firstSelector).replace("," + getSelectorForMethodName(methodName) + (hasArguments ? "," : ""));
-                modifier.from(lastSelector).to(node).replace(endReplacement);
+                return;
             }
         }
+
+        // Slow path
+        replaceMessageSelectors();
+
+        modifier.from(node).to(receiver).replace(OJGlobalVariable + ".msgSend(");
+
+        if (receiver.type == Syntax.Identifier && classes[receiver.name]) {
+            modifier.select(receiver).replace(OJGlobalVariable + "._cls." + compiler.getClassName(receiver.name));
+        }
+
+        modifier.from(receiver).to(firstSelector).replace("," + getSelectorForMethodName(methodName) + (hasArguments ? "," : ""));
+        modifier.from(lastSelector).to(node).replace(")");
     }
 
     function handle_class_implementation(node)
@@ -686,7 +715,7 @@ OJCompiler.prototype._secondPass = function()
 
         var constructorCallSuper = "";
         if (superClass) {
-            constructorCallSuper = OJGlobalVariable + "._cls." + compiler.getClassName(superClass) + "().call(this);";
+            constructorCallSuper = OJGlobalVariable + "._cls." + compiler.getClassName(superClass) + ".call(this);";
         }
 
 
@@ -714,6 +743,10 @@ OJCompiler.prototype._secondPass = function()
         var where = isClassMethod ? OJClassMethodsVariable : OJInstanceMethodsVariable;
         var args = [ ];
 
+        if (Utils.isReservedSelectorName(node.selectorName)) {
+            throwError(node, OJError.ReservedMethodName, "The method name \"" + node.selectorName + "\" is reserved by the runtime and may not be overridden.");
+        }
+
         for (var i = 0, length = node.methodSelectors.length; i < length; i++) {
             var variableName = node.methodSelectors[i].variableName;
             if (variableName) {
@@ -721,15 +754,7 @@ OJCompiler.prototype._secondPass = function()
             }
         }
 
-        var functionName = "";
-        var functionNameStyle = options["function-name-style"];
-        if (functionNameStyle == 1) {
-            functionName = methodName;  
-        } else if (functionNameStyle == 2) {
-            functionName = currentClass.name + "$" + methodName;  
-        }
-
-        modifier.from(node).to(node.body).replace(where + "." + methodName + " = function " + functionName + "(" + args.join(", ") + ") ");
+        modifier.from(node).to(node.body).replace(where + "." + methodName + " = function(" + args.join(", ") + ") ");
 
         if (node.usesSelfVar || node.usesTemporaryVar) {
             var parts = [ ];
@@ -913,11 +938,25 @@ OJCompiler.prototype._secondPass = function()
     function handle_const_declaration(node)
     {
         var length = node.declarations ? node.declarations.length : 0;
+        var values = [ ];
 
         for (var i = 0; i < length; i++) {
             var declaration = node.declarations[i];
 
-            if (declaration.init.type !== Syntax.Literal) {
+            if (declaration.init.type === Syntax.Literal) {
+                var raw = declaration.init.raw;
+
+                if      (raw == "YES")   raw = "true";
+                else if (raw == "NO")    raw = "false";
+                else if (raw == "NULL")  raw = "null";
+                else if (raw == "nil")   raw = "null";
+
+                values.push(raw);
+
+            } else if (declaration.init.type === Syntax.UnaryExpression) {
+                values.push(-declaration.init.argument.raw);
+
+            } else {
                 throwError(node, OJError.NonLiteralConst, "Use of non-literal value with @const");
             }
         }
@@ -925,7 +964,7 @@ OJCompiler.prototype._secondPass = function()
         if (defines) {
             for (var i = 0; i < length; i++) {
                 var declaration = node.declarations[i];
-                defines[declaration.id.name] = declaration.init.raw;
+                defines[declaration.id.name] = values[i];
             }
 
             modifier.select(node).remove();
@@ -1016,7 +1055,7 @@ OJCompiler.prototype._secondPass = function()
 
         } else if (node.type === Syntax.OJConstDeclaration) {
             handle_const_declaration(node);
-            traverser.skip();
+            if (defines) traverser.skip();
 
         } else if (node.type === Syntax.Literal) {
             handle_literal(node);
@@ -1048,14 +1087,22 @@ OJCompiler.prototype._secondPass = function()
 
 OJCompiler.prototype.compile = function()
 {
-    this._firstPass();
+    try {
+        this._firstPass();
 
-    for (var className in this._classes) { if (this._classes.hasOwnProperty(className)) {
-        this._classes[className].doDefaultSynthesis();
-    }}
+        for (var className in this._classes) { if (this._classes.hasOwnProperty(className)) {
+            this._classes[className].doDefaultSynthesis();
+        }}
 
-    this._secondPass();
-
+        this._secondPass();
+    } catch (e) {
+        if (!e.errorType) {
+            console.log(e);
+            console.log(e.stack);
+        } else {
+            throw e;
+        }
+    }
     return this;
 }
 

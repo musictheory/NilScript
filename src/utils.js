@@ -46,6 +46,25 @@ var sRuntimeDefinedMethods = {
     "respondsToSelector_": 1,
     "superclass": 1,
     "toString": 1
+};
+
+
+var sRuntimeReservedSelectors = {
+    "alloc": 1,
+    "class": 1,
+    "className": 1,
+    "instancesRespondToSelector:": 1,
+    "respondsToSelector:": 1,
+    "superclass": 1,
+    "isSubclassOfClass:": 1,
+    "isKindOfClass:": 1,
+    "isMemberOfClass:": 1
+};
+
+
+function isReservedSelectorName(name)
+{
+    return !!sRuntimeReservedSelectors[name];
 }
 
 
@@ -63,6 +82,7 @@ function isRuntimeDefinedClass(name)
 
 module.exports = {
     isJScriptReservedWord:  isJScriptReservedWord,
+    isReservedSelectorName: isReservedSelectorName,
     isRuntimeDefinedMethod: isRuntimeDefinedMethod,
     isRuntimeDefinedClass:  isRuntimeDefinedClass
 };

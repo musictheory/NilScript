@@ -2,11 +2,11 @@
     "name": "ojc",
     "description": "compiler for the oj language",
     "homepage": "http://github.com/musictheory/oj",
-    "main": "esprima.js",
+    "main": "./src/compiler.js",
     "bin": {
         "ojc": "./bin/ojc"
     },
-    "version": "0.1.0-9",
+    "version": "1.0.0-9",
     "engines": {
         "node": ">=0.8.0"
     },
