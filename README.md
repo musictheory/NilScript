@@ -17,9 +17,6 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
   - [Behind the Scenes](#class-compiler)
   - [Scope and @class](#class-scope)
 - [The Built-in Base Class](#base-class)
-  - [Provided Methods](#base-class-provided)
-  - [Reserved Method Names](#base-class-reserved)
-  - [+load and +initialize](#base-class-load-initialize)
 - [Methods](#method)
   - [Falsy Messaging](#method-falsy)
   - [Behind the Scenes](#method-compiler)
@@ -34,6 +31,7 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 - [@enum and @const](#enum)
 - [Runtime](#runtime)
 - [Restrictions](#restrictions)
+- [Squeezing oj!](#squeeze)
 - [License](#license)
 
 
@@ -122,8 +120,6 @@ Without the forward declaration, the compiler thinks that `TheFirstClass` in `[[
 
 Unlike Objective-C, all oj classes inherit from a private root base class.  There is no way to specify your own root class (how often do you *not* inherit from NSObject in your code?).
 
-### <a name="base-class-provided"></a>Provided Methods
-
 The root base class provides the following methods:
 
     + (id) alloc
@@ -152,10 +148,7 @@ The root base class provides the following methods:
 
     - (BOOL) isEqual:(id)anotherObject
 
-
-### <a name="base-class-load-initialize"></a>+load and +initialize
-
-While oj 0.x supported `+load` and `+initialize`, this feature was removed in oj 1.x to optimize runtime performance.  
+While oj 0.x supported `+load` and `+initialize`, this feature was removed in oj 1.x to optimize runtime performance.  Note: `+className` and `-className` are intended for debugging purposes only.  When `--squeeze` is passed into the compiler, class names will be obfuscated/shortened.
 
 ---
 ### <a name="method"></a>Methods
@@ -488,6 +481,13 @@ If `receiver` is non-falsy, invokes `aSelector` on it.
 **oj.class_getName(cls)**  
 **-[BaseObject className]**  
 Returns a human-readable string of a class or selector.  Note that this is for debug purposes only!  When `--squeeze` is passed into the compiler, the resulting class/selector names will be obfuscated/shortened.
+
+---
+## <a name="squeeze"></a>Squeezing oj!
+
+oj features a code minifier/compressor/obfuscator called the squeezer.  It is activated via the `--squeeze` compiler flag.  The goal of the squeezer is work *with* a compressor such as UglifyJS rather than replace it.  At a high level: the squeezer shortens oj class names, ivar names, and method names; while UglifyJS shortens JavaScript variable names.
+
+In addition, when `--squeeze` is turned on, `@enum` and `@const` variables are replaced at compiled time with their associated values.
 
 ---
 ## <a name="restrictions"></a>Restrictions
