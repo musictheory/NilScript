@@ -24,11 +24,17 @@ var assert = require("assert");
 @enum { a,b,c,d,e,f,g }
 
 @const the_answer = 42;
+@const the_negative_answer = -42;
 @const the_string_answer = "Forty Two";
 @const the_null = null;
 @const the_true = true;
 @const the_false = false;
+@const the_YES = YES;
+@const the_NO = NO;
+@const the_NULL = NULL;
+@const the_nil = nil;
 @const the_regexp = /foo/g;
+
 
 
 @enum { one_line }
@@ -74,10 +80,17 @@ function runTests()
     assert.equal(g, 6);
 
     assert.strictEqual(the_answer, 42);
+    assert.strictEqual(the_negative_answer, -42);
     assert.strictEqual(the_string_answer, "Forty Two");
     assert.strictEqual(the_null, null);
     assert.strictEqual(the_true, true);
     assert.strictEqual(the_false, false);
+
+    assert.strictEqual(the_nil, nil);
+    assert.strictEqual(the_NULL, NULL);
+    assert.strictEqual(the_YES, YES);
+    assert.strictEqual(the_NO, NO);
+
     regexEqual(the_regexp, /foo/g);
 
     return true;

@@ -8,13 +8,13 @@
 ;(function() { "use strict";
 
 var root = this;
+var previousOj = root.oj;
 
 var sDebugStackDepth = 0;
-var sDebugCallbacks = null;
-var sClassGetters   = { };
-var sClassSupers    = { };
-var sHooks          = { };
-var sLoadedClasses  = [ ];
+var sDebugCallbacks  = null;
+var _classNameToMakerArrayMap = { };
+var _classNameToClassMap      = { };
+var _classNameToSuperNameMap  = { };
 
 function create(o)
 {
@@ -53,43 +53,6 @@ function throwUnrecognizedSelector(receiver, selector)
 }
 
 
-function makeInitializeWrapper(original)
-{
-    var f = function() {
-        if (this.$oj_needs_initialized) {
-            class_initialize(this);
-            this.$oj_needs_initialized = false;
-        }
-
-        return original.call(this);
-    }
-
-    f.displayName = original.displayName;
-
-    return f;
-}
-
-
-function makeInitializeWrapperForClass(cls, methods)
-{
-    var methodName_load       = sel_getName({ load:1       });
-    var methodName_initialize = sel_getName({ initialize:1 });
-
-    for (var key in methods) { if (hop(methods, key)) {
-        if (key == methodName_load || key == methodName_initialize) {
-            continue;
-        }
-
-        var original = methods[key];
-        if (typeof original != "function") {
-            continue;
-        }
-
-        cls[key] = makeInitializeWrapper(methods[key]);
-    }}
-}
-
-
 function _registerClass(nameObject, superObject, callback)
 {
     var isSubclassOfBase = false;
@@ -102,21 +65,24 @@ function _registerClass(nameObject, superObject, callback)
     var name = sel_getName(nameObject); 
     var superName = sel_getName(superObject);
 
+    var makerArray;
     var cls;
 
-    sClassSupers[name] = superName;
+    _classNameToSuperNameMap[name] = superName;
+    var maker = function() {
+        var superclass = isSubclassOfBase ? BaseObject : _classNameToClassMap[superName];
+        if (!superclass) return;
 
-    sClassGetters[name] = function() {
-        if (cls) return cls;
+        // if (isSubclassOfBase) {
+        //     superclass = ;
+        // } else {
+        //     superclass = ;
+        //     if (!superclass) return;
 
-        var superclass;
-        if (isSubclassOfBase) {
-            superclass = BaseObject;
-        } else {
-            var superCons = sClassGetters[superName];
-            if (!superCons) throw new Error("Could not find class " + superCons + "/" + superName);
-            superclass = superCons();
-        }        
+        //     var superCons = _classNameToMakerMap[superName];
+        //     if (!superCons) throw new Error("Could not find class " + superCons + "/" + superName);
+        //     superclass = superCons();
+        // }        
 
         var instance_methods = { };
         var class_methods    = { };
@@ -138,37 +104,33 @@ function _registerClass(nameObject, superObject, callback)
             method.displayName = getDisplayName(name, key, "-");
         });
 
+        _classNameToClassMap[name] = cls;
+    }
 
-        // If we have a +initialize, wrap each new class method
-        var initialize = cls.initialize;
-        if (initialize) {
-            cls.$oj_needs_initialized = true;
-
-            makeInitializeWrapperForClass(cls, class_methods);
-
-            if (superclass == BaseObject) {
-                makeInitializeWrapperForClass(cls, BaseObject);
-            }
+    if (isSubclassOfBase || _classNameToClassMap[superName]) {
+        maker();
+    } else {
+        makerArray = _classNameToMakerArrayMap[superName];
+        
+        if (makerArray) {
+            makerArray.push(maker);
+        } else {
+            _classNameToMakerArrayMap[superName] = [ maker ]
         }
+    }
 
-        if (class_methods.load) class_methods.load.apply(cls);
-
-        if (sHooks.didRegisterClass) {
-            sHooks.didRegisterClass(cls);
+    makerArray = _classNameToMakerArrayMap[name];
+    if (makerArray) {
+        for (var i = 0, length = makerArray.length; i < length; i++) {
+            makerArray[i]();
         }
-
-        sLoadedClasses.push(cls);
-
-        return cls;
     }
 }
 
 
-function loadAllClasses()
+function noConflict()
 {
-    for (var key in sClassGetters) { if (hop(sClassGetters, key)) {
-        sClassGetters[key]();
-    }}
+    root.oj = previousOj;
 }
 
 
@@ -176,17 +138,11 @@ function getClassList()
 {
     var results = [ ];
 
-    for (var key in sClassGetters) { if (hop(sClassGetters, key)) {
-        results.append(sClassGetters[key]());
+    for (var key in _classNameToClassMap) { if (hop(_classNameToClassMap, key)) {
+        results.append(_classNameToClassMap[key]);
     }}
 
     return results;
-}
-
-
-function getLoadedClassList()
-{
-    return sLoadedClasses;
 }
 
 
@@ -195,11 +151,11 @@ function getSubclassesOfClass(cls)
     var results = [ ];
     var name = class_getName(cls);
 
-    for (var key in sClassSupers) { if (hop(sClassSupers, key)) {
-        var superName = sClassSupers[key];
+    for (var key in _classNameToSuperNameMap) { if (hop(_classNameToSuperNameMap, key)) {
+        var superName = _classNameToSuperNameMap[key];
 
         if (superName == name) {
-            results.push(sClassGetters[key]());
+            results.push(_classNameToClassMap[key]);
         }
     }}
 
@@ -215,7 +171,7 @@ function getClass(name)
         name = sel_getName(name);
     }
 
-    var g = sClassGetters[name];
+    var g = _classNameToClassMap[name];
     return g ? g() : null;
 }
 
@@ -260,27 +216,6 @@ function class_getName(cls)
 }
 
 
-function class_initialize(cls)
-{
-    var chain = [ cls ];
-    var initialize = cls.initialize;
-
-    while ((cls = class_getSuperclass(cls))) {
-        chain.push(cls);
-    }
-
-
-    for (var i = chain.length - 1; i >= 0; i--) {
-        cls = chain[i];
-
-        if (cls.$oj_needs_initialized && cls.initialize) {
-            cls.initialize.call(cls);
-            cls.$oj_needs_initialized = false;
-        }
-    }
-}
-
-
 function class_getSuperclass(cls)
 {
     return cls.$oj_super;
@@ -310,14 +245,12 @@ function class_respondsToSelector(cls, selector)
 }
 
 
-var Array_prototype_slice = Array.prototype.slice;
-
 function msgSend(receiver, selector)
 {
     return receiver ? (
         receiver[sel_getName(selector)] ||
         throwUnrecognizedSelector(receiver, selector)
-    ).apply(receiver, Array_prototype_slice.call(arguments, 2)) : receiver;
+    ).apply(receiver, Array.prototype.slice.call(arguments, 2)) : receiver;
 }
 msgSend.displayName = "oj.msgSend";
 
@@ -327,7 +260,7 @@ function msgSend_Object_keys(receiver, selector)
     return receiver ? (
         receiver[Object.keys(selector)[0]] ||
         throwUnrecognizedSelector(receiver, selector)
-    ).apply(receiver, Array_prototype_slice.call(arguments, 2)) : receiver;
+    ).apply(receiver, Array.prototype.slice.call(arguments, 2)) : receiver;
 }
 msgSend_Object_keys.displayName = "oj.msgSend";
 
@@ -350,7 +283,7 @@ function msgSend_debug(receiver, selector)
     var result;
     try {
         if (sDebugCallbacks && sDebugCallbacks.willSendMessage) sDebugCallbacks.willSendMessage(arguments);
-        result = receiver.apply(Array_prototype_slice.call(arguments, 2));
+        result = receiver.apply(Array.prototype.slice.call(arguments, 2));
         if (sDebugCallbacks && sDebugCallbacks.didSendMessage)  sDebugCallbacks.didSendMessage(arguments);
 
     } finally {
@@ -365,12 +298,11 @@ msgSend_debug.displayName = "oj.msgSend";
 var oj = {
     _id:                      0,
     _registerClass:           _registerClass,
-    _cls:                     sClassGetters,
+    _cls:                     _classNameToClassMap,
 
-    loadAllClasses:           loadAllClasses,
+    noConflict:               noConflict,
 
     getClassList:             getClassList,
-    getLoadedClassList:       getLoadedClassList,
     getSubclassesOfClass:     getSubclassesOfClass,
     getClass:                 getClass,
     isObject:                 isObject,
@@ -384,7 +316,6 @@ var oj = {
     msgSend:                  Object.keys ? msgSend_Object_keys : msgSend,
 
     msgSend_debug:            msgSend_debug,
-    hooks:                    sHooks,
     setDebugCallbacks:        setDebugCallbacks
 }
 

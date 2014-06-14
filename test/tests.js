@@ -52,7 +52,6 @@ runTest("inc/IvarAndProperties");
 runTest("inc/Inheritance");
 runTest("inc/Methods");
 runTest("inc/EnumAndConst");
-runTest("inc/LoadAndInitialize");
 
 runTest("issues/issue1");
 runTest("issues/issue2");
@@ -80,3 +79,5 @@ shouldFailToCompile("NonIntegerEnum2",                 OJError.NonIntegerEnum);
 shouldFailToCompile("TestReservedWord2",               OJError.DollarOJIsReserved);
 shouldFailToCompile("TestReservedWord3",               OJError.DollarOJIsReserved);
 
+shouldFailToCompile("TestReservedMethod1",             OJError.ReservedMethodName);
+shouldFailToCompile("TestReservedMethod2",             OJError.ReservedMethodName);

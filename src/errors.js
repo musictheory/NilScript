@@ -19,5 +19,6 @@ OJError.NonLiteralEnum                 = "NonLiteralEnum";
 OJError.NonIntegerEnum                 = "NonIntegerEnum";
 OJError.SelfIsReserved                 = "SelfIsReserved";
 OJError.DollarOJIsReserved             = "DollarOJIsReserved";
+OJError.ReservedMethodName             = "ReservedMethodName";
 
 module.exports = { OJError: OJError };
