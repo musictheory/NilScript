@@ -32,6 +32,7 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 - [Selectors](#selector)
 - [Boolean/null aliases](#aliases)
 - [@enum and @const](#enum)
+- [Runtime](#runtime)
 - [Restrictions](#restrictions)
 - [License](#license)
 
@@ -451,39 +452,41 @@ However, when the `--squeeze` option is passed into the oj compiler, oj replaces
 ---
 ## <a name="runtime"></a>Runtime
 
-#### oj.noConflict()
+**oj.noConflict()**  
 Restores the `oj` global variable to its previous value.
 
-#### oj.getClassList()
+
+**oj.getClassList()**  
 Returns an array of all known oj Class objects.
 
-#### oj.class_getSuperclass(cls) /  oj.getSuperclass(cls)
+
+**oj.class_getSuperclass(cls) /  oj.getSuperclass(cls)**  
 Returns the superclass of the specified `cls`.
 
-#### oj.getSubclassesOfClass(cls)
+**oj.getSubclassesOfClass(cls)**  
 Returns an array of all subclasses of the specified `cls`.
 
-#### oj.isObject(object)
+**oj.isObject(object)**  
 Returns true if `object` is an oj instance or Class, false otherwise.
 
-#### oj.sel_isEqual(aSelector, bSelector)
+**oj.sel_isEqual(aSelector, bSelector)**  
 Returns true if two selectors are equal to each other.
 
-#### oj.class_isSubclassOf(cls, superclass)
+**oj.class_isSubclassOf(cls, superclass)**  
 Returns true if `superclass` is the direct superclass of `cls`, false otherwise.
 
-#### oj.class_respondsToSelector(cls, aSelector)
+**oj.class_respondsToSelector(cls, aSelector)**  
 Returns true if instances of `cls` respond to the selector `aSelector`, false otherwise.
 
-#### oj.object_getClass(object)
+**oj.object_getClass(object)**  
 Returns the Class of `object`.
 
-#### oj.msgSend(receiver, aSelector, ...)
+**oj.msgSend(receiver, aSelector, ...)**  
 If `receiver` is non-falsy, invokes `aSelector` on it.
 
-#### oj.sel_getName(aSelector)
-#### oj.class_getName(cls)
-#### -[BaseObject className]
+**oj.sel_getName(aSelector)**  
+**oj.class_getName(cls)**  
+**-[BaseObject className]**  
 Returns a human-readable string of a class or selector.  Note that this is for debug purposes only!  When `--squeeze` is passed into the compiler, the resulting class/selector names will be obfuscated/shortened.
 
 ---
