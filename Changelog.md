@@ -2,7 +2,7 @@ CHANGELOG
 
 ## 1.0
 
-This is a tentative list of the changes for 1.0.
+This is a tentative list of the changes for 1.0.  1.0 will be a backwards incompatible release, with a focus on enhancing runtime performance.  I'd like to start incorporating more oj code into my iOS apps, rather than maintaining parallel source bases.  This is now possible since [WKWebView](https://developer.apple.com/library/prerelease/ios/documentation/WebKit/Reference/WKWebView_Ref/index.html) will support accelerated JavaScript on iOS 8.
 
 Removed:
 
