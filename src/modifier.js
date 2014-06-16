@@ -6,8 +6,8 @@
     Based on Modifier from harmonizr (http://github.com/jdiamond/harmonizr)
 */
 
+var SourceMapGenerator = require && require("source-map").SourceMapGenerator;
 
-var Modifier = (function() {
 
 var sTimestampCounter = 0;
 
@@ -38,91 +38,30 @@ function _clone(loc)
 
 function _isDescendantOf(a, b)
 {
-    var keys   = Object.keys(b);
-    var result = false;
-
-    for (var i = 0, length = keys.length; i < length; i++) {
-        var child = b[keys[i]];
-
-        if (child && typeof child === "object") {
-            if (a === child || _isDescendantOf(a, child)) {
-                result = true;
-                break;
-            }
-        }
+    while (a) {
+        if (a === b) return true;
+        a = a.parent;
     }
 
-    return result;
+    return false;
 }
 
 
-function Modifier(src, options)
+function Modifier(files, lineCounts, lines, options)
 {
-    this._lines0 = src.split('\n');
+    this._files      = files;
+    this._lineCounts = lineCounts;
+    this._lines0     = lines;
+
+    this._prependLines = options.prepend || [ ];
+    this._appendLines  = options.append  || [ ];
+
+    this._prependLines = this._prependLines.join("\n").split("\n");
+
     this._current = { };
     this._replacements = [ ];
     this._debug = (options && options.debug);
-}
-
-
-Modifier.prototype._doReplacements = function()
-{
-    this._replacements.sort(function(a, b) {
-        if (a.line == b.line) {
-            if (a.toColumn == b.toColumn) {
-                if (a.text && b.text) {
-                    // Both insertions, base on timestamp
-
-                    if (a.text.length == b.text.length) {
-                        return b.timestamp - a.timestamp; // same length = base on timestamp
-                    } else {
-                        return a.text.length - b.text.length; // else base on length
-                    }
-
-                } else if (!a.text && !b.text) {
-                    // Is this right for both removals?
-                    return b.timestamp - a.timestamp;
-
-                } else if (!a.text && b.text) {
-                    return 1;
-
-                } else {
-                    return -1;
-                }
-
-            } else {
-                return b.toColumn - a.toColumn;
-            }
-        } else {
-            return b.line - a.line;
-        }
-    });
-
-    for (var i = 0, length = this._replacements.length; i < length; i++) {
-        var r      = this._replacements[i];
-        var line   = this._getLine(r.line);          
-        var before = line.substring(0, r.fromColumn);
-        var after  = line.substring(r.toColumn);
-
-        if (this._debug) {
-            var toRemove = line.substring(r.fromColumn, r.toColumn);
-
-            if (r.text && toRemove) {
-                console.log("" + r.line + ": replacing " + _red(toRemove, r.fromColumn, r.toColumn) + " with " + _green(r.text));
-            } else if (toRemove) {
-                console.log("" + r.line + ": deleting " + _red(toRemove, r.fromColumn, r.toColumn));
-            } else if (r.text) {
-                console.log("" + r.line + ": inserting " + _green(r.text, r.fromColumn, r.toColumn) + " between " + _yellow(before) + " and " + _yellow(after));
-            }
-        }
-        this._setLine(r.line, before + (r.text || "") + after);
-        if (this._debug) {
-            console.log("Line " + r.line + " is now " + this._getLine(r.line));
-            console.log();
-        }
-    }
-
-    this._replacements = [ ];
+    this._options = options || { };
 }
 
 
@@ -218,14 +157,117 @@ Modifier.prototype.replace = function(text)
 
 Modifier.prototype.finish = function()
 {
-    this._doReplacements();
-    return this._lines0.join('\n');
+    var start = process.hrtime();
+
+    this._replacements.sort(function(a, b) {
+        if (a.line == b.line) {
+            if (a.toColumn == b.toColumn) {
+                if (a.text && b.text) {
+                    // Both insertions, base on timestamp
+
+                    if (a.text.length == b.text.length) {
+                        return b.timestamp - a.timestamp; // same length = base on timestamp
+                    } else {
+                        return a.text.length - b.text.length; // else base on length
+                    }
+
+                } else if (!a.text && !b.text) {
+                    // Is this right for both removals?
+                    return b.timestamp - a.timestamp;
+
+                } else if (!a.text && b.text) {
+                    return 1;
+
+                } else {
+                    return -1;
+                }
+
+            } else {
+                return b.toColumn - a.toColumn;
+            }
+        } else {
+            return b.line - a.line;
+        }
+    });
+
+
+    var generator = new SourceMapGenerator({
+        file:       this._options.sourceMapFile,
+        sourceRoot: this._options.sourceMapRoot
+    });
+
+    var fileForLine = [ "" ];
+    var lineMap     = [ 0  ];
+
+    var inLine  = 1;
+    var outLine = 1;
+
+    function mapLines(files, lineCounts) {
+        for (var i = 0, iLength = files.length; i < iLength; i++) {
+            var file      = files[i];
+            var lineCount = lineCounts[i];
+
+            inLine = 1;
+
+            for (var j = 0; j < lineCount; j++) {
+                if (file) {
+                    generator.addMapping({
+                        source: file,
+                        original:  { line: inLine,  column: null },
+                        generated: { line: outLine, column: null }
+                    });
+                }
+
+                fileForLine[outLine] = file;
+                lineMap[outLine]     = inLine;
+
+                inLine++;
+                outLine++;
+            }
+        }
+    };
+
+    mapLines([ null ], [ this._prependLines.length ]);
+    mapLines(this._files, this._lineCounts);
+
+    for (var i = 0, length = this._replacements.length; i < length; i++) {
+        var r      = this._replacements[i];
+        var line1  = r.line;
+        var line   = this._getLine(line1);
+
+        var before = line.substring(0, r.fromColumn);
+        var after  = line.substring(r.toColumn);
+
+        // var originalFile = this._fileForLine[r.line - 1];
+
+        if (this._debug) {
+            var toRemove = line.substring(r.fromColumn, r.toColumn);
+
+            if (r.text && toRemove) {
+                console.log("" + r.line + ": replacing " + _red(toRemove, r.fromColumn, r.toColumn) + " with " + _green(r.text));
+            } else if (toRemove) {
+                console.log("" + r.line + ": deleting " + _red(toRemove, r.fromColumn, r.toColumn));
+            } else if (r.text) {
+                console.log("" + r.line + ": inserting " + _green(r.text, r.fromColumn, r.toColumn) + " between " + _yellow(before) + " and " + _yellow(after));
+            }
+        }
+        this._setLine(r.line, before + (r.text || "") + after);
+        if (this._debug) {
+            console.log("Line " + r.line + " is now " + this._getLine(r.line));
+            console.log();
+        }
+    }
+
+    var finalLines = [ ];
+    Array.prototype.push.apply(finalLines, this._prependLines);
+    Array.prototype.push.apply(finalLines, this._lines0);
+    Array.prototype.push.apply(finalLines, this._appendLines);
+
+    return {
+        content: finalLines.join("\n"),
+        map: generator.toString()
+    }
 }
 
-return Modifier;
-
-})();
-
-var Modifier = Modifier;
 
 module.exports = { Modifier: Modifier };

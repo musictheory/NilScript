@@ -42,6 +42,8 @@ function mixin(from, to, overwrite, callback)
 
 function getDisplayName(className, methodName, prefix)
 {
+    className = className.substr(6);
+    methodName = methodName.substr(6);
     methodName = methodName.replace(/([A-Za-z0-9])_/g, "$1:");
     return [ prefix, "[", className, " ", methodName, "]" ].join("");
 }
@@ -62,8 +64,8 @@ function _registerClass(nameObject, superObject, callback)
         isSubclassOfBase = true;
     }
 
-    var name = sel_getName(nameObject); 
-    var superName = sel_getName(superObject);
+    var name = _getRawName(nameObject); 
+    var superName = _getRawName(superObject);
 
     var makerArray;
     var cls;
@@ -78,10 +80,10 @@ function _registerClass(nameObject, superObject, callback)
         
         cls = callback(class_methods, instance_methods);
 
-        cls.displayName = name;
-        cls.$oj_name    = name;
-        cls.$oj_super   = superclass;
-        cls.prototype   = new superclass();
+        cls.displayName  = name;
+        cls["$oj_name"]  = name;
+        cls["$oj_super"] = superclass;
+        cls.prototype    = new superclass();
 
         mixin(superclass, cls);
 
@@ -152,22 +154,9 @@ function getSubclassesOfClass(cls)
 }
 
 
-function getClass(name)
-{
-    if (!name) return null;
-
-    if ((typeof name) != "string") {
-        name = sel_getName(name);
-    }
-
-    var g = _classNameToClassMap[name];
-    return g ? g() : null;
-}
-
-
 function isObject(object)
 {
-    return !!(object && object.constructor.$oj_name);
+    return !!(object && object.constructor["$oj_name"]);
 }
 
 
@@ -177,7 +166,7 @@ function setDebugCallbacks(callbacks)
 }
 
 
-function sel_getName(selector)
+function _getRawName(selector)
 {
     if (!selector) return null;
 
@@ -192,22 +181,34 @@ function sel_getName(selector)
     return name;
 }
 
+function sel_getName(selector)
+{
+    if (!selector) return null;
+    var name = _getRawName(selector);
+    if (name) name = name.substr(6);
+    return name;
+}
+
 
 function sel_isEqual(sel1, sel2)
 {
-    return sel_getName(sel1) == sel_getName(sel2);
+    return _getRawName(sel1) == _getRawName(sel2);
 }
 
 
 function class_getName(cls)
 {
-    return cls ? cls.$oj_name : null;
+    if (cls && cls["$oj_name"]) {
+        return cls["$oj_name"].substr(6);
+    }
+
+    return null;
 }
 
 
 function class_getSuperclass(cls)
 {
-    return cls.$oj_super;
+    return cls["$oj_super"];
 }
 
 
@@ -230,14 +231,14 @@ function object_getClass(object)
 
 function class_respondsToSelector(cls, selector)
 {
-    return !!cls.prototype[sel_getName(selector)];
+    return !!cls.prototype[_getRawName(selector)];
 }
 
 
 function msgSend(receiver, selector)
 {
     return receiver ? (
-        receiver[sel_getName(selector)] ||
+        receiver[_getRawName(selector)] ||
         throwUnrecognizedSelector(receiver, selector)
     ).apply(receiver, Array.prototype.slice.call(arguments, 2)) : receiver;
 }
@@ -258,7 +259,7 @@ function msgSend_debug(receiver, selector)
 {
     if (!receiver) return receiver;
 
-    var name = sel_getName(selector);
+    var name = _getRawName(selector);
     var imp  = receiver[imp];
 
     if (!imp) {
@@ -293,7 +294,7 @@ var oj = {
 
     getClassList:             getClassList,
     getSubclassesOfClass:     getSubclassesOfClass,
-    getClass:                 getClass,
+    getSuperclass:            class_getSuperclass,
     isObject:                 isObject,
     sel_getName:              sel_getName,
     sel_isEqual:              sel_isEqual,
@@ -315,7 +316,7 @@ BaseObject.alloc = function() { return new this(); }
 BaseObject["class"] = function() { return this; }
 BaseObject.superclass = function() { return class_getSuperclass(this); }
 BaseObject.className = function() { return class_getName(this); }
-BaseObject.respondsToSelector_ = function(aSelector) { return !!this[sel_getName(aSelector)]; }
+BaseObject.respondsToSelector_ = function(aSelector) { return !!this[_getRawName(aSelector)]; }
 BaseObject.instancesRespondToSelector_ = function(aSelector) { return class_respondsToSelector(this, aSelector); }
 BaseObject.isKindOfClass_ = function(cls) { return class_isSubclassOf(this, cls); }
 BaseObject.isMemberOfClass_ = function(cls) { return this === cls; }
@@ -331,7 +332,7 @@ BaseObject.prototype.respondsToSelector_ = function(aSelector) { return class_re
 BaseObject.prototype.performSelector_ = function(aSelector) { return oj.msgSend(this, aSelector); }
 BaseObject.prototype.performSelector_withObject_ = function(aSelector, object) { return oj.msgSend(this, aSelector, object); }
 BaseObject.prototype.performSelector_withObject_withObject_ = function(aSelector, o1, o2) { return oj.msgSend(this, aSelector, o1, o2); }
-BaseObject.prototype.description = function() { return "<" + this.className() + " " + this.$oj_id + ">" }
+BaseObject.prototype.description = function() { return "<" + this.className() + " " + this["$oj_id"] + ">" }
 BaseObject.prototype.toString = function() { return this.description(); }
 BaseObject.prototype.isKindOfClass_ = function(cls) { return class_isSubclassOf(object_getClass(this), cls); }
 BaseObject.prototype.isMemberOfClass_ = function(cls) { return object_getClass(this) === cls; }
@@ -341,13 +342,13 @@ if (typeof module != "undefined" && typeof module != "function") {
     module.exports = oj;
 
     if (typeof global != "undefined" && typeof global != "function") {
-        global.$oj_oj = oj;
+        global["$oj_oj"] = oj;
     }
 
 } else if (typeof define === "function" && define.amd) {
     define(oj);
 } else {
-    root.oj = root.$oj_oj = oj;
+    root.oj = root["$oj_oj"] = oj;
 }
 
 }).call(this);

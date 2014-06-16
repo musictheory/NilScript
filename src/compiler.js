@@ -4,13 +4,14 @@
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-var esprima   = require && require("esprima-oj");
-var Modifier  = require && require("./modifier").Modifier;
-var Squeezer  = require && require("./squeezer").Squeezer;
-var OJError   = require && require("./errors").OJError;
-var Traverser = require && require("./traverser").Traverser;
-var Utils     = require && require("./utils");
-var Syntax    = esprima.Syntax;
+var esprima    = require && require("esprima-oj");
+var Modifier   = require && require("./modifier").Modifier;
+var Squeezer   = require && require("./squeezer").Squeezer;
+var OJError    = require && require("./errors").OJError;
+var Traverser  = require && require("./traverser").Traverser;
+var Utils      = require && require("./utils");
+var SourceNode = require && require("source-map").SourceNode;
+var Syntax     = esprima.Syntax;
 
 
 var OJGlobalVariable          = "$oj_oj";
@@ -369,13 +370,44 @@ return OJClass; })();
 var OJCompiler = (function () {
 
 
-function OJCompiler(src, options, state)
+function OJCompiler(options)
 {
+    options = options || { };
+
+    var state    = options.state    || { };
+    var files    = options.files    || [ ];
+    var contents = options.contents || options.content || [ ];
+
     var parserOptions   = { loc: true }
     var modifierOptions = { };
 
-    options = options || { };
-    state   = state   || { };
+    if (options["prepend"]) {
+        var prependLines = options["prepend"];
+
+        if (typeof prependLines == "string") {
+            prependLines = prependLines.split("\n")
+        }
+
+        modifierOptions["prepend"] = prependLines;
+    }
+
+    if (options["append"]) {
+        var appendLines = options["append"];
+
+        if (typeof appendLines == "string") {
+            appendLines = appendLines.split("\n")
+        }
+
+        modifierOptions["append"] = appendLines;
+    }
+
+    if (options["source-map-file"]) {
+        modifierOptions.sourceMapFile = options["source-map-file"];
+    }
+
+    if (options["source-map-root"]) {
+        modifierOptions.sourceMapRoot = options["source-map-root"];
+    }
 
     if (options["dump-modifier"]) {
         modifierOptions.debug = true;
@@ -386,12 +418,31 @@ function OJCompiler(src, options, state)
         this._defines  = state["defines"] || { };
     }
 
-    this._modifier  = new Modifier(src, modifierOptions);
-    this._ast       = esprima.parse(src, parserOptions);
+    var lineCounts = [ ];
+    var allLines   = [ ];
+
+    for (var i = 0, length = contents.length; i < length; i++) {
+        var lines = contents[i].split("\n");
+        lineCounts.push(lines.length);
+        Array.prototype.push.apply(allLines, lines);
+    }
+
+
+    this._modifier  = new Modifier(files, lineCounts, allLines, modifierOptions);
+
+    var parseStart = process.hrtime();
+    this._ast = esprima.parse(allLines.join("\n"), parserOptions);
+
+    if (options["dump-time"]) {
+        console.error("---------");
+        console.error(" Parse: ", Math.round(process.hrtime(parseStart)[1] / (1000 * 1000)) + "ms");
+    }
+
     this._options   = options;
     this._classes   = { };
     this._traverser = null;
 }
+
 
 
 OJCompiler.prototype.getClassName = function(className)
@@ -445,39 +496,37 @@ OJCompiler.prototype._firstPass = function()
         return result;
     }
 
-    traverser.traverse(function() {
-        var node = traverser.getNode();
-
-        if (node.type === Syntax.OJClassImplementation) {
+    traverser.traverse(function(node, type) {
+        if (type === Syntax.OJClassImplementation) {
             currentClass = registerClass(node.id.name, node.superClass && node.superClass.value, true);
 
             if (node.superClass && node.superClass.value) {
                 registerClass(node.superClass.value);
             }
 
-        } else if (node.type === Syntax.OJAtClassDirective) {
+        } else if (type === Syntax.OJAtClassDirective) {
             node.ids.forEach(function(id) {
                 registerClass(id.name);
             });
 
-        } else if (node.type === Syntax.OJInstanceVariableDeclaration) {
+        } else if (type === Syntax.OJInstanceVariableDeclaration) {
             currentClass.registerIvarDeclaration(node);
 
-        } else if (node.type === Syntax.OJAtPropertyDirective) {
+        } else if (type === Syntax.OJAtPropertyDirective) {
             currentClass.registerAtProperty(node);
 
-        } else if (node.type === Syntax.OJAtSynthesizeDirective) {
+        } else if (type === Syntax.OJAtSynthesizeDirective) {
             currentClass.registerAtSynthesize(node);
 
-        } else if (node.type === Syntax.OJAtDynamicDirective) {
+        } else if (type === Syntax.OJAtDynamicDirective) {
             currentClass.registerAtDynamic(node);
 
-        } else if (node.type === Syntax.OJMethodDefinition) {
+        } else if (type === Syntax.OJMethodDefinition) {
             currentClass.registerMethodDefinition(node);
             currentMethodNode = node;
 
         // Check for self = expression (for initializers)
-        } else if (node.type == Syntax.AssignmentExpression) {
+        } else if (type == Syntax.AssignmentExpression) {
             if (currentMethodNode &&
                 node.left &&
                 node.left.type == Syntax.Identifier &&
@@ -486,20 +535,20 @@ OJCompiler.prototype._firstPass = function()
                 currentMethodNode.usesSelfVar = true;
             }
 
-        } else if (node.type === Syntax.FunctionDeclaration ||
-                   node.type === Syntax.FunctionExpression)
+        } else if (type === Syntax.FunctionDeclaration ||
+                   type === Syntax.FunctionExpression)
         {
             if (currentMethodNode) {
                 currentMethodNode.usesSelfVar = true;
             }
         }
 
-    }, function(node) {
-        if (node.type === Syntax.OJClassImplementation) {
+    }, function(node, type) {
+        if (type === Syntax.OJClassImplementation) {
             currentClass = null;
             currentMethodNode = null;
 
-        } else if (node.type == Syntax.OJMethodDefinition) {
+        } else if (type == Syntax.OJMethodDefinition) {
             currentMethodNode = null;
         }
     });
@@ -824,7 +873,9 @@ OJCompiler.prototype._secondPass = function()
         if (defines) {
             var result = defines[name];
             if (result !== undefined) {
-                modifier.select(node).replace("" + result);
+                if (defines.hasOwnProperty(name)) {
+                    modifier.select(node).replace("" + result);
+                }
             }
         }
     }
@@ -1017,89 +1068,102 @@ OJCompiler.prototype._secondPass = function()
     var traverser = new Traverser(this._ast);
     this._traverser = traverser;
 
-    traverser.traverse(function() {
-        var node = traverser.getNode();
-
-        if (node.type === Syntax.OJMessageExpression) {
+    traverser.traverse(function(node, type) {
+        if (type === Syntax.OJMessageExpression) {
             handle_message_expression(node);
 
-        } else if (node.type === Syntax.OJClassImplementation) {
+        } else if (type === Syntax.OJClassImplementation) {
             currentClass = classes[node.id.name];
 
             if (optionWithoutClasses && should_remove_class(currentClass)) {
                 modifier.select(node).remove();
-                traverser.skip();
-                return null;
+                return Traverser.SkipNode;
 
             } else {
                 handle_class_implementation(node);
             }
 
-        } else if (node.type === Syntax.OJAtClassDirective) {
+        } else if (type === Syntax.OJAtClassDirective) {
             modifier.select(node).remove();
+            return Traverser.SkipNode;
 
-        } else if (node.type === Syntax.OJInstanceVariableDeclarations) {
+        } else if (type === Syntax.OJInstanceVariableDeclarations) {
             modifier.select(node).remove();
+            return Traverser.SkipNode;
 
-        } else if (node.type === Syntax.OJMethodDefinition) {
+        } else if (type === Syntax.OJMethodDefinition) {
             currentMethodNode = node;
             methodNodes.push(node);
 
-        } else if (node.type === Syntax.OJAtPropertyDirective) {
+        } else if (type === Syntax.OJAtPropertyDirective) {
             handle_at_property(node);
 
-        } else if (node.type === Syntax.OJAtSynthesizeDirective || node.type == Syntax.OJAtDynamicDirective) {
+        } else if (type === Syntax.OJAtSynthesizeDirective || node.type == Syntax.OJAtDynamicDirective) {
             modifier.select(node).remove();
+            return Traverser.SkipNode;
 
-        } else if (node.type === Syntax.OJAtSelectorDirective) {
+        } else if (type === Syntax.OJAtSelectorDirective) {
             handle_at_selector(node);
 
-        } else if (node.type === Syntax.OJEnumDeclaration) {
+        } else if (type === Syntax.OJEnumDeclaration) {
             handle_enum_declaration(node);
-            traverser.skip();
+            return Traverser.SkipNode;
 
-        } else if (node.type === Syntax.OJConstDeclaration) {
+        } else if (type === Syntax.OJConstDeclaration) {
             handle_const_declaration(node);
-            if (defines) traverser.skip();
+            if (defines) return Traverser.SkipNode;
 
-        } else if (node.type === Syntax.Literal) {
+        } else if (type === Syntax.Literal) {
             handle_literal(node);
 
-        } else if (node.type === Syntax.Identifier) {
+        } else if (type === Syntax.Identifier) {
             handle_identifier(node);
 
-        } else if (node.type === Syntax.ThisExpression) {
+        } else if (type === Syntax.ThisExpression) {
             if (optionCheckThis) {
                 check_this(node, traverser.getPath());
             }
         }
 
-    }, function() {
-        var node = traverser.getNode();
-
-        if (node.type === Syntax.OJClassImplementation) {
+    }, function(node, type) {
+        if (type === Syntax.OJClassImplementation) {
             currentClass = null;
-        } else if (node.type == Syntax.OJMethodDefinition) {
+        } else if (type === Syntax.OJMethodDefinition) {
             currentMethodNode = null;
         }
     });
 
     finalize_method_nodes();
-
-    this._ast = this._traverser.getAST();
 }
 
 
 OJCompiler.prototype.compile = function()
 {
     try {
+        var dumpTime = this._options["dump-time"];
+        var start;
+
+        if (dumpTime) {
+            start = process.hrtime();
+        }
+
         this._firstPass();
 
         for (var className in this._classes) { if (this._classes.hasOwnProperty(className)) {
             this._classes[className].doDefaultSynthesis();
         }}
 
+        if (dumpTime) {
+            console.error("Pass 1: ", Math.round(process.hrtime(start)[1] / (1000 * 1000)) + "ms");
+            start = process.hrtime();
+        }
+
         this._secondPass();
+
+        if (dumpTime) {
+            console.error("Pass 2: ", Math.round(process.hrtime(start)[1] / (1000 * 1000)) + "ms");
+        }
+
     } catch (e) {
         if (!e.errorType) {
             console.log(e);
@@ -1108,24 +1172,31 @@ OJCompiler.prototype.compile = function()
             throw e;
         }
     }
+
     return this;
 }
 
 
 OJCompiler.prototype.finish = function()
 {
-    var result = { };
+    var start  = process.hrtime();
+    var result = this._modifier.finish();
 
     if (this._options["dump-ast"]) {
-        result.content = JSON.stringify(this._ast, null, 4);
-    } else {
-        result.content = this._modifier.finish();
+        result.ast = JSON.stringify(this._ast, null, 4)
     }
 
     result.state = { };
+
     if (this._squeezer) {
         result.state["squeeze"] = this._squeezer.getState();
-        result.state["defines"] = this._defines;
+    }
+
+    result.state["defines"] = this._defines;
+    result.contents = result.content;
+
+    if (this._options["dump-time"]) {
+        console.error("Finish: ", Math.round(process.hrtime(start)[1] / (1000 * 1000)) + "ms");
     }
 
     return result;
@@ -1133,9 +1204,4 @@ OJCompiler.prototype.finish = function()
 
 return OJCompiler; })();
 
-
-module.exports = {
-    compile: function(src, opts) {
-        return (new OJCompiler(src, opts)).compile().finish();
-    }
-};
+module.exports = { OJCompiler: OJCompiler };

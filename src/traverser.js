@@ -4,66 +4,71 @@
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
+var esprima    = require && require("esprima-oj");
+var estraverse = require("estraverse");
+var Syntax     = esprima.Syntax;
 
-var Traverser = (function() {
+// Add additional estraverse VisitorKeys for the oj extension
+estraverse.VisitorKeys[ Syntax.OJMessageExpression            ] = [ "receiver", "messageSelectors" ];
+estraverse.VisitorKeys[ Syntax.OJMessageReceiver              ] = [ "value" ];
+estraverse.VisitorKeys[ Syntax.OJMessageSelector              ] = [ "name", "argument", "arguments" ];
+estraverse.VisitorKeys[ Syntax.OJMethodNameSegment            ] = [ ];
+estraverse.VisitorKeys[ Syntax.OJClassImplementation          ] = [ "id", "superclass", "ivarDeclarations", "body" ];
+estraverse.VisitorKeys[ Syntax.OJMethodDefinition             ] = [ "returnType", "methodSelectors", "body" ];
+estraverse.VisitorKeys[ Syntax.OJMethodSelector               ] = [ "name" ];
+estraverse.VisitorKeys[ Syntax.OJSelector                     ] = [ ];
+estraverse.VisitorKeys[ Syntax.OJParameterType                ] = [ ];
+estraverse.VisitorKeys[ Syntax.OJInstanceVariableDeclarations ] = [ "declarations" ];
+estraverse.VisitorKeys[ Syntax.OJInstanceVariableDeclaration  ] = [ "parameterType", "ivars" ];
+estraverse.VisitorKeys[ Syntax.OJAtPropertyDirective          ] = [ "attributes", "parameterType", "id" ];
+estraverse.VisitorKeys[ Syntax.OJAtPropertyAttribute          ] = [ ];
+estraverse.VisitorKeys[ Syntax.OJAtSynthesizeDirective        ] = [ "pairs" ];
+estraverse.VisitorKeys[ Syntax.OJAtClassDirective             ] = [ "ids" ];
+estraverse.VisitorKeys[ Syntax.OJAtSynthesizePair             ] = [ "id", "backing" ];
+estraverse.VisitorKeys[ Syntax.OJAtDynamicDirective           ] = [ "ids" ];
+estraverse.VisitorKeys[ Syntax.OJAtSelectorDirective          ] = [ ];
+estraverse.VisitorKeys[ Syntax.OJConstDeclaration             ] = [ "declarations" ];
+estraverse.VisitorKeys[ Syntax.OJEnumDeclaration              ] = [ "declarations" ];
+
 
 function Traverser(ast)
 {
-    this._ast = ast;
+    this._ast   = ast;
     this._nodes = [ ];
-    this._skip = false;
 }
 
-
-Traverser.prototype._traverse = function(node, pre, post)
-{
-    var replacement = node;
-
-    this._nodes.push(node);
-
-    var result = pre(this);
-
-    if (this._skip) {
-        this._skip = false;
-        return null;
-    }
-
-    if (result === null || result) {
-        replacement = result;
-    }
-
-    var keys = Object.keys(node);
-    for (var i = 0, length = keys.length; i < length; i++) {
-        var child = node[keys[i]];
-        if (child && typeof child === "object") {
-            var newChild = !child.skip && this._traverse(child, pre, post);
-            if (newChild != child) {
-                if (newChild) {
-                    node[keys[i]] = newChild;
-                } else {
-                    delete(node[keys[i]]);
-                }
-            }
-        }
-    }
-
-    if (post) post(this);
-
-    this._nodes.pop();
-
-    return replacement;
-}
+Traverser.SkipNode = 1;
 
 
 Traverser.prototype.traverse = function(pre, post)
 {
-    this._ast = this._traverse(this._ast, pre, post);
-}
+    var nodes = this._nodes;
 
+    estraverse.traverse(this._ast, {
+        enter: function (node, parent) {
+            if (node.skip) {
+                return estraverse.VisitorOption.Skip;
+            }
 
-Traverser.prototype.skip = function()
-{
-    this._skip = true;
+            if (parent) {
+                node.parent = parent;
+            }
+
+            nodes.push(node);
+
+            if (pre(node, node.type)) {
+                return estraverse.VisitorOption.Skip;
+            }
+        },
+
+        leave: function (node, parent) {
+            if (nodes[nodes.length - 1] == node) {
+                nodes.pop();
+            }
+
+            post(node, node.type);
+        }
+    });
 }
 
 
@@ -71,22 +76,6 @@ Traverser.prototype.getPath = function()
 {
     return this._nodes.slice(0);
 }
-
-
-Traverser.prototype.getNode = function()
-{
-    return this._nodes[this._nodes.length - 1];
-}
-
-
-Traverser.prototype.getAST = function()
-{
-    return this._ast;
-}
-
-return Traverser;
-
-})();
 
 
 module.exports = {
