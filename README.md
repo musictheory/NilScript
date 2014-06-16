@@ -17,9 +17,6 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
   - [Behind the Scenes](#class-compiler)
   - [Scope and @class](#class-scope)
 - [The Built-in Base Class](#base-class)
-  - [Provided Methods](#base-class-provided)
-  - [Reserved Method Names](#base-class-reserved)
-  - [+load and +initialize](#base-class-load-initialize)
 - [Methods](#method)
   - [Falsy Messaging](#method-falsy)
   - [Behind the Scenes](#method-compiler)
@@ -32,7 +29,9 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 - [Selectors](#selector)
 - [Boolean/null aliases](#aliases)
 - [@enum and @const](#enum)
+- [Runtime](#runtime)
 - [Restrictions](#restrictions)
+- [Squeezing oj!](#squeeze)
 - [License](#license)
 
 
@@ -113,15 +112,13 @@ and
 
     @end
 
-Without the forward declaration, the compiler thinks that `TheFirstClass` in `[[TheFirstClass alloc] init]` is a variable named `TheFirstClass`.  With the `@class` directive, the compiler understands that `TheFirstClass` is an oj class, and properly wraps access to it in `oj.getClass()`.
+Without the forward declaration, the compiler thinks that `TheFirstClass` in `[[TheFirstClass alloc] init]` is a variable named `TheFirstClass`.  With the `@class` directive, the compiler understands that `TheFirstClass` is an oj class.
 
 ---
 
 ## <a name="base-class"></a>The Built-in Base Class
 
 Unlike Objective-C, all oj classes inherit from a private root base class.  There is no way to specify your own root class (how often do you *not* inherit from NSObject in your code?).
-
-### <a name="base-class-provided"></a>Provided Methods
 
 The root base class provides the following methods:
 
@@ -151,13 +148,7 @@ The root base class provides the following methods:
 
     - (BOOL) isEqual:(id)anotherObject
 
-
-### <a name="base-class-load-initialize"></a>+load and +initialize
-
-oj supports both `+load` and `+initialize`.  `+load` is called immediately upon the
-creation of a class (in `oj._makeClass`),  `+initialize` is called the first time a message
-is sent to the class (whether it be `+alloc` or another class method)
-
+While oj 0.x supported `+load` and `+initialize`, this feature was removed in oj 1.x to optimize runtime performance.  Note: `+className` and `-className` are intended for debugging purposes only.  When `--squeeze` is passed into the compiler, class names will be obfuscated/shortened.
 
 ---
 ### <a name="method"></a>Methods
@@ -332,7 +323,7 @@ However, some are ignored due to differences between JavaScript and Objective-C:
 
 ### <a name="property-init"></a>Initialization
 
-At `+alloc`/`oj.class_createInstance` time, oj initializes all instance variables to one of the following values based on its type:
+During `+alloc`, oj initializes all instance variables to one of the following values based on its type:
 
     Boolean         -> false
     Number          -> 0
@@ -454,48 +445,49 @@ However, when the `--squeeze` option is passed into the oj compiler, oj replaces
 ---
 ## <a name="runtime"></a>Runtime
 
-**noConflict** `oj.noConflict()`
-Returns: nothing
+**oj.noConflict()**  
+Restores the `oj` global variable to its previous value.
 
-**getClassList** `oj.getClassList()`
-Returns: Array of oj Class objects
 
-**getSubclassesOfClass**  `oj.getSubclassesOfClass(cls)`
-Returns: Array of oj Class objects
+**oj.getClassList()**  
+Returns an array of all known oj Class objects.
 
-**isObject**  `oj.isObject(object)`
-Returns: Boolean
 
-**sel_isEqual**  `oj.sel_isEqual(aSelector, bSelector)`
-Returns: Boolean
-    
-**class_getSuperclass**  `oj.class_getSuperclass(cls)`
-Returns: oj Class object
+**oj.class_getSuperclass(cls) /  oj.getSuperclass(cls)**  
+Returns the superclass of the specified `cls`.
 
-**class_isSubclassOf**  `oj.class_isSubclassOf(cls, superclass)`
-Returns: true if `superclass` is the direct superclass of `cls`, false otherwise
+**oj.getSubclassesOfClass(cls)**  
+Returns an array of all subclasses of the specified `cls`.
 
-**class_respondsToSelector**  `oj.class_respondsToSelector(cls, aSelector)
-Returns: true if 
+**oj.isObject(object)**  
+Returns true if `object` is an oj instance or Class, false otherwise.
 
-**object_getClass**  `oj.object_getClass(object)
+**oj.sel_isEqual(aSelector, bSelector)**  
+Returns true if two selectors are equal to each other.
 
-**msgSend**  `oj.msgSend(receiver, aSelector, ...)
+**oj.class_isSubclassOf(cls, superclass)**  
+Returns true if `superclass` is the direct superclass of `cls`, false otherwise.
 
-    
-    # Remove these (due to load)    
-    loadAllClasses
-    getLoadedClassList
+**oj.class_respondsToSelector(cls, aSelector)**  
+Returns true if instances of `cls` respond to the selector `aSelector`, false otherwise.
 
-    # Note danger since these involve String<->oj 
-    getClass
-    sel_getName
-    class_getName
+**oj.object_getClass(object)**  
+Returns the Class of `object`.
 
-    # Debug only?  Expose to ojc via command line options?
-    msgSend_debug:            msgSend_debug,
-    hooks:                    sHooks,
-    setDebugCallbacks:        setDebugCallbacks
+**oj.msgSend(receiver, aSelector, ...)**  
+If `receiver` is non-falsy, invokes `aSelector` on it.
+
+**oj.sel_getName(aSelector)**  
+**oj.class_getName(cls)**  
+**-[BaseObject className]**  
+Returns a human-readable string of a class or selector.  Note that this is for debug purposes only!  When `--squeeze` is passed into the compiler, the resulting class/selector names will be obfuscated/shortened.
+
+---
+## <a name="squeeze"></a>Squeezing oj!
+
+oj features a code minifier/compressor/obfuscator called the squeezer.  It is activated via the `--squeeze` compiler flag.  The goal of the squeezer is work *with* a compressor such as UglifyJS rather than replace it.  At a high level: the squeezer shortens oj class names, ivar names, and method names; while UglifyJS shortens JavaScript variable names.
+
+In addition, when `--squeeze` is turned on, `@enum` and `@const` variables are replaced at compiled time with their associated values.
 
 ---
 ## <a name="restrictions"></a>Restrictions
