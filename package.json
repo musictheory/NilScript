@@ -2,11 +2,11 @@
     "name": "ojc",
     "description": "compiler for the oj language",
     "homepage": "http://github.com/musictheory/oj",
-    "main": "./src/compiler.js",
+    "main": "./src/ojc.js",
     "bin": {
         "ojc": "./bin/ojc"
     },
-    "version": "1.0.0-9",
+    "version": "1.0.0-1",
     "engines": {
         "node": ">=0.8.0"
     },
@@ -24,8 +24,10 @@
         "url": "http://github.com/musictheory/oj/raw/master/LICENSE.MIT"
     }],
     "dependencies": {
-        "esprima-oj": "*",
-        "node-getopt": "0.2*"
+        "esprima-oj":  "*",
+        "estraverse":  "1.5.x",
+        "source-map":  "0.1.x",
+        "node-getopt": "0.2.x"
     },
     "scripts": {
         "test": "mocha"

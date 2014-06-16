@@ -1,15 +1,21 @@
 //@opts = { }
 
-var ojc = require("../src/compiler");
+var ojc = require("../src/ojc");
 var fs  = require("fs");
 var assert = require("assert");
 var OJError = require("../src/errors.js").OJError;
 var oj = require("../src/runtime.js");
 
 var compile = function(inFile, options) {
+    options = options || { };
+
     var inContent = "";
     inContent += fs.readFileSync(inFile, "utf8");
-    return ojc.compile(inContent, options);
+
+    options.files = [ inFile ];
+    options.contents = [ inContent ];
+
+    return ojc.ojc(options);
 }
 
 

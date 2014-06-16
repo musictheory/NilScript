@@ -9,28 +9,30 @@ var fs       = require("fs");
 var util     = require("util");
 var esprima  = require("esprima-oj");
 var getopt   = require("node-getopt");
-var ojc      = require("../src/compiler");
+var ojc      = require("../src/ojc");
+
 
 var opt = getopt.create([
     [ "o", "output=FILE",               "output .js file"],
     [ "",  "input-state=FILE",          "input file for compiler state" ],
     [ "",  "output-state=FILE",         "output file for compiler state" ],
-
+    [ "",  "prepend=FILE+",             "prepend file to output (without compiling)"],
+    [ "",  "append=FILE+",              "append file to output (without compiling)"],
     [ "s", "squeeze",                   "enable oj squeezer" ],
 
     [ "",  "check-ivars",               "warn about potentially undefined ivars"   ],
     [ "",  "check-this",                "warn about usage of 'this' in oj methods" ],
-    [ "",  "without-class=FILE+",       "strip specified class"                    ],
+    [ "",  "without-class=NAME+",       "strip specified class"                    ],
 
     [ "",  "debug-message-send",        "use debug version of oj.msgSend" ],
     [ "",  "dump-ast",                  "(for development)" ],
     [ "",  "dump-modifier",             "(for development)" ],
+    [ "",  "dump-time",                 "(for development)" ],
 
-    [ "h", "help",                     "display this help" ],
-    [ "v", "version",                  "show version"      ]
+    [ "h", "help",                      "display this help" ],
+    [ "v", "version",                   "show version"      ]
 ]);
 
-//    else if (arg == "--function-name-style")  options["function-name-style"] = parseInt(args.shift(), 10);
 
 opt.setHelp(
     "Usage: ojc [OPTIONS] INPUT_FILES\n" +
@@ -56,16 +58,51 @@ if (!inputFiles || inputFiles.length == 0) {
 
 
 // Read each input file and store in inContent
-var inContent = "";
-inputFiles.forEach(function(inputFile) {
+var inputContents = [ ];
+inputFiles.forEach(function(f) {
     try {
-        inContent += fs.readFileSync(inputFile);
+        inputContents.push(fs.readFileSync(f).toString());
     } catch (e) {
         console.error("ojc: error: " + e);
         process.exit(1);
     }
 });
 
+// Read each prepend file and store in inputPrependContents
+var prependFiles = opt.parsedOption.prepend || [ ];
+var prependContents = [ ];
+prependFiles.forEach(function(f) {
+    try {
+        prependContents.push(fs.readFileSync(f).toString());
+    } catch (e) {
+        console.error("ojc: error: " + e);
+        process.exit(1);
+    }
+});
+
+// Read each append file and store in appendContents
+var appendFiles = opt.parsedOption.append || [ ];
+var appendContents = [ ];
+appendFiles.forEach(function(f) {
+    try {
+        appendContents.push(fs.readFileSync(f).toString());
+    } catch (e) {
+        console.error("ojc: error: " + e);
+        process.exit(1);
+    }
+});
+
+
+options["files"]    = inputFiles;
+options["contents"] = inputContents;
+
+if (prependContents.length) {
+    options["prepend"]  = prependContents.join("\n");
+}
+
+if (appendContents.length) {
+    options["append"] = appendContents.join("\n");
+}
 
 var inputStateFile  = options["input-state"];
 var outputStateFile = options["output-state"];
@@ -75,11 +112,11 @@ delete(options["input-state"]);
 delete(options["output-state"]);
 delete(options["output"]);
 
-var inputState;
 
+// Read inputStateFile and save contents into options.state
 if (inputStateFile) {
     try {
-        inputState = JSON.parse(fs.readFileSync(inputStateFile));
+        options["state"] = JSON.parse(fs.readFileSync(inputStateFile));
     } catch (e) {
         console.error("ojc: error: " + e);
         process.exit(1);
@@ -89,7 +126,8 @@ if (inputStateFile) {
 var result;
 
 try {
-    result = ojc.compile(inContent, options, inputState);
+    result = ojc.ojc(options);
+
 } catch (e) {
     if (inputFiles.length == 1) {
         console.log(inputFiles[0] + ":" + e.lineNumber + " " + e.description);
@@ -117,5 +155,5 @@ if (outputStateFile) {
 }
 
 
-process.exit(0);
+// process.exit(0);
 
