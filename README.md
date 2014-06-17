@@ -32,6 +32,7 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 - [Runtime](#runtime)
 - [Restrictions](#restrictions)
 - [Squeezing oj!](#squeeze)
+- [JSHint Integration](#jshint)
 - [License](#license)
 
 
@@ -414,7 +415,7 @@ becomes:
 
 oj supports C-style enumerations via the `@enum` keyword and constants via the `@const` keyword:
 
-    @enum OptionalName {
+    @enum OptionalEnumName {
         zero = 0,
         one,
         two,
@@ -438,9 +439,15 @@ By default, oj compiles the above to:
 
     someFunction(zero, one, two, three, four, TheConstant);
 
-However, when the `--squeeze` option is passed into the oj compiler, oj replaces values at compile time:
+However, when the `--inline-enum` option is passed into the oj compiler, oj inlines enum values:
 
+    someFunction(0, 1, 2, 3, 4, TheConstant);
+
+The `--inline-const` option inlines `TheConstant` as well:
+    
     someFunction(0, 1, 2, 3, 4, "Hello World");
+
+Note: Inlining causes the enum or const to be lifted to the global scope.  Inlining affects all occurrences of that identifier in all files for the current compilation.  Inlined enums/consts are persisted via `--output-state` and `--input-state`.
 
 ---
 ## <a name="runtime"></a>Runtime
@@ -485,9 +492,25 @@ Returns a human-readable string of a class or selector.  Note that this is for d
 ---
 ## <a name="squeeze"></a>Squeezing oj!
 
-oj features a code minifier/compressor/obfuscator called the squeezer.  It is activated via the `--squeeze` compiler flag.  The goal of the squeezer is work *with* a compressor such as UglifyJS rather than replace it.  At a high level: the squeezer shortens oj class names, ivar names, and method names; while UglifyJS shortens JavaScript variable names.
+oj features a code minifier/compressor/obfuscator called the squeezer.  When the `--squeeze` option is passed to the compiler, all identifiers for classes (`$oj_c_ClassName`), methods (`$oj_f_MethodName`) and ivars (`$oj_i_ClassName_IvarName`) will be replaced with a shortened "squeezed" version (`$oj$ID`).  For example, all occurrences of `$oj_c_Foo` might be assigned the identifier `$oj$a`, all occurrences of `$oj_f_initWithFoo_` might be assigned `$oj$b`.  This is a safe transformation as long as all files are squeezed together.
 
-In addition, when `--squeeze` is turned on, `@enum` and `@const` variables are replaced at compiled time with their associated values.
+Squeezed identifiers are persisted via `--output-state` and `--input-state`.
+
+---
+## <a name="jshint"></a>JSHint Integration
+
+When the `--jshint` option is used, [JSHint](http://www.jshint.com) hints oj's results.  To prevent false positives,  the following options are forced:
+
+    asi:      true
+    laxbreak: true
+    laxcomma: true
+    newcap:   false
+
+`expr: true` is enabled on a per-method basis when the oj compiler uses certain optimizations.
+
+Ideally, in the future, no JSHint options are forced, and all false positives due to oj compilation are filtered.
+
+The `--jshint-ignore` option may be used to disable specific JSHint warnings.
 
 ---
 ## <a name="restrictions"></a>Restrictions
