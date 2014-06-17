@@ -6,7 +6,7 @@ var assert = require("assert");
 var OJError = require("../src/errors.js").OJError;
 var oj = require("../src/runtime.js");
 
-var compile = function(inFile, options) {
+var compile = function(inFile, options, callback) {
     options = options || { };
 
     var inContent = "";
@@ -15,41 +15,38 @@ var compile = function(inFile, options) {
     options.files = [ inFile ];
     options.contents = [ inContent ];
 
-    return ojc.ojc(options);
+    ojc.ojc(options, callback);
 }
 
 
 function runTest(name, options)
 {
-    var src = compile(__dirname + "/" + name + ".oj", options);
-
-    test(name, function() {
-        assert(eval(src.content), true);
-    });
+    compile(__dirname + "/" + name + ".oj", options, function(err, result) {
+        test(name, function() {
+            assert(eval(result.content), true);
+        });
+    })
 
     options = options || { };
     options.squeeze = true;
 
-    var src2 = compile(__dirname + "/" + name + ".oj", options);
-
-    test(name, function() {
-        assert(eval(src2.content), true);
+    compile(__dirname + "/" + name + ".oj", options, function(err, result) {
+        test(name, function() {
+            assert(eval(result.content), true);
+        });
     });
 }
 
 
 function shouldFailToCompile(name, errorType, options) {
-    var didFailWithCorrectType = false;
 
-    try {
-        var src = compile(__dirname + "/should_fail/" + name + ".oj", options);
+    compile(__dirname + "/should_fail/" + name + ".oj", options, function(err, result) {
+        var didFailWithCorrectType = (err.errorType == errorType);
 
-    } catch (e) {
-        didFailWithCorrectType = (e.errorType == errorType);
-    }
+        test(name, function() {
+            assert(didFailWithCorrectType, name + " compiled, but shouldn't have");
+        });
 
-    test(name, function() {
-        assert(didFailWithCorrectType, name + " compiled, but shouldn't have");
     });
 }
 

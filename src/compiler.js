@@ -9,6 +9,7 @@ var Modifier   = require && require("./modifier").Modifier;
 var Squeezer   = require && require("./squeezer").Squeezer;
 var OJError    = require && require("./errors").OJError;
 var Traverser  = require && require("./traverser").Traverser;
+var Hinter     = require && require("./hinter").Hinter;
 var Utils      = require && require("./utils");
 var SourceNode = require && require("source-map").SourceNode;
 var Syntax     = esprima.Syntax;
@@ -347,7 +348,7 @@ OJClass.prototype.generateAccessorsForProperty = function(name)
 
     if (makeGetter) {
         result += this.generateMethodDeclaration('-', getter);
-        result += " = function() { return " + this.generateThisIvar(ivar) + " } ; ";
+        result += " = function() { return " + this.generateThisIvar(ivar) + "; } ; ";
     }
 
     return result;
@@ -413,9 +414,16 @@ function OJCompiler(options)
         modifierOptions.debug = true;
     }
 
+    this._inlines = state["inlines"] || { };
+
     if (options["squeeze"]) {
-        this._squeezer = new Squeezer(state["squeeze"]);
-        this._defines  = state["defines"] || { };
+        var start = options["squeeze-start-index"] || 0;
+        var max   = options["squeeze-max-index"]   || 0;
+
+        this._squeezer = new Squeezer(state["squeeze"], {
+            start: start,
+            max:   max
+        });
     }
 
     var lineCounts = [ ];
@@ -480,7 +488,9 @@ OJCompiler.prototype.getMethodName = function(selectorName)
 OJCompiler.prototype._firstPass = function()
 {
     var compiler = this;
-    var classes = this._classes;
+    var classes  = this._classes;
+    var inlines  = this._inlines;
+    var options  = this._options;
     var currentClass, currentMethodNode, functionInMethodCount = 0;
 
     var traverser = new Traverser(this._ast);
@@ -494,6 +504,97 @@ OJCompiler.prototype._firstPass = function()
         }
 
         return result;
+    }
+
+    function registerEnum(node)
+    {
+        var length = node.declarations ? node.declarations.length : 0;
+        var last = node;
+
+        // From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isInteger
+        function isInteger(nVal) {
+            return typeof nVal === "number" && isFinite(nVal) && nVal > -9007199254740992 && nVal < 9007199254740992 && Math.floor(nVal) === nVal;
+        }
+
+        function valueForInit(initNode) {
+            var literalNode;
+            var negative = false;
+
+            if (initNode.type == Syntax.UnaryExpression) {
+                literalNode = initNode.argument;
+                negative = true;
+            } else if (initNode.type == Syntax.Literal) {
+                literalNode = initNode;
+            }
+
+            if (!literalNode || (literalNode.type != Syntax.Literal)) {
+                throwError(literalNode || initNode, OJError.NonLiteralEnum, "Use of non-literal value with @enum");
+            }
+
+            var value = literalNode.value;
+            if (!isInteger(value)) {
+                throwError(literalNode || initNode, OJError.NonIntegerEnum, "Use of non-integer value with @enum");
+            }
+
+            return negative ? -value : value;
+        }
+
+        if (length) {
+            var firstDeclaration = node.declarations[0];
+            var lastDeclaration  = node.declarations[length - 1];
+            var currentValue = 0;
+            var declaration, i;
+
+            for (i = 0; i < length; i++) {
+                declaration = node.declarations[i];
+
+                if (declaration.init) {
+                    currentValue = valueForInit(declaration.init);
+                }
+
+                if (options["inline-enum"]) {
+                    inlines[declaration.id.name] = currentValue;
+                }
+
+                declaration.enumValue = currentValue;
+
+                currentValue++;
+            }
+        }
+    }
+
+    function registerConst(node)
+    {
+        var length = node.declarations ? node.declarations.length : 0;
+        var values = [ ];
+
+        for (var i = 0; i < length; i++) {
+            var declaration = node.declarations[i];
+
+            if (declaration.init.type === Syntax.Literal) {
+                var raw = declaration.init.raw;
+
+                if      (raw == "YES")   raw = "true";
+                else if (raw == "NO")    raw = "false";
+                else if (raw == "NULL")  raw = "null";
+                else if (raw == "nil")   raw = "null";
+
+                values.push(raw);
+
+            } else if (declaration.init.type === Syntax.UnaryExpression) {
+                values.push(-declaration.init.argument.raw);
+
+            } else {
+                throwError(node, OJError.NonLiteralConst, "Use of non-literal value with @const");
+            }
+        }
+
+        if (options["inline-const"]) {
+            for (var i = 0; i < length; i++) {
+                var declaration = node.declarations[i];
+                inlines[declaration.id.name] = values[i];
+            }
+        }
     }
 
     traverser.traverse(function(node, type) {
@@ -541,6 +642,12 @@ OJCompiler.prototype._firstPass = function()
             if (currentMethodNode) {
                 currentMethodNode.usesSelfVar = true;
             }
+
+        } else if (type === Syntax.OJEnumDeclaration) {
+            registerEnum(node);
+
+        } else if (type === Syntax.OJConstDeclaration) {
+            registerConst(node);
         }
 
     }, function(node, type) {
@@ -562,7 +669,7 @@ OJCompiler.prototype._secondPass = function()
     var options  = this._options;
     var classes  = this._classes;
     var modifier = this._modifier;
-    var defines  = this._defines;
+    var inlines  = this._inlines;
     var methodNodes = [ ];
     var currentClass;
     var currentMethodNode;
@@ -721,16 +828,22 @@ OJCompiler.prototype._secondPass = function()
 
                 } else if (currentClass.isInstanceVariable(receiver.name)) {
                     var ivar = currentClass.generateThisIvar(receiver.name, currentMethodNode.usesSelfVar);
+    
+                    currentMethodNode.usesLoneExpression = true;
                     doCommonReplacement("(" + ivar + " && " + ivar + "." + methodName + "(", "))");
+    
                     return;
 
                 } else {
+                    currentMethodNode.usesLoneExpression = true;
                     doCommonReplacement("(" + receiver.name + " && " + receiver.name + "." + methodName + "(", "))");
+
                     return;
                 }
 
             } else if (currentMethodNode) {
                 currentMethodNode.usesTemporaryVar = true;
+                currentMethodNode.usesLoneExpression = true;
 
                 replaceMessageSelectors();
 
@@ -810,13 +923,24 @@ OJCompiler.prototype._secondPass = function()
 
         modifier.from(node).to(node.body).replace(where + "." + methodName + " = function(" + args.join(", ") + ") ");
 
-        if (node.usesSelfVar || node.usesTemporaryVar) {
-            var parts = [ ];
-            if (node.usesSelfVar)      parts.push("self = this");
-            if (node.usesTemporaryVar) parts.push(OJTemporaryReturnVariable);
+        if (node.usesSelfVar || node.usesTemporaryVar || node.usesLoneExpression) {
+            var toInsert = "";
 
-            if (parts.length && node.body.body.length) {
-                modifier.before(node.body.body[0]).insert("var " + parts.join(",") + ";");
+            var varParts = [ ];
+
+            if (node.usesSelfVar)      varParts.push("self = this");
+            if (node.usesTemporaryVar) varParts.push(OJTemporaryReturnVariable);
+
+            if (node.usesLoneExpression) {
+                toInsert += "/* jshint expr: true */";
+            }
+
+            if (varParts.length) {
+                toInsert += "var " + varParts.join(",") + ";";
+            }
+
+            if (toInsert.length && node.body.body.length) {
+                modifier.before(node.body.body[0]).insert(toInsert);
             }
         }
 
@@ -870,10 +994,10 @@ OJCompiler.prototype._secondPass = function()
             } 
         }
 
-        if (defines) {
-            var result = defines[name];
+        if (inlines) {
+            var result = inlines[name];
             if (result !== undefined) {
-                if (defines.hasOwnProperty(name)) {
+                if (inlines.hasOwnProperty(name)) {
                     modifier.select(node).replace("" + result);
                 }
             }
@@ -900,142 +1024,56 @@ OJCompiler.prototype._secondPass = function()
         modifier.select(node).replace("{ " + name + ": 1 }");
     }
 
-
     function handle_enum_declaration(node)
     {
         var length = node.declarations ? node.declarations.length : 0;
-        var last = node;
-
-        // From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isInteger
-        function isInteger(nVal) {
-            return typeof nVal === "number" && isFinite(nVal) && nVal > -9007199254740992 && nVal < 9007199254740992 && Math.floor(nVal) === nVal;
-        }
-
-        function valueForInit(initNode) {
-            var literalNode;
-            var negative = false;
-
-            if (initNode.type == Syntax.UnaryExpression) {
-                literalNode = initNode.argument;
-                negative = true;
-            } else if (initNode.type == Syntax.Literal) {
-                literalNode = initNode;
-            }
-
-            if (!literalNode || (literalNode.type != Syntax.Literal)) {
-                throwError(literalNode || initNode, OJError.NonLiteralEnum, "Use of non-literal value with @enum");
-            }
-
-            var value = literalNode.value;
-            if (!isInteger(value)) {
-                throwError(literalNode || initNode, OJError.NonIntegerEnum, "Use of non-integer value with @enum");
-            }
-
-            return negative ? -value : value;
-        }
+        var last   = node;
 
         if (length) {
             var firstDeclaration = node.declarations[0];
             var lastDeclaration  = node.declarations[length - 1];
-            var currentValue = 0;
             var declaration, i;
 
-            if (defines) {
-                for (i = 0; i < length; i++) {
-                    declaration = node.declarations[i];
+            for (i = 0; i < length; i++) {
+                declaration = node.declarations[i];
 
-                    if (declaration.init) {
-                        currentValue = valueForInit(declaration.init);
-                    }
-
-                    defines[declaration.id.name] = currentValue;
-
-                    currentValue++;
+                if (!declaration.init) {
+                    modifier.after(declaration.id).insert("=" + declaration.enumValue);
                 }
 
-            } else {
-                for (i = 0; i < length; i++) {
-                    declaration = node.declarations[i];
+                if (last == node) {
+                    modifier.before(declaration.id).insert("var ");
+                    modifier.from(last).to(declaration.id).remove();
 
-                    if (declaration.init) {
-                        currentValue = valueForInit(declaration.init);
-                    } else {
-                        modifier.after(declaration.id).insert("=" + currentValue);
-                    }
-
-                    currentValue++;
-
-                    if (last == node) {
-                        modifier.before(declaration.id).insert("var ");
-                        modifier.from(last).to(declaration.id).remove();
-
-                    } else {
-                        modifier.after(last).insert("; ");
-                        modifier.from(last).to(declaration.id).insert("var ");
-                    }
-
-                    last = declaration;
+                } else {
+                    modifier.after(last).insert("; ");
+                    modifier.from(last).to(declaration.id).insert("var ");
                 }
 
-                modifier.after(lastDeclaration).insert(";");
-                modifier.from(lastDeclaration).to(node).replace("");
+                last = declaration;
             }
+
+            modifier.after(lastDeclaration).insert(";");
+            modifier.from(lastDeclaration).to(node).replace("");
 
         } else {
             modifier.select(node).remove();
         }
-
-        if (defines) {
-            modifier.select(node).remove();
-        }
     }
-
 
     function handle_const_declaration(node)
     {
         var length = node.declarations ? node.declarations.length : 0;
         var values = [ ];
 
-        for (var i = 0; i < length; i++) {
-            var declaration = node.declarations[i];
-
-            if (declaration.init.type === Syntax.Literal) {
-                var raw = declaration.init.raw;
-
-                if      (raw == "YES")   raw = "true";
-                else if (raw == "NO")    raw = "false";
-                else if (raw == "NULL")  raw = "null";
-                else if (raw == "nil")   raw = "null";
-
-                values.push(raw);
-
-            } else if (declaration.init.type === Syntax.UnaryExpression) {
-                values.push(-declaration.init.argument.raw);
-
-            } else {
-                throwError(node, OJError.NonLiteralConst, "Use of non-literal value with @const");
-            }
-        }
-
-        if (defines) {
-            for (var i = 0; i < length; i++) {
-                var declaration = node.declarations[i];
-                defines[declaration.id.name] = values[i];
-            }
-
-            modifier.select(node).remove();
+        if (length) {
+            var firstDeclaration = node.declarations[0];
+            modifier.from(node).to(firstDeclaration.id).replace("var ");
 
         } else {
-            if (length) {
-                var firstDeclaration = node.declarations[0];
-                modifier.from(node).to(firstDeclaration.id).replace("var ");
-
-            } else {
-                modifier.select(node).remove();
-            }
+            modifier.select(node).remove();
         }
     }
-
 
     function check_this(thisNode, path)
     {
@@ -1106,12 +1144,20 @@ OJCompiler.prototype._secondPass = function()
             handle_at_selector(node);
 
         } else if (type === Syntax.OJEnumDeclaration) {
-            handle_enum_declaration(node);
-            return Traverser.SkipNode;
+            if (options["inline-enum"]) {
+                modifier.select(node).remove();
+                return Traverser.SkipNode;
+            } else {
+                handle_enum_declaration(node);
+            }
 
         } else if (type === Syntax.OJConstDeclaration) {
-            handle_const_declaration(node);
-            if (defines) return Traverser.SkipNode;
+            if (options["inline-const"]) {
+                modifier.select(node).remove();
+                return Traverser.SkipNode;
+            } else {
+                handle_const_declaration(node);
+            }
 
         } else if (type === Syntax.Literal) {
             handle_literal(node);
@@ -1177,7 +1223,7 @@ OJCompiler.prototype.compile = function()
 }
 
 
-OJCompiler.prototype.finish = function()
+OJCompiler.prototype.finish = function(callback)
 {
     var start  = process.hrtime();
     var result = this._modifier.finish();
@@ -1192,14 +1238,36 @@ OJCompiler.prototype.finish = function()
         result.state["squeeze"] = this._squeezer.getState();
     }
 
-    result.state["defines"] = this._defines;
+    result.state["inlines"] = this._inlines;
     result.contents = result.content;
 
     if (this._options["dump-time"]) {
         console.error("Finish: ", Math.round(process.hrtime(start)[1] / (1000 * 1000)) + "ms");
     }
 
-    return result;
+    var lineMap = result.lineMap;
+    delete(result.lineMap);
+
+    if (this._options["jshint"]) {
+        var config = this._options["jshint-config"];
+        var ignore = this._options["jshint-ignore"];
+
+        var hinter = new Hinter(result.contents, config, ignore, lineMap);
+
+        hinter.run(function(hints) {
+            for (var key in hints) {
+                var hint = hints[key];
+
+                console.log(key, hints[key]);
+            }
+
+            result.hints = hints;
+            callback(null, result);
+        });
+
+    } else {
+        callback(null, result);
+    }
 }
 
 return OJCompiler; })();

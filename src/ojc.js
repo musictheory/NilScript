@@ -1,15 +1,22 @@
 /*
-    compiler.js
+    ojc.js
     (c) 2013-2014 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-var compiler = require("./compiler");
+var OJCompiler = require("./compiler").OJCompiler;
 
 
-function ojc(options)
+function ojc(options, callback)
 {
-    return (new compiler.OJCompiler(options)).compile().finish();
+    try {
+        var compiler = new OJCompiler(options);
+        compiler.compile();
+        compiler.finish(callback);
+
+    } catch (e) {
+        callback(e, null);
+    }
 }
 
 

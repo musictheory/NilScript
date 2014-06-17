@@ -16,9 +16,18 @@ var opt = getopt.create([
     [ "o", "output=FILE",               "output .js file"],
     [ "",  "input-state=FILE",          "input file for compiler state" ],
     [ "",  "output-state=FILE",         "output file for compiler state" ],
-    [ "",  "prepend=FILE+",             "prepend file to output (without compiling)"],
-    [ "",  "append=FILE+",              "append file to output (without compiling)"],
-    [ "s", "squeeze",                   "enable oj squeezer" ],
+    [ "",  "prepend=FILE+",             "prepend file to output (without compiling or hinting)"],
+    [ "",  "append=FILE+",              "append file to output (without compiling or hinting)"],
+    [ "s", "squeeze",                   "enable squeezer" ],
+    [ "",  "squeeze-start-index",       "start index for squeezer" ],
+    [ "",  "squeeze-max-index",         "max index for squeezer" ],
+
+    [ "",  "inline-const",              "inline @const identifiers" ],
+    [ "",  "inline-enum",               "inline @enum identifiers"  ],
+
+    [ "",  "jshint",                    "enable jshint integration" ],
+    [ "",  "jshint-config=FILE",        "config file for jshint" ],
+    [ "",  "jshint-ignore=CODE+",       "ignore warning from jshint" ],
 
     [ "",  "check-ivars",               "warn about potentially undefined ivars"   ],
     [ "",  "check-this",                "warn about usage of 'this' in oj methods" ],
@@ -123,10 +132,25 @@ if (inputStateFile) {
     }
 }
 
-var result;
-
 try {
-    result = ojc.ojc(options);
+    ojc.ojc(options, function(err, result) {
+        var outContent  = result.content;
+        var outputState = result.state;
+
+        if (outputFile) {
+            fs.writeFileSync(outputFile, outContent, "utf8")
+        } else {
+            if (outContent) {
+                process.stdout.write(outContent);
+            }
+        }
+
+        if (outputStateFile) {
+            fs.writeFileSync(outputStateFile, JSON.stringify(outputState || { }, null, "    "), "utf8")
+        }
+    });
+
+    process.exit(0);
 
 } catch (e) {
     if (inputFiles.length == 1) {
@@ -138,22 +162,3 @@ try {
     if (!e.errorType) console.log(e.stack);
     process.exit(2);
 }
-
-var outContent  = result.content;
-var outputState = result.state;
-
-if (outputFile) {
-    fs.writeFileSync(outputFile, outContent, "utf8")
-} else {
-    if (outContent) {
-        process.stdout.write(outContent);
-    }
-}
-
-if (outputStateFile) {
-    fs.writeFileSync(outputStateFile, JSON.stringify(outputState || { }, null, "    "), "utf8")
-}
-
-
-// process.exit(0);
-
