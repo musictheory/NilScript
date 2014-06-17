@@ -8,7 +8,7 @@ var esprima    = require && require("esprima-oj");
 var estraverse = require("estraverse");
 var Syntax     = esprima.Syntax;
 
-// Add additional estraverse VisitorKeys for the oj extension
+// Add additional VisitorKeys for the oj language extension
 estraverse.VisitorKeys[ Syntax.OJMessageExpression            ] = [ "receiver", "messageSelectors" ];
 estraverse.VisitorKeys[ Syntax.OJMessageReceiver              ] = [ "value" ];
 estraverse.VisitorKeys[ Syntax.OJMessageSelector              ] = [ "name", "argument", "arguments" ];

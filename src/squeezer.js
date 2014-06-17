@@ -1,5 +1,5 @@
 /*
-    compiler.js
+    squeezer.js
     (c) 2013-2014 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
@@ -8,13 +8,19 @@
 var Squeezer = (function () {
 
 
-function Squeezer(state)
+function Squeezer(state, options)
 {
     if (!state) state = { };
 
     this._toMap   = state["to"]      || { };
     this._fromMap = state["from"]    || { };
     this._id      = state["id"]      || 0;
+
+    if (options.start && !this._id) {
+        this._id = options.start;
+    }
+
+    this._maxId = options.max;
 }
 
 var sBase52Digits = "etnrisouaflchpdvmgybwESxTNCkLAOMDPHBjFIqRUzWXVJKQGYZ0516372984";

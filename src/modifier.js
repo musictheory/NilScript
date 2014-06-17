@@ -196,18 +196,24 @@ Modifier.prototype.finish = function()
         sourceRoot: this._options.sourceMapRoot
     });
 
-    var fileForLine = [ "" ];
-    var lineMap     = [ 0  ];
-
     var inLine  = 1;
     var outLine = 1;
 
-    function mapLines(files, lineCounts) {
+    var lineMap = { };
+
+    function mapLines(files, lineCounts, nameForLineMap) {
         for (var i = 0, iLength = files.length; i < iLength; i++) {
             var file      = files[i];
             var lineCount = lineCounts[i];
 
             inLine = 1;
+
+            if (file) {
+                lineMap[file] = {
+                    start: (outLine - 1),
+                    end:   (outLine - 1) + lineCount
+                }
+            }
 
             for (var j = 0; j < lineCount; j++) {
                 if (file) {
@@ -218,9 +224,6 @@ Modifier.prototype.finish = function()
                     });
                 }
 
-                fileForLine[outLine] = file;
-                lineMap[outLine]     = inLine;
-
                 inLine++;
                 outLine++;
             }
@@ -229,6 +232,7 @@ Modifier.prototype.finish = function()
 
     mapLines([ null ], [ this._prependLines.length ]);
     mapLines(this._files, this._lineCounts);
+    mapLines([ null ], [ this._appendLines.length ]);
 
     for (var i = 0, length = this._replacements.length; i < length; i++) {
         var r      = this._replacements[i];
@@ -237,8 +241,6 @@ Modifier.prototype.finish = function()
 
         var before = line.substring(0, r.fromColumn);
         var after  = line.substring(r.toColumn);
-
-        // var originalFile = this._fileForLine[r.line - 1];
 
         if (this._debug) {
             var toRemove = line.substring(r.fromColumn, r.toColumn);
@@ -264,8 +266,9 @@ Modifier.prototype.finish = function()
     Array.prototype.push.apply(finalLines, this._appendLines);
 
     return {
-        content: finalLines.join("\n"),
-        map: generator.toString()
+        content:   finalLines.join("\n"),
+        sourceMap: generator.toString(),
+        lineMap:   lineMap
     }
 }
 
