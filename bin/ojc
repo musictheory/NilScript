@@ -114,8 +114,10 @@ if (appendContents.length) {
 }
 
 var inputStateFile  = options["input-state"];
-var outputStateFile = options["output-state"];
+
 var outputFile      = options["output"];
+var outputStateFile = options["output-state"];
+var outputMapFile   = options["output-map"];
 
 delete(options["input-state"]);
 delete(options["output-state"]);
@@ -134,19 +136,20 @@ if (inputStateFile) {
 
 try {
     ojc.ojc(options, function(err, result) {
-        var outContent  = result.content;
-        var outputState = result.state;
-
         if (outputFile) {
-            fs.writeFileSync(outputFile, outContent, "utf8")
+            fs.writeFileSync(outputFile, result.code, "utf8")
         } else {
-            if (outContent) {
-                process.stdout.write(outContent);
+            if (result.code) {
+                process.stdout.write(result.code);
             }
         }
 
         if (outputStateFile) {
-            fs.writeFileSync(outputStateFile, JSON.stringify(outputState || { }, null, "    "), "utf8")
+            fs.writeFileSync(outputStateFile, JSON.stringify(result.state || { }, null, "    "), "utf8")
+        }
+
+        if (outputMapFile) {
+            fs.writeFileSync(outputMapFile, JSON.stringify(result.map || { }, null, "    "), "utf8")
         }
     });
 

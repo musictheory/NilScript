@@ -219,8 +219,8 @@ Modifier.prototype.finish = function()
                 if (file) {
                     generator.addMapping({
                         source: file,
-                        original:  { line: inLine,  column: null },
-                        generated: { line: outLine, column: null }
+                        original:  { line: inLine,  column: 0 },
+                        generated: { line: outLine, column: 0 }
                     });
                 }
 
@@ -266,9 +266,9 @@ Modifier.prototype.finish = function()
     Array.prototype.push.apply(finalLines, this._appendLines);
 
     return {
-        content:   finalLines.join("\n"),
-        sourceMap: generator.toString(),
-        lineMap:   lineMap
+        code:   finalLines.join("\n"),
+        map:    generator.toString(),
+        _lines: lineMap
     }
 }
 

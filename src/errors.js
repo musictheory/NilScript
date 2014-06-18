@@ -6,19 +6,20 @@
 
 var OJError = { };
 
-OJError.DuplicatePropertyDefinition    = "DuplicatePropertyDefinition";
-OJError.DuplicateMethodDefinition      = "DuplicateMethodDefinition";
-OJError.UndeclaredInstanceVariable     = "UndeclaredInstanceVariable";
-OJError.DuplicateJavascriptFunction    = "DuplicateJavascriptFunction";
-OJError.PropertyAlreadySynthesized     = "PropertyAlreadySynthesized";
-OJError.PropertyAlreadyDynamic         = "PropertyAlreadyDynamic";
-OJError.InstanceVariableAlreadyClaimed = "InstanceVariableAlreadyClaimed";
-OJError.UseOfThisInMethod              = "UseOfThisInMethod";
-OJError.NonLiteralConst                = "NonLiteralConst";
-OJError.NonLiteralEnum                 = "NonLiteralEnum";
-OJError.NonIntegerEnum                 = "NonIntegerEnum";
-OJError.SelfIsReserved                 = "SelfIsReserved";
-OJError.DollarOJIsReserved             = "DollarOJIsReserved";
-OJError.ReservedMethodName             = "ReservedMethodName";
+OJError.ParseError				       = "OJParseError";
+OJError.DuplicatePropertyDefinition    = "OJDuplicatePropertyDefinitionError";
+OJError.DuplicateMethodDefinition      = "OJDuplicateMethodDefinitionError";
+OJError.UndeclaredInstanceVariable     = "OJUndeclaredInstanceVariableError";
+OJError.DuplicateJavascriptFunction    = "OJDuplicateJavascriptFunctionError";
+OJError.PropertyAlreadySynthesized     = "OJPropertyAlreadySynthesizedError";
+OJError.PropertyAlreadyDynamic         = "OJPropertyAlreadyDynamicError";
+OJError.InstanceVariableAlreadyClaimed = "OJInstanceVariableAlreadyClaimedError";
+OJError.UseOfThisInMethod              = "OJUseOfThisInMethodError";
+OJError.NonLiteralConst                = "OJNonLiteralConstError";
+OJError.NonLiteralEnum                 = "OJNonLiteralEnumError";
+OJError.NonIntegerEnum                 = "OJNonIntegerEnumError";
+OJError.SelfIsReserved                 = "OJSelfIsReservedError";
+OJError.DollarOJIsReserved             = "OJDollarOJIsReservedError";
+OJError.ReservedMethodName             = "OJReservedMethodNameError";
 
 module.exports = { OJError: OJError };

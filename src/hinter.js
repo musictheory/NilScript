@@ -14,17 +14,18 @@ var WorkerProcessArgument = "_$_HINTER_WORKER_$_"
 
 var child_process = require("child_process");
 
-function Hinter(contents, config, ignore, lineMap)
+function Hinter(contents, config, ignore, lineMap, files)
 {
     this._contents = contents;
     this._config   = config;
     this._ignore   = ignore;
     this._lineMap  = lineMap;
+    this._files    = files;
 
     this._waitingRequests = [ ];
     this._activeRequests  = 0;
 
-    this._results = { };
+    this._filenameToHintsMap = { };
 
     this._setupWorkers();
 }
@@ -36,16 +37,17 @@ Hinter.prototype._setupWorkers = function()
 
     if (1 || this._lineMap.length > cpuCount) {
         var waiting   = this._waitingRequests;
-        var results   = this._results;
         var workers   = [ ];
         var available = [ ];
         var that = this;
+
+        var filenameToHintsMap = this._filenameToHintsMap;
 
         for (var i = 0; i < cpuCount; i++) {
             var child = child_process.fork(__filename, [ WorkerProcessArgument ]);
 
             child.on("message", function(response) {
-                results[response.filename] = response.errors;
+                filenameToHintsMap[response.filename] = response.errors;
                 that._activeRequests--;
 
                 available.push(this);
@@ -65,6 +67,37 @@ Hinter.prototype._setupWorkers = function()
         this._allWorkers       = workers;
         this._availableWorkers = available;
     }
+}
+
+Hinter.prototype._getSortedHints = function()
+{
+    var files = this._files;
+    var filenameToHintsMap = this._filenameToHintsMap;
+
+    var result = [ ];
+
+    for (var i = 0, iLength = files.length; i < iLength; i++) {
+        var file  = files[i];
+        var hints = filenameToHintsMap[file];
+
+        for (var j = 0, jLength = hints ? hints.length : 0; j < jLength; j++) {
+            var hint   = hints[j];
+            var reason = hint.reason;
+            var error  = new Error(reason);
+            
+            error.line     = hint.line;
+            error.column   = hint.character;
+            error.file     = file;
+            error.code     = hint.code;
+            error.name     = "OJHint";
+            error.reason   = reason;
+            error.original = hint;
+
+            result.push(error);
+        }
+    }
+
+    return result;
 }
 
 
@@ -125,7 +158,7 @@ Hinter.prototype.run = function(callback)
     } else {
         for (var i = 0; i < this._waitingRequests.length; i++) {
             hint(this._waitingRequests[i], function(response) {
-                this._results[response.filename] = response.errors;
+                this._filenameToHintsMap[response.filename] = response.errors;
             });
         }
     }
@@ -142,7 +175,7 @@ Hinter.prototype.run = function(callback)
 
             clearInterval(interval);
 
-            callback(that._results);
+            callback(null, that._getSortedHints());
         }
     }, 0);
 

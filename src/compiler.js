@@ -26,17 +26,35 @@ var OJTemporaryReturnVariable = "$oj_r";
 var OJSuperVariable           = "$oj_super";
 
 
-function throwError(node, errorType, message)
+function throwError(node, name, message)
 {
     var line  = node.loc.start.line;
-    var error = new Error("Line " + line + ": " + message);
+    var error = new Error(message);
 
-    error.lineNumber = line;
-    error.column = node.loc.start.col;
-    error.description = message;
-    error.errorType = errorType;
+    error.line    = line;
+    error.column  = node.loc.start.col;
+    error.name    = name;
+    error.reason  = message;
 
     throw error;
+}
+
+
+function errorForEsprimaError(inError)
+{
+    var line = inError.lineNumber;
+
+    var message = inError.description;
+    message = message.replace(/$.*Line:/, "");
+
+    var outError = new Error(message);
+
+    outError.line   = line;
+    outError.column = inError.column;
+    outError.name   = OJError.ParseError;
+    outError.reason = message;
+
+    return outError;
 }
 
 
@@ -436,18 +454,17 @@ function OJCompiler(options)
     }
 
 
+    this._inputFiles         = files;
+    this._inputLines         = allLines;
+    this._inputLineCounts    = lineCounts;
+    this._inputParserOptions = parserOptions;
+
     this._modifier  = new Modifier(files, lineCounts, allLines, modifierOptions);
-
-    var parseStart = process.hrtime();
-    this._ast = esprima.parse(allLines.join("\n"), parserOptions);
-
-    if (options["dump-time"]) {
-        console.error("---------");
-        console.error(" Parse: ", Math.round(process.hrtime(parseStart)[1] / (1000 * 1000)) + "ms");
-    }
 
     this._options   = options;
     this._classes   = { };
+    this._traverser = null;
+    this._ast       = null;
     this._traverser = null;
 }
 
@@ -491,6 +508,7 @@ OJCompiler.prototype._firstPass = function()
     var classes  = this._classes;
     var inlines  = this._inlines;
     var options  = this._options;
+    var squeezer = this._squeezer;
     var currentClass, currentMethodNode, functionInMethodCount = 0;
 
     var traverser = new Traverser(this._ast);
@@ -504,6 +522,12 @@ OJCompiler.prototype._firstPass = function()
         }
 
         return result;
+    }
+
+    function registerSqueeze(name) {
+        if (squeezer) {
+            squeezer.squeeze(name, true);
+        }
     }
 
     function registerEnum(node)
@@ -610,6 +634,11 @@ OJCompiler.prototype._firstPass = function()
                 registerClass(id.name);
             });
 
+        } else if (type === Syntax.OJAtSqueezeDirective) {
+            node.ids.forEach(function(id) {
+                registerSqueeze(id.name);
+            });
+
         } else if (type === Syntax.OJInstanceVariableDeclaration) {
             currentClass.registerIvarDeclaration(node);
 
@@ -669,6 +698,7 @@ OJCompiler.prototype._secondPass = function()
     var options  = this._options;
     var classes  = this._classes;
     var modifier = this._modifier;
+    var squeezer = this._squeezer;
     var inlines  = this._inlines;
     var methodNodes = [ ];
     var currentClass;
@@ -1002,6 +1032,13 @@ OJCompiler.prototype._secondPass = function()
                 }
             }
         }
+
+        if (squeezer) {
+            var result = squeezer.lookup(name);
+            if (result !== undefined) {
+                modifier.select(node).replace("" + result);
+            }
+        }
     }
 
     function handle_at_property(node)
@@ -1125,6 +1162,10 @@ OJCompiler.prototype._secondPass = function()
             modifier.select(node).remove();
             return Traverser.SkipNode;
 
+        } else if (type === Syntax.OJAtSqueezeDirective) {
+            modifier.select(node).remove();
+            return Traverser.SkipNode;
+
         } else if (type === Syntax.OJInstanceVariableDeclarations) {
             modifier.select(node).remove();
             return Traverser.SkipNode;
@@ -1183,92 +1224,144 @@ OJCompiler.prototype._secondPass = function()
 }
 
 
-OJCompiler.prototype.compile = function()
+OJCompiler.prototype._getFileAndLineForLine = function(inLine)
+{
+    var files      = this._inputFiles;
+    var lineCounts = this._inputLineCounts;
+
+    var startLineForFile = 0; 
+    var endLineForFile   = 0;
+
+    for (var i = 0, length = files.length; i < length; i++) {
+        var lineCount = lineCounts[i] || 0;
+        endLineForFile = startLineForFile + lineCount;
+
+        if (inLine >= startLineForFile && inLine < endLineForFile) {
+            return [ files[i], inLine - startLineForFile ];
+        }
+
+        startLineForFile += lineCount;
+    }
+
+    return null;
+}
+
+
+OJCompiler.prototype.compile = function(callback)
 {
     try {
         var dumpTime = this._options["dump-time"];
         var start;
+        var result;
+        var linesForHinter;
 
-        if (dumpTime) {
+        // Parse to AST
+        try { 
             start = process.hrtime();
+
+            this._ast = esprima.parse(this._inputLines.join("\n"), this._inputParserOptions);
+
+            if (dumpTime) {
+                console.error(" Parse: ", Math.round(process.hrtime(start)[1] / (1000 * 1000)) + "ms");
+            }
+
+        } catch (e) {
+            throw errorForEsprimaError(e);
         }
 
-        this._firstPass();
-
-        for (var className in this._classes) { if (this._classes.hasOwnProperty(className)) {
-            this._classes[className].doDefaultSynthesis();
-        }}
-
-        if (dumpTime) {
-            console.error("Pass 1: ", Math.round(process.hrtime(start)[1] / (1000 * 1000)) + "ms");
+        // Do first pass
+        {
             start = process.hrtime();
+
+            this._firstPass();
+
+            for (var className in this._classes) { if (this._classes.hasOwnProperty(className)) {
+                this._classes[className].doDefaultSynthesis();
+            }}
+
+            if (dumpTime) {
+                console.error("Pass 1: ", Math.round(process.hrtime(start)[1] / (1000 * 1000)) + "ms");
+            }
         }
 
-        this._secondPass();
+        // Do second pass
+        {
+            start = process.hrtime();
 
-        if (dumpTime) {
-            console.error("Pass 2: ", Math.round(process.hrtime(start)[1] / (1000 * 1000)) + "ms");
+            this._secondPass();
+
+            if (dumpTime) {
+                console.error("Pass 2: ", Math.round(process.hrtime(start)[1] / (1000 * 1000)) + "ms");
+            }
+
+            if (this._options["dump-ast"]) {
+                result.ast = JSON.stringify(this._ast, null, 4)
+            }
+        }
+
+        // Run Modifier
+        {
+            start = process.hrtime();
+
+            result = this._modifier.finish();
+
+            if (this._options["dump-time"]) {
+                console.error("Finish: ", Math.round(process.hrtime(start)[1] / (1000 * 1000)) + "ms");
+            }
+        }
+
+        // Add state to result
+        {
+            result.state = { };
+
+            if (this._squeezer) {
+                result.state["squeeze"] = this._squeezer.getState();
+            }
+
+            result.state["inlines"] = this._inlines;
+
+            linesForHinter = result._lines;
+            delete(result._lines);
+        }
+
+
+        if (this._options["jshint"]) {
+            var config = this._options["jshint-config"];
+            var ignore = this._options["jshint-ignore"];
+
+            var hinter = new Hinter(result.code, config, ignore, linesForHinter, this._inputFiles);
+
+            hinter.run(function(err, hints) {
+                result.hints = hints;
+                callback(err, result);
+            });
+
+        } else {
+            callback(null, result);
         }
 
     } catch (e) {
-        if (!e.errorType) {
+        if (e.name.indexOf("OJ")) {
+            console.log("Internal oj error!")
+            console.log("------------------------------------------------------------")
             console.log(e);
             console.log(e.stack);
-        } else {
-            throw e;
+            console.log("------------------------------------------------------------")
         }
-    }
 
-    return this;
-}
+        if (e.line && !e.file) {
+            var fileAndLine = this._getFileAndLineForLine(e.line);
 
-
-OJCompiler.prototype.finish = function(callback)
-{
-    var start  = process.hrtime();
-    var result = this._modifier.finish();
-
-    if (this._options["dump-ast"]) {
-        result.ast = JSON.stringify(this._ast, null, 4)
-    }
-
-    result.state = { };
-
-    if (this._squeezer) {
-        result.state["squeeze"] = this._squeezer.getState();
-    }
-
-    result.state["inlines"] = this._inlines;
-    result.contents = result.content;
-
-    if (this._options["dump-time"]) {
-        console.error("Finish: ", Math.round(process.hrtime(start)[1] / (1000 * 1000)) + "ms");
-    }
-
-    var lineMap = result.lineMap;
-    delete(result.lineMap);
-
-    if (this._options["jshint"]) {
-        var config = this._options["jshint-config"];
-        var ignore = this._options["jshint-ignore"];
-
-        var hinter = new Hinter(result.contents, config, ignore, lineMap);
-
-        hinter.run(function(hints) {
-            for (var key in hints) {
-                var hint = hints[key];
-
-                console.log(key, hints[key]);
+            if (fileAndLine) {
+                e.file = fileAndLine[0];
+                e.line = fileAndLine[1];
             }
+        }
 
-            result.hints = hints;
-            callback(null, result);
-        });
-
-    } else {
-        callback(null, result);
+        callback(e, null);
     }
 }
+
 
 return OJCompiler; })();
 
