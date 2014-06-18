@@ -26,6 +26,7 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
   - [Property Attributes](#property-attributes) 
   - [Initialization](#property-init) 
   - [Behind the Scenes](#property-compiler)
+- [Callbacks](#callbacks)
 - [Selectors](#selector)
 - [Boolean/null aliases](#aliases)
 - [@enum and @const](#enum)
@@ -305,6 +306,7 @@ To access any instance variable, simply use its name.  No `this.` or `self.` pre
 
 _Note:_ If the `--check-ivars` command-line option is passed into the compiler, JavaScript identifiers that look like instance variables (with a underscore prefix) but are not defined will produce a warning.    
 
+
 ### <a name="property-attributes"></a>Property Attributes
 
 All valid Objective-C attributes may be used on a declared property:
@@ -367,6 +369,27 @@ would compile into:
 
     });
 
+---
+## <a name="callbacks"></a>Callbacks
+
+Javascript frequently requires `.bind(this)` on callbacks.  For example:
+
+    Counter.prototype.incrementAfterDelay = function(delay) {
+        setTimeout(function() {
+            this.count++;
+            this.updateDisplay();
+        }.bind(this), delay);       // Bind needed for 'this' to work
+    }
+
+oj handles the binding for you.  No additional code is needed to access ivars or `self`:
+
+    - (void) incrementAfterDelay:(Number)delay
+    {
+        setTimeout(function() {
+            _count++;
+            [self updateDisplay];
+        }, delay);
+    }
 
 ---
 ## <a name="selector"></a>Selectors
