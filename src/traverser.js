@@ -24,6 +24,7 @@ estraverse.VisitorKeys[ Syntax.OJAtPropertyDirective          ] = [ "attributes"
 estraverse.VisitorKeys[ Syntax.OJAtPropertyAttribute          ] = [ ];
 estraverse.VisitorKeys[ Syntax.OJAtSynthesizeDirective        ] = [ "pairs" ];
 estraverse.VisitorKeys[ Syntax.OJAtClassDirective             ] = [ "ids" ];
+estraverse.VisitorKeys[ Syntax.OJAtSqueezeDirective           ] = [ "ids" ];
 estraverse.VisitorKeys[ Syntax.OJAtSynthesizePair             ] = [ "id", "backing" ];
 estraverse.VisitorKeys[ Syntax.OJAtDynamicDirective           ] = [ "ids" ];
 estraverse.VisitorKeys[ Syntax.OJAtSelectorDirective          ] = [ ];

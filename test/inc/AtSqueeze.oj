@@ -1,0 +1,14 @@
+var assert = require("assert");
+
+@squeeze AtSqueezeTest;
+
+function Foo() { }
+
+Foo.prototype.AtSqueezeTest = function AtSqueezeTest() {
+	var AtSqueezeTest = 4;
+
+	return {
+		AtSqueezeTest: 1
+	};
+};
+

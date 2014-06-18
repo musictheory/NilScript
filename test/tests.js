@@ -23,7 +23,7 @@ function runTest(name, options)
 {
     compile(__dirname + "/" + name + ".oj", options, function(err, result) {
         test(name, function() {
-            assert(eval(result.content), true);
+            assert(eval(result.code), true);
         });
     })
 
@@ -32,7 +32,7 @@ function runTest(name, options)
 
     compile(__dirname + "/" + name + ".oj", options, function(err, result) {
         test(name, function() {
-            assert(eval(result.content), true);
+            assert(eval(result.code), true);
         });
     });
 }

@@ -11,8 +11,7 @@ function ojc(options, callback)
 {
     try {
         var compiler = new OJCompiler(options);
-        compiler.compile();
-        compiler.finish(callback);
+        compiler.compile(callback);
 
     } catch (e) {
         callback(e, null);
