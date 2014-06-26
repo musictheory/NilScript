@@ -40,11 +40,17 @@ function mixin(from, to, overwrite, callback)
 }
 
 
-function getDisplayName(className, methodName, prefix)
+function _getDisplayName(className, methodName, prefix)
 {
-    className = className.substr(6);
-    methodName = methodName.substr(6);
-    methodName = methodName.replace(/([A-Za-z0-9])_/g, "$1:");
+    if (className.indexOf("$oj$") != 0) {
+        className = _getReadableForRawName(className);
+    }
+
+    if (methodName.indexOf("$oj$") != 0) {
+        methodName = _getReadableForRawName(methodName);
+        methodName = methodName.replace(/([A-Za-z0-9])_/g, "$1:");
+    }
+
     return [ prefix, "[", className, " ", methodName, "]" ].join("");
 }
 
@@ -88,11 +94,11 @@ function _registerClass(nameObject, superObject, callback)
         mixin(superclass, cls);
 
         mixin(class_methods, cls, true, function(key, method) {
-            method.displayName = getDisplayName(name, key, "+");
+            method.displayName = _getDisplayName(name, key, "+");
         });
 
         mixin(instance_methods, cls.prototype, true, function(key, method) {
-            method.displayName = getDisplayName(name, key, "-");
+            method.displayName = _getDisplayName(name, key, "-");
         });
 
         _classNameToClassMap[name] = cls;
@@ -139,8 +145,10 @@ function getClassList()
 
 function getSubclassesOfClass(cls)
 {
+    if (!cls) return null;
+
     var results = [ ];
-    var name = class_getName(cls);
+    var name = cls["$oj_name"];
 
     for (var key in _classNameToSuperNameMap) { if (hop(_classNameToSuperNameMap, key)) {
         var superName = _classNameToSuperNameMap[key];
@@ -181,6 +189,17 @@ function _getRawName(selector)
     return name;
 }
 
+
+function _getReadableForRawName(inName)
+{
+    if (inName.indexOf("$oj$") != 0) {
+        return inName.substr(6);
+    }
+
+    return inName;
+}
+
+
 function sel_getName(selector)
 {
     if (!selector) return null;
@@ -199,7 +218,7 @@ function sel_isEqual(sel1, sel2)
 function class_getName(cls)
 {
     if (cls && cls["$oj_name"]) {
-        return cls["$oj_name"].substr(6);
+        return _getReadableForRawName(cls["$oj_name"]);
     }
 
     return null;

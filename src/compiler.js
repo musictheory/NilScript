@@ -434,9 +434,18 @@ function OJCompiler(options)
 
     this._inlines = state["inlines"] || { };
 
+    var additionalInlines = options["additional-inlines"];
+    if (additionalInlines) {
+        for (var key in additionalInlines) {
+            if (additionalInlines.hasOwnProperty(key)) {
+                this._inlines[key] = JSON.stringify(additionalInlines[key]);
+            }
+        }
+    }
+
     if (options["squeeze"]) {
         var start = options["squeeze-start-index"] || 0;
-        var max   = options["squeeze-max-index"]   || 0;
+        var max   = options["squeeze-end-index"]   || 0;
 
         this._squeezer = new Squeezer(state["squeeze"], {
             start: start,
@@ -775,10 +784,6 @@ OJCompiler.prototype._secondPass = function()
         var hasArguments = false;
 
         var firstSelector, lastSelector;
-
-        if (!node.messageSelectors) {
-            console.log(node);
-        }
 
         for (var i = 0, length = node.messageSelectors.length; i < length; i++) {
             var messageSelector = node.messageSelectors[i];
@@ -1342,11 +1347,11 @@ OJCompiler.prototype.compile = function(callback)
 
     } catch (e) {
         if (e.name.indexOf("OJ")) {
-            console.log("Internal oj error!")
-            console.log("------------------------------------------------------------")
-            console.log(e);
-            console.log(e.stack);
-            console.log("------------------------------------------------------------")
+            console.error("Internal oj error!")
+            console.error("------------------------------------------------------------")
+            console.error(e);
+            console.error(e.stack);
+            console.error("------------------------------------------------------------")
         }
 
         if (e.line && !e.file) {

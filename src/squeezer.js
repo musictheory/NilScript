@@ -5,9 +5,6 @@
 */
 
 
-var Squeezer = (function () {
-
-
 function Squeezer(state, options)
 {
     if (!state) state = { };
@@ -23,6 +20,7 @@ function Squeezer(state, options)
 
     this._maxId = options.max;
 }
+
 
 var sBase52Digits = "etnrisouaflchpdvmgybwESxTNCkLAOMDPHBjFIqRUzWXVJKQGYZ0516372984";
 
@@ -84,8 +82,6 @@ Squeezer.prototype.getState = function()
     };
 }
 
-
-return Squeezer; })();
 
 module.exports = { Squeezer: Squeezer };
 

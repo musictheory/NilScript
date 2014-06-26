@@ -7,6 +7,7 @@
 var OJError = { };
 
 OJError.ParseError				       = "OJParseError";
+OJError.DuplicateClassDefinition       = "DuplicateClassDefinition";
 OJError.DuplicatePropertyDefinition    = "OJDuplicatePropertyDefinitionError";
 OJError.DuplicateMethodDefinition      = "OJDuplicateMethodDefinitionError";
 OJError.UndeclaredInstanceVariable     = "OJUndeclaredInstanceVariableError";

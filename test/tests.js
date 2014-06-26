@@ -22,6 +22,7 @@ var compile = function(inFile, options, callback) {
 function runTest(name, options)
 {
     compile(__dirname + "/" + name + ".oj", options, function(err, result) {
+        if (err) throw err;
         test(name, function() {
             assert(eval(result.code), true);
         });
@@ -31,6 +32,7 @@ function runTest(name, options)
     options.squeeze = true;
 
     compile(__dirname + "/" + name + ".oj", options, function(err, result) {
+        if (err) throw err;
         test(name, function() {
             assert(eval(result.code), true);
         });
@@ -38,10 +40,10 @@ function runTest(name, options)
 }
 
 
-function shouldFailToCompile(name, errorType, options) {
+function shouldFailToCompile(name, errorName, options) {
 
     compile(__dirname + "/should_fail/" + name + ".oj", options, function(err, result) {
-        var didFailWithCorrectType = (err.errorType == errorType);
+        var didFailWithCorrectType = (err.name == errorName);
 
         test(name, function() {
             assert(didFailWithCorrectType, name + " compiled, but shouldn't have");
