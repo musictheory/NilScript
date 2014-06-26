@@ -59,6 +59,7 @@ runTest("inc/EnumAndConst");
 runTest("issues/issue1");
 runTest("issues/issue2");
 runTest("issues/issue10");
+runTest("issues/issue16");
 
 shouldFailToCompile("CheckIvar",                       OJError.UndeclaredInstanceVariable, { "check-ivars": true });
 shouldFailToCompile("UseOfThisInMethod",               OJError.UseOfThisInMethod,          { "check-this": true  });

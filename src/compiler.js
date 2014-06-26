@@ -877,14 +877,14 @@ OJCompiler.prototype._secondPass = function()
 
                 replaceMessageSelectors();
 
-                modifier.from(node).to(receiver).replace("(" + OJTemporaryReturnVariable + " = (");
+                modifier.from(node).to(receiver).replace("((" + OJTemporaryReturnVariable + " = (");
 
                 if (receiver.type == Syntax.Identifier && classes[receiver.name]) {
                     modifier.select(receiver).replace(OJGlobalVariable + "._cls." + compiler.getClassName(receiver.name));
                 }
 
                 modifier.from(receiver).to(firstSelector).replace(")) && " + OJTemporaryReturnVariable + "." + methodName + "(");
-                modifier.from(lastSelector).to(node).replace(")");
+                modifier.from(lastSelector).to(node).replace("))");
 
                 return;
             }
