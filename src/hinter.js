@@ -168,14 +168,21 @@ Hinter.prototype.run = function(callback)
 
     var interval = setInterval(function() {
         if (that._waitingRequests.length == 0 && that._activeRequests == 0) {
-            for (var i = 0; i < workers.length; i++) {
-                workers[i].disconnect();
+            try {
+                for (var i = 0; i < workers.length; i++) {
+                    workers[i].disconnect();
+                }
+
+                that._allWorkers = [ ];
+
+                clearInterval(interval);
+
+                var sorted = that._getSortedHints();
+                callback(null, sorted);
+
+            } catch (e) {
+                callback(e);
             }
-            that._allWorkers = [ ];
-
-            clearInterval(interval);
-
-            callback(null, that._getSortedHints());
         }
     }, 0);
 

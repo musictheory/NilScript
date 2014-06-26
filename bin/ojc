@@ -20,7 +20,7 @@ var opt = getopt.create([
     [ "",  "append=FILE+",              "append file to output (without compiling or hinting)"],
     [ "s", "squeeze",                   "enable squeezer" ],
     [ "",  "squeeze-start-index",       "start index for squeezer" ],
-    [ "",  "squeeze-max-index",         "max index for squeezer" ],
+    [ "",  "squeeze-end-index",         "end index for squeezer" ],
 
     [ "",  "inline-const",              "inline @const identifiers" ],
     [ "",  "inline-enum",               "inline @enum identifiers"  ],
@@ -139,7 +139,9 @@ try {
         if (outputFile) {
             fs.writeFileSync(outputFile, result.code, "utf8")
         } else {
-            if (result.code) {
+            if (err) {
+                console.error(err);
+            } else if (result.code) {
                 process.stdout.write(result.code);
             }
         }
