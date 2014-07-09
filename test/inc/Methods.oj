@@ -62,6 +62,11 @@
     return YES;
 }
 
+- bare: moo
+{
+
+}
+
 - (BOOL) runTests
 {
     var result = true;

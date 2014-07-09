@@ -472,9 +472,7 @@ function OJCompiler(options)
 
     this._options   = options;
     this._classes   = { };
-    this._traverser = null;
     this._ast       = null;
-    this._traverser = null;
 }
 
 
@@ -1146,7 +1144,6 @@ OJCompiler.prototype._secondPass = function()
     }
 
     var traverser = new Traverser(this._ast);
-    this._traverser = traverser;
 
     traverser.traverse(function(node, type) {
         if (type === Syntax.OJMessageExpression) {
@@ -1298,10 +1295,6 @@ OJCompiler.prototype.compile = function(callback)
             if (dumpTime) {
                 console.error("Pass 2: ", Math.round(process.hrtime(start)[1] / (1000 * 1000)) + "ms");
             }
-
-            if (this._options["dump-ast"]) {
-                result.ast = JSON.stringify(this._ast, null, 4)
-            }
         }
 
         // Run Modifier
@@ -1329,6 +1322,15 @@ OJCompiler.prototype.compile = function(callback)
             delete(result._lines);
         }
 
+
+        if (this._options["dump-ast"]) {
+            result.ast = JSON.stringify(this._ast, function(key, value) {
+                if (key == "parent") {
+                    return undefined;
+                }
+                return value;
+            }, 4)
+        }
 
         if (this._options["jshint"]) {
             var config = this._options["jshint-config"];
