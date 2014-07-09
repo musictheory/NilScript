@@ -142,7 +142,11 @@ try {
             if (err) {
                 console.error(err);
             } else if (result.code) {
-                process.stdout.write(result.code);
+                if (options["dump-ast"]) {
+                    process.stdout.write(result.ast);
+                } else {
+                    process.stdout.write(result.code);
+                }
             }
         }
 
