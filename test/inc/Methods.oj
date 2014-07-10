@@ -1,8 +1,10 @@
 
 @protocol ExampleProtocol
+@required
 + (BOOL) classMethodDefinedInProtocol;
 - (void) instanceMethodDefinedInProtocol;
 
+@optional
 + (BOOL) classMethodDefinedInProtocolWithString:(String)s;
 - (void) instanceMethodDefinedInProtocolWithString:(string)s;
 

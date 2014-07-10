@@ -4,6 +4,9 @@
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
+var _ = require("lodash");
+
+
 function isJScriptReservedWord(id)
 {
     switch (id.length) {
@@ -26,7 +29,7 @@ function isJScriptReservedWord(id)
 }
 
 
-var sRuntimeDefinedMethods = {
+var sBaseObjectSelectors = {
     "alloc": 1,
     "class": 1,
     "className": 1,
@@ -34,16 +37,16 @@ var sRuntimeDefinedMethods = {
     "description": 1,
     "init": 1,
     "initialize": 1,
-    "instancesRespondToSelector_": 1,
-    "isEqual_": 1,
-    "isKindOfClass_": 1,
-    "isMemberOfClass_": 1,
-    "isSubclassOfClass_": 1,
+    "instancesRespondToSelector:": 1,
+    "isEqual:": 1,
+    "isKindOfClass:": 1,
+    "isMemberOfClass:": 1,
+    "isSubclassOfClass:": 1,
     "load": 1,
-    "performSelector_": 1,
-    "performSelector_withObject_": 1,
-    "performSelector_withObject_withObject_": 1,
-    "respondsToSelector_": 1,
+    "performSelector:": 1,
+    "performSelector:withObject:": 1,
+    "performSelector:withObject:withObject:": 1,
+    "respondsToSelector:": 1,
     "superclass": 1,
     "toString": 1
 };
@@ -68,13 +71,19 @@ function isReservedSelectorName(name)
 }
 
 
-function isRuntimeDefinedMethod(name)
+function isBaseObjectSelectorName(name)
 {
-    return !!sRuntimeDefinedMethods[name];
+    return !!sBaseObjectSelectors[name];
 }
 
 
-function isRuntimeDefinedClass(name)
+function getBaseObjectSelectorNames()
+{
+    return _.keys(sBaseObjectSelectors);
+}
+
+
+function isBaseObjectClass(name)
 {
     return name == "BaseObject";
 }
@@ -97,9 +106,10 @@ function throwError(node, name, message)
 
 
 module.exports = {
-    isJScriptReservedWord:  isJScriptReservedWord,
-    isReservedSelectorName: isReservedSelectorName,
-    isRuntimeDefinedMethod: isRuntimeDefinedMethod,
-    isRuntimeDefinedClass:  isRuntimeDefinedClass,
-    throwError:             throwError
+    isJScriptReservedWord:      isJScriptReservedWord,
+    isReservedSelectorName:     isReservedSelectorName,
+    isBaseObjectSelectorName:   isBaseObjectSelectorName,
+    getBaseObjectSelectorNames: getBaseObjectSelectorNames,
+    isBaseObjectClass:          isBaseObjectClass,
+    throwError:                 throwError
 };

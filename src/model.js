@@ -34,12 +34,13 @@ function OJProperty(name, type, writable, getter, setter, ivar)
 }
 
 
-function OJMethod(selectorName, selectorType, returnType, parameterTypes)
+function OJMethod(selectorName, selectorType, returnType, parameterTypes, variableNames)
 {
     this.selectorName   = selectorName;
     this.selectorType   = selectorType;
     this.returnType     = returnType;
     this.parameterTypes = parameterTypes;
+    this.variableNames  = variableNames;
     this.synthesized    = false;
 }
 
@@ -50,15 +51,22 @@ function sMakeOJMethodForNode(node)
     var selectorType    = node.selectorType;
     var methodSelectors = node.methodSelectors;
 
+    var variableNames  = [ ];
     var parameterTypes = [ ];
 
     var methodType;
     for (var i = 0, length = (methodSelectors.length || 0); i < length; i++) {
-        methodType = methodSelectors[i].methodType;
+        methodType   = methodSelectors[i].methodType;
+        variableName = methodSelectors[i].variableName;
+
         if (methodType) {
             parameterTypes.push(methodType.value);
-        } else if (methodSelectors[i].variableName) {
+        } else if (variableName) {
             parameterTypes.push("id");
+        }
+
+        if (variableName) {
+            variableNames.push(variableName.name);
         }
     }
 
@@ -66,7 +74,7 @@ function sMakeOJMethodForNode(node)
     if (node.returnType) returnType = node.returnType.value;
     if (!returnType) returnType = "id";
 
-    return new OJMethod(selectorName, selectorType, returnType, parameterTypes);
+    return new OJMethod(selectorName, selectorType, returnType, parameterTypes, variableNames);
 }
 
 
@@ -76,6 +84,30 @@ function OJProtocol(name)
 
     this._classMethodMap    = { };
     this._instanceMethodMap = { };
+}
+
+
+OJProtocol.prototype.loadState = function(state)
+{
+    this.name = state.name;
+
+    _.each(state.classMethods, function(m) {
+        this._classMethodMap[m.name] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames);
+    });
+
+    _.each(state.instanceMethods, function(m) {
+        this._instanceMethodMap[m.name] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames);
+    });
+}
+
+
+OJProtocol.prototype.saveState = function()
+{
+    return {
+        name:            this.name,
+        classMethods:    _.values(this._classMethodMap),
+        instanceMethods: _.values(this._instanceMethodMap)
+    }
 }
 
 
@@ -121,20 +153,25 @@ OJClass.prototype.loadState = function(state)
     this.name = state.name;
     this.superclassName = state.superclassName;
 
+    var ivarMap           =  this._ivarMap;
+    var propertyMap       =  this._propertyMap;
+    var classMethodMap    =  this._classMethodMap;
+    var instanceMethodMap =  this._instanceMethodMap;
+
     _.each(state.ivars, function(i) {
-        this._ivarMap[i.name] = new OJIvar(i.name, i.type);
+        ivarMap[i.name] = new OJIvar(i.name, i.type);
     });
 
     _.each(state.properties, function(p) {
-        this._propertyMap[p.name] = new OJProperty(p.name, p.type, p.writable, p.getter, p.setter, p.ivar);
+        propertyMap[p.name] = new OJProperty(p.name, p.type, p.writable, p.getter, p.setter, p.ivar);
     });
 
     _.each(state.classMethods, function(m) {
-        this._classMethodMap[m.name] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes);
+        classMethodMap[m.selectorName] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames);
     });
 
     _.each(state.instanceMethods, function(m) {
-        this._instanceMethodMap[m.name] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes);
+        instanceMethodMap[m.selectorName] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames);
     });
 }
 
