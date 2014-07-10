@@ -140,7 +140,7 @@ OJCompiler.prototype.getClassName = function(className)
 {
     if (!className) return;
 
-    if (!Utils.isRuntimeDefinedClass(className)) {
+    if (!Utils.isBaseObjectClass(className)) {
         if (this._squeezer) {
             return this._squeezer.squeeze(OJClassPrefix + className);
         } else {
@@ -159,7 +159,7 @@ OJCompiler.prototype.getMethodName = function(selectorName)
     replacedName = replacedName.replace(/^__/g, "_");
     replacedName = replacedName.replace(/\:/g,  "_");
 
-    if (!Utils.isRuntimeDefinedMethod(replacedName)) {
+    if (!Utils.isBaseObjectSelectorName(selectorName)) {
         if (this._squeezer) {
             return this._squeezer.squeeze(OJMethodPrefix + replacedName);
         } else {
@@ -383,11 +383,11 @@ OJCompiler.prototype._firstPass = function()
 
 OJCompiler.prototype._prepareForSecondPass = function()
 {
+    var i, length, methods;
+
     for (var className in this._classes) { if (this._classes.hasOwnProperty(className)) {
         var cls = this._classes[className];
         cls.doAutomaticSynthesis();
-
-        var i, length, methods;
 
         methods = cls.getInstanceMethods();
         for (i = 0, length = methods.length; i < length; i++) {
@@ -403,8 +403,6 @@ OJCompiler.prototype._prepareForSecondPass = function()
     for (var protocolName in this._protocols) { if (this._protocols.hasOwnProperty(protocolName)) {
         var protocol = this._protocols[protocolName];
 
-        var i, length, methods;
-
         methods = protocol.getInstanceMethods();
         for (i = 0, length = methods.length; i < length; i++) {
             this._knownSelectors[methods[i].selectorName] = true;
@@ -415,6 +413,12 @@ OJCompiler.prototype._prepareForSecondPass = function()
             this._knownSelectors[methods[i].selectorName] = true;
         }
     }}
+
+
+    var baseObjectSelectors = Utils.getBaseObjectSelectorNames();
+    for (i = 0, length = baseObjectSelectors.length; i < length; i++) {
+        this._knownSelectors[baseObjectSelectors[i]] = true;
+    }
 }
 
 
@@ -607,6 +611,10 @@ OJCompiler.prototype._secondPass = function()
         var hasArguments = false;
 
         var firstSelector, lastSelector;
+
+        if (knownSelectors && !knownSelectors[node.selectorName]) {
+            Utils.throwError(node, OJError.UnknownSelector, "Use of unknown selector '" + node.selectorName + "'");
+        }
 
         for (var i = 0, length = node.messageSelectors.length; i < length; i++) {
             var messageSelector = node.messageSelectors[i];
@@ -1191,7 +1199,7 @@ OJCompiler.prototype.compile = function(callback)
         }
 
     } catch (e) {
-        if (e.name.indexOf("OJ")) {
+        if (e.name.indexOf("OJ") !== 0) {
             console.error("Internal oj error!")
             console.error("------------------------------------------------------------")
             console.error(e);
