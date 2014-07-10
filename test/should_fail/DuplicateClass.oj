@@ -1,0 +1,5 @@
+@implementation DuplicateClass
+@end
+
+@implementation DuplicateClass
+@end

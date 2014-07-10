@@ -79,6 +79,8 @@ shouldFailToCompile("NonLiteralEnum1",                 OJError.NonLiteralEnum);
 shouldFailToCompile("NonLiteralEnum2",                 OJError.NonLiteralEnum);
 shouldFailToCompile("NonIntegerEnum1",                 OJError.NonIntegerEnum);
 shouldFailToCompile("NonIntegerEnum2",                 OJError.NonIntegerEnum);
+shouldFailToCompile("DuplicateClass",                  OJError.DuplicateClassDefinition);
+shouldFailToCompile("DuplicateClass2",                 OJError.DuplicateClassDefinition);
 
 //Needs compiler changes to work
 //shouldFailToCompile("TestReservedWord1",               OJError.SelfIsReserved);
