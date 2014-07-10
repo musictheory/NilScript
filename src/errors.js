@@ -11,6 +11,7 @@ OJError.DuplicateClassDefinition       = "DuplicateClassDefinition";
 OJError.DuplicatePropertyDefinition    = "OJDuplicatePropertyDefinitionError";
 OJError.DuplicateMethodDefinition      = "OJDuplicateMethodDefinitionError";
 OJError.UndeclaredInstanceVariable     = "OJUndeclaredInstanceVariableError";
+OJError.UnknownProperty                = "UnknownProperty";
 OJError.DuplicateJavascriptFunction    = "OJDuplicateJavascriptFunctionError";
 OJError.PropertyAlreadySynthesized     = "OJPropertyAlreadySynthesizedError";
 OJError.PropertyAlreadyDynamic         = "OJPropertyAlreadyDynamicError";
@@ -22,5 +23,6 @@ OJError.NonIntegerEnum                 = "OJNonIntegerEnumError";
 OJError.SelfIsReserved                 = "OJSelfIsReservedError";
 OJError.DollarOJIsReserved             = "OJDollarOJIsReservedError";
 OJError.ReservedMethodName             = "OJReservedMethodNameError";
+OJError.UnknownSelector                = "OJUnknownSelector";
 
 module.exports = { OJError: OJError };

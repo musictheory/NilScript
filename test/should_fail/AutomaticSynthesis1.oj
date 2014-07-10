@@ -1,0 +1,10 @@
+
+@implementation AutomaticSynthesis
+
+@property id foo;
+
+// This should fail as _foo isn't automatically synthesized
+- (void) setFoo:(id)foo { _foo = foo; }
+- (id) foo { return _foo; }
+
+@end
