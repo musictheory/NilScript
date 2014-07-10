@@ -184,8 +184,49 @@ OJCompiler.prototype._firstPass = function()
 
     var traverser = new Traverser(this._ast);
 
-    function registerClass(name, superclassName, overrideExisting) {
+    function registerClassImplementation(node) {
+        var name           = node.id.name;
+        var superclassName = node.superClass && node.superClass.value;
         var result;
+
+        if (classes[name] && !classes[name].forward) {
+            Utils.throwError(node, OJError.DuplicateClassDefinition, "Duplicate declaration of class '" + name +"'");
+        }
+
+        var result = new OJClass(name, superclassName);
+        classes[name] = result;
+        result.forward = false;
+
+        if (superclassName) {
+            registerClassForwardDeclaration(superclassName);
+        }
+
+        return result;
+    }
+
+    function registerClassForwardDeclaration(name) {
+        var result;
+
+        if (!classes[name]) {
+            result = new OJClass(name);
+            classes[name] = result;
+            result.forward = true;
+        }
+
+        return result;
+    }
+
+ 
+    function registerClass(name, superclassName, isImplementation) {
+        var result;
+
+        if (isImplementation) {
+            classes[name] = result = new OJClass(name, superclassName);
+            result.forward = false;
+
+        } else if (!classes[name]) {
+
+        }
 
         if (!classes[name] || overrideExisting) {
             classes[name] = result = new OJClass(name, superclassName);
@@ -303,18 +344,14 @@ OJCompiler.prototype._firstPass = function()
 
     traverser.traverse(function(node, type) {
         if (type === Syntax.OJClassImplementation) {
-            currentClass = registerClass(node.id.name, node.superClass && node.superClass.value, true);
-
-            if (node.superClass && node.superClass.value) {
-                registerClass(node.superClass.value);
-            }
+            currentClass = registerClassImplementation(node);
 
         } else if (type === Syntax.OJProtocolDefinition) {
             currentProtocol = registerProtocol(node.id.name);
 
         } else if (type === Syntax.OJAtClassDirective) {
             node.ids.forEach(function(id) {
-                registerClass(id.name);
+                registerClassForwardDeclaration(id.name);
             });
 
         } else if (type === Syntax.OJAtSqueezeDirective) {

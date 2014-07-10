@@ -140,6 +140,7 @@ function OJClass(name, superclassName)
 {
     this.name           = name;
     this.superclassName = superclassName;
+    this.forward        = false;
 
     this._ivarMap           = { };
     this._propertyMap       = { };
@@ -150,8 +151,9 @@ function OJClass(name, superclassName)
 
 OJClass.prototype.loadState = function(state)
 {
-    this.name = state.name;
+    this.name           = state.name;
     this.superclassName = state.superclassName;
+    this.forward        = state.forward; 
 
     var ivarMap           =  this._ivarMap;
     var propertyMap       =  this._propertyMap;
@@ -181,6 +183,7 @@ OJClass.prototype.saveState = function()
     return {
         name:            this.name,
         superclassName:  this.superclassName,
+        forward:         this.forward,
         ivars:           _.values(this._ivarMap),
         properties:      _.values(this._propertyMap),
         classMethods:    _.values(this._classMethodMap),
