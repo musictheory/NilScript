@@ -25,6 +25,7 @@
     }],
     "dependencies": {
         "esprima-oj":  "*",
+        "lodash":      "*",
         "estraverse":  "1.5.x",
         "source-map":  "0.1.x",
         "node-getopt": "0.2.x",

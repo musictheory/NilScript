@@ -43,7 +43,7 @@ function runTest(name, options)
 function shouldFailToCompile(name, errorName, options) {
 
     compile(__dirname + "/should_fail/" + name + ".oj", options, function(err, result) {
-        var didFailWithCorrectType = (err.name == errorName);
+        var didFailWithCorrectType = err && (err.name == errorName);
 
         test(name, function() {
             assert(didFailWithCorrectType, name + " compiled, but shouldn't have");
@@ -87,3 +87,6 @@ shouldFailToCompile("TestReservedWord3",               OJError.DollarOJIsReserve
 
 shouldFailToCompile("TestReservedMethod1",             OJError.ReservedMethodName);
 shouldFailToCompile("TestReservedMethod2",             OJError.ReservedMethodName);
+
+shouldFailToCompile("AutomaticSynthesis1",             OJError.UndeclaredInstanceVariable, { "check-ivars": true  });
+shouldFailToCompile("AutomaticSynthesis2",             OJError.UndeclaredInstanceVariable, { "check-ivars": true  });

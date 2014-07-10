@@ -8,4 +8,7 @@
 - (void) doFoo:(id)foo withBar:(id)bar { }
 - (void) doFoo_withBar:(id)bar { }
 
+- (void) _doFoo:(id)foo withBar:(id)bar { }
+- (void) _doFoo_withBar:(id)bar { }
+
 @end

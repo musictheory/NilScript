@@ -4,14 +4,16 @@
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-var esprima    = require && require("esprima-oj");
-var Modifier   = require && require("./modifier").Modifier;
-var Squeezer   = require && require("./squeezer").Squeezer;
-var OJError    = require && require("./errors").OJError;
-var Traverser  = require && require("./traverser").Traverser;
-var Hinter     = require && require("./hinter").Hinter;
-var Utils      = require && require("./utils");
-var SourceNode = require && require("source-map").SourceNode;
+var esprima    = require("esprima-oj");
+var Modifier   = require("./modifier").Modifier;
+var Squeezer   = require("./squeezer").Squeezer;
+var OJError    = require("./errors").OJError;
+var Traverser  = require("./traverser").Traverser;
+var Hinter     = require("./hinter").Hinter;
+var Utils      = require("./utils");
+var SourceNode = require("source-map").SourceNode;
+var OJClass    = require("./model").OJClass;
+var OJProtocol = require("./model").OJProtocol;
 var Syntax     = esprima.Syntax;
 
 
@@ -24,20 +26,6 @@ var OJClassMethodsVariable    = "$oj_s";
 var OJInstanceMethodsVariable = "$oj_m";
 var OJTemporaryReturnVariable = "$oj_r";
 var OJSuperVariable           = "$oj_super";
-
-
-function throwError(node, name, message)
-{
-    var line  = node.loc.start.line;
-    var error = new Error(message);
-
-    error.line    = line;
-    error.column  = node.loc.start.col;
-    error.name    = name;
-    error.reason  = message;
-
-    throw error;
-}
 
 
 function errorForEsprimaError(inError)
@@ -56,337 +44,6 @@ function errorForEsprimaError(inError)
 
     return outError;
 }
-
-
-var OJClass = (function () {
-
-var OJDynamicProperty     = " OJDynamicProperty ";
-var OJIvarWithoutProperty = " OJIvarWithoutProperty ";
-
-function OJClass(name, superclassName, compiler)
-{
-    this.name = name;
-    this.superclassName = superclassName;
-
-    this._compiler = compiler;
-
-    this._atPropertyNodes   = { };
-    this._propertyToIvarMap = { };
-    this._ivarToPropertyMap = { };
-    this._ivarToTypeMap     = { };
-    this._instanceMethods   = { };
-    this._classMethods      = { };
-
-    this._jsNameToInstanceMethodMap = { };
-    this._jsNameToClassMethodMap    = { };
-}
-
-
-OJClass.prototype.registerIvarDeclaration = function(node)
-{
-    for (var i = 0, length = node.ivars.length; i < length; i++) {
-        var name = node.ivars[i].name;
-        this._ivarToPropertyMap[name] = OJIvarWithoutProperty;
-        this._ivarToTypeMap[name] = node.parameterType ? node.parameterType.value : null;
-    }
-}
-
-
-OJClass.prototype.registerAtProperty = function(node)
-{
-    var name = node.id.name;
-
-    if (this._atPropertyNodes[name]) {
-        throwError(node, OJError.DuplicatePropertyDefinition, "Property " + node.id.name + " has previous declaration");
-    }
-
-    this._atPropertyNodes[name] = node;
-}
-
-
-OJClass.prototype.registerAtSynthesize = function(node)
-{
-    var pairs = node.pairs;
-
-    for (var i = 0, length = pairs.length; i < length; i++) {
-        var pair = pairs[i];
-        var name = pair.id.name;
-        var backing = pair.backing ? pair.backing.name : name;
-
-        this.linkPropertyToInstanceVariable(name, backing, node);
-    }
-}
-
-OJClass.prototype.registerAtDynamic = function(node)
-{
-    var ids = node.ids;
-
-    for (var i = 0, length = ids.length; i < length; i++) {
-        var id = ids[i];
-        var property = id.name;
-
-        this.linkPropertyToInstanceVariable(property, OJDynamicProperty, node);
-    }
-}
-
-
-OJClass.prototype.registerMethodDefinition = function(node)
-{
-    var name  = node.selectorName;
-    var map   = (node.selectorType == "+") ? this._classMethods : this._instanceMethods;
-
-    if (map[name]) {
-        throwError(node, OJError.DuplicateMethodDefinition, "Duplicate declaration of method '" + name + "'");
-    }
-    map[name] = node;
-
-    var jsName = this._compiler.getMethodName(name);
-    var jsMap  = (node.selectorType == "+") ? this._jsNameToClassMethodMap : this._jsNameToInstanceMethodMap;
-
-    if ((existing = jsMap[jsName])) {
-        throwError(node, OJError.DuplicateJavascriptFunction, "Both '" + existing.selectorName + "' and '" + name + "' map to JavaScript function '" + jsName + "'");
-    }
-    jsMap[jsName] = node;
-}
-
-
-OJClass.prototype.linkPropertyToInstanceVariable = function(property, ivar, node)
-{
-    var existingIvar     = this._propertyToIvarMap[property];
-    var existingProperty = this._ivarToPropertyMap[ivar];
-
-    if (existingIvar) {
-        if (existingIvar == OJDynamicProperty) {
-            throwError(node, OJError.PropertyAlreadyDynamic, "Property " + property + " already declared dynamic");
-        } else {
-            throwError(node, OJError.PropertyAlreadySynthesized, "Property " + property + " already synthesized to " + existingIvar);
-        }
-    }
-
-    if (existingProperty && (existingProperty != OJIvarWithoutProperty) && (ivar != OJDynamicProperty)) {
-        throwError(node, OJError.InstanceVariableAlreadyClaimed, "Both '" + property + "' and '" + existingProperty + "' claim instance variable '" + ivar);
-    }
-
-    this._propertyToIvarMap[property] = ivar;
-    this._ivarToPropertyMap[ivar] = property;
-
-    var atPropertyNode = this._atPropertyNodes[property];
-    var type = atPropertyNode.parameterType ? atPropertyNode.parameterType.value : null;
-    this._ivarToTypeMap[ivar] = type;
-}
-
-
-OJClass.prototype.doDefaultSynthesis = function()
-{
-    var atPropertyNodes   = this._atPropertyNodes;
-    var propertyToIvarMap = this._propertyToIvarMap;
-
-    for (var propertyName in this._atPropertyNodes) { if (this._atPropertyNodes.hasOwnProperty(propertyName)) {
-        var node = this._atPropertyNodes[propertyName];
-
-        if (!propertyToIvarMap[propertyName]) {
-            this.linkPropertyToInstanceVariable(propertyName, "_" + propertyName, node);
-        }
-    }}
-}
-
-
-OJClass.prototype.isInstanceVariable = function(ivar)
-{
-    return !!this._ivarToPropertyMap[ivar];
-}
-
-
-OJClass.prototype.generateIvar = function(name)
-{
-    var squeezer = this._compiler._squeezer;
-    var result   = OJIvarPrefix + this.name + "_" + name;
-
-    if (squeezer) result = squeezer.squeeze(result);
-
-    return result;
-}
-
-
-OJClass.prototype.generateThisIvar = function(name, useSelf)
-{
-    return (useSelf ? "self" : "this") + "." + this.generateIvar(name);
-}
-
-
-OJClass.prototype.generateIvarAssignments = function()
-{
-    // var defaultValue = "null";
-
-    // if (parameterType == "Boolean" || parameterType == "BOOL") {
-    //     defaultValue = "false";
-    // } else if (parameterType == "Number") {
-    //     defaultValue = "0";
-    // }
-
-    function isNumeric(type) {
-        if (!type) return false;
-
-        var words = type.split(/\s+/);
-
-        for (var i = 0, length = words.length; i < length; i++) {
-            var word = words[i];
-
-            if (word == "Number" ||
-                word == "float"  ||
-                word == "double" ||
-                word == "int"    ||
-                word == "char"   ||
-                word == "short"  ||
-                word == "long")
-            {
-                return true;
-            }
-        }
-
-        return false;
-    } 
-
-    function isBoolean(type) {
-        return type == "Boolean" ||
-               type == "BOOL"    ||
-               type == "Bool"    ||
-               type == "bool";
-    }
-
-    var booleanIvars = [ ];
-    var numericIvars = [ ];
-    var objectIvars  = [ ];
-    var i, length, ivar, type;
-
-    for (ivar in this._ivarToPropertyMap) { if (this._ivarToPropertyMap.hasOwnProperty(ivar)) {
-        if (ivar == OJDynamicProperty) {
-            continue;
-        }
-
-        type = this._ivarToTypeMap[ivar];
-
-
-        if (isNumeric(type)) {
-            numericIvars.push(ivar);
-        } else if (isBoolean(type)) {
-            booleanIvars.push(ivar);
-        } else {
-            objectIvars.push(ivar);
-        }
-    }}
-
-    numericIvars.sort();
-    booleanIvars.sort();
-    objectIvars.sort();
-
-    var result = "";
-
-    if (objectIvars.length) {
-        for (i = 0, length = objectIvars.length; i < length; i++) {
-            result += "this." + this.generateIvar(objectIvars[i]) + "="
-        }
-
-        result += "null;"
-    }
-
-    if (numericIvars.length) {
-        for (i = 0, length = numericIvars.length; i < length; i++) {
-            result += "this." + this.generateIvar(numericIvars[i]) + "="
-        }
-
-        result += "0;"
-    }
-
-    if (booleanIvars.length) {
-        for (i = 0, length = booleanIvars.length; i < length; i++) {
-            result += "this." + this.generateIvar(booleanIvars[i]) + "="
-        }
-
-        result += "false;"
-    }
-
-    return result;
-}
-
-
-
-OJClass.prototype.generateMethodDeclaration = function(type, selector)
-{
-    var where = (type == "+") ? OJClassMethodsVariable : OJInstanceMethodsVariable;
-
-    if (Utils.isJScriptReservedWord(selector)) {
-        // For IE8
-        return where + "[\"" + this._compiler.getMethodName(selector) + "\"]";
-    } else {
-        return where + "." + this._compiler.getMethodName(selector);
-    }
-}
-
-
-OJClass.prototype.generateAccessorsForProperty = function(name)
-{
-    // It's dynamic, do not generate accessors
-    if (this._propertyToIvarMap[name] == OJDynamicProperty) {
-        return "";
-    }
-
-    var node       = this._atPropertyNodes[name];
-    var getter     = name;
-    var setter     = "set" + name.substr(0,1).toUpperCase() + name.substr(1, name.length) + "_";
-    var makeSetter = true; // Default to readwrite
-    var makeGetter = true; // Default to readwrite
-
-    for (var i = 0, length = node.attributes.length; i < length; i++) {
-        var attribute = node.attributes[i];
-        var attributeName = attribute.name;
-
-        if (attributeName == "readonly") {
-            makeSetter = false;
-        } else if (attribute.name == "readwrite") {
-            makeSetter = makeGetter = true;
-        } else if (attributeName == "getter") {
-            getter = attribute.selector.selectorName;
-        } else if (attributeName == "setter") {
-            setter = attribute.selector.selectorName;
-        }
-    }
-
-    // See if the getter/setter were explicitly defined in the class
-    if (this._instanceMethods[getter]) makeGetter = false;
-    if (this._instanceMethods[setter]) makeSetter = false;
-
-    var ivar = this.getIvarNameForPropertyName(name);
-
-    var result = "";
-    if (makeSetter) {
-        result += this.generateMethodDeclaration('-', setter);
-        result += " = function(arg) { " + this.generateThisIvar(ivar) + " = arg; } ; ";
-    }
-
-    if (makeGetter) {
-        result += this.generateMethodDeclaration('-', getter);
-        result += " = function() { return " + this.generateThisIvar(ivar) + "; } ; ";
-    }
-
-    return result;
-}
-
-
-OJClass.prototype.getIvarNameForPropertyName = function(propertyName)
-{
-    if (this._propertyToIvarMap[propertyName]) {
-        return this._propertyToIvarMap[propertyName];
-    } else {
-        return "_" + propertyName;
-    }
-}
-
-
-return OJClass; })();
-
-
-var OJCompiler = (function () {
 
 
 function OJCompiler(options)
@@ -432,7 +89,8 @@ function OJCompiler(options)
         modifierOptions.debug = true;
     }
 
-    this._inlines = state["inlines"] || { };
+    this._inlines        = state["inlines"]   || { };
+    this._knownSelectors = state["selectors"] || { };
 
     var additionalInlines = options["additional-inlines"];
     if (additionalInlines) {
@@ -472,6 +130,7 @@ function OJCompiler(options)
 
     this._options   = options;
     this._classes   = { };
+    this._protocols = { };
     this._ast       = null;
 }
 
@@ -495,7 +154,10 @@ OJCompiler.prototype.getClassName = function(className)
 
 OJCompiler.prototype.getMethodName = function(selectorName)
 {
-    var replacedName = selectorName.replace(/\:/g, "_");
+    var replacedName = selectorName;
+    replacedName = replacedName.replace(/_/g,   "__");
+    replacedName = replacedName.replace(/^__/g, "_");
+    replacedName = replacedName.replace(/\:/g,  "_");
 
     if (!Utils.isRuntimeDefinedMethod(replacedName)) {
         if (this._squeezer) {
@@ -511,21 +173,32 @@ OJCompiler.prototype.getMethodName = function(selectorName)
 
 OJCompiler.prototype._firstPass = function()
 {
-    var compiler = this;
-    var classes  = this._classes;
-    var inlines  = this._inlines;
-    var options  = this._options;
-    var squeezer = this._squeezer;
+    var compiler  = this;
+    var classes   = this._classes;
+    var protocols = this._protocols;
+    var inlines   = this._inlines;
+    var options   = this._options;
+    var squeezer  = this._squeezer;
     var currentClass, currentMethodNode, functionInMethodCount = 0;
+    var currentProtocol;
 
     var traverser = new Traverser(this._ast);
-    this._traverser = traverser;
 
     function registerClass(name, superclassName, overrideExisting) {
         var result;
 
         if (!classes[name] || overrideExisting) {
-            classes[name] = result = new OJClass(name, superclassName, compiler);
+            classes[name] = result = new OJClass(name, superclassName);
+        }
+
+        return result;
+    }
+
+    function registerProtocol(name) {
+        var result;
+
+        if (!protocols[name]) {
+            protocols[name] = result = new OJProtocol(name);
         }
 
         return result;
@@ -559,12 +232,12 @@ OJCompiler.prototype._firstPass = function()
             }
 
             if (!literalNode || (literalNode.type != Syntax.Literal)) {
-                throwError(literalNode || initNode, OJError.NonLiteralEnum, "Use of non-literal value with @enum");
+                Utils.throwError(literalNode || initNode, OJError.NonLiteralEnum, "Use of non-literal value with @enum");
             }
 
             var value = literalNode.value;
             if (!isInteger(value)) {
-                throwError(literalNode || initNode, OJError.NonIntegerEnum, "Use of non-integer value with @enum");
+                Utils.throwError(literalNode || initNode, OJError.NonIntegerEnum, "Use of non-integer value with @enum");
             }
 
             return negative ? -value : value;
@@ -616,7 +289,7 @@ OJCompiler.prototype._firstPass = function()
                 values.push(-declaration.init.argument.raw);
 
             } else {
-                throwError(node, OJError.NonLiteralConst, "Use of non-literal value with @const");
+                Utils.throwError(node, OJError.NonLiteralConst, "Use of non-literal value with @const");
             }
         }
 
@@ -635,6 +308,9 @@ OJCompiler.prototype._firstPass = function()
             if (node.superClass && node.superClass.value) {
                 registerClass(node.superClass.value);
             }
+
+        } else if (type === Syntax.OJProtocolDefinition) {
+            currentProtocol = registerProtocol(node.id.name);
 
         } else if (type === Syntax.OJAtClassDirective) {
             node.ids.forEach(function(id) {
@@ -661,6 +337,9 @@ OJCompiler.prototype._firstPass = function()
         } else if (type === Syntax.OJMethodDefinition) {
             currentClass.registerMethodDefinition(node);
             currentMethodNode = node;
+
+        } else if (type === Syntax.OJMethodDeclaration) {
+            currentProtocol.registerMethodDeclaration(node);
 
         // Check for self = expression (for initializers)
         } else if (type == Syntax.AssignmentExpression) {
@@ -691,10 +370,51 @@ OJCompiler.prototype._firstPass = function()
             currentClass = null;
             currentMethodNode = null;
 
+        } else if (type == Syntax.OJProtocolDefinition) {
+            currentProtocol = null;
+
         } else if (type == Syntax.OJMethodDefinition) {
             currentMethodNode = null;
         }
     });
+}
+
+
+
+OJCompiler.prototype._prepareForSecondPass = function()
+{
+    for (var className in this._classes) { if (this._classes.hasOwnProperty(className)) {
+        var cls = this._classes[className];
+        cls.doAutomaticSynthesis();
+
+        var i, length, methods;
+
+        methods = cls.getInstanceMethods();
+        for (i = 0, length = methods.length; i < length; i++) {
+            this._knownSelectors[methods[i].selectorName] = true;
+        }
+
+        methods = cls.getClassMethods();
+        for (i = 0, length = methods.length; i < length; i++) {
+            this._knownSelectors[methods[i].selectorName] = true;
+        }
+    }}
+
+    for (var protocolName in this._protocols) { if (this._protocols.hasOwnProperty(protocolName)) {
+        var protocol = this._protocols[protocolName];
+
+        var i, length, methods;
+
+        methods = protocol.getInstanceMethods();
+        for (i = 0, length = methods.length; i < length; i++) {
+            this._knownSelectors[methods[i].selectorName] = true;
+        }
+
+        methods = protocol.getClassMethods();
+        for (i = 0, length = methods.length; i < length; i++) {
+            this._knownSelectors[methods[i].selectorName] = true;
+        }
+    }}
 }
 
 
@@ -715,6 +435,111 @@ OJCompiler.prototype._secondPass = function()
     var optionWithoutClasses   = options["without-classes"];
     var optionCheckThis        = options["check-this"];
     var optionCheckIvars       = options["check-ivars"];
+
+    var knownSelectors = options["check-selectors"] ? this._knownSelectors : null;
+
+    function generate_method_declaration(where, selectorName) {
+        if (Utils.isJScriptReservedWord(selectorName)) {
+            // For IE8
+            return where + "[\"" + compiler.getMethodName(selectorName) + "\"]";
+        } else {
+            return where + "." + compiler.getMethodName(selectorName);
+        }
+    }
+
+    function generate_ivar(className, ivarName) {
+        var result = OJIvarPrefix + className + "_" + ivarName;
+        if (squeezer) result = squeezer.squeeze(result);
+        return result;
+    }
+
+    function generate_this_ivar(className, ivarName, useSelf) {
+        return (useSelf ? "self" : "this") + "." + generate_ivar(className, ivarName);
+    }
+
+    function generate_ivar_assignments(ojClass) {
+        function isNumeric(type) {
+            if (!type) return false;
+
+            var words = type.split(/\s+/);
+
+            for (var i = 0, length = words.length; i < length; i++) {
+                var word = words[i];
+
+                if (word == "Number" ||
+                    word == "float"  ||
+                    word == "double" ||
+                    word == "int"    ||
+                    word == "char"   ||
+                    word == "short"  ||
+                    word == "long")
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        } 
+
+        function isBoolean(type) {
+            return type == "Boolean" ||
+                   type == "BOOL"    ||
+                   type == "Bool"    ||
+                   type == "bool";
+        }
+
+        var booleanIvars = [ ];
+        var numericIvars = [ ];
+        var objectIvars  = [ ];
+        var i, length, ivar;
+
+        var ivars = ojClass.getAllIvars();
+
+        for (i = 0, length = ivars.length; i < length; i++) {
+            var ivar = ivars[i];
+
+            if (isNumeric(ivar.type)) {
+                numericIvars.push(ivar.name);
+            } else if (isBoolean(ivar.type)) {
+                booleanIvars.push(ivar.name);
+            } else {
+                objectIvars.push(ivar.name);
+            }
+        }
+
+        numericIvars.sort();
+        booleanIvars.sort();
+        objectIvars.sort();
+
+        var result = "";
+
+        if (objectIvars.length) {
+            for (i = 0, length = objectIvars.length; i < length; i++) {
+                result += "this." + generate_ivar(ojClass.name, objectIvars[i]) + "="
+            }
+
+            result += "null;"
+        }
+
+        if (numericIvars.length) {
+            for (i = 0, length = numericIvars.length; i < length; i++) {
+                result += "this." + generate_ivar(ojClass.name, numericIvars[i]) + "="
+            }
+
+            result += "0;"
+        }
+
+        if (booleanIvars.length) {
+            for (i = 0, length = booleanIvars.length; i < length; i++) {
+                result += "this." + generate_ivar(ojClass.name, booleanIvars[i]) + "="
+            }
+
+            result += "false;"
+        }
+
+        return result;
+    }
+
 
     function should_remove_class(cls)
     {
@@ -859,8 +684,8 @@ OJCompiler.prototype._secondPass = function()
                     doCommonReplacement(selfOrThis + "." + methodName + "(", ")");
                     return;
 
-                } else if (currentClass.isInstanceVariable(receiver.name)) {
-                    var ivar = currentClass.generateThisIvar(receiver.name, currentMethodNode.usesSelfVar);
+                } else if (currentClass.isIvar(receiver.name)) {
+                    var ivar = generate_this_ivar(currentClass.name, receiver.name, currentMethodNode.usesSelfVar);
     
                     currentMethodNode.usesLoneExpression = true;
                     doCommonReplacement("(" + ivar + " && " + ivar + "." + methodName + "(", "))");
@@ -919,7 +744,7 @@ OJCompiler.prototype._secondPass = function()
         }
 
 
-        var constructorSetIvars = currentClass.generateIvarAssignments();
+        var constructorSetIvars = generate_ivar_assignments(currentClass);
 
         var startText = "var " + node.id.name + " = " + OJGlobalVariable + "._registerClass(" +
             clsSelector + ", " +
@@ -944,7 +769,7 @@ OJCompiler.prototype._secondPass = function()
         var args = [ ];
 
         if (Utils.isReservedSelectorName(node.selectorName)) {
-            throwError(node, OJError.ReservedMethodName, "The method name \"" + node.selectorName + "\" is reserved by the runtime and may not be overridden.");
+            Utils.throwError(node, OJError.ReservedMethodName, "The method name \"" + node.selectorName + "\" is reserved by the runtime and may not be overridden.");
         }
 
         for (var i = 0, length = node.methodSelectors.length; i < length; i++) {
@@ -1003,26 +828,26 @@ OJCompiler.prototype._secondPass = function()
 
         if (name.indexOf("$oj") == 0) {
             if (name[3] == "$" || name[3] == "_") {
-                throwError(node, OJError.DollarOJIsReserved, "Identifiers may not start with \"$oj_\" or \"$oj$\"");
+                Utils.throwError(node, OJError.DollarOJIsReserved, "Identifiers may not start with \"$oj_\" or \"$oj$\"");
             }
         }
 
         if (currentMethodNode && currentClass && can_be_instance_variable_or_self(traverser.getPath())) {
-            if (currentClass.isInstanceVariable(name) || name == "self") {
+            if (currentClass.isIvar(name) || name == "self") {
                 var usesSelf = currentMethodNode && currentMethodNode.usesSelfVar;
                 var replacement;
 
                 if (name == "self") {
                     replacement = usesSelf ? "self" : "this";
                 } else {
-                    replacement = currentClass.generateThisIvar(node.name, usesSelf);
+                    replacement = generate_this_ivar(currentClass.name, name, usesSelf);
                 }
 
                 modifier.select(node).replace(replacement);
 
             } else {
                 if (name[0] == "_" && optionCheckIvars && (name.length > 1)) {
-                    throwError(node, OJError.UndeclaredInstanceVariable, "Use of undeclared instance variable " + node.name);
+                    Utils.throwError(node, OJError.UndeclaredInstanceVariable, "Use of undeclared instance variable " + node.name);
                 }
             } 
         }
@@ -1047,20 +872,35 @@ OJCompiler.prototype._secondPass = function()
     function handle_at_property(node)
     {
         var name = node.id.name;
-        var parameterType = node.parameterType.value;
 
-        var accessors = currentClass.generateAccessorsForProperty(name);
-        var ivar = currentClass.getIvarNameForPropertyName(name);
+        var makeGetter = currentClass.shouldGenerateGetterImplementationForPropertyName(name);
+        var makeSetter = currentClass.shouldGenerateSetterImplementationForPropertyName(name);
+        var property   = currentClass.getPropertyWithName(name);
 
-        modifier.select(node).replace(accessors);
+        var result = "";
+        if (makeSetter) {
+            result += generate_method_declaration(OJInstanceMethodsVariable, property.setter);
+            result += " = function(arg) { " + generate_this_ivar(currentClass.name, property.ivar, false) + " = arg; } ; ";
+        }
+
+        if (makeGetter) {
+            result += generate_method_declaration(OJInstanceMethodsVariable, property.getter);
+            result += " = function() { return " + generate_this_ivar(currentClass.name, property.ivar, false) + "; } ; ";
+        }
+
+        modifier.select(node).replace(result);
 
         node.skip = true;
     }
 
-
     function handle_at_selector(node)
     {
         var name = compiler.getMethodName(node.name);
+
+        if (knownSelectors && !knownSelectors[node.name]) {
+            Utils.throwError(node, OJError.UnknownSelector, "Use of unknown selector '" + node.name + "'");
+        }
+
         modifier.select(node).replace("{ " + name + ": 1 }");
     }
 
@@ -1127,7 +967,7 @@ OJCompiler.prototype._secondPass = function()
                 node.type == Syntax.OJClassImplementation ||
                 node.type == Syntax.OJMessageExpression)
             {
-                throwError(thisNode, OJError.UseOfThisInMethod, "Use of 'this' keyword in oj method definition");
+                Utils.throwError(thisNode, OJError.UseOfThisInMethod, "Use of 'this' keyword in oj method definition");
 
             } else if (node.type == Syntax.FunctionDeclaration ||
                        node.type == Syntax.FunctionExpression) {
@@ -1159,6 +999,10 @@ OJCompiler.prototype._secondPass = function()
             } else {
                 handle_class_implementation(node);
             }
+
+        } else if (type === Syntax.OJProtocolDefinition) {
+            modifier.select(node).remove();
+            return Traverser.SkipNode;
 
         } else if (type === Syntax.OJAtClassDirective) {
             modifier.select(node).remove();
@@ -1277,9 +1121,7 @@ OJCompiler.prototype.compile = function(callback)
 
             this._firstPass();
 
-            for (var className in this._classes) { if (this._classes.hasOwnProperty(className)) {
-                this._classes[className].doDefaultSynthesis();
-            }}
+            this._prepareForSecondPass();
 
             if (dumpTime) {
                 console.error("Pass 1: ", Math.round(process.hrtime(start)[1] / (1000 * 1000)) + "ms");
@@ -1316,7 +1158,8 @@ OJCompiler.prototype.compile = function(callback)
                 result.state["squeeze"] = this._squeezer.getState();
             }
 
-            result.state["inlines"] = this._inlines;
+            result.state["inlines"]   = this._inlines;
+            result.state["selectors"] = this._knownSelectors;
 
             linesForHinter = result._lines;
             delete(result._lines);
@@ -1369,7 +1212,5 @@ OJCompiler.prototype.compile = function(callback)
     }
 }
 
-
-return OJCompiler; })();
 
 module.exports = { OJCompiler: OJCompiler };

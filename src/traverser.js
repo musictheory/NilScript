@@ -30,7 +30,8 @@ estraverse.VisitorKeys[ Syntax.OJAtDynamicDirective           ] = [ "ids" ];
 estraverse.VisitorKeys[ Syntax.OJAtSelectorDirective          ] = [ ];
 estraverse.VisitorKeys[ Syntax.OJConstDeclaration             ] = [ "declarations" ];
 estraverse.VisitorKeys[ Syntax.OJEnumDeclaration              ] = [ "declarations" ];
-
+estraverse.VisitorKeys[ Syntax.OJProtocolDefinition           ] = [ "id", "body" ];
+estraverse.VisitorKeys[ Syntax.OJMethodDeclaration            ] = [ "returnType", "methodSelectors" ];
 
 function Traverser(ast)
 {

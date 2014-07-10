@@ -1,0 +1,9 @@
+
+@implementation AutomaticSynthesis
+
+@property (readonly) id foo;
+
+// This should fail as _foo isn't automatically synthesized
+- (id) foo { return _foo; }
+
+@end

@@ -80,9 +80,26 @@ function isRuntimeDefinedClass(name)
 }
 
 
+function throwError(node, name, message)
+{
+    var error = new Error(message);
+
+    if (node) {
+        error.line    = node.loc.start.line;
+        error.column  = node.loc.start.col;
+    }
+
+    error.name    = name;
+    error.reason  = message;
+
+    throw error;
+}
+
+
 module.exports = {
     isJScriptReservedWord:  isJScriptReservedWord,
     isReservedSelectorName: isReservedSelectorName,
     isRuntimeDefinedMethod: isRuntimeDefinedMethod,
-    isRuntimeDefinedClass:  isRuntimeDefinedClass
+    isRuntimeDefinedClass:  isRuntimeDefinedClass,
+    throwError:             throwError
 };
