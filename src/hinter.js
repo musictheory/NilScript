@@ -232,4 +232,4 @@ if (process.argv[2] == WorkerProcessArgument) {
 }
 
 
-module.exports = { Hinter: Hinter };
+module.exports = Hinter;

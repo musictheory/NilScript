@@ -46,7 +46,7 @@
 
 - (Number) three { return 3; }
 - (Number) five  { return 5; }
-- (void) add:(Number)a with:(Number)b { return a + b }
+- (Number) add:(Number)a with:(Number)b { return a + b }
 
 - (BOOL) doMultilineMethodWithArg: (Number) arg0
                               arg: (Number) arg1

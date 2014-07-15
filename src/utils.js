@@ -89,7 +89,7 @@ function isBaseObjectClass(name)
 }
 
 
-function throwError(node, name, message)
+function throwError(name, message, node)
 {
     var error = new Error(message);
 
@@ -105,11 +105,21 @@ function throwError(node, name, message)
 }
 
 
+function addNodeToError(node, error)
+{
+    if (node) {
+        error.line    = node.loc.start.line;
+        error.column  = node.loc.start.col;
+    }
+}
+
+
 module.exports = {
     isJScriptReservedWord:      isJScriptReservedWord,
     isReservedSelectorName:     isReservedSelectorName,
     isBaseObjectSelectorName:   isBaseObjectSelectorName,
     getBaseObjectSelectorNames: getBaseObjectSelectorNames,
     isBaseObjectClass:          isBaseObjectClass,
-    throwError:                 throwError
+    throwError:                 throwError,
+    addNodeToError:             addNodeToError
 };

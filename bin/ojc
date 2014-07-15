@@ -22,6 +22,8 @@ var opt = getopt.create([
     [ "",  "squeeze-start-index",       "start index for squeezer" ],
     [ "",  "squeeze-end-index",         "end index for squeezer" ],
 
+    [ "",  "output-language=LANG",      "output language" ],
+
     [ "",  "inline-const",              "inline @const identifiers" ],
     [ "",  "inline-enum",               "inline @enum identifiers"  ],
 
@@ -32,11 +34,10 @@ var opt = getopt.create([
     [ "",  "check-ivars",               "warn about potentially undefined ivars"   ],
     [ "",  "check-this",                "warn about usage of 'this' in oj methods" ],
     [ "",  "check-selectors",           "warn about usage of undeclared selectors" ],
-    [ "",  "without-class=NAME+",       "strip specified class"                    ],
+    [ "",  "check-types",               "use experimental type checker"            ],
 
     [ "",  "debug-message-send",        "use debug version of oj.msgSend" ],
     [ "",  "dump-ast",                  "(for development)" ],
-    [ "",  "dump-modifier",             "(for development)" ],
     [ "",  "dump-time",                 "(for development)" ],
 
     [ "h", "help",                      "display this help" ],
@@ -158,9 +159,10 @@ try {
         if (outputMapFile) {
             fs.writeFileSync(outputMapFile, JSON.stringify(result.map || { }, null, "    "), "utf8")
         }
+
+        process.exit(err ? 1 : 0);
     });
 
-    process.exit(0);
 
 } catch (e) {
     if (inputFiles.length == 1) {

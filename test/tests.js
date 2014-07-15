@@ -58,6 +58,10 @@ runTest("inc/Inheritance");
 runTest("inc/Methods");
 runTest("inc/EnumAndConst");
 
+runTest("inc/EnumAndConst", { "inline-enum":  true });
+runTest("inc/EnumAndConst", { "inline-const": true });
+
+
 runTest("issues/issue1");
 runTest("issues/issue2");
 runTest("issues/issue10");

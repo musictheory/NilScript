@@ -1,5 +1,6 @@
 /*
     traverser.js
+    Extends estraverse with ability to traverse oj nodes
     (c) 2013-2014 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
@@ -32,11 +33,15 @@ estraverse.VisitorKeys[ Syntax.OJConstDeclaration             ] = [ "declaration
 estraverse.VisitorKeys[ Syntax.OJEnumDeclaration              ] = [ "declarations" ];
 estraverse.VisitorKeys[ Syntax.OJProtocolDefinition           ] = [ "id", "body" ];
 estraverse.VisitorKeys[ Syntax.OJMethodDeclaration            ] = [ "returnType", "methodSelectors" ];
+estraverse.VisitorKeys[ Syntax.OJIdentifierWithAnnotation     ] = [ "annotation" ];
+estraverse.VisitorKeys[ Syntax.OJAtCastExpression             ] = [ "id", "argument" ];
+
 
 function Traverser(ast)
 {
     this._ast   = ast;
     this._nodes = [ ];
+    this.skip   = [ ];  // Push nodes onto 'skip' to skip them
 }
 
 Traverser.SkipNode = 1;
@@ -45,10 +50,13 @@ Traverser.SkipNode = 1;
 Traverser.prototype.traverse = function(pre, post)
 {
     var nodes = this._nodes;
+    var skip  = this.skip;
 
     estraverse.traverse(this._ast, {
         enter: function (node, parent) {
-            if (node.skip) {
+            var index = skip.indexOf(node);
+            if (index >= 0) {
+                skip.splice(index, 1);
                 return estraverse.VisitorOption.Skip;
             }
 
@@ -80,6 +88,4 @@ Traverser.prototype.getPath = function()
 }
 
 
-module.exports = {
-    Traverser: Traverser
-};
+module.exports = Traverser;
