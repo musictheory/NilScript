@@ -33,7 +33,9 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 - [Runtime](#runtime)
 - [Restrictions](#restrictions)
 - [Squeezing oj!](#squeeze)
+- [Checking Selectors](#check-selectors)
 - [JSHint Integration](#jshint)
+- [Type Checking](#typechecking)
 - [License](#license)
 
 
@@ -172,7 +174,7 @@ Methods are defined in an `@implementation` block and use standard Objective-C s
     
     @end
 
-Since JavaScript is an untyped language, the types indicated in the parenthesis in the above example are for documentation purposes only and optional.  Old-school bare method declarations may also be used:
+Old-school bare method declarations may also be used:
 
     @implementation TheClass
     
@@ -391,6 +393,31 @@ oj handles the binding for you.  No additional code is needed to access ivars or
         }, delay);
     }
 
+
+---
+### <a name="type-annotations"></a>Type Annotations
+
+As JavaScript is an untyped language, types expressed in property and method declarations are mostly for documentation purposes.  That said, oj provides an experimental [Type Checker](#typechecker) to help catch errors at compile time. 
+
+oj adds type annotations to JavaScript functions and variables, similar to ActionScript and TypeScript:
+
+    function getStringWithNumber(a : String, b : Number) : String {
+        return a + "-" + b;
+    }
+
+    function printFooAndRandom() : void {
+        var a : String = "Foo";
+        var b : Number = Math.random(); 
+        console.log(a, "-", b);
+    }
+
+oj also has a cast operator, similar in syntax to C++'s `static_cast`:
+
+    var a : String = @cast<String>( 3 + 4 + 6 );
+
+When compiling to JavaScript, type annotations and the cast operator are removed.  They are used by the experimental type checker.
+
+
 ---
 ## <a name="selector"></a>Selectors
 
@@ -520,6 +547,30 @@ oj features a code minifier/compressor/obfuscator called the squeezer.  When the
 Squeezed identifiers are persisted via `--output-state` and `--input-state`.
 
 ---
+## <a name="check-selectors"></a>Checking Selectors
+
+When the `--check-selectors` option is used, oj warns about usage of undefined selectors/methods.  This can help catch typos at compile time:
+
+    var c = [[TheClass allc] init]; // Warns if no +allc or -allc method exists on any class
+
+Since oj lacked `@protocol`, the delegate pattern resulted in false positives with `--check-selectors`:
+
+    // Warns, as the compiler doesn't know about 'controller:didPerformActionWithFoo:'
+    [_delegate controller:self didPerformActionWithFoo:foo];
+    
+One solution was to implement a fake class with the method:
+
+    @implementation ControllerDelegate
+    - (void) controller:(Controller)controller didPerformActionWithFoo:(Foo)foo { }
+    @end
+
+A cleaner way, however, was to reintroduce protocols:
+
+    @protocol ControllerDelegate
+    - (void) controller:(Controller)controller didPerformActionWithFoo:(Foo)foo;
+    @end
+
+---
 ## <a name="jshint"></a>JSHint Integration
 
 When the `--jshint` option is used, [JSHint](http://www.jshint.com) hints oj's results.  To prevent false positives,  the following options are forced:
@@ -534,6 +585,11 @@ When the `--jshint` option is used, [JSHint](http://www.jshint.com) hints oj's r
 Ideally, in the future, no JSHint options are forced, and all false positives due to oj compilation are filtered.
 
 The `--jshint-ignore` option may be used to disable specific JSHint warnings.
+
+---
+## <a name="typechecking"></a>Type Checking
+
+When the `--check-types` option is used, oj performs static type checking via [TypeScript](http://www.typescriptlang.org).  This feature is still experimental.
 
 ---
 ## <a name="restrictions"></a>Restrictions
