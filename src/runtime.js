@@ -357,6 +357,8 @@ BaseObject.prototype.isKindOfClass_ = function(cls) { return class_isSubclassOf(
 BaseObject.prototype.isMemberOfClass_ = function(cls) { return object_getClass(this) === cls; }
 BaseObject.prototype.isEqual_ = function(other) { return this === other; }
 
+_classNameToClassMap["BaseObject"] = BaseObject;
+
 if (typeof module != "undefined" && typeof module != "function") {
     module.exports = oj;
 

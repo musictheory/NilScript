@@ -4,13 +4,13 @@
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-var OJCompiler = require("./compiler").OJCompiler;
+var Compiler = require("./compiler");
 
 
 function ojc(options, callback)
 {
     try {
-        var compiler = new OJCompiler(options);
+        var compiler = new Compiler(options);
         compiler.compile(callback);
 
     } catch (e) {

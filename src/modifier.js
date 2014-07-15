@@ -273,4 +273,4 @@ Modifier.prototype.finish = function()
 }
 
 
-module.exports = { Modifier: Modifier };
+module.exports = Modifier;

@@ -2,6 +2,11 @@ var assert = require("assert");
 
 @implementation InheritanceSuperclass
 
++ (void) plusDoSomething
+{
+
+}
+
 - (void) doSomething
 {
     _superclassProperty = true;
@@ -14,6 +19,11 @@ var assert = require("assert");
 
 
 @implementation InheritanceSubclass : InheritanceSuperclass
+
++ (void) plusDoSomething
+{
+    [super plusDoSomething];
+}
 
 - (void) doSomething
 {

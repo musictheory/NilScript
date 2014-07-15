@@ -1,23 +1,35 @@
 /*
-    compiler.js
+    model.js
     (c) 2013-2014 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-var esprima     = require("esprima-oj");
 var OJError     = require("./errors").OJError;
 var Utils       = require("./utils");
-var Syntax      = esprima.Syntax;
 var _           = require("lodash");
 
 
 var OJDynamicProperty = " OJDynamicProperty ";
 
 
+function OJEnum(name, unsigned, values)
+{
+    this.name     = name;
+    this.unsigned = unsigned;
+    this.values   = values || { };
+}
 
-function OJIvar(name, type)
+
+OJEnum.prototype.addValue = function(name, value)
+{
+    this.values[name] = value;
+}
+
+
+function OJIvar(name, className, type)
 {
     this.name        = name;
+    this.className   = className;
     this.type        = type;
     this.synthesized = false;
 }
@@ -34,48 +46,235 @@ function OJProperty(name, type, writable, getter, setter, ivar)
 }
 
 
-function OJMethod(selectorName, selectorType, returnType, parameterTypes, variableNames)
+function OJMethod(selectorName, selectorType, returnType, parameterTypes, variableNames, usesSelf)
 {
     this.selectorName   = selectorName;
     this.selectorType   = selectorType;
     this.returnType     = returnType;
-    this.parameterTypes = parameterTypes;
-    this.variableNames  = variableNames;
+    this.parameterTypes = parameterTypes || [ ];
+    this.variableNames  = variableNames  || [ ];
+    this.usesSelf       = !!usesSelf;
     this.synthesized    = false;
 }
 
 
-function sMakeOJMethodForNode(node)
+function OJModel()
 {
-    var selectorName    = node.selectorName;
-    var selectorType    = node.selectorType;
-    var methodSelectors = node.methodSelectors;
+    this.enums     = [ ];
+    this.consts    = { };
+    this.classes   = { };
+    this.protocols = { };
+    this.selectors = { };
 
-    var variableNames  = [ ];
-    var parameterTypes = [ ];
+    this._squeezerId      = 0;
+    this._squeezerToMap   = { };
+    this._squeezerFromMap = { };
+}
 
-    var methodType;
-    for (var i = 0, length = (methodSelectors.length || 0); i < length; i++) {
-        methodType   = methodSelectors[i].methodType;
-        variableName = methodSelectors[i].variableName;
 
-        if (methodType) {
-            parameterTypes.push(methodType.value);
-        } else if (variableName) {
-            parameterTypes.push("id");
+
+
+// function Squeezer(state, options)
+// {
+//     if (!state) state = { };
+
+//     this._toMap   = state["to"]      || { };
+//     this._fromMap = state["from"]    || { };
+//     this._id      = state["id"]      || 0;
+
+//     if (options.start && !this._id) {
+//         this._id = options.start;
+//     }
+
+// }
+
+
+var sBase52Digits = "etnrisouaflchpdvmgybwESxTNCkLAOMDPHBjFIqRUzWXVJKQGYZ0516372984";
+
+function sToBase52(index)
+{
+    var result = "";
+    var base = 52;
+
+    do {
+        result += sBase52Digits.charAt(index % base);
+        index = Math.floor(index / base);
+        base = 62;
+    } while (index > 0);
+
+    return result;
+}
+
+
+OJModel.prototype.setupSqueezer = function(start, max)
+{
+
+}
+
+
+OJModel.prototype.getSqueezedName = function(oldName, add)
+{
+    var fromMap = this._squeezerFromMap;
+    var toMap   = this._squeezerToMap;
+
+    var newName = toMap[oldName];
+    var hasName = toMap.hasOwnProperty(oldName)
+
+    if (!hasName && add) {
+        while (!newName) {
+            var nameToTry = "$oj$" + sToBase52(this._squeezerId);
+            if (!fromMap[nameToTry]) {
+                newName = nameToTry;
+            }
+
+            this._squeezerId++;
         }
 
-        if (variableName) {
-            variableNames.push(variableName.name);
-        }
+        toMap[oldName]   = newName;
+        fromMap[newName] = oldName;
+        hasName          = true;
     }
 
-    var returnType;
-    if (node.returnType) returnType = node.returnType.value;
-    if (!returnType) returnType = "id";
-
-    return new OJMethod(selectorName, selectorType, returnType, parameterTypes, variableNames);
+    return hasName ? newName : undefined;
 }
+
+
+OJModel.prototype.loadState = function(state)
+{
+    var enums     = this.enums;
+    var classes   = this.classes;
+    var protocols = this.protocols;
+
+    _.each(state.enums, function(e) {
+        enums.push(new OJEnum(e.name, e.unsigned, e.values));
+    });
+
+    _.extend(this.consts, state.consts);
+
+    _.each(state.classes, function(c) {
+        var cls = new OJClass();
+        cls.loadState(c);
+        classes[cls.name] = cls;
+    });
+
+    _.each(state.protocols, function(p) {
+        var protocol = new OJProtocol();
+        protocol.loadState(p);
+        protocols[protocol.name] = protocol;
+    });
+}
+
+
+
+OJModel.prototype.saveState = function()
+{
+    return {
+        squeezer: {
+            from: this._squeezerFromMap,
+            to:   this._squeezerToMap,
+            id:   this._squeezerId
+        },
+
+        consts:    this.consts,
+        enums:     this.enums,
+        selectors: this.selectors,
+
+        classes: _.map(this.classes, function(c) {
+            return c.saveState();
+        }),
+
+        protocols: _.map(this.protocols, function(p) {
+            return p.saveState();
+        })
+    }
+}
+
+
+OJModel.prototype.prepare = function()
+{
+    var selectors = { };
+
+    _.each(this.classes, function(cls, name) {
+        var i, length;
+
+        cls.doAutomaticSynthesis();
+
+        methods = cls.getInstanceMethods();
+        for (i = 0, length = methods.length; i < length; i++) {
+            selectors[methods[i].selectorName] = true;
+        }
+
+        methods = cls.getClassMethods();
+        for (i = 0, length = methods.length; i < length; i++) {
+            selectors[methods[i].selectorName] = true;
+        }
+    });
+
+    _.each(this._nameToProtocolMap, function(protocol, name) {
+        var i, length;
+
+        methods = protocol.getInstanceMethods();
+        for (i = 0, length = methods.length; i < length; i++) {
+            selectors[methods[i].selectorName] = true;
+        }
+
+        methods = protocol.getClassMethods();
+        for (i = 0, length = methods.length; i < length; i++) {
+            selectors[methods[i].selectorName] = true;
+        }
+    });
+
+    var baseObjectSelectors = Utils.getBaseObjectSelectorNames();
+    for (var i = 0, length = baseObjectSelectors.length; i < length; i++) {
+        selectors[baseObjectSelectors[i]] = true;
+    }
+
+    this.selectors = selectors;
+}
+
+
+OJModel.prototype.addConst = function(name, value)
+{
+    this.consts[name] = value;
+}
+
+
+OJModel.prototype.addEnum = function(e)
+{
+    this.enums.push(e);
+}
+
+
+OJModel.prototype.addClass = function(cls)
+{
+    var name = cls.name;
+    var existing = this.classes[name];
+
+    if (existing) {
+        if (existing.forward && !cls.forward) {
+            this.classes[name] = cls;
+        } else if (!existing.forward && !cls.forward) {
+            Utils.throwError(OJError.DuplicateClassDefinition, "Duplicate declaration of class '" + name +"'");
+        }
+
+    } else {
+        this.classes[name] = cls;
+    } 
+}
+
+
+OJModel.prototype.addProtocol = function(protocol)
+{
+    var name = protocol.name;
+
+    if (this.protocols[name]) {
+        Utils.throwError(OJError.DuplicateProtocolDefinition, "Duplicate declaration of protocol '" + name +"'");
+    }
+
+    this.protocols[name] = protocol;
+}
+
+
 
 
 function OJProtocol(name)
@@ -89,15 +288,31 @@ function OJProtocol(name)
 
 OJProtocol.prototype.loadState = function(state)
 {
+    var classMethodMap    =  this._classMethodMap;
+    var instanceMethodMap =  this._instanceMethodMap;
+
     this.name = state.name;
 
     _.each(state.classMethods, function(m) {
-        this._classMethodMap[m.name] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames);
+        classMethodMap[m.name] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.usesSelf);
     });
 
     _.each(state.instanceMethods, function(m) {
-        this._instanceMethodMap[m.name] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames);
+        instanceMethodMap[m.name] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.usesSelf);
     });
+}
+
+
+OJProtocol.prototype.addMethod = function(method)
+{
+    var selectorName = method.selectorName;
+    var map = (method.selectorType == "+") ? this._classMethodMap : this._instanceMethodMap;
+
+    if (map[selectorName]) {
+        Utils.throwError(OJError.DuplicateMethodDefinition, "Duplicate declaration of method '" + selectorName + "'");
+    }
+
+    map[selectorName] = method;
 }
 
 
@@ -108,19 +323,6 @@ OJProtocol.prototype.saveState = function()
         classMethods:    _.values(this._classMethodMap),
         instanceMethods: _.values(this._instanceMethodMap)
     }
-}
-
-
-OJProtocol.prototype.registerMethodDeclaration = function(node)
-{
-    var selectorName = node.selectorName;
-    var map = (node.selectorType == "+") ? this._classMethodMap : this._instanceMethodMap;
-
-    if (map[selectorName]) {
-        Utils.throwError(node, OJError.DuplicateMethodDefinition, "Duplicate declaration of method '" + selectorName + "'");
-    }
-
-    map[selectorName] = sMakeOJMethodForNode(node);
 }
 
 
@@ -154,6 +356,7 @@ OJClass.prototype.loadState = function(state)
     this.name           = state.name;
     this.superclassName = state.superclassName;
     this.forward        = state.forward; 
+    this.didSynthesis   = state.didSynthesis;
 
     var ivarMap           =  this._ivarMap;
     var propertyMap       =  this._propertyMap;
@@ -161,7 +364,7 @@ OJClass.prototype.loadState = function(state)
     var instanceMethodMap =  this._instanceMethodMap;
 
     _.each(state.ivars, function(i) {
-        ivarMap[i.name] = new OJIvar(i.name, i.type);
+        ivarMap[i.name] = new OJIvar(i.name, i.className, i.type);
     });
 
     _.each(state.properties, function(p) {
@@ -169,11 +372,11 @@ OJClass.prototype.loadState = function(state)
     });
 
     _.each(state.classMethods, function(m) {
-        classMethodMap[m.selectorName] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames);
+        classMethodMap[m.selectorName] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.usesSelf);
     });
 
     _.each(state.instanceMethods, function(m) {
-        instanceMethodMap[m.selectorName] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames);
+        instanceMethodMap[m.selectorName] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.usesSelf);
     });
 }
 
@@ -183,7 +386,9 @@ OJClass.prototype.saveState = function()
     return {
         name:            this.name,
         superclassName:  this.superclassName,
+        didSynthesis:  !!this.didSynthesis,
         forward:         this.forward,
+
         ivars:           _.values(this._ivarMap),
         properties:      _.values(this._propertyMap),
         classMethods:    _.values(this._classMethodMap),
@@ -192,115 +397,14 @@ OJClass.prototype.saveState = function()
 }
 
 
-OJClass.prototype.registerIvarDeclaration = function(node)
-{
-    var type = node.parameterType ? node.parameterType.value : null;
-
-    for (var i = 0, length = node.ivars.length; i < length; i++) {
-        var name = node.ivars[i].name;
-        this._ivarMap[name] = new OJIvar(name, type);
-    }
-}
-
-
-OJClass.prototype.registerAtProperty = function(node)
-{
-    var name = node.id.name;
-
-    if (this._propertyMap[name]) {
-        Utils.throwError(node, OJError.DuplicatePropertyDefinition, "Property " + name + " has previous declaration");
-    }
-
-    var type     = node.parameterType ? node.parameterType.value : "id";
-    var writable = true;
-    var getter   = name;
-    var setter   = "set" + name.substr(0,1).toUpperCase() + name.substr(1, name.length) + ":";
-
-    for (var i = 0, length = node.attributes.length; i < length; i++) {
-        var attribute = node.attributes[i];
-        var attributeName = attribute.name;
-
-        if (attributeName == "readonly") {
-            writable = false;
-        } else if (attribute.name == "readwrite") {
-            writable = true;
-        } else if (attributeName == "getter") {
-            getter = attribute.selector.selectorName;
-        } else if (attributeName == "setter") {
-            setter = attribute.selector.selectorName;
-        }
-    }
-
-    if (!writable) {
-        setter = null;
-    }
-
-    this._propertyMap[name] = new OJProperty(name, type, writable, getter, setter, null);
-}
-
-
-OJClass.prototype.registerAtSynthesize = function(node)
-{
-    var pairs = node.pairs;
-
-    for (var i = 0, length = pairs.length; i < length; i++) {
-        var pair = pairs[i];
-        var name = pair.id.name;
-        var backing = pair.backing ? pair.backing.name : name;
-
-        var property = this._propertyMap[name];
-        if (!property) {
-            Utils.throwError(node, OJError.UnknownProperty, "Unknown property: " + name);
-        } else if (property.ivar == OJDynamicProperty) {
-            Utils.throwError(node, OJError.PropertyAlreadyDynamic, "Property " + name + " already declared dynamic");
-        } else if (property.ivar) {
-            Utils.throwError(node, OJError.PropertyAlreadySynthesized, "Property " + name + " already synthesized to " + property.ivar);
-        }
-
-        property.ivar = backing;
-    }
-}
-
-
-OJClass.prototype.registerAtDynamic = function(node)
-{
-    var ids = node.ids;
-
-    for (var i = 0, length = ids.length; i < length; i++) {
-        var id = ids[i];
-        var name = id.name;
-
-        var property = this._propertyMap[name];
-        if (!property) {
-            Utils.throwError(node, OJError.UnknownProperty, "Unknown property: " + name);
-        } else if (property.ivar == OJDynamicProperty) {
-            Utils.throwError(node, OJError.PropertyAlreadyDynamic, "Property " + name + " already declared dynamic");
-        } else if (property.ivar) {
-            Utils.throwError(node, OJError.PropertyAlreadySynthesized, "Property " + name + " already synthesized to " + property.ivar);
-        }
-
-        property.ivar   = OJDynamicProperty;
-        property.setter = null;
-        property.getter = null;
-    }
-}
-
-
-OJClass.prototype.registerMethodDefinition = function(node)
-{
-    var selectorName = node.selectorName;
-    var map = (node.selectorType == "+") ? this._classMethodMap : this._instanceMethodMap;
-
-    if (map[selectorName]) {
-        Utils.throwError(node, OJError.DuplicateMethodDefinition, "Duplicate declaration of method '" + selectorName + "'");
-    }
-
-    map[selectorName] = sMakeOJMethodForNode(node);
-}
 
 
 OJClass.prototype.doAutomaticSynthesis = function()
 {
+    if (this.didSynthesis) {
+        return;
+    }
+
     var properties = _.values(this._propertyMap);
     var backingIvarToPropertyNameMap = { };
 
@@ -331,14 +435,14 @@ OJClass.prototype.doAutomaticSynthesis = function()
         }
 
         if (backingIvarToPropertyNameMap[ivarName]) {
-            Utils.throwError(null, OJError.InstanceVariableAlreadyClaimed, "Synthesized properties '" +  backingIvarToPropertyNameMap[ivarName] + "' and '" + name + "' both claim instance variable '" + ivarName + "'");
+            Utils.throwError(OJError.InstanceVariableAlreadyClaimed, "Synthesized properties '" +  backingIvarToPropertyNameMap[ivarName] + "' and '" + name + "' both claim instance variable '" + ivarName + "'");
         } else {
             backingIvarToPropertyNameMap[ivarName] = name;
         }
 
         // Generate backing ivar
         if (needsBackingIvar) {
-            ivar = new OJIvar(ivarName, property.type);
+            ivar = new OJIvar(ivarName, this.name, property.type);
             ivar.synthesized = true;
             this._ivarMap[ivarName] = ivar;
         }
@@ -355,6 +459,8 @@ OJClass.prototype.doAutomaticSynthesis = function()
             this._instanceMethodMap[setter] = setterMethod;
         }
     }
+
+    this.didSynthesis = true;
 }
 
 
@@ -433,6 +539,75 @@ OJClass.prototype.shouldGenerateSetterImplementationForPropertyName = function(p
 }
 
 
+OJClass.prototype.addIvar = function(ivar)
+{
+    var name = ivar.name;
+
+    if (this._ivarMap[name]) {
+        Utils.throwError(OJError.DuplicateIvarDefinition, "Instance variable " + name + " has previous declaration");
+    }
+
+    this._ivarMap[name] = ivar;    
+}
+
+
+OJClass.prototype.addProperty = function(property)
+{
+    var name = property.name;
+
+    if (this._propertyMap[name]) {
+        Utils.throwError(OJError.DuplicatePropertyDefinition, "Property " + name + " has previous declaration");
+    }
+
+    this._propertyMap[name] = property;
+}
+
+
+OJClass.prototype.makePropertySynthesized = function(name, backing)
+{
+    var property = this._propertyMap[name];
+    if (!property) {
+        Utils.throwError(OJError.UnknownProperty, "Unknown property: " + name);
+    } else if (property.ivar == OJDynamicProperty) {
+        Utils.throwError(OJError.PropertyAlreadyDynamic, "Property " + name + " already declared dynamic");
+    } else if (property.ivar) {
+        Utils.throwError(OJError.PropertyAlreadySynthesized, "Property " + name + " already synthesized to " + property.ivar);
+    }
+
+    property.ivar = backing;
+}
+
+
+OJClass.prototype.makePropertyDynamic = function(name)
+{
+    var property = this._propertyMap[name];
+    if (!property) {
+        Utils.throwError(OJError.UnknownProperty, "Unknown property: " + name);
+    } else if (property.ivar == OJDynamicProperty) {
+        Utils.throwError(OJError.PropertyAlreadyDynamic, "Property " + name + " already declared dynamic");
+    } else if (property.ivar) {
+        Utils.throwError(OJError.PropertyAlreadySynthesized, "Property " + name + " already synthesized to " + property.ivar);
+    }
+
+    property.ivar   = OJDynamicProperty;
+    property.setter = null;
+    property.getter = null;
+}
+
+
+OJClass.prototype.addMethod = function(method)
+{
+    var selectorName = method.selectorName;
+    var map = (method.selectorType == "+") ? this._classMethodMap : this._instanceMethodMap;
+
+    if (map[selectorName]) {
+        Utils.throwError(OJError.DuplicateMethodDefinition, "Duplicate declaration of method '" + selectorName + "'");
+    }
+
+    map[selectorName] = method;
+}
+
+
 OJClass.prototype.getAllIvars = function()
 {
     return _.values(this._ivarMap);
@@ -470,9 +645,11 @@ OJClass.prototype.getPropertyWithName = function(propertyName)
 
 
 module.exports = {
+    OJModel:    OJModel,
     OJClass:    OJClass,
     OJProtocol: OJProtocol,
     OJProperty: OJProperty,
     OJMethod:   OJMethod,
-    OJIvar:     OJIvar
+    OJIvar:     OJIvar,
+    OJEnum:     OJEnum
 };

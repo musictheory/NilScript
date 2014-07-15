@@ -7,11 +7,14 @@
 var OJError = { };
 
 OJError.ParseError				       = "OJParseError";
-OJError.DuplicateClassDefinition       = "DuplicateClassDefinition";
+OJError.DuplicateClassDefinition       = "OJDuplicateClassDefinitionError";
 OJError.DuplicatePropertyDefinition    = "OJDuplicatePropertyDefinitionError";
 OJError.DuplicateMethodDefinition      = "OJDuplicateMethodDefinitionError";
+OJError.DuplicateProtocolDefinition    = "OJDuplicateProtocolDefinition";
+OJError.DuplicateIvarDefinition        = "OJDuplicateIvarDefinitionError";
+OJError.DuplicateEnumDefinition        = "OJDuplicateEnumDefinition";
 OJError.UndeclaredInstanceVariable     = "OJUndeclaredInstanceVariableError";
-OJError.UnknownProperty                = "UnknownProperty";
+OJError.UnknownProperty                = "OJUnknownPropertyError";
 OJError.DuplicateJavascriptFunction    = "OJDuplicateJavascriptFunctionError";
 OJError.PropertyAlreadySynthesized     = "OJPropertyAlreadySynthesizedError";
 OJError.PropertyAlreadyDynamic         = "OJPropertyAlreadyDynamicError";
@@ -23,6 +26,6 @@ OJError.NonIntegerEnum                 = "OJNonIntegerEnumError";
 OJError.SelfIsReserved                 = "OJSelfIsReservedError";
 OJError.DollarOJIsReserved             = "OJDollarOJIsReservedError";
 OJError.ReservedMethodName             = "OJReservedMethodNameError";
-OJError.UnknownSelector                = "OJUnknownSelector";
+OJError.UnknownSelector                = "OJUnknownSelectorError";
 
 module.exports = { OJError: OJError };
