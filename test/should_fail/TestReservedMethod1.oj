@@ -1,6 +1,0 @@
-
-@implementation TestReservedMethod
-
-- (void) isSubclassOfClass:(id)unused { }
-
-@end

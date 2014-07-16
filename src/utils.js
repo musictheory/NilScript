@@ -108,8 +108,10 @@ function throwError(name, message, node)
 function addNodeToError(node, error)
 {
     if (node) {
-        error.line    = node.loc.start.line;
-        error.column  = node.loc.start.col;
+        if (!error.line) {
+            error.line    = node.loc.start.line;
+            error.column  = node.loc.start.col;
+        }
     }
 }
 

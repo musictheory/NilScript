@@ -1,9 +1,0 @@
-
-@implementation UseOfThisInMethod
-
-- (void) foo
-{
-    this.doSomething();
-}
-
-@end

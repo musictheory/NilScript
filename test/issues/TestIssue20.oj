@@ -1,0 +1,31 @@
+var assert = require("assert");
+
+@implementation Issue20Class
+
+// Previously, this would fail due to oj->js naming conventions,
+// as both 'doFoo:withBar:' and 'doFoo_withBar:' map to the same
+// underlying JavaScript function 'doFoo_withBar_'
+
+// In oj 1.0, this now works
+
+- (String) doFoo:(id)foo withBar:(id)bar { return "A"; }
+- (String) doFoo_withBar:(id)bar { return "B"; }
+
+- (String) _doFoo:(id)foo withBar:(id)bar { return "C"; }
+- (String) _doFoo_withBar:(id)bar { return "D"; }
+
+@end
+
+function runTests()
+{
+    var instance = [[Issue20Class alloc] init];
+
+    assert([instance doFoo:0 withBar:1]  == "A");
+    assert([instance doFoo_withBar:1]    == "B");
+    assert([instance _doFoo:0 withBar:1] == "C");
+    assert([instance _doFoo_withBar:1]   == "D");
+
+    return true;
+}
+
+runTests();

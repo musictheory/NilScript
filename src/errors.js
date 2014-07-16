@@ -26,6 +26,8 @@ OJError.NonIntegerEnum                 = "OJNonIntegerEnumError";
 OJError.SelfIsReserved                 = "OJSelfIsReservedError";
 OJError.DollarOJIsReserved             = "OJDollarOJIsReservedError";
 OJError.ReservedMethodName             = "OJReservedMethodNameError";
+OJError.SqueezerReachedEndIndex        = "OJSqueezerReachedEndIndexError";
+
 OJError.UnknownSelector                = "OJUnknownSelectorError";
 
 module.exports = { OJError: OJError };
