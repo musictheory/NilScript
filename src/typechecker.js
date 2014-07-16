@@ -60,15 +60,40 @@ TypeChecker.prototype._getDefinition = function(model, generator)
         return methodName + "(" + parameters.join(", ") + ") : " + generator.getTypecheckerType(method.returnType) + ";";
     }
 
+    function getInstancetypeMethods(inClass) {
+        var declaredMethods = { };
+        var toReturn = [ ];
+        var ojClass = inClass;
+
+        while (ojClass) {
+            var methods = ojClass.getAllMethods();
+
+            _.each(methods, function(m) {
+                var name = m.selectorType + m.selectorName;
+
+                if (m.returnType == "instancetype") {
+                    if (!declaredMethods[name]) {
+                        declaredMethods[name] = true;
+
+                        if (ojClass != inClass) {
+                            toReturn.push(m);
+                        }
+                    }
+                }
+            });
+
+            ojClass = model.classes[ojClass.superclassName];
+        }
+
+        return toReturn;
+    }
+
     _.each(model.classes, function(ojClass) {
         var className      = generator.getSymbolForClassName(ojClass.name);
         var staticName     = className + "$Static";
 
         var superclassName       = ojClass.superclassName ? generator.getSymbolForClassName(ojClass.superclassName) : "$oj_BaseObject";
         var superclassStaticName = superclassName + "$Static";
-
-        var classMethodDeclarations    = _.map(ojClass.getClassMethods(),    makeDeclarationForMethod);
-        var instanceMethodDeclarations = _.map(ojClass.getInstanceMethods(), makeDeclarationForMethod);
 
         lines.push(
             "declare class " + className + " extends " + superclassName + " {",
@@ -79,12 +104,25 @@ TypeChecker.prototype._getDefinition = function(model, generator)
             "static $oj_super() : " + superclassName + "$Static" + ";"
         );
 
-        _.each(classMethodDeclarations, function(classMethodDeclaration) {
-            lines.push("static " + classMethodDeclaration);
+        var methods = [ ].concat(
+            ojClass.getAllMethods(),
+            getInstancetypeMethods(ojClass)
+        );
+
+        var classMethodDeclarations    = [ ];
+        var instanceMethodDeclarations = [ ];
+
+        _.each(methods, function(method) {
+            var arr = (method.selectorType == "+") ? classMethodDeclarations : instanceMethodDeclarations;
+            arr.push(makeDeclarationForMethod(method, ojClass));
         });
 
-        _.each(instanceMethodDeclarations, function(instanceMethodDeclaration) {
-            lines.push(instanceMethodDeclaration);
+        _.each(classMethodDeclarations, function(decl) {
+            lines.push("static " + decl);
+        });
+
+        _.each(instanceMethodDeclarations, function(decl) {
+            lines.push(decl);
         });
 
         _.each(ojClass.getAllIvars(), function(ivar) {
@@ -100,8 +138,8 @@ TypeChecker.prototype._getDefinition = function(model, generator)
             "$oj_super() : " + superclassName + "$Static" + ";"
         );
 
-        _.each(classMethodDeclarations, function(classMethodDeclaration) {
-            lines.push(classMethodDeclaration);
+        _.each(classMethodDeclarations, function(decl) {
+            lines.push(decl);
         });
 
         lines.push("}");

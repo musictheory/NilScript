@@ -186,26 +186,16 @@ OJModel.prototype.prepare = function()
 
         cls.doAutomaticSynthesis();
 
-        methods = cls.getInstanceMethods();
-        for (i = 0, length = methods.length; i < length; i++) {
-            selectors[methods[i].selectorName] = true;
-        }
-
-        methods = cls.getClassMethods();
+        methods = cls.getAllMethods();
         for (i = 0, length = methods.length; i < length; i++) {
             selectors[methods[i].selectorName] = true;
         }
     });
 
-    _.each(this._nameToProtocolMap, function(protocol, name) {
+    _.each(this.protocols, function(protocol, name) {
         var i, length;
 
-        methods = protocol.getInstanceMethods();
-        for (i = 0, length = methods.length; i < length; i++) {
-            selectors[methods[i].selectorName] = true;
-        }
-
-        methods = protocol.getClassMethods();
+        methods = protocol.getAllMethods();
         for (i = 0, length = methods.length; i < length; i++) {
             selectors[methods[i].selectorName] = true;
         }
@@ -310,6 +300,11 @@ OJProtocol.prototype.saveState = function()
         classMethods:    _.values(this._classMethodMap),
         instanceMethods: _.values(this._instanceMethodMap)
     }
+}
+
+OJProtocol.prototype.getAllMethods = function()
+{
+    return _.values(this._classMethodMap).concat(_.values(this._instanceMethodMap));
 }
 
 
@@ -583,7 +578,22 @@ OJClass.prototype.makePropertyDynamic = function(name)
 OJClass.prototype.addMethod = function(method)
 {
     var selectorName = method.selectorName;
-    var map = (method.selectorType == "+") ? this._classMethodMap : this._instanceMethodMap;
+    var selectorType = method.selectorType;
+    var isClass      = method.selectorType == "+";
+
+    var map = isClass ? this._classMethodMap : this._instanceMethodMap;
+
+    // +alloc, +new, -init, and -self are promoted to returnType "instancetype"
+    // See http://clang.llvm.org/docs/LanguageExtensions.html
+    if (isClass) {
+        if (selectorName.match(/_*new($|[^a-z])/) || selectorName.match(/_*alloc($|[^a-z])/)) {
+            method.returnType = "instancetype";
+        }
+    } else {
+        if (selectorName.match(/_*init($|[^a-z])/) || selectorName.match(/_*self($|[^a-z])/)) {
+            method.returnType = "instancetype";
+        }
+    }
 
     if (map[selectorName]) {
         Utils.throwError(OJError.DuplicateMethodDefinition, "Duplicate declaration of method '" + selectorName + "'");
@@ -596,6 +606,12 @@ OJClass.prototype.addMethod = function(method)
 OJClass.prototype.getAllIvars = function()
 {
     return _.values(this._ivarMap);
+}
+
+
+OJClass.prototype.getAllMethods = function()
+{
+    return _.values(this._classMethodMap).concat(_.values(this._instanceMethodMap));
 }
 
 

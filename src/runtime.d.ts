@@ -38,7 +38,7 @@ declare class $oj_BaseObject {
     static isSubclassOfClass_(cls) : boolean;
     static isEqual_(other) : boolean;
         
-    init() : any;
+    init() : $oj_BaseObject;
     copy() : any;
     superclass();
     class();
