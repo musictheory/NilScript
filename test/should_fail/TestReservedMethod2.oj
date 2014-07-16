@@ -1,6 +1,0 @@
-
-@implementation TestReservedMethod
-
-- (void) alloc { }
-
-@end

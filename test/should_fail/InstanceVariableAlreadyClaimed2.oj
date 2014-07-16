@@ -1,9 +1,0 @@
-
-@implementation InstanceVariableAlreadyClaimed2
-
-@property id foo;
-@property id foo2;
-
-@synthesize foo2=_foo;
-
-@end

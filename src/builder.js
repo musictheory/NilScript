@@ -278,6 +278,24 @@ Builder.prototype.build = function()
         }
     }
 
+    function handleVariableDeclarator(node)
+    {
+        if (node.id.name == "self" && currentMethod) {
+            Utils.throwError(OJError.SelfIsReserved, "Use of self as variable name inside of oj method", node);
+        }
+    }
+
+    function handleFunctionDeclarationOrExpression(node)
+    {
+        if (currentMethod) {
+            for (var i = 0, length = node.params.length; i < length; i++) {
+                if (node.params[i].name) {
+                    Utils.throwError(OJError.SelfIsReserved, "Use of self as function parameter name", node);
+                }
+            }
+        }
+    }
+
     traverser.traverse(function(node, type) {
         try {
             if (type === Syntax.OJClassImplementation) {
@@ -315,6 +333,12 @@ Builder.prototype.build = function()
 
             } else if (type === Syntax.OJConstDeclaration) {
                 handleConstDeclaration(node);
+
+            } else if (type === Syntax.VariableDeclarator) {
+                handleVariableDeclarator(node);
+
+            } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression) {
+                handleFunctionDeclarationOrExpression(node);
             }
 
         } catch (e) {

@@ -1,7 +1,0 @@
-
-@implementation DuplicateMethod
-
-- (void) foo { }
-- (void) foo { }
-
-@end

@@ -12,6 +12,23 @@ var _           = require("lodash");
 var OJDynamicProperty = " OJDynamicProperty ";
 
 
+var sBase52Digits = "etnrisouaflchpdvmgybwESxTNCkLAOMDPHBjFIqRUzWXVJKQGYZ0516372984";
+
+function sToBase52(index)
+{
+    var result = "";
+    var base = 52;
+
+    do {
+        result += sBase52Digits.charAt(index % base);
+        index = Math.floor(index / base);
+        base = 62;
+    } while (index > 0);
+
+    return result;
+}
+
+
 function OJEnum(name, unsigned, values)
 {
     this.name     = name;
@@ -46,14 +63,13 @@ function OJProperty(name, type, writable, getter, setter, ivar)
 }
 
 
-function OJMethod(selectorName, selectorType, returnType, parameterTypes, variableNames, usesSelf)
+function OJMethod(selectorName, selectorType, returnType, parameterTypes, variableNames)
 {
     this.selectorName   = selectorName;
     this.selectorType   = selectorType;
     this.returnType     = returnType;
     this.parameterTypes = parameterTypes || [ ];
     this.variableNames  = variableNames  || [ ];
-    this.usesSelf       = !!usesSelf;
     this.synthesized    = false;
 }
 
@@ -72,43 +88,10 @@ function OJModel()
 }
 
 
-
-
-// function Squeezer(state, options)
-// {
-//     if (!state) state = { };
-
-//     this._toMap   = state["to"]      || { };
-//     this._fromMap = state["from"]    || { };
-//     this._id      = state["id"]      || 0;
-
-//     if (options.start && !this._id) {
-//         this._id = options.start;
-//     }
-
-// }
-
-
-var sBase52Digits = "etnrisouaflchpdvmgybwESxTNCkLAOMDPHBjFIqRUzWXVJKQGYZ0516372984";
-
-function sToBase52(index)
-{
-    var result = "";
-    var base = 52;
-
-    do {
-        result += sBase52Digits.charAt(index % base);
-        index = Math.floor(index / base);
-        base = 62;
-    } while (index > 0);
-
-    return result;
-}
-
-
 OJModel.prototype.setupSqueezer = function(start, max)
 {
-
+    this._squeezerId = start;
+    this._maxSqueezerId = max;
 }
 
 
@@ -128,6 +111,10 @@ OJModel.prototype.getSqueezedName = function(oldName, add)
             }
 
             this._squeezerId++;
+
+            if (this._maxSqueezerId && (this._squeezerId >= this._maxSqueezerId)) {
+                Utils.throwError(OJError.SqueezerReachedEndIndex, "Squeezer reached max index of " + this._maxSqueezerId);
+            }
         }
 
         toMap[oldName]   = newName;
@@ -294,11 +281,11 @@ OJProtocol.prototype.loadState = function(state)
     this.name = state.name;
 
     _.each(state.classMethods, function(m) {
-        classMethodMap[m.name] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.usesSelf);
+        classMethodMap[m.name] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames);
     });
 
     _.each(state.instanceMethods, function(m) {
-        instanceMethodMap[m.name] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.usesSelf);
+        instanceMethodMap[m.name] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames);
     });
 }
 
@@ -372,11 +359,11 @@ OJClass.prototype.loadState = function(state)
     });
 
     _.each(state.classMethods, function(m) {
-        classMethodMap[m.selectorName] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.usesSelf);
+        classMethodMap[m.selectorName] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames);
     });
 
     _.each(state.instanceMethods, function(m) {
-        instanceMethodMap[m.selectorName] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.usesSelf);
+        instanceMethodMap[m.selectorName] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames);
     });
 }
 
@@ -395,8 +382,6 @@ OJClass.prototype.saveState = function()
         instanceMethods: _.values(this._instanceMethodMap)
     }
 }
-
-
 
 
 OJClass.prototype.doAutomaticSynthesis = function()
