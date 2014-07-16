@@ -289,7 +289,7 @@ Builder.prototype.build = function()
     {
         if (currentMethod) {
             for (var i = 0, length = node.params.length; i < length; i++) {
-                if (node.params[i].name) {
+                if (node.params[i].name == "self") {
                     Utils.throwError(OJError.SelfIsReserved, "Use of self as function parameter name", node);
                 }
             }
