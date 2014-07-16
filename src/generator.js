@@ -138,7 +138,7 @@ function Generator(ast, model, modifier, forTypechecker, options)
 }
 
 
-Generator.prototype.getTypecheckerType = function(inType)
+Generator.prototype.getTypecheckerType = function(inType, currentClass)
 {
     var value;
 
@@ -152,6 +152,8 @@ Generator.prototype.getTypecheckerType = function(inType)
         return "any[]";
     } else if (inType == "void") {
         return "void";
+    } else if (inType == "instancetype" && currentClass) {
+        return this.getTypecheckerType(currentClass.name);
     } else if ((value = this._knownTypes[inType])) {
         return value;
     } else {
@@ -263,10 +265,10 @@ Generator.prototype.generate = function()
 
     var optionSqueeze = this._squeeze;
 
-    var removeEnums   = options["inline-enum"]  || (language === LanguageTypechecker);
-    var removeConsts  = options["inline-const"] || (language === LanguageTypechecker);
-    var removeTypes   =                            (language !== LanguageTypechecker);
-    var knownSelectors = options["check-selectors"] ? this._knownSelectors : null;
+    var removeEnums    = options["inline-enum"]  || (language === LanguageTypechecker);
+    var removeConsts   = options["inline-const"] || (language === LanguageTypechecker);
+    var removeTypes    =                            (language !== LanguageTypechecker);
+    var knownSelectors = options["check-selectors"] ? model.selectors : null;
 
     function getClassAsRuntimeVariable(className)
     {
@@ -275,6 +277,19 @@ Generator.prototype.generate = function()
         }
 
         return generator.getSymbolForClassName(className);
+    }
+
+    function getCurrentMethodInModel() {
+        if (!currentClass || !currentMethodNode) return null;
+
+        var selectorType = currentMethodNode.selectorType;
+        var selectorName = currentMethodNode.selectorName;
+
+        if (selectorType == "+") {
+            return currentClass.getClassMethodWithName(selectorName);
+        } else {
+            return currentClass.getInstanceMethodWithName(selectorName);
+        }
     }
 
     function generateMethodDeclaration(isClassMethod, selectorName)
@@ -450,7 +465,14 @@ Generator.prototype.generate = function()
                 if (language === LanguageEcmascript5) {
                     doCommonReplacement(currentClass.name + "." + OJSuperVariable + "." + (useProto ? "prototype." : "") + methodName + ".call(this" + (hasArguments ? "," : ""), ")");
                 } else {
-                    doCommonReplacement(selfOrThis + ".$oj_super()." + methodName + "(", ")");
+                    var method = getCurrentMethodInModel();
+                    var cast = "";
+
+                    if (method.returnType == "instancetype") {
+                        cast = "<" + generator.getTypecheckerType(currentClass.name) + ">";
+                    }
+
+                    doCommonReplacement(cast + selfOrThis + ".$oj_super()." + methodName + "(", ")");
                 }
                 return;
 
@@ -564,7 +586,7 @@ Generator.prototype.generate = function()
         modifier.from(node.body).to(node).replace(endText);
     }
 
-    function handle_method_definition(node)
+    function handleMethodDefinition(node)
     {
         var methodName = generator.getSymbolForSelectorName(node.selectorName);
         var isClassMethod = node.selectorType == "+";
@@ -592,7 +614,13 @@ Generator.prototype.generate = function()
             }
         }
 
-        modifier.from(node).to(node.body).replace(where + "." + methodName + " = function(" + args.join(", ") + ") ");
+        var definition = where + "." + methodName + " = function(" + args.join(", ") + ") ";
+
+        if (language === LanguageTypechecker) {
+            definition += ": " + generator.getTypecheckerType(getCurrentMethodInModel().returnType, currentClass);
+        }
+
+        modifier.from(node).to(node.body).replace(definition);
 
         if (methodUsesSelfVar || methodUsesTemporaryVar || methodUsesLoneExpression) {
             var toInsert = "";
@@ -952,7 +980,7 @@ Generator.prototype.generate = function()
         if (type === Syntax.OJClassImplementation) {
             currentClass = null;
         } else if (type === Syntax.OJMethodDefinition) {
-            handle_method_definition(node);
+            handleMethodDefinition(node);
             currentMethodNode = null;
         }
     });
