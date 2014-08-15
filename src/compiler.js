@@ -17,6 +17,7 @@ var TypeChecker = require("./typechecker");
 var OJError     = require("./errors").OJError;
 var OJModel     = require("./model").OJModel;
 
+var _           = require("lodash");
 
 function errorForEsprimaError(inError)
 {
@@ -133,6 +134,19 @@ Compiler.prototype._getFileAndLineForLine = function(inLine)
 }
 
 
+Compiler.prototype._cleanupError = function(e)
+{
+    if (e.line && !e.file) {
+        var fileAndLine = this._getFileAndLineForLine(e.line);
+
+        if (fileAndLine) {
+            e.file = fileAndLine[0];
+            e.line = fileAndLine[1];
+        }
+    }
+}
+
+
 Compiler.prototype.compile = function(callback)
 {
     var dumpTime = this._options["dump-time"];
@@ -202,6 +216,11 @@ Compiler.prototype.compile = function(callback)
             result = generator.finish();
         });
 
+        // Add real file to errors
+        _.each(result.warnings || [ ], function(e) {
+            this._cleanupError(e);
+        }.bind(this));
+
         // Add state to result
         time("Archive", function() {
             result.state = model.saveState();
@@ -216,9 +235,9 @@ Compiler.prototype.compile = function(callback)
 
                 waitingForChecker = true;
 
-                checker.check(function(err, hints) {
+                checker.check(function(err, warnings) {
                     waitingForChecker = false;
-                    result.hints = (result.hints || [ ]).concat(hints);
+                    result.warnings = (result.warnings || [ ]).concat(warnings);
                     finish(err, result);
                 });
             });
@@ -233,11 +252,13 @@ Compiler.prototype.compile = function(callback)
             }, 4)
         }
 
+        result.cache = this._options["cache"];
+
         if (this._options["jshint"]) {
             var config = this._options["jshint-config"];
             var ignore = this._options["jshint-ignore"];
 
-            var hinter = new Hinter(result.code, config, ignore, lineMap, inputFiles);
+            var hinter = new Hinter(result.code, config, ignore, lineMap, inputFiles, result.cache ? result.cache.hinter : { });
 
             waitingForHinter = true;
 
@@ -245,7 +266,12 @@ Compiler.prototype.compile = function(callback)
 
             hinter.run(function(err, hints) {
                 waitingForHinter = false;
-                result.hints = (result.hints || [ ]).concat(hints);
+                result.warnings = (result.warnings || [ ]).concat(hints);
+
+                if (result.cache) {
+                    result.cache.hinter = hinter.getCache();
+                }
+
                 printTime("Hinter", start);
 
                 finish(err, result);
@@ -264,14 +290,7 @@ Compiler.prototype.compile = function(callback)
             console.error("------------------------------------------------------------")
         }
 
-        if (e.line && !e.file) {
-            var fileAndLine = this._getFileAndLineForLine(e.line);
-
-            if (fileAndLine) {
-                e.file = fileAndLine[0];
-                e.line = fileAndLine[1];
-            }
-        }
+        this._cleanupError(e);
 
         callback(e, null);
     }

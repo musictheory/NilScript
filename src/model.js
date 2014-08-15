@@ -83,6 +83,7 @@ function OJModel()
     this.selectors = { };
 
     this._squeezerId      = 0;
+    this._maxSqueezerId   = 0;
     this._squeezerToMap   = { };
     this._squeezerFromMap = { };
 }
@@ -131,6 +132,12 @@ OJModel.prototype.loadState = function(state)
     var enums     = this.enums;
     var classes   = this.classes;
     var protocols = this.protocols;
+
+    if (state.squeezer) {
+        this._squeezerId      = state.squeezer.id   || 0;
+        this._squeezerFromMap = state.squeezer.from || { };
+        this._squeezerToMap   = state.squeezer.to   || { };
+    }
 
     _.each(state.enums, function(e) {
         enums.push(new OJEnum(e.name, e.unsigned, e.values));

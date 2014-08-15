@@ -14,6 +14,7 @@ var Utils      = require("./utils");
 
 var OJModel    = require("./model").OJModel;
 var OJError    = require("./errors").OJError;
+var OJWarning  = require("./errors").OJWarning;
 
 var OJGlobalVariable          = "$oj_oj";
 
@@ -72,6 +73,7 @@ function Generator(ast, model, modifier, forTypechecker, options)
     this._model    = model;
     this._modifier = modifier;
     this._options  = options;
+    this._warnings = [ ];
 
     var inlines = { };
 
@@ -107,7 +109,9 @@ function Generator(ast, model, modifier, forTypechecker, options)
     // Typechecker forces 'inline-const'
     if (options["inline-const"] || forTypechecker) {
         _.each(model.consts, function(value, name) {
-            inlines[name] = value;
+            if (inlines[name] === undefined) {
+                inlines[name] = value;
+            }
         });
     }
 
@@ -270,6 +274,8 @@ Generator.prototype.generate = function()
     var removeTypes    =                            (language !== LanguageTypechecker);
     var knownSelectors = options["check-selectors"] ? model.selectors : null;
 
+    var warnings = this._warnings;
+
     function getClassAsRuntimeVariable(className)
     {
         if (language === LanguageEcmascript5) {
@@ -401,7 +407,7 @@ Generator.prototype.generate = function()
         var firstSelector, lastSelector;
 
         if (knownSelectors && !knownSelectors[node.selectorName]) {
-            Utils.throwError(OJError.UnknownSelector, "Use of unknown selector '" + node.selectorName + "'", node);
+            warnings.push(Utils.makeError(OJWarning.UnknownSelector, "Use of unknown selector '" + node.selectorName + "'", node));
         }
 
         for (var i = 0, length = node.messageSelectors.length; i < length; i++) {
@@ -688,7 +694,7 @@ Generator.prototype.generate = function()
 
             } else {
                 if (name[0] == "_" && optionCheckIvars && (name.length > 1)) {
-                    Utils.throwError(OJError.UndeclaredInstanceVariable, "Use of undeclared instance variable " + node.name, node);
+                    warnings.push(Utils.makeError(OJWarning.UndeclaredInstanceVariable, "Use of undeclared instance variable " + node.name, node));
                 }
             } 
         }
@@ -759,7 +765,7 @@ Generator.prototype.generate = function()
         var name = generator.getSymbolForSelectorName(node.name);
 
         if (knownSelectors && !knownSelectors[node.name]) {
-            Utils.throwError(OJError.UnknownSelector, "Use of unknown selector '" + node.name + "'", node);
+            warnings.push(Utils.makeError(OJWarning.UnknownSelector, "Use of unknown selector '" + node.selectorName + "'", node));
         }
 
         modifier.select(node).replace("{ " + name + ": 1 }");
@@ -890,7 +896,7 @@ Generator.prototype.generate = function()
                 node.type == Syntax.OJClassImplementation ||
                 node.type == Syntax.OJMessageExpression)
             {
-                Utils.throwError(OJError.UseOfThisInMethod, "Use of 'this' keyword in oj method definition", thisNode);
+                warnings.push(Utils.makeError(OJWarning.UseOfThisInMethod, "Use of 'this' keyword in oj method definition", thisNode));
 
             } else if (node.type == Syntax.FunctionDeclaration ||
                        node.type == Syntax.FunctionExpression) {
@@ -989,7 +995,9 @@ Generator.prototype.generate = function()
 
 Generator.prototype.finish = function()
 {
-    return this._modifier.finish();
+    var result = this._modifier.finish();
+    result.warnings = this._warnings;
+    return result;
 }
 
 

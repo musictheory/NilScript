@@ -14,7 +14,7 @@ var WorkerProcessArgument = "_$_HINTER_WORKER_$_"
 
 var child_process = require("child_process");
 
-function Hinter(contents, config, ignore, lineMap, files)
+function Hinter(contents, config, ignore, lineMap, files, cache)
 {
     this._contents = contents;
     this._config   = config;
@@ -25,29 +25,39 @@ function Hinter(contents, config, ignore, lineMap, files)
     this._waitingRequests = [ ];
     this._activeRequests  = 0;
 
-    this._filenameToHintsMap = { };
-
-    this._setupWorkers();
+    cache = cache || { };
+    this._filenameToHintsMap  = cache.hints  || { };
+    this._filenameToMtimesMap = cache.mtimes || { };
 }
 
+
+Hinter.prototype.getCache = function()
+{
+    return {
+        hints:  this._filenameToHintsMap,
+        mtimes: this._filenameToMtimesMap
+    }
+}
 
 Hinter.prototype._setupWorkers = function()
 {
     var cpuCount = os.cpus().length;
 
-    if (1 || this._lineMap.length > cpuCount) {
+    if (this._waitingRequests.length > cpuCount) {
         var waiting   = this._waitingRequests;
         var workers   = [ ];
         var available = [ ];
         var that = this;
 
         var filenameToHintsMap = this._filenameToHintsMap;
+        var filenameToMtimesMap = this._filenameToMtimesMap;
 
         for (var i = 0; i < cpuCount; i++) {
             var child = child_process.fork(__filename, [ WorkerProcessArgument ]);
 
             child.on("message", function(response) {
-                filenameToHintsMap[response.filename] = response.errors;
+                filenameToHintsMap[ response.filename] = response.errors;
+                filenameToMtimesMap[response.filename] = response.mtime;
                 that._activeRequests--;
 
                 available.push(this);
@@ -103,9 +113,13 @@ Hinter.prototype._getSortedHints = function()
 
 Hinter.prototype.run = function(callback)
 {
-    var lines  = this._contents.split("\n");
-    var config = this._config;
-    var ignore = this._ignore;
+    var lines        = this._contents.split("\n");
+    var config       = this._config;
+    var ignore       = this._ignore;
+
+    var filenameToHintsMap  = this._filenameToHintsMap;
+    var filenameToMtimesMap = this._filenameToMtimesMap;
+
     var globals;
 
     if (!ignore) {
@@ -133,20 +147,30 @@ Hinter.prototype.run = function(callback)
 
     // Split contents into waiting messages
     {
-        for (var key in this._lineMap) {
-            var entry = this._lineMap[key];
+        for (var filename in this._lineMap) {
+            var entry = this._lineMap[filename];
             var entryContent = lines.slice(entry.start, entry.end).join("\n");
 
-            this._waitingRequests.push({
-                filename: key,
-                content:  entryContent,
-                config:   config,
-                ignore:   ignore,
-                globals:  globals
-            });
+            var stat     = fs.statSync(filename.toString());
+            var mtime    = stat.mtime.getTime();
+            var oldMtime = filenameToMtimesMap[filename] || 0;
 
+            if (mtime > oldMtime) {
+                this._waitingRequests.push({
+                    filename: filename,
+                    content:  entryContent,
+                    config:   config,
+                    ignore:   ignore,
+                    globals:  globals,
+                    mtime:    mtime
+                });
+            }
         }
     }
+
+    this._setupWorkers();
+
+    var that = this;
 
     if (this._allWorkers) {
         while (this._availableWorkers.length && this._waitingRequests.length) {
@@ -155,36 +179,41 @@ Hinter.prototype.run = function(callback)
             this._availableWorkers.shift().send(request);
         }
 
+        var workers = this._allWorkers;
+
+        var interval = setInterval(function() {
+            if (that._waitingRequests.length == 0 && that._activeRequests == 0) {
+                try {
+                    for (var i = 0; i < workers.length; i++) {
+                        workers[i].disconnect();
+                    }
+
+                    that._allWorkers = [ ];
+
+                    clearInterval(interval);
+
+                    var sorted = that._getSortedHints();
+                    callback(null, sorted);
+
+                } catch (e) {
+                    callback(e);
+                }
+            }
+        }, 0);
+
+
     } else {
         for (var i = 0; i < this._waitingRequests.length; i++) {
             hint(this._waitingRequests[i], function(response) {
-                this._filenameToHintsMap[response.filename] = response.errors;
+                filenameToHintsMap[ response.filename] = response.errors;
+                filenameToMtimesMap[response.filename] = response.mtime;
             });
         }
+
+        var sorted = that._getSortedHints();
+        callback(null, sorted);
     }
 
-    var that = this;
-    var workers = this._allWorkers;
-
-    var interval = setInterval(function() {
-        if (that._waitingRequests.length == 0 && that._activeRequests == 0) {
-            try {
-                for (var i = 0; i < workers.length; i++) {
-                    workers[i].disconnect();
-                }
-
-                that._allWorkers = [ ];
-
-                clearInterval(interval);
-
-                var sorted = that._getSortedHints();
-                callback(null, sorted);
-
-            } catch (e) {
-                callback(e);
-            }
-        }
-    }, 0);
 
     return this._errors;
 }
@@ -198,7 +227,7 @@ function hint(request, callback)
     var config   = request.config;
     var globals  = request.globals;
 
-    var response = { filename: filename, errors: [ ] };
+    var response = { filename: filename, errors: [ ], mtime: request.mtime };
 
     if (!JSHINT(content, config, globals)) {
         var inErrors  = JSHINT.errors;

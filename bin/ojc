@@ -16,6 +16,7 @@ var opt = getopt.create([
     [ "o", "output=FILE",               "output .js file"],
     [ "",  "input-state=FILE",          "input file for compiler state" ],
     [ "",  "output-state=FILE",         "output file for compiler state" ],
+    [ "",  "cache=FILE",                "cache file to speed up builds" ],
     [ "",  "prepend=FILE+",             "prepend file to output (without compiling or hinting)"],
     [ "",  "append=FILE+",              "append file to output (without compiling or hinting)"],
     [ "s", "squeeze",                   "enable squeezer" ],
@@ -136,6 +137,18 @@ if (inputStateFile) {
     }
 }
 
+var cacheFile = options["cache"];
+var cacheContents;
+if (cacheFile) {
+    try {
+        cacheContents = JSON.parse(fs.readFileSync(cacheFile));
+    } catch (e) { };
+
+    if (!cacheContents) cacheContents = { };
+    options["cache"] = cacheContents;
+}
+
+
 try {
     ojc.ojc(options, function(err, result) {
         if (outputFile) {
@@ -158,6 +171,10 @@ try {
 
         if (outputMapFile) {
             fs.writeFileSync(outputMapFile, JSON.stringify(result.map || { }, null, "    "), "utf8")
+        }
+
+        if (cacheFile) {
+            fs.writeFileSync(cacheFile, JSON.stringify(result.cache || { }, null, "    "), "utf8")
         }
 
         process.exit(err ? 1 : 0);

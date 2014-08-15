@@ -13,13 +13,11 @@ OJError.DuplicateMethodDefinition      = "OJDuplicateMethodDefinitionError";
 OJError.DuplicateProtocolDefinition    = "OJDuplicateProtocolDefinition";
 OJError.DuplicateIvarDefinition        = "OJDuplicateIvarDefinitionError";
 OJError.DuplicateEnumDefinition        = "OJDuplicateEnumDefinition";
-OJError.UndeclaredInstanceVariable     = "OJUndeclaredInstanceVariableError";
 OJError.UnknownProperty                = "OJUnknownPropertyError";
 OJError.DuplicateJavascriptFunction    = "OJDuplicateJavascriptFunctionError";
 OJError.PropertyAlreadySynthesized     = "OJPropertyAlreadySynthesizedError";
 OJError.PropertyAlreadyDynamic         = "OJPropertyAlreadyDynamicError";
 OJError.InstanceVariableAlreadyClaimed = "OJInstanceVariableAlreadyClaimedError";
-OJError.UseOfThisInMethod              = "OJUseOfThisInMethodError";
 OJError.NonLiteralConst                = "OJNonLiteralConstError";
 OJError.NonLiteralEnum                 = "OJNonLiteralEnumError";
 OJError.NonIntegerEnum                 = "OJNonIntegerEnumError";
@@ -28,6 +26,16 @@ OJError.DollarOJIsReserved             = "OJDollarOJIsReservedError";
 OJError.ReservedMethodName             = "OJReservedMethodNameError";
 OJError.SqueezerReachedEndIndex        = "OJSqueezerReachedEndIndexError";
 
-OJError.UnknownSelector                = "OJUnknownSelectorError";
 
-module.exports = { OJError: OJError };
+var OJWarning = { };
+
+OJWarning.UnknownSelector              = "OJUnknownSelectorWarning";
+OJWarning.UseOfThisInMethod            = "OJUseOfThisInMethodWarning";
+OJWarning.UnusedInstanceVariable       = "OJUnusedInstanceVariableWarning";
+OJWarning.UndeclaredInstanceVariable   = "OJUndeclaredInstanceVariableWarning";
+
+
+module.exports = {
+    OJError:   OJError,
+    OJWarning: OJWarning
+};

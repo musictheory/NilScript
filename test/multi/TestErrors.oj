@@ -2,11 +2,11 @@
 // @name check-ivars
 // @opts { "check-ivars": true  }
 
-@implementation AutomaticSynthesis
+@implementation UndeclaredInstanceVariable
 
 @property id foo;
 
-- (void) setFoo:(id)foo { _foo = foo; } //@error OJUndeclaredInstanceVariableError
+- (void) setFoo:(id)foo { _foo = foo; } //@warning OJUndeclaredInstanceVariableWarning
 - (id) foo { return _foo; }
 
 @end
@@ -16,11 +16,11 @@
 // @name check-ivars 2
 // @opts { "check-ivars": true  }
 
-@implementation AutomaticSynthesis
+@implementation UndeclaredInstanceVariable
 
 @property (readonly) id foo;
 
-- (id) foo { return _foo; } //@error OJUndeclaredInstanceVariableError
+- (id) foo { return _foo; } //@warning OJUndeclaredInstanceVariableWarning
 
 @end
 
@@ -29,11 +29,11 @@
 // @name check-ivars 3
 // @opts { "check-ivars": true  }
 
-@implementation ShouldFail0
+@implementation UndeclaredInstanceVariable
 
 - (void) testCheckIvar
 {
-     _moo;  //@error OJUndeclaredInstanceVariableError
+     _moo;  //@warning OJUndeclaredInstanceVariableWarning
 }
 
 @end
@@ -47,7 +47,7 @@
 
 - (void) foo
 {
-    this.doSomething(); //@error OJUseOfThisInMethodError
+    this.doSomething(); //@warning OJUseOfThisInMethodWarning
 }
 
 @end
