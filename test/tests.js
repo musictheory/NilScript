@@ -95,6 +95,8 @@ function gatherTests(dir, callback)
                     t.error = [ m[1].trim(), undefined ];
                 } else if (m = line.match(/\@error\s*\=?\s*(.*?)$/)) {
                     t.error = [ m[1].trim(), i ];
+                } else if (m = line.match(/\@warning\s*\=?\s*(.*?)$/)) {
+                    t.error = [ m[1].trim(), i ];
                 }
 
                 i++;
@@ -113,7 +115,7 @@ function gatherTests(dir, callback)
                 t.options.push({ });
             }
 
-            if (!t.error) {
+            if (!t.error && !t.warning) {
                 t.options.push({ "squeeze": true });
             } 
         });
@@ -134,6 +136,10 @@ gatherTests(path.dirname(__filename), function(err, tests) {
 
             ojc.ojc(options, function(err, result) {
                 test(t.name, function() {
+                    if (!err && result.warnings && result.warnings.length) {
+                        err = result.warnings[0];
+                    }
+
                     if (err) {
                         if (!t.error || (err.name != t.error[0]) || (err.line != t.error[1])) {
                             throw new Error("Expected: " +

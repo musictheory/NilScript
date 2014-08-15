@@ -89,7 +89,7 @@ function isBaseObjectClass(name)
 }
 
 
-function throwError(name, message, node)
+function makeError(name, message, node)
 {
     var error = new Error(message);
 
@@ -101,7 +101,13 @@ function throwError(name, message, node)
     error.name    = name;
     error.reason  = message;
 
-    throw error;
+    return error;
+}
+
+
+function throwError(name, message, node)
+{
+    throw makeError(name, message, node);
 }
 
 
@@ -122,6 +128,7 @@ module.exports = {
     isBaseObjectSelectorName:   isBaseObjectSelectorName,
     getBaseObjectSelectorNames: getBaseObjectSelectorNames,
     isBaseObjectClass:          isBaseObjectClass,
+    makeError:                  makeError,
     throwError:                 throwError,
     addNodeToError:             addNodeToError
 };
