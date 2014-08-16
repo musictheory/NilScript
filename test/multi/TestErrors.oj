@@ -1,6 +1,6 @@
 // --------------------------------------------------------------------
-// @name check-ivars
-// @opts { "check-ivars": true  }
+// @name unknown-ivars
+// @opts { "warn-unknown-ivars": true  }
 
 @implementation UndeclaredInstanceVariable
 
@@ -13,8 +13,8 @@
 
 
 // --------------------------------------------------------------------
-// @name check-ivars 2
-// @opts { "check-ivars": true  }
+// @name unknown-ivars 2
+// @opts { "warn-unknown-ivars": true  }
 
 @implementation UndeclaredInstanceVariable
 
@@ -26,8 +26,8 @@
 
 
 // --------------------------------------------------------------------
-// @name check-ivars 3
-// @opts { "check-ivars": true  }
+// @name unknown-ivars 3
+// @opts { "warn-unknown-ivars": true  }
 
 @implementation UndeclaredInstanceVariable
 
@@ -40,8 +40,8 @@
 
 
 // --------------------------------------------------------------------
-// @name check-this
-// @opts { "check-this": true  }
+// @name this-in-method
+// @opts { "warn-this-in-methods": true  }
 
 @implementation UseOfThisInMethod
 

@@ -306,7 +306,7 @@ To access any instance variable, simply use its name.  No `this.` or `self.` pre
         console.log(_numberOfSheep);
     }
 
-_Note:_ If the `--check-ivars` command-line option is passed into the compiler, JavaScript identifiers that look like instance variables (with a underscore prefix) but are not defined will produce a warning.    
+_Note:_ If the `--warn-unknown-ivars` command-line option is passed into the compiler, JavaScript identifiers that look like instance variables (with a underscore prefix) but are not defined will produce a warning.    
 
 
 ### <a name="property-attributes"></a>Property Attributes
@@ -549,11 +549,11 @@ Squeezed identifiers are persisted via `--output-state` and `--input-state`.
 ---
 ## <a name="check-selectors"></a>Checking Selectors
 
-When the `--check-selectors` option is used, oj warns about usage of undefined selectors/methods.  This can help catch typos at compile time:
+When the `--warn-unknown-selectors` option is used, oj warns about usage of undefined selectors/methods.  This can help catch typos at compile time:
 
     var c = [[TheClass allc] init]; // Warns if no +allc or -allc method exists on any class
 
-Since oj lacked `@protocol`, the delegate pattern resulted in false positives with `--check-selectors`:
+Since oj lacked `@protocol`, the delegate pattern resulted in false positives with `--warn-unknown-selectors`:
 
     // Warns, as the compiler doesn't know about 'controller:didPerformActionWithFoo:'
     [_delegate controller:self didPerformActionWithFoo:foo];
