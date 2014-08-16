@@ -32,10 +32,12 @@ var opt = getopt.create([
     [ "",  "jshint-config=FILE",        "config file for jshint" ],
     [ "",  "jshint-ignore=CODE+",       "ignore warning from jshint" ],
 
-    [ "",  "check-ivars",               "warn about potentially undefined ivars"   ],
-    [ "",  "check-this",                "warn about usage of 'this' in oj methods" ],
-    [ "",  "check-selectors",           "warn about usage of undeclared selectors" ],
     [ "",  "check-types",               "use experimental type checker"            ],
+
+    [ "",  "warn-this-in-methods",      "warn about usage of 'this' in oj methods" ],
+    [ "",  "warn-unknown-selectors",    "warn about usage of unknown selectors"    ],
+    [ "",  "warn-unknown-ivars",        "warn about unknown ivars"                 ],
+    [ "",  "warn-unused-ivars",         "warn about unused ivars"                  ],
 
     [ "",  "debug-message-send",        "use debug version of oj.msgSend" ],
     [ "",  "dump-ast",                  "(for development)" ],

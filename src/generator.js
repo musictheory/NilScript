@@ -264,15 +264,17 @@ Generator.prototype.generate = function()
     var methodUsesTemporaryVar   = false;
     var methodUsesLoneExpression = false;
 
-    var optionCheckThis  = options["check-this"];
-    var optionCheckIvars = options["check-ivars"];
+    var optionWarnOnThisInMethods    = options["warn-this-in-methods"];
+    var optionWarnOnUnknownSelectors = options["warn-unknown-selectors"];
+    var optionWarnOnUnusedIvars      = options["warn-unused-ivars"];
+    var optionWarnOnUnknownIvars     = options["warn-unknown-ivars"];
 
     var optionSqueeze = this._squeeze;
 
     var removeEnums    = options["inline-enum"]  || (language === LanguageTypechecker);
     var removeConsts   = options["inline-const"] || (language === LanguageTypechecker);
     var removeTypes    =                            (language !== LanguageTypechecker);
-    var knownSelectors = options["check-selectors"] ? model.selectors : null;
+    var knownSelectors = optionWarnOnUnknownSelectors ? model.selectors : null;
 
     var warnings = this._warnings;
 
@@ -688,12 +690,19 @@ Generator.prototype.generate = function()
                     replacement = usesSelf ? "self" : "this";
                 } else {
                     replacement = generateThisIvar(currentClass.name, name, usesSelf);
+
+                    // remove ivar from unusedIvars
+                    if (optionWarnOnUnusedIvars) {
+                        if (unusedIvars && unusedIvars.indexOf(name) >= 0) {
+                            unusedIvars = _.without(unusedIvars, name);
+                        }
+                    }
                 }
 
                 modifier.select(node).replace(replacement);
 
             } else {
-                if (name[0] == "_" && optionCheckIvars && (name.length > 1)) {
+                if (name[0] == "_" && optionWarnOnUnknownIvars && (name.length > 1)) {
                     warnings.push(Utils.makeError(OJWarning.UndeclaredInstanceVariable, "Use of undeclared instance variable " + node.name, node));
                 }
             } 
@@ -921,6 +930,11 @@ Generator.prototype.generate = function()
 
         } else if (type === Syntax.OJClassImplementation) {
             currentClass = model.classes[node.id.name];
+
+            if (optionWarnOnUnusedIvars) {
+                unusedIvars = currentClass.getAllIvarNamesWithoutProperties();
+            }
+
             handleClassImplementation(node);
 
         } else if (type === Syntax.OJMethodDefinition) {
@@ -957,7 +971,7 @@ Generator.prototype.generate = function()
             handleIdentifier(node);
 
         } else if (type === Syntax.ThisExpression) {
-            if (optionCheckThis) {
+            if (optionWarnOnThisInMethods) {
                 checkThis(node, traverser.getPath());
             }
 
@@ -985,6 +999,15 @@ Generator.prototype.generate = function()
     }, function(node, type) {
         if (type === Syntax.OJClassImplementation) {
             currentClass = null;
+
+            if (optionWarnOnUnusedIvars && unusedIvars && unusedIvars.length) {
+                _.each(unusedIvars, function(unusedIvar) {
+                    warnings.push(Utils.makeError(OJWarning.UnusedInstanceVariable, "Unused instance variable " + unusedIvar, node));
+                });
+
+                unusedIvars = null;
+            }
+
         } else if (type === Syntax.OJMethodDefinition) {
             handleMethodDefinition(node);
             currentMethodNode = null;

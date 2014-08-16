@@ -616,6 +616,23 @@ OJClass.prototype.getAllIvars = function()
 }
 
 
+OJClass.prototype.getAllIvarNamesWithoutProperties = function()
+{
+    var names = _.map(this.getAllIvars(), function(ivar) {
+        return ivar.name;
+    });
+
+    var toRemove = _.map(_.values(this._propertyMap), function(property) {
+        return property.ivar;
+    });
+
+    toRemove.unshift(names);
+    names = _.without.apply(names, toRemove);
+
+    return names;
+}
+
+
 OJClass.prototype.getAllMethods = function()
 {
     return _.values(this._classMethodMap).concat(_.values(this._instanceMethodMap));
