@@ -86,6 +86,7 @@ function OJModel()
     this._maxSqueezerId   = 0;
     this._squeezerToMap   = { };
     this._squeezerFromMap = { };
+    this._enumNames       = { };
 }
 
 
@@ -132,6 +133,7 @@ OJModel.prototype.loadState = function(state)
     var enums     = this.enums;
     var classes   = this.classes;
     var protocols = this.protocols;
+    var enumNames = this._enumNames;
 
     if (state.squeezer) {
         this._squeezerId      = state.squeezer.id   || 0;
@@ -141,6 +143,7 @@ OJModel.prototype.loadState = function(state)
 
     _.each(state.enums, function(e) {
         enums.push(new OJEnum(e.name, e.unsigned, e.values));
+        enumNames[e.name] = true;
     });
 
     _.extend(this.consts, state.consts);
@@ -226,6 +229,7 @@ OJModel.prototype.addConst = function(name, value)
 OJModel.prototype.addEnum = function(e)
 {
     this.enums.push(e);
+    this._enumNames[e.name] = true;
 }
 
 
@@ -259,6 +263,44 @@ OJModel.prototype.addProtocol = function(protocol)
 }
 
 
+OJModel.prototype.isNumericType = function(t)
+{
+    if (!t) return false;
+
+    var words = t.split(/\s+/);
+
+    for (var i = 0, length = words.length; i < length; i++) {
+        var word = words[i];
+
+        if (word == "Number" ||
+            word == "number" ||
+            word == "float"  ||
+            word == "double" ||
+            word == "int"    ||
+            word == "char"   ||
+            word == "short"  ||
+            word == "long")
+        {
+            return true;
+        }
+
+        if (this._enumNames[word]) {
+            return true;
+        }
+    }
+
+    return false;
+}         
+
+
+OJModel.prototype.isBooleanType = function(t)
+{
+    return t == "Boolean" ||
+           t == "boolean" ||
+           t == "BOOL"    ||
+           t == "Bool"    ||
+           t == "bool";
+}
 
 
 function OJProtocol(name)

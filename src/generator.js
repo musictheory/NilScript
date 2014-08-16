@@ -31,42 +31,6 @@ var LanguageTypechecker = "typechecker";
 var LanguageNone        = "none";
 
 
-function isNumericType(t)
-{
-    if (!t) return false;
-
-    var words = t.split(/\s+/);
-
-    for (var i = 0, length = words.length; i < length; i++) {
-        var word = words[i];
-
-        if (word == "Number" ||
-            word == "number" ||
-            word == "float"  ||
-            word == "double" ||
-            word == "int"    ||
-            word == "char"   ||
-            word == "short"  ||
-            word == "long")
-        {
-            return true;
-        }
-    }
-
-    return false;
-}         
-
-
-function isBooleanType(t)
-{
-    return t == "Boolean" ||
-           t == "boolean" ||
-           t == "BOOL"    ||
-           t == "Bool"    ||
-           t == "bool";
-}
-
-
 function Generator(ast, model, modifier, forTypechecker, options)
 {
     this._ast      = ast;
@@ -148,9 +112,9 @@ Generator.prototype.getTypecheckerType = function(inType, currentClass)
 
     if (inType == "String" || inType == "string") {
         return "string";
-    } else if (isNumericType(inType)) {
+    } else if (this._model.isNumericType(inType)) {
         return "number";
-    } else if (isBooleanType(inType)) {
+    } else if (this._model.isBooleanType(inType)) {
         return "boolean";
     } else if (inType == "Array") {
         return "any[]";
@@ -331,9 +295,9 @@ Generator.prototype.generate = function()
         for (i = 0, length = ivars.length; i < length; i++) {
             var ivar = ivars[i];
 
-            if (isNumericType(ivar.type)) {
+            if (model.isNumericType(ivar.type)) {
                 numericIvars.push(ivar.name);
-            } else if (isBooleanType(ivar.type)) {
+            } else if (model.isBooleanType(ivar.type)) {
                 booleanIvars.push(ivar.name);
             } else {
                 objectIvars.push(ivar.name);
