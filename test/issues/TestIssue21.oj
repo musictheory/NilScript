@@ -1,0 +1,31 @@
+var assert = require("assert");
+
+@enum Issue21Enum {
+    Issue21Enum_Foo,
+    Issue21Enum_Bar,
+    Issue21Enum_Baz
+}
+
+@implementation Issue21Class {
+    Issue21Enum _a;
+}
+
+@property Issue21Enum b;
+
+- (void) check
+{
+    assert.strictEqual(_a, 0);
+    assert.strictEqual(_b, 0);
+}
+
+@end
+
+function runTests()
+{
+    var instance = [[Issue21Class alloc] init];
+    [instance check];
+
+    return true;
+}
+
+runTests();
