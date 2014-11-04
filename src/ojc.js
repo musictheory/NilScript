@@ -7,7 +7,7 @@
 var Compiler = require("./compiler");
 
 
-function ojc(options, callback)
+function compile(options, callback)
 {
     try {
         var compiler = new Compiler(options);
@@ -27,5 +27,5 @@ function ojc(options, callback)
 }
 
 
-module.exports = { ojc: ojc };
+module.exports = { compile: compile };
 
