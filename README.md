@@ -624,7 +624,9 @@ In order to support compiler optimizations, the following method names are reser
     
     });
 
-Valid properties for the `options` object:
+Below is a list of supported properties for `options` and `results`.  While other properties are available (see `bin/ojc`), they are not yet official API.
+
+Properties for the `options` object:
 
 | Key                    | Type    | Description                                                      |
 |------------------------|---------|------------------------------------------------------------------|
@@ -632,9 +634,6 @@ Valid properties for the `options` object:
 | state                  | Object  | Input compiler state, corresponds to contents of `--input-state` |
 | inline-const           | Boolean | inline @const identifiers                                        |
 | inline-enum            | Boolean | inline @enum identifiers                                         |
-| check-types            | Boolean | use experimental type checker                                    |
-| no-implicit-any        | Boolean | type checker: disallow implicit any                              |
-| strict-functions       | Boolean | type checker: enforce TypeScript-style functions                 |
 | warn-this-in-methods   | Boolean | warn about usage of 'this' in oj methods                         |
 | warn-unknown-selectors | Boolean | warn about usage of unknown selectors                            |
 | warn-unknown-ivars     | Boolean | warn about unknown ivars                                         |
@@ -647,7 +646,7 @@ Valid properties for each `file` object:
 | path                   | String  | Path of file                                                     |     
 | contents               | String  | Content of file                                                  |     
 
-Valid properties for the `result` object:
+Properties for the `result` object:
 
 | Key                    | Type    | Description                                                      |
 |------------------------|---------|------------------------------------------------------------------|
