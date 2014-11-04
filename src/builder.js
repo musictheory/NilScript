@@ -5,7 +5,7 @@
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-var esprima    = require("esprima-oj");
+var esprima    = require("./esprima");
 var Syntax     = esprima.Syntax;
 
 var Modifier   = require("./modifier");

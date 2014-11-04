@@ -4,7 +4,7 @@
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-var esprima     = require("esprima-oj");
+var esprima     = require("./esprima");
 var Syntax      = esprima.Syntax;
 
 var Builder     = require("./builder");
@@ -230,8 +230,10 @@ Compiler.prototype.compile = function(callback)
 
         // Type checker
         if (this._options["check-types"]) {
+            var noImplicitAny = this._options["no-implicit-any"];
+
             time("Type Check", function() {
-                var checker = new TypeChecker(model, generatorForChecker, inputFiles);
+                var checker = new TypeChecker(model, generatorForChecker, inputFiles, noImplicitAny);
 
                 waitingForChecker = true;
 

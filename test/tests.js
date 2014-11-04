@@ -134,7 +134,7 @@ gatherTests(path.dirname(__filename), function(err, tests) {
             options.files    = [ t.file     ];
             options.contents = [ t.contents ];
 
-            ojc.ojc(options, function(err, result) {
+            ojc.compile(options, function(err, result) {
                 test(t.name, function() {
                     if (!err && result.warnings && result.warnings.length) {
                         err = result.warnings[0];

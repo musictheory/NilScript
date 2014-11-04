@@ -5,7 +5,7 @@
 */
 
 var _          = require("lodash");
-var esprima    = require("esprima-oj");
+var esprima    = require("./esprima");
 var Syntax     = esprima.Syntax;
 
 var Modifier   = require("./modifier");
@@ -53,6 +53,8 @@ function Generator(ast, model, modifier, forTypechecker, options)
     if (forTypechecker || (this._language == LanguageTypechecker)) {
         this._language = LanguageTypechecker;
         forTypechecker = true;
+
+        this._strictFunctions = options["strict-functions"];
     }
 
     // Typechecker inlines anonymous enums
@@ -232,6 +234,7 @@ Generator.prototype.generate = function()
     var optionWarnOnUnknownSelectors = options["warn-unknown-selectors"];
     var optionWarnOnUnusedIvars      = options["warn-unused-ivars"];
     var optionWarnOnUnknownIvars     = options["warn-unknown-ivars"];
+    var optionStrictFunctions        = options["strict-functions"];
 
     var optionSqueeze = this._squeeze;
 
@@ -833,6 +836,7 @@ Generator.prototype.generate = function()
     function handleFunctionDeclarationOrExpression_typeCheckerOnly(node)
     {
         if (language !== LanguageTypechecker) return;
+        if (optionStrictFunctions) return;
 
         // Unlike JavaScript, TypeScript assumes every parameter to a function is required.
         // This results in many false positives for our JavaScript code

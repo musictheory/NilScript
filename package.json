@@ -23,8 +23,11 @@
         "type": "MIT",
         "url": "http://github.com/musictheory/oj/raw/master/LICENSE.MIT"
     }],
+    "devDependencies": {
+        "mocha": "*",
+        "temp":  "*"
+    },
     "dependencies": {
-        "esprima-oj":  "*",
         "lodash":      "*",
         "estraverse":  "1.5.x",
         "source-map":  "0.1.x",

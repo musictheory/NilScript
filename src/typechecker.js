@@ -14,7 +14,7 @@ var _       = require("lodash");
 temp.track();
 
 
-function TypeChecker(model, generator, files)
+function TypeChecker(model, generator, files, noImplicitAny)
 {
     this._defs  = this._getDefinition(model, generator);
 
@@ -26,6 +26,7 @@ function TypeChecker(model, generator, files)
 
     this._files = files;
     this._generator = generator;
+    this._noImplicitAny = noImplicitAny;
 }
 
 
@@ -151,10 +152,11 @@ TypeChecker.prototype._getDefinition = function(model, generator)
 
 TypeChecker.prototype.check = function(callback)
 {
-    var defs      = this._defs;
-    var contents  = this._contents;
-    var lineMap   = this._lineMap;
-    var generator = this._generator;
+    var defs          = this._defs;
+    var contents      = this._contents;
+    var lineMap       = this._lineMap;
+    var generator     = this._generator;
+    var noImplicitAny = this._noImplicitAny;
 
     function getFileAndLine(inLine) {
         var result;
@@ -189,6 +191,10 @@ TypeChecker.prototype.check = function(callback)
             var cmd = stdout.trim();
             var args = [ ];
 
+            if (noImplicitAny) {
+                args.push("--noImplicitAny" );
+            }
+
             temp.mkdir("oj-typechecker", function(err, dirPath) {
                 if (err) {
                     callback(err);
@@ -218,15 +224,20 @@ TypeChecker.prototype.check = function(callback)
                             if (fileAndLine) {
                                 hint.file      = fileAndLine[0];
                                 hint.line      = fileAndLine[1];
-                                hint.column    = m[2];
-                                hint.code      = m[3];
-                                hint.name     = "OJTypecheckerHint";
-                                hint.reason   = m[4];
+                            } else {
+                                hint.file      = "<generated>";
+                                hint.line      = m[1];
                             }
+
+                            hint.column    = m[2];
+                            hint.code      = m[3];
+                            hint.name     = "OJTypecheckerHint";
+                            hint.reason   = m[4];
 
                             hints.push(hint);
 
                         } else {
+
                             line.trim();
 
                             if (hint && line.length) {
@@ -236,7 +247,13 @@ TypeChecker.prototype.check = function(callback)
                     }
 
                     hints = _.filter(hints, function(hint) {
-                        hint.reason = generator.getSymbolicatedString(hint.reason);
+                        if (hint.reason) {
+                            hint.reason = generator.getSymbolicatedString(hint.reason);
+                        } else {
+                        console.log(hint);
+
+                        }
+
 
                         return hint.code != "TS2087";
                     })
