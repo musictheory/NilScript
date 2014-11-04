@@ -18,6 +18,7 @@ var OJError     = require("./errors").OJError;
 var OJModel     = require("./model").OJModel;
 
 var _           = require("lodash");
+var fs          = require("fs");
 
 function errorForEsprimaError(inError)
 {
@@ -41,8 +42,26 @@ function Compiler(options)
 {
     options = options || { };
 
-    var files    = options.files    || [ ];
-    var contents = options.contents || options.content || [ ];
+    var paths    = [ ];
+    var contents = [ ];
+
+    // The 'files' option can either be an Array of String file paths, or
+    // an Array of Objects with the following keys:
+    //        path: file path 
+    //    contents: file contents
+    //
+    _.each(options.files, function(f) {
+        if (_.isString(f)) {
+            paths.push(f);
+            contents.push(fs.readFileSync(f).toString());
+
+        } else {
+            if (f.path && f.contents) {
+                paths.push(f.path);
+                contents.push(f.contents);
+            }
+        }
+    });
 
     var parserOptions   = { loc: true }
     var modifierOptions = { };
@@ -101,7 +120,7 @@ function Compiler(options)
         Array.prototype.push.apply(allLines, lines);
     }
 
-    this._inputFiles           = files;
+    this._inputFiles           = paths;
     this._inputLines           = allLines;
     this._inputLineCounts      = lineCounts;
     this._inputParserOptions   = parserOptions;
