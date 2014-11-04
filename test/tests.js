@@ -131,8 +131,7 @@ gatherTests(path.dirname(__filename), function(err, tests) {
             var options = { };
 
             _.extend(options, o);
-            options.files    = [ t.file     ];
-            options.contents = [ t.contents ];
+            options.files = [ { path: t.file, contents: t.contents } ];
 
             ojc.compile(options, function(err, result) {
                 test(t.name, function() {

@@ -628,8 +628,7 @@ Valid properties for the `options` object:
 
 | Key                    | Type    | Description                                                      |
 |------------------------|---------|------------------------------------------------------------------|
-| files                  | Array   | Names of files to compile, used for error messages               |
-| contents               | Array   | Contents of files to compile, required                           |
+| files                  | Array   | Strings of paths to compile, or Objects of `file` type (see below)  |
 | state                  | Object  | Input compiler state, corresponds to contents of `--input-state` |
 | inline-const           | Boolean | inline @const identifiers                                        |
 | inline-enum            | Boolean | inline @enum identifiers                                         |
@@ -640,6 +639,13 @@ Valid properties for the `options` object:
 | warn-unknown-selectors | Boolean | warn about usage of unknown selectors                            |
 | warn-unknown-ivars     | Boolean | warn about unknown ivars                                         |
 | warn-unused-ivars      | Boolean | warn about unused ivars                                          |
+
+Valid properties for each `file` object:
+
+| Key                    | Type    | Description                                                      |
+|------------------------|---------|------------------------------------------------------------------|
+| path                   | String  | Path of file                                                     |     
+| contents               | String  | Content of file                                                  |     
 
 Valid properties for the `result` object:
 

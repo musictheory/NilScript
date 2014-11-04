@@ -73,10 +73,11 @@ if (!inputFiles || inputFiles.length == 0) {
 
 
 // Read each input file and store in inContent
-var inputContents = [ ];
+var files = [ ];
 inputFiles.forEach(function(f) {
     try {
-        inputContents.push(fs.readFileSync(f).toString());
+        var contents = (fs.readFileSync(f).toString());
+        files.push({ path: f, contents: contents });
     } catch (e) {
         console.error("ojc: error: " + e);
         process.exit(1);
@@ -108,8 +109,7 @@ appendFiles.forEach(function(f) {
 });
 
 
-options["files"]    = inputFiles;
-options["contents"] = inputContents;
+options["files"] = files;
 
 if (prependContents.length) {
     options["prepend"]  = prependContents.join("\n");
