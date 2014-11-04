@@ -36,6 +36,7 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 - [Checking Selectors](#check-selectors)
 - [JSHint Integration](#jshint)
 - [Type Checking](#typechecking)
+- [Compiler API](#compiler-api)
 - [License](#license)
 
 
@@ -612,6 +613,40 @@ In order to support compiler optimizations, the following method names are reser
     isKindOfClass:
     isMemberOfClass:
 
+
+---
+## <a name="compiler-api"></a>Compiler API
+
+    var ojc = require("ojc");
+    var options = { ... };
+    
+    ojc.compile(options, function(err, results) {
+    
+    });
+
+Valid properties for the `options` object:
+
+| Key                    | Type    | Description                                                      |
+|------------------------|---------|------------------------------------------------------------------|
+| files                  | Array   | Names of files to compile, used for error messages               |
+| contents               | Array   | Contents of files to compile, required                           |
+| state                  | Object  | Input compiler state, corresponds to contents of `--input-state` |
+| inline-const           | Boolean | inline @const identifiers                                        |
+| inline-enum            | Boolean | inline @enum identifiers                                         |
+| check-types            | Boolean | use experimental type checker                                    |
+| no-implicit-any        | Boolean | type checker: disallow implicit any                              |
+| strict-functions       | Boolean | type checker: enforce TypeScript-style functions                 |
+| warn-this-in-methods   | Boolean | warn about usage of 'this' in oj methods                         |
+| warn-unknown-selectors | Boolean | warn about usage of unknown selectors                            |
+| warn-unknown-ivars     | Boolean | warn about unknown ivars                                         |
+| warn-unused-ivars      | Boolean | warn about unused ivars                                          |
+
+Valid properties for the `result` object:
+
+| Key                    | Type    | Description                                                      |
+|------------------------|---------|------------------------------------------------------------------|
+| code                   | String  | Compiled JavaScript source code                                  |     
+| state                  | Object  | Output compiler state                                            |     
 
 ---
 ## <a name="license"></a>License
