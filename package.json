@@ -2,12 +2,12 @@
     "name": "ojc",
     "description": "compiler for the oj language",
     "homepage": "http://github.com/musictheory/oj",
-    "main": "esprima.js",
+    "main": "src/compiler.js",
     "bin": {
         "ojc": "./bin/ojc",
         "ojsqueeze": "./bin/ojsqueeze"
     },
-    "version": "0.1.0-9",
+    "version": "0.2.0",
     "engines": {
         "node": ">=0.8.0"
     },
@@ -24,9 +24,10 @@
         "type": "MIT",
         "url": "http://github.com/musictheory/oj/raw/master/LICENSE.MIT"
     }],
-    "dependencies": {
-        "esprima-oj": "*"
+    "devDependencies": {
+        "mocha": "*"
     },
+    "dependencies": { },
     "scripts": {
         "test": "mocha"
     }

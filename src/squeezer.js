@@ -1,10 +1,10 @@
 /*
     compiler.js
-    (c) 2013 musictheory.net, LLC
+    (c) 2013-2014 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-var esprima   = require && require("esprima-oj");
+var esprima   = require && require("./esprima");
 var Traverser = require && require("./traverser").Traverser;
 var Syntax    = esprima.Syntax;
 var Modifier  = require && require("./modifier").Modifier;

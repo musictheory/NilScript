@@ -1,13 +1,12 @@
 #!/usr/bin/env node 
 
 /*
-  (c) 2013 musictheory.net, LLC
+  (c) 2013-2014 musictheory.net, LLC
   MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
 var fs       = require("fs");
 var util     = require("util");
-var esprima  = require("esprima-oj");
 var ojc      = require("../src/compiler");
 
 var args = process.argv.slice(2);
