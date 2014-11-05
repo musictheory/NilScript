@@ -1,0 +1,60 @@
+var assert = require("assert");
+
+@implementation Mooer
+@property id wrapped;
+- (id) moo { return _wrapped; }
+@end
+
+
+@implementation Barker
+@property id wrapped;
+- (id) bark { return _wrapped; }
+@end
+
+
+@implementation Oinker
+@property id wrapped;
+- (id) oink { return _wrapped; }
+@end
+
+
+@implementation Issue10Class {
+
+}
+
+- (BOOL) testUnused
+{
+	var bob;
+	var foo = [bob init];
+
+	return YES;
+}
+
+
+- (BOOL) runTests
+{
+	var foo    = [[Mooer alloc] init];
+	var oinker = [[Oinker alloc] init];
+	var barker = [[Barker alloc] init];
+
+	[foo    setWrapped:oinker];
+	[oinker setWrapped:barker];
+	[barker setWrapped:"Hello"];
+
+	var result = [[[foo moo] oink] bark];
+
+    assert.equal(result, "Hello");
+
+	[oinker setWrapped:null];
+
+	var result2 = [[[foo moo] oink] bark];
+    assert.equal(result2, null);
+
+
+    return YES;
+}
+
+@end
+
+var instance = [[Issue10Class alloc] init];
+[instance runTests];

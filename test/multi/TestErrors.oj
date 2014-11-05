@@ -1,0 +1,292 @@
+// --------------------------------------------------------------------
+// @name unknown-ivars
+// @opts { "warn-unknown-ivars": true  }
+
+@implementation UndeclaredInstanceVariable
+
+@property id foo;
+
+- (void) setFoo:(id)foo { _foo = foo; } //@warning OJUndeclaredInstanceVariableWarning
+- (id) foo { return _foo; }
+
+@end
+
+
+// --------------------------------------------------------------------
+// @name unknown-ivars 2
+// @opts { "warn-unknown-ivars": true  }
+
+@implementation UndeclaredInstanceVariable
+
+@property (readonly) id foo;
+
+- (id) foo { return _foo; } //@warning OJUndeclaredInstanceVariableWarning
+
+@end
+
+
+// --------------------------------------------------------------------
+// @name unknown-ivars 3
+// @opts { "warn-unknown-ivars": true  }
+
+@implementation UndeclaredInstanceVariable
+
+- (void) testCheckIvar
+{
+     _moo;  //@warning OJUndeclaredInstanceVariableWarning
+}
+
+@end
+
+
+// --------------------------------------------------------------------
+// @name this-in-method
+// @opts { "warn-this-in-methods": true  }
+
+@implementation UseOfThisInMethod
+
+- (void) foo
+{
+    this.doSomething(); //@warning OJUseOfThisInMethodWarning
+}
+
+@end
+
+
+// --------------------------------------------------------------------
+// @name Non-integer enum
+
+@enum {
+    Foo = "Foo"  // @error OJNonIntegerEnumError
+}
+
+
+// --------------------------------------------------------------------
+// @name Non-integer enum 2
+
+@enum {
+    Foo = 3.1415  // @error OJNonIntegerEnumError
+}
+
+
+// --------------------------------------------------------------------
+// @name Non-literal Const
+
+@const moo = { };  // @error OJNonLiteralConstError
+
+
+// --------------------------------------------------------------------
+// @name Non-literal Const 2
+
+@const moo = (4 + 3);  // @error OJNonLiteralConstError
+
+
+// --------------------------------------------------------------------
+// @name Non-literal Enum
+
+@enum {
+    Foo = { }  // @error OJNonLiteralEnumError
+}
+
+
+// --------------------------------------------------------------------
+// @name Non-literal Enum 2
+
+@enum {
+    Foo = (4 + 3)  // @error OJNonLiteralEnumError
+}
+
+
+// --------------------------------------------------------------------
+// @name self Reserved
+
+@implementation ExampleClass
+
+- (void) test
+{
+    var self = "foo";  //@error OJSelfIsReservedError
+}
+
+@end
+
+
+// --------------------------------------------------------------------
+// @name self Reserved 2
+
+@implementation ExampleClass
+
+- (void) test
+{
+    function moo(self) {  //@error OJSelfIsReservedError
+
+    }
+}
+
+@end
+
+
+// --------------------------------------------------------------------
+// @name self Reserved 3
+
+@implementation ExampleClass
+
+- (void) test
+{
+    var moo = function (self) {  //@error OJSelfIsReservedError
+
+    }
+}
+
+@end
+
+
+// --------------------------------------------------------------------
+// @name $oj Reserved
+
+@implementation TestReservedWord
+
+- (void) test
+{
+    var $oj_foo = "foo"; //@error OJDollarOJIsReservedError
+}
+
+@end
+
+
+// --------------------------------------------------------------------
+// @name $oj Reserved 2
+
+function test() {
+    var $oj_foo;   //@error OJDollarOJIsReservedError
+}
+
+
+// --------------------------------------------------------------------
+// @name Ivar Claimed
+// @error-no-line OJInstanceVariableAlreadyClaimedError
+
+@implementation InstanceVariableAlreadyClaimed
+
+@property id foo;
+@property id foo2;
+
+@synthesize foo=_bar;
+@synthesize foo2=_bar;
+
+@end
+
+
+// --------------------------------------------------------------------
+// @name Ivar Claimed 2
+// @error-no-line OJInstanceVariableAlreadyClaimedError
+
+@implementation InstanceVariableAlreadyClaimed2
+
+@property id foo;
+@property id foo2;
+
+@synthesize foo2=_foo;
+
+@end
+
+
+// --------------------------------------------------------------------
+// @name Property Already Dynamic
+
+@implementation PropertyAlreadyDynamic
+
+@property id foo;
+@dynamic foo;
+@synthesize foo=_bar;   //@error OJPropertyAlreadyDynamicError
+
+@end
+
+
+// --------------------------------------------------------------------
+// @name Property Already Dynamic 2
+
+@implementation PropertyAlreadyDynamic
+
+@property id foo;
+@dynamic foo;
+@dynamic foo;       //@error OJPropertyAlreadyDynamicError
+
+@end
+
+
+// --------------------------------------------------------------------
+// @name Property Already Synthesized
+
+@implementation PropertyAlreadySynthesized
+
+@property id foo;
+@synthesize foo=_foo;
+@synthesize foo=_bar;   //@error OJPropertyAlreadySynthesizedError
+
+@end
+
+
+// --------------------------------------------------------------------
+// @name Reserved Method Name
+
+@implementation TestReservedMethod
+
+- (void) isSubclassOfClass:(id)unused { }   //@error OJReservedMethodNameError
+
+@end
+
+
+// --------------------------------------------------------------------
+// @name Reserved Method Name 2
+
+@implementation TestReservedMethod
+
+- (void) alloc { }  //@error OJReservedMethodNameError
+
+@end
+
+
+// --------------------------------------------------------------------
+// @name Duplicate Property
+
+@implementation DuplicateProperty
+
+@property id foo;
+@property id foo;   //@error OJDuplicatePropertyDefinitionError
+
+@end
+
+
+// --------------------------------------------------------------------
+// @name Duplicate Class
+
+@implementation DuplicateClass
+@end
+
+@implementation DuplicateClass //@error OJDuplicateClassDefinitionError
+@end
+
+
+// --------------------------------------------------------------------
+// @name Duplicate Class 2
+
+@class DuplicateClass
+
+@implementation DuplicateClass
+@end
+
+@implementation DuplicateClass //@error OJDuplicateClassDefinitionError
+@end
+
+
+// --------------------------------------------------------------------
+// @name Duplicate Method
+
+@implementation DuplicateMethod
+
+- (void) foo { }
+- (void) foo { }    //@error OJDuplicateMethodDefinitionError
+
+@end
+
+

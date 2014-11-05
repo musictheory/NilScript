@@ -1,8 +1,0 @@
-
-@implementation PropertyAlreadyDynamic
-
-@property id foo;
-@dynamic foo;
-@synthesize foo=_bar;
-
-@end

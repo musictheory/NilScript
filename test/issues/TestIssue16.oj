@@ -1,0 +1,50 @@
+var assert = require("assert");
+
+
+@implementation WrappedNumber
+@property Number number;
+@end
+
+
+@implementation Issue16Class
+
+@property (readonly) WrappedNumber wrappedTen;
+
+
+- (id) init
+{
+    if ((self = [super init])) {
+        _wrappedTen = [[WrappedNumber alloc] init];
+        [_wrappedTen setNumber:10];
+    }
+
+    return self;
+}
+
+- (Number) twentyFive
+{
+    return 25.0;
+}
+
+
+- (BOOL) runTests
+{
+    var ten = [[self wrappedTen] number];
+    assert.equal(ten, 10);
+
+    var twenty = 2 * [[self wrappedTen] number];
+    assert.equal(twenty, 20);
+
+    var twentyFive = [self twentyFive];
+    assert.equal(twentyFive, 25);
+
+    var fifty = 2  * [self twentyFive];
+    assert.equal(fifty, 50);
+
+    return YES;
+}
+
+@end
+
+var instance = [[Issue16Class alloc] init];
+[instance runTests];

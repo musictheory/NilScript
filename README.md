@@ -17,9 +17,6 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
   - [Behind the Scenes](#class-compiler)
   - [Scope and @class](#class-scope)
 - [The Built-in Base Class](#base-class)
-  - [Provided Methods](#base-class-provided)
-  - [Reserved Method Names](#base-class-reserved)
-  - [+load and +initialize](#base-class-load-initialize)
 - [Methods](#method)
   - [Falsy Messaging](#method-falsy)
   - [Behind the Scenes](#method-compiler)
@@ -29,9 +26,17 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
   - [Property Attributes](#property-attributes) 
   - [Initialization](#property-init) 
   - [Behind the Scenes](#property-compiler)
+- [Callbacks](#callbacks)
 - [Selectors](#selector)
 - [Boolean/null aliases](#aliases)
-- [enum and const](#enum)
+- [@enum and @const](#enum)
+- [Runtime](#runtime)
+- [Restrictions](#restrictions)
+- [Squeezing oj!](#squeeze)
+- [Checking Selectors](#check-selectors)
+- [JSHint Integration](#jshint)
+- [Type Checking](#typechecking)
+- [Compiler API](#compiler-api)
 - [License](#license)
 
 
@@ -112,21 +117,13 @@ and
 
     @end
 
-Without the forward declaration, the compiler thinks that `TheFirstClass` in `[[TheFirstClass alloc] init]` is a variable named `TheFirstClass`, not an oj class.  Hence, this causes an output such as the following:
-
-    oj.msgSend(oj.msgSend(  TheFirstClass  …
-
-With the `@class` directive, the compiler understands that `TheFirstClass` is an oj class, and properly outputs the equivalent of:
-
-    oj.msgSend(oj.msgSend(  oj.getClass( oj_private_representation_of_TheFirstClass ) …
+Without the forward declaration, the compiler thinks that `TheFirstClass` in `[[TheFirstClass alloc] init]` is a variable named `TheFirstClass`.  With the `@class` directive, the compiler understands that `TheFirstClass` is an oj class.
 
 ---
 
 ## <a name="base-class"></a>The Built-in Base Class
 
 Unlike Objective-C, all oj classes inherit from a private root base class.  There is no way to specify your own root class (how often do you *not* inherit from NSObject in your code?).
-
-### <a name="base-class-provided"></a>Provided Methods
 
 The root base class provides the following methods:
 
@@ -156,28 +153,7 @@ The root base class provides the following methods:
 
     - (BOOL) isEqual:(id)anotherObject
 
-
-### <a name="base-class-reserved"></a>Reserved Method Names
-
-In order to support certain compiler optimizations, the following method names are reserved and may not be overridden/implemented in subclasses):
-
-    alloc
-    class
-    className
-    instancesRespondToSelector:
-    respondsToSelector:
-    superclass
-    isSubclassOfClass:
-    isKindOfClass:
-    isMemberOfClass:
-
-
-### <a name="base-class-load-initialize"></a>+load and +initialize
-
-oj supports both `+load` and `+initialize`.  `+load` is called immediately upon the
-creation of a class (in `oj._makeClass`),  `+initialize` is called the first time a message
-is sent to the class (whether it be `+alloc` or another class method)
-
+While oj 0.x supported `+load` and `+initialize`, this feature was removed in oj 1.x to optimize runtime performance.  Note: `+className` and `-className` are intended for debugging purposes only.  When `--squeeze` is passed into the compiler, class names will be obfuscated/shortened.
 
 ---
 ### <a name="method"></a>Methods
@@ -199,7 +175,7 @@ Methods are defined in an `@implementation` block and use standard Objective-C s
     
     @end
 
-Since JavaScript is an untyped language, the types indicated in the parenthesis in the above example are for documentation purposes only and optional.  Old-school bare method declarations may also be used:
+Old-school bare method declarations may also be used:
 
     @implementation TheClass
     
@@ -223,7 +199,7 @@ Any message to a falsy JavaScript value (false / undefined / null / 0 / "" / NaN
 
 ### <a name="method-compiler"></a>Behind the Scenes (Methods)
 
-Behind the scenes, oj methods are simply renamed JavaScript functions.  Each colon (`:`) in a method name is replaced by an underscore.
+Behind the scenes, oj methods are simply renamed JavaScript functions.  Each colon (`:`) in a method name is replaced by an underscore and a prefix is added to the start of the method name.
 
 Hence:
 
@@ -234,7 +210,7 @@ Hence:
 
 becomes the equivalent of:
 
-    TheClass.prototype.doSomethingWithString_andNumber_ = function(string, number)
+    TheClass.prototype.$oj_f_doSomethingWithString_andNumber_ = function(string, number)
     {
         return string + "-" + number;    
     }
@@ -331,7 +307,8 @@ To access any instance variable, simply use its name.  No `this.` or `self.` pre
         console.log(_numberOfSheep);
     }
 
-_Note:_ If the `--check-ivars` command-line option is passed into the compiler, JavaScript identifiers that look like instance variables (with a underscore prefix) but are not defined will produce a warning.    
+_Note:_ If the `--warn-unknown-ivars` command-line option is passed into the compiler, JavaScript identifiers that look like instance variables (with a underscore prefix) but are not defined will produce a warning.    
+
 
 ### <a name="property-attributes"></a>Property Attributes
 
@@ -352,7 +329,7 @@ However, some are ignored due to differences between JavaScript and Objective-C:
 
 ### <a name="property-init"></a>Initialization
 
-At `+alloc`/`oj.class_createInstance` time, oj initializes all instance variables to one of the following values based on its type:
+During `+alloc`, oj initializes all instance variables to one of the following values based on its type:
 
     Boolean         -> false
     Number          -> 0
@@ -367,7 +344,7 @@ Unlike other parts of the oj runtime, properties and instance variables aren't i
 
 The compiler currently uses a JavaScript property on the instance with the follow name:
 
-    $oj_ivar_{{CLASS NAME}}_{{IVAR NAME}}
+    $oj_i_{{CLASS NAME}}_{{IVAR NAME}}
 
 
 Hence, the following oj code:
@@ -385,15 +362,61 @@ Hence, the following oj code:
     
 would compile into:
     
-    var TheClass = oj.makeClass(…, function(…) {
+    oj.makeClass(…, function(…) {
     
     … // Compiler generates -setCounter: and -counter here
 
     ….incrementCounter = function() {
-        this.$oj_ivar_TheClass__counter++;
+        this.$oj_i_TheClass__counter++;
     }
 
     });
+
+---
+## <a name="callbacks"></a>Callbacks
+
+Javascript frequently requires `.bind(this)` on callbacks.  For example:
+
+    Counter.prototype.incrementAfterDelay = function(delay) {
+        setTimeout(function() {
+            this.count++;
+            this.updateDisplay();
+        }.bind(this), delay);       // Bind needed for 'this' to work
+    }
+
+oj handles the binding for you.  No additional code is needed to access ivars or `self`:
+
+    - (void) incrementAfterDelay:(Number)delay
+    {
+        setTimeout(function() {
+            _count++;
+            [self updateDisplay];
+        }, delay);
+    }
+
+
+---
+### <a name="type-annotations"></a>Type Annotations
+
+As JavaScript is an untyped language, types expressed in property and method declarations are mostly for documentation purposes.  That said, oj provides an experimental [Type Checker](#typechecker) to help catch errors at compile time. 
+
+oj adds type annotations to JavaScript functions and variables, similar to ActionScript and TypeScript:
+
+    function getStringWithNumber(a : String, b : Number) : String {
+        return a + "-" + b;
+    }
+
+    function printFooAndRandom() : void {
+        var a : String = "Foo";
+        var b : Number = Math.random(); 
+        console.log(a, "-", b);
+    }
+
+oj also has a cast operator, similar in syntax to C++'s `static_cast`:
+
+    var a : String = @cast<String>( 3 + 4 + 6 );
+
+When compiling to JavaScript, type annotations and the cast operator are removed.  They are used by the experimental type checker.
 
 
 ---
@@ -402,7 +425,7 @@ would compile into:
 In order to support  [consistent property names](https://developers.google.com/closure/compiler/docs/api-tutorial3#propnames), 
 selectors are not encoded as strings (as in Objective-C and Objective-J).  Instead, they use an object literal syntax:
 
-    @selector(foo:bar:baz:) -> { foo_bar_baz_: 1 }
+    @selector(foo:bar:baz:) -> { $oj_f_foo_bar_baz_: 1 }
 
 Thus, a call such as:
     
@@ -410,9 +433,7 @@ Thus, a call such as:
     
 May (depending on optimizations) be turned into:
 
-    oj.msg_send(object, { fo_bar_baz_: 1 }, 7, 8, 9)
-
-Use `oj.sel_getName()` to obtain a string representation of the object literal.
+    oj.msg_send(object, { $oj_f_foo_bar_baz_: 1 }, 7, 8, 9)
 
 
 ---
@@ -441,11 +462,11 @@ becomes:
     var anObject = null;
       
 ---
-## <a name="enum"></a>enum and const
+## <a name="enum"></a>@enum and @const
 
-If `--use-enum` is passed into the oj compiler, the reserved  keyword `enum` is interpreted with C-style semantics:
+oj supports C-style enumerations via the `@enum` keyword and constants via the `@const` keyword:
 
-    enum OptionalName {
+    @enum OptionalEnumName {
         zero = 0,
         one,
         two,
@@ -453,23 +474,184 @@ If `--use-enum` is passed into the oj compiler, the reserved  keyword `enum` is 
         four
     }
 
-becomes:
+    @const TheConstant = "Hello World";
 
-    /** @const */ var zero  = 0;
-    /** @const */ var one   = 1;
-    /** @const */ var two   = 2;
-    /** @const */ var three = 3;
-    /** @const */ var four  = 4;
+    someFunction(zero, one, two, three, four, TheConstant);
 
-If `--use-const` is passed into the oj compiler, the ECMAScript 6 keyword `const` is interpreted with the following semantics:
+By default, oj compiles the above to:
 
-    const TheConstant = 42;
+    var zero  = 0;
+    var one   = 1;
+    var two   = 2;
+    var three = 3;
+    var four  = 4;
 
-becomes:
+    var TheConstant = "Hello World";
 
-    /** @const */ var TheConstant = 42;
+    someFunction(zero, one, two, three, four, TheConstant);
 
-In both cases, the output includes the `/** @const */` annotation, allowing the variable to be inlined by the compiler (closure/UglifyJS/etc) in the build process.
+However, when the `--inline-enum` option is passed into the oj compiler, oj inlines enum values:
+
+    someFunction(0, 1, 2, 3, 4, TheConstant);
+
+The `--inline-const` option inlines `TheConstant` as well:
+    
+    someFunction(0, 1, 2, 3, 4, "Hello World");
+
+Note: Inlining causes the enum or const to be lifted to the global scope.  Inlining affects all occurrences of that identifier in all files for the current compilation.  Inlined enums/consts are persisted via `--output-state` and `--input-state`.
+
+---
+## <a name="runtime"></a>Runtime
+
+**oj.noConflict()**  
+Restores the `oj` global variable to its previous value.
+
+
+**oj.getClassList()**  
+Returns an array of all known oj Class objects.
+
+
+**oj.class_getSuperclass(cls) /  oj.getSuperclass(cls)**  
+Returns the superclass of the specified `cls`.
+
+**oj.getSubclassesOfClass(cls)**  
+Returns an array of all subclasses of the specified `cls`.
+
+**oj.isObject(object)**  
+Returns true if `object` is an oj instance or Class, false otherwise.
+
+**oj.sel_isEqual(aSelector, bSelector)**  
+Returns true if two selectors are equal to each other.
+
+**oj.class_isSubclassOf(cls, superclass)**  
+Returns true if `superclass` is the direct superclass of `cls`, false otherwise.
+
+**oj.class_respondsToSelector(cls, aSelector)**  
+Returns true if instances of `cls` respond to the selector `aSelector`, false otherwise.
+
+**oj.object_getClass(object)**  
+Returns the Class of `object`.
+
+**oj.msgSend(receiver, aSelector, ...)**  
+If `receiver` is non-falsy, invokes `aSelector` on it.
+
+**oj.sel_getName(aSelector)**  
+**oj.class_getName(cls)**  
+**-[BaseObject className]**  
+Returns a human-readable string of a class or selector.  Note that this is for debug purposes only!  When `--squeeze` is passed into the compiler, the resulting class/selector names will be obfuscated/shortened.
+
+---
+## <a name="squeeze"></a>Squeezing oj!
+
+oj features a code minifier/compressor/obfuscator called the squeezer.  When the `--squeeze` option is passed to the compiler, all identifiers for classes (`$oj_c_ClassName`), methods (`$oj_f_MethodName`) and ivars (`$oj_i_ClassName_IvarName`) will be replaced with a shortened "squeezed" version (`$oj$ID`).  For example, all occurrences of `$oj_c_Foo` might be assigned the identifier `$oj$a`, all occurrences of `$oj_f_initWithFoo_` might be assigned `$oj$b`.  This is a safe transformation as long as all files are squeezed together.
+
+Squeezed identifiers are persisted via `--output-state` and `--input-state`.
+
+---
+## <a name="check-selectors"></a>Checking Selectors
+
+When the `--warn-unknown-selectors` option is used, oj warns about usage of undefined selectors/methods.  This can help catch typos at compile time:
+
+    var c = [[TheClass allc] init]; // Warns if no +allc or -allc method exists on any class
+
+Since oj lacked `@protocol`, the delegate pattern resulted in false positives with `--warn-unknown-selectors`:
+
+    // Warns, as the compiler doesn't know about 'controller:didPerformActionWithFoo:'
+    [_delegate controller:self didPerformActionWithFoo:foo];
+    
+One solution was to implement a fake class with the method:
+
+    @implementation ControllerDelegate
+    - (void) controller:(Controller)controller didPerformActionWithFoo:(Foo)foo { }
+    @end
+
+A cleaner way, however, was to reintroduce protocols:
+
+    @protocol ControllerDelegate
+    - (void) controller:(Controller)controller didPerformActionWithFoo:(Foo)foo;
+    @end
+
+---
+## <a name="jshint"></a>JSHint Integration
+
+When the `--jshint` option is used, [JSHint](http://www.jshint.com) hints oj's results.  To prevent false positives,  the following options are forced:
+
+    asi:      true
+    laxbreak: true
+    laxcomma: true
+    newcap:   false
+
+`expr: true` is enabled on a per-method basis when the oj compiler uses certain optimizations.
+
+Ideally, in the future, no JSHint options are forced, and all false positives due to oj compilation are filtered.
+
+The `--jshint-ignore` option may be used to disable specific JSHint warnings.
+
+---
+## <a name="typechecking"></a>Type Checking
+
+When the `--check-types` option is used, oj performs static type checking via [TypeScript](http://www.typescriptlang.org).  This feature is still experimental.
+
+---
+## <a name="restrictions"></a>Restrictions
+
+All identifiers that start with `$oj_` or `$oj$` are classified as Reserved Words.
+
+Inside an oj method declaration, `self` is added to the list of Reserved Words.  Hence, it may not be used as a variable name.
+
+The global variable `$oj_oj` may not be modified.  In a web browser environment, runtime.js also defines a global variable `oj`.  You may use `oj.noConflict()` to restore the previous value of `oj`.
+
+In order to support compiler optimizations, the following method names are reserved and may not be overridden/implemented in subclasses:
+
+    alloc
+    class
+    className
+    instancesRespondToSelector:
+    respondsToSelector:
+    superclass
+    isSubclassOfClass:
+    isKindOfClass:
+    isMemberOfClass:
+
+
+---
+## <a name="compiler-api"></a>Compiler API
+
+    var ojc = require("ojc");
+    var options = { ... };
+    
+    ojc.compile(options, function(err, results) {
+    
+    });
+
+Below is a list of supported properties for `options` and `results`.  While other properties are available (see `bin/ojc`), they are not yet official API.
+
+Properties for the `options` object:
+
+| Key                    | Type    | Description                                                      |
+|------------------------|---------|------------------------------------------------------------------|
+| files                  | Array   | Strings of paths to compile, or Objects of `file` type (see below)  |
+| state                  | Object  | Input compiler state, corresponds to contents of `--input-state` |
+| inline-const           | Boolean | inline @const identifiers                                        |
+| inline-enum            | Boolean | inline @enum identifiers                                         |
+| warn-this-in-methods   | Boolean | warn about usage of 'this' in oj methods                         |
+| warn-unknown-selectors | Boolean | warn about usage of unknown selectors                            |
+| warn-unknown-ivars     | Boolean | warn about unknown ivars                                         |
+| warn-unused-ivars      | Boolean | warn about unused ivars                                          |
+
+Valid properties for each `file` object:
+
+| Key                    | Type    | Description                                                      |
+|------------------------|---------|------------------------------------------------------------------|
+| path                   | String  | Path of file                                                     |     
+| contents               | String  | Content of file                                                  |     
+
+Properties for the `result` object:
+
+| Key                    | Type    | Description                                                      |
+|------------------------|---------|------------------------------------------------------------------|
+| code                   | String  | Compiled JavaScript source code                                  |     
+| state                  | Object  | Output compiler state                                            |     
 
 ---
 ## <a name="license"></a>License

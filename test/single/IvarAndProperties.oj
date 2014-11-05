@@ -45,13 +45,13 @@ var assert = require("assert");
 
 - (BOOL) runTests
 {
-    assert.strictEqual(_ivar1_shouldBeNull,  nil);
-    assert.strictEqual(_ivar2_shouldBeZero,  0  );
-    assert.strictEqual(_ivar3_shouldBeNull,  nil);
-    assert.strictEqual(_ivar4_shouldBeNull,  nil);
-    assert.strictEqual(_ivar5_shouldBeFalse, false);
-    assert.strictEqual(_ivar6_shouldBeFalse, false);
-    assert.strictEqual(_ivar7_shouldBeZero,  0);
+    assert.strictEqual(_ivar1_shouldBeNull,  nil,  "_ivar1_shouldBeNull is not null");
+    assert.strictEqual(_ivar2_shouldBeZero,  0,    "_ivar2_shouldBeZero is not 0"  );
+    assert.strictEqual(_ivar3_shouldBeNull,  nil,  "_ivar3_shouldBeNull is not null");
+    assert.strictEqual(_ivar4_shouldBeNull,  nil,  "_ivar4_shouldBeNull is not null");
+    assert.strictEqual(_ivar5_shouldBeFalse, false,"_ivar5_shouldBeFalse is not false");
+    assert.strictEqual(_ivar6_shouldBeFalse, false,"_ivar6_shouldBeFalse is not false");
+    assert.strictEqual(_ivar7_shouldBeZero,  0,    "_ivar7_shouldBeZero is not 0");
 
     assert.strictEqual(_ivarsOnALine,           NO);
     assert.strictEqual(_ivarsOnALine2,          NO);
