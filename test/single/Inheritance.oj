@@ -2,6 +2,11 @@ var assert = require("assert");
 
 @implementation InheritanceSuperclass
 
++ (void) plusDoSomething
+{
+
+}
+
 - (void) doSomething
 {
     _superclassProperty = true;
@@ -14,6 +19,11 @@ var assert = require("assert");
 
 
 @implementation InheritanceSubclass : InheritanceSuperclass
+
++ (void) plusDoSomething
+{
+    [super plusDoSomething];
+}
 
 - (void) doSomething
 {
@@ -29,11 +39,11 @@ var assert = require("assert");
 function runTests()
 {
     var instance1 = [[InheritanceSuperclass alloc] init];
-    instance1.doSomething();
+    [instance1 doSomething];
     assert.equal([instance1 superclassProperty], true);
 
     var instance2 = [[InheritanceSubclass alloc] init];
-    instance2.doSomething();
+    [instance2 doSomething];
     assert.equal([instance2 subclassProperty], true);
     assert.equal([instance2 superclassProperty], true);
 

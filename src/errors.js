@@ -6,13 +6,36 @@
 
 var OJError = { };
 
-OJError.DuplicatePropertyDefinition    = "DuplicatePropertyDefinition";
-OJError.DuplicateMethodDefinition      = "DuplicateMethodDefinition";
-OJError.UndeclaredInstanceVariable     = "UndeclaredInstanceVariable";
-OJError.DuplicateJavascriptFunction    = "DuplicateJavascriptFunction";
-OJError.PropertyAlreadySynthesized     = "PropertyAlreadySynthesized";
-OJError.PropertyAlreadyDynamic         = "PropertyAlreadyDynamic";
-OJError.InstanceVariableAlreadyClaimed = "InstanceVariableAlreadyClaimed";
-OJError.UseOfThisInMethod              = "UseOfThisInMethod";
+OJError.ParseError				       = "OJParseError";
+OJError.DuplicateClassDefinition       = "OJDuplicateClassDefinitionError";
+OJError.DuplicatePropertyDefinition    = "OJDuplicatePropertyDefinitionError";
+OJError.DuplicateMethodDefinition      = "OJDuplicateMethodDefinitionError";
+OJError.DuplicateProtocolDefinition    = "OJDuplicateProtocolDefinition";
+OJError.DuplicateIvarDefinition        = "OJDuplicateIvarDefinitionError";
+OJError.DuplicateEnumDefinition        = "OJDuplicateEnumDefinition";
+OJError.UnknownProperty                = "OJUnknownPropertyError";
+OJError.DuplicateJavascriptFunction    = "OJDuplicateJavascriptFunctionError";
+OJError.PropertyAlreadySynthesized     = "OJPropertyAlreadySynthesizedError";
+OJError.PropertyAlreadyDynamic         = "OJPropertyAlreadyDynamicError";
+OJError.InstanceVariableAlreadyClaimed = "OJInstanceVariableAlreadyClaimedError";
+OJError.NonLiteralConst                = "OJNonLiteralConstError";
+OJError.NonLiteralEnum                 = "OJNonLiteralEnumError";
+OJError.NonIntegerEnum                 = "OJNonIntegerEnumError";
+OJError.SelfIsReserved                 = "OJSelfIsReservedError";
+OJError.DollarOJIsReserved             = "OJDollarOJIsReservedError";
+OJError.ReservedMethodName             = "OJReservedMethodNameError";
+OJError.SqueezerReachedEndIndex        = "OJSqueezerReachedEndIndexError";
 
-module.exports = { OJError: OJError };
+
+var OJWarning = { };
+
+OJWarning.UnknownSelector              = "OJUnknownSelectorWarning";
+OJWarning.UseOfThisInMethod            = "OJUseOfThisInMethodWarning";
+OJWarning.UnusedInstanceVariable       = "OJUnusedInstanceVariableWarning";
+OJWarning.UndeclaredInstanceVariable   = "OJUndeclaredInstanceVariableWarning";
+
+
+module.exports = {
+    OJError:   OJError,
+    OJWarning: OJWarning
+};

@@ -1,8 +1,11 @@
 /*
-    traverser.js
+    utils.js
     (c) 2013-2014 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
+
+var _ = require("lodash");
+
 
 function isJScriptReservedWord(id)
 {
@@ -26,40 +29,106 @@ function isJScriptReservedWord(id)
 }
 
 
-var sRuntimeDefinedMethods = {
+var sBaseObjectSelectors = {
     "alloc": 1,
     "class": 1,
     "className": 1,
     "copy": 1,
     "description": 1,
     "init": 1,
-    "instancesRespondToSelector_": 1,
-    "isEqual_": 1,
-    "isKindOfClass_": 1,
-    "isMemberOfClass_": 1,
-    "isSubclassOfClass_": 1,
-    "performSelector_": 1,
-    "performSelector_withObject_": 1,
-    "performSelector_withObject_withObject_": 1,
-    "respondsToSelector_": 1,
+    "initialize": 1,
+    "instancesRespondToSelector:": 1,
+    "isEqual:": 1,
+    "isKindOfClass:": 1,
+    "isMemberOfClass:": 1,
+    "isSubclassOfClass:": 1,
+    "load": 1,
+    "performSelector:": 1,
+    "performSelector:withObject:": 1,
+    "performSelector:withObject:withObject:": 1,
+    "respondsToSelector:": 1,
     "superclass": 1,
     "toString": 1
-}
+};
 
-function isRuntimeDefinedMethod(name)
+
+var sRuntimeReservedSelectors = {
+    "alloc": 1,
+    "class": 1,
+    "className": 1,
+    "instancesRespondToSelector:": 1,
+    "respondsToSelector:": 1,
+    "superclass": 1,
+    "isSubclassOfClass:": 1,
+    "isKindOfClass:": 1,
+    "isMemberOfClass:": 1
+};
+
+
+function isReservedSelectorName(name)
 {
-    return !!sRuntimeDefinedMethods[name];
+    return !!sRuntimeReservedSelectors[name];
 }
 
 
-function isRuntimeDefinedClass(name)
+function isBaseObjectSelectorName(name)
+{
+    return !!sBaseObjectSelectors[name];
+}
+
+
+function getBaseObjectSelectorNames()
+{
+    return _.keys(sBaseObjectSelectors);
+}
+
+
+function isBaseObjectClass(name)
 {
     return name == "BaseObject";
 }
 
 
+function makeError(name, message, node)
+{
+    var error = new Error(message);
+
+    if (node) {
+        error.line    = node.loc.start.line;
+        error.column  = node.loc.start.col;
+    }
+
+    error.name    = name;
+    error.reason  = message;
+
+    return error;
+}
+
+
+function throwError(name, message, node)
+{
+    throw makeError(name, message, node);
+}
+
+
+function addNodeToError(node, error)
+{
+    if (node) {
+        if (!error.line) {
+            error.line    = node.loc.start.line;
+            error.column  = node.loc.start.col;
+        }
+    }
+}
+
+
 module.exports = {
-    isJScriptReservedWord:  isJScriptReservedWord,
-    isRuntimeDefinedMethod: isRuntimeDefinedMethod,
-    isRuntimeDefinedClass:  isRuntimeDefinedClass
+    isJScriptReservedWord:      isJScriptReservedWord,
+    isReservedSelectorName:     isReservedSelectorName,
+    isBaseObjectSelectorName:   isBaseObjectSelectorName,
+    getBaseObjectSelectorNames: getBaseObjectSelectorNames,
+    isBaseObjectClass:          isBaseObjectClass,
+    makeError:                  makeError,
+    throwError:                 throwError,
+    addNodeToError:             addNodeToError
 };

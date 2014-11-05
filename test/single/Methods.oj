@@ -1,5 +1,19 @@
 
+@protocol ExampleProtocol
+@required
++ (BOOL) classMethodDefinedInProtocol;
+- (void) instanceMethodDefinedInProtocol;
+
+@optional
++ (BOOL) classMethodDefinedInProtocolWithString:(String)s;
+- (void) instanceMethodDefinedInProtocolWithString:(string)s;
+
+@end
+
+
 @implementation MultilineMethodClass
+
++ (BOOL) classMethod { return YES }
 
 // Test JavaScript reserved keywords as method names
 - (BOOL) break      { return YES; }
@@ -32,7 +46,7 @@
 
 - (Number) three { return 3; }
 - (Number) five  { return 5; }
-- (void) add:(Number)a with:(Number)b { return a + b }
+- (Number) add:(Number)a with:(Number)b { return a + b }
 
 - (BOOL) doMultilineMethodWithArg: (Number) arg0
                               arg: (Number) arg1
@@ -60,6 +74,11 @@
 - (BOOL) checkClass:(Class)cls
 {
     return YES;
+}
+
+- bare: moo
+{
+
 }
 
 - (BOOL) runTests
@@ -101,6 +120,7 @@
     result = result && [self void];
     result = result && [self while];
     result = result && [self with];
+    result = result && [MultilineMethodClass classMethod];
 
     // Check nested
     assert.equal(8, [self add:[self five] with:[self three]]);

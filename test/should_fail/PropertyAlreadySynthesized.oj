@@ -1,8 +1,0 @@
-
-@implementation PropertyAlreadySynthesized
-
-@property id foo;
-@synthesize foo=_foo;
-@synthesize foo=_bar;
-
-@end
