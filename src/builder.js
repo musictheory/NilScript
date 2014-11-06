@@ -296,7 +296,13 @@ Builder.prototype.build = function()
         }
     }
 
-    traverser.traverse(function(node, type) {
+    traverser.traverse(function(node, parent) {
+        var type = node.type;
+
+        if (parent) {
+            node.parent = parent;
+        }
+
         try {
             if (type === Syntax.OJClassImplementation) {
                 handleClassImplementation(node);
@@ -346,7 +352,9 @@ Builder.prototype.build = function()
             throw e;
         }
 
-    }, function(node, type) {
+    }, function(node, parent) {
+        var type = node.type;
+
         if (type === Syntax.OJClassImplementation) {
             currentClass  = null;
             currentMethod = null;
