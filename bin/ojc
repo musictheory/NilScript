@@ -43,6 +43,7 @@ var opt = getopt.create([
     [ "",  "debug-message-send",        "use debug version of oj.msgSend" ],
     [ "",  "dump-ast",                  "(for development)" ],
     [ "",  "dump-time",                 "(for development)" ],
+    [ "",  "dump-profile",              "(for development)" ],
 
     [ "h", "help",                      "display this help" ],
     [ "v", "version",                   "show version"      ]
@@ -153,7 +154,18 @@ if (cacheFile) {
 
 
 try {
+    var profiler;
+    if (options["dump-profile"]) {
+        profiler = require("../src/profiler");
+        profiler.startProfiling("ojc");
+    }
+
     ojc.compile(options, function(err, result) {
+        if (profiler) {
+            var cpuProfile = profiler.stopProfiling("ojc");
+            fs.writeFileSync("/tmp/ojc.cpuprofile", JSON.stringify(cpuProfile));
+        }
+
         if (outputFile) {
             fs.writeFileSync(outputFile, result.code, "utf8")
         } else {

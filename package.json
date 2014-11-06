@@ -25,7 +25,8 @@
     }],
     "devDependencies": {
         "mocha": "*",
-        "temp":  "*"
+        "temp":  "*",
+        "cpu-profiler": "1.x"
     },
     "dependencies": {
         "lodash":      "*",
