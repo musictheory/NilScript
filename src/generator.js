@@ -341,26 +341,12 @@ Generator.prototype.generate = function()
     }
 
 
-    function canBeInstanceVariableOrSelfAtPath(path)
+    function canBeInstanceVariableOrSelf(node)
     {
-        var idNode, parentNode;
+        var parent = node.parent;
 
-        for (var i = path.length - 1; i >= 0; i--) {
-            var node = path[i];
-
-            if (node.type) {
-                if (!idNode) {
-                    idNode = node;
-
-                } else if (!parentNode) {
-                    parentNode = node;
-                    break;
-                }
-            }
-        }
-
-        if (parentNode.type == Syntax.MemberExpression && !parentNode.computed) {
-            return parentNode.object == idNode;
+        if (parent.type == Syntax.MemberExpression && !parent.computed) {
+            return parent.object == node;
         }
 
         return true;   
@@ -416,7 +402,7 @@ Generator.prototype.generate = function()
                 } else {
                     modifier.select(messageSelector).remove()
                     lastSelector = messageSelector;
-                    traverser.skip.push(messageSelector);
+                    messageSelector.skip = true;
                 }
             }        
         }
@@ -424,7 +410,7 @@ Generator.prototype.generate = function()
         function doCommonReplacement(start, end) {
             replaceMessageSelectors();
 
-            traverser.skip.push(node.receiver);
+            node.receiver.skip = true;
 
             modifier.from(node).to(firstSelector).replace(start);
             modifier.from(lastSelector).to(node).replace(end);
@@ -455,7 +441,7 @@ Generator.prototype.generate = function()
                 var classVariable = getClassAsRuntimeVariable(receiver.name);
 
                 if (methodName == "alloc") {
-                    traverser.skip.push(node.receiver);
+                    node.receiver.skip = true;
                     modifier.select(node).replace("new " + classVariable + "()");
                     return;
                 }
@@ -648,7 +634,7 @@ Generator.prototype.generate = function()
             }
         }
 
-        if (currentMethodNode && currentClass && canBeInstanceVariableOrSelfAtPath(traverser.getPath())) {
+        if (currentMethodNode && currentClass && canBeInstanceVariableOrSelf(node)) {
             if (currentClass.isIvar(name) || name == "self") {
                 var usesSelf = currentMethodNode && methodUsesSelfVar;
                 var replacement;
@@ -732,8 +718,6 @@ Generator.prototype.generate = function()
         } else {
             modifier.select(node).replace(result);
         }
-
-        traverser.skip.push(node);
     }
 
     function handleAtSelectorDirective(node)
@@ -882,7 +866,11 @@ Generator.prototype.generate = function()
         }
     }
 
-    traverser.traverse(function(node, type) {
+    traverser.traverse(function(node, parent) {
+        var type = node.type;
+
+        if (node.skip) return Traverser.SkipNode;
+
         if (type === Syntax.OJProtocolDefinition                 ||
             type === Syntax.OJAtClassDirective                   ||
             type === Syntax.OJAtSqueezeDirective                 ||
@@ -916,6 +904,7 @@ Generator.prototype.generate = function()
 
         } else if (type === Syntax.OJAtPropertyDirective) {
             handleAtPropertyDirective(node);
+            return Traverser.SkipNode;
 
         } else if (type === Syntax.OJAtSelectorDirective) {
             handleAtSelectorDirective(node);
@@ -940,7 +929,7 @@ Generator.prototype.generate = function()
 
         } else if (type === Syntax.ThisExpression) {
             if (optionWarnOnThisInMethods) {
-                checkThis(node, traverser.getPath());
+                checkThis(node, traverser.getParents());
             }
 
         } else if (type === Syntax.AssignmentExpression) {
@@ -964,7 +953,9 @@ Generator.prototype.generate = function()
             methodUsesSelfVar = true;
         }
 
-    }, function(node, type) {
+    }, function(node, parent) {
+        var type = node.type;
+
         if (type === Syntax.OJClassImplementation) {
             currentClass = null;
 

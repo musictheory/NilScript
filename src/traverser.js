@@ -39,52 +39,26 @@ estraverse.VisitorKeys[ Syntax.OJAtCastExpression             ] = [ "id", "argum
 
 function Traverser(ast)
 {
-    this._ast   = ast;
-    this._nodes = [ ];
-    this.skip   = [ ];  // Push nodes onto 'skip' to skip them
+    this._controller = new estraverse.Controller();
+    this._ast = ast;
 }
 
-Traverser.SkipNode = 1;
+
+Traverser.SkipNode = estraverse.VisitorOption.Skip;
 
 
 Traverser.prototype.traverse = function(pre, post)
 {
-    var nodes = this._nodes;
-    var skip  = this.skip;
-
-    estraverse.traverse(this._ast, {
-        enter: function (node, parent) {
-            var index = skip.indexOf(node);
-            if (index >= 0) {
-                skip.splice(index, 1);
-                return estraverse.VisitorOption.Skip;
-            }
-
-            if (parent) {
-                node.parent = parent;
-            }
-
-            nodes.push(node);
-
-            if (pre(node, node.type)) {
-                return estraverse.VisitorOption.Skip;
-            }
-        },
-
-        leave: function (node, parent) {
-            if (nodes[nodes.length - 1] == node) {
-                nodes.pop();
-            }
-
-            post(node, node.type);
-        }
+    this._controller.traverse(this._ast, {
+        enter: pre,
+        leave: post
     });
 }
 
 
-Traverser.prototype.getPath = function()
+Traverser.prototype.getParents = function()
 {
-    return this._nodes.slice(0);
+    return this._controller.parents();
 }
 
 
