@@ -2,6 +2,13 @@ CHANGELOG
 
 ---
 
+1.0.1
+
+- Update to Esprima 1.2.2 #28
+- Traverser's skip array causing 6% slowdown #29
+
+---
+
 1.0.0 (Released 2014-11-04)
 
 1.x is a backwards incompatible release, with a focus on enhancing runtime performance.
