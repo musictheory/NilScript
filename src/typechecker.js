@@ -47,7 +47,7 @@ TypeChecker.prototype._getDefinition = function(model, generator)
         lines.push("}");
     });
 
-    function makeDeclarationForMethod(method) {
+    function makeDeclarationForMethod(method, ojClass) {
         var methodName = generator.getSymbolForSelectorName(method.selectorName);
         var parameters = [ ];
 
@@ -58,7 +58,7 @@ TypeChecker.prototype._getDefinition = function(model, generator)
             parameters.push(variableName + " : " + generator.getTypecheckerType(parameterType));
         }
 
-        return methodName + "(" + parameters.join(", ") + ") : " + generator.getTypecheckerType(method.returnType) + ";";
+        return methodName + "(" + parameters.join(", ") + ") : " + generator.getTypecheckerType(method.returnType, ojClass) + ";";
     }
 
     function getInstancetypeMethods(inClass) {
@@ -101,6 +101,8 @@ TypeChecker.prototype._getDefinition = function(model, generator)
 
             "static alloc() : " + className + ";",
             "class() : " + staticName + ";",
+            "static class() : " + staticName + ";",
+            "init()  : " + className + ";",
             "$oj_super() : " + superclassName + ";",
             "static $oj_super() : " + superclassName + "$Static" + ";"
         );
@@ -158,6 +160,61 @@ TypeChecker.prototype.check = function(callback)
     var generator     = this._generator;
     var noImplicitAny = this._noImplicitAny;
 
+    var tsToOj = {
+        "any[]":   "Array",
+        "number":  "Number",
+        "boolean": "BOOL",
+        "string":  "String",
+    };
+
+    function fixReason(reason, code) {
+        var quoted   = [ ];
+        var isStatic = false;
+        var isMethod = false;
+
+        reason = reason.replace(/'(.*?)'/g, function() {
+            var arg = arguments[1];
+
+            if (arg.match(/\$Static$/)) {
+                isStatic = true;
+                arg = arg.replace("$Static", "");
+
+            } else if (arg.match(/\$oj_f_/)) {
+                isMethod = true;
+            }
+
+            arg = generator.getSymbolicatedString(arg);
+
+            // Remap TypeScript back to oj types
+            if (tsToOj[arg]) {
+                arg = tsToOj[arg];
+            }
+
+            quoted.push(arg);
+
+            return "'" + arg + "'";
+        });
+
+        // Property '$0' does not exist on type '$1'.
+        if (code == "TS2339") { 
+            if (isMethod) {
+                if (isStatic) {
+                    return "No known class method: +[" + quoted[1] + " " + quoted[0] + "]";
+                } else {
+                    return "No known instance method: -[" + quoted[1] + " " + quoted[0] + "]";
+                }
+            }
+
+        // Argument of type '$0' is not assignable to parameter of type '$1'.
+        } else if (code == "TS2345") {
+            return "Incompatible types sending '" + quoted[0] + "' to parameter of type '" + quoted[1] + "'";
+        }
+
+        reason = reason.replace(/\:$/, "");
+
+        return reason;
+    }
+
     function getFileAndLine(inLine) {
         var result;
 
@@ -207,8 +264,11 @@ TypeChecker.prototype.check = function(callback)
                 args.push(dirPath + "/defs.ts");
                 args.push(dirPath + "/content.ts");
 
+                fs.writeFileSync("/tmp/defs.ts",    defs);
+                fs.writeFileSync("/tmp/content.ts", contents);
+
                 cp.execFile(cmd, args, { }, function (error, stdout, stderr) {
-                    var lines = stderr.split("\n");
+                    var lines = (stdout || stderr).split("\n");
                     var line, m;
 
                     var hints = [ ];
