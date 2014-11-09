@@ -7,9 +7,7 @@
         "ojc": "./bin/ojc"
     },
     "version": "1.0.0",
-    "engines": {
-        "node": ">=0.8.0"
-    },
+    "engines": { "node": ">=0.10" },
     "maintainers": [{
         "name": "Ricci Adams",
         "email": "npm@ricciadams.com",
@@ -29,8 +27,8 @@
         "cpu-profiler": "1.x"
     },
     "dependencies": {
-        "lodash":      "*",
-        "estraverse":  "1.5.x",
+        "lodash":      "2.x",
+        "estraverse":  "1.7.x",
         "source-map":  "0.1.x",
         "node-getopt": "0.2.x",
         "jshint":      "2.x"

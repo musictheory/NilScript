@@ -322,7 +322,8 @@ parseStatement: true, parseSourceElement: true */
                    (id === '@options')        ||
                    (id === '@const')          ||
                    (id === '@squeeze')        ||
-                   (id === '@cast');
+                   (id === '@cast')           ||
+                   (id === '@typedef');
         }
         //!oj: end changes
 
@@ -3285,6 +3286,8 @@ parseStatement: true, parseSourceElement: true */
                 return delegate.markEnd(oj_parseEnumStatement(), startToken);
             case '@options':
                 return delegate.markEnd(oj_parseEnumStatement(), startToken);
+            case '@typedef':
+                return delegate.markEnd(oj_parseTypedefDefinition(), startToken);
             default:
                 break;
             }
@@ -3801,6 +3804,7 @@ parseStatement: true, parseSourceElement: true */
         Syntax.OJMethodDeclaration            = "OJMethodDeclaration";
         Syntax.OJAtCastExpression             = "OJAtCastExpression";
         Syntax.OJTypeAnnotation               = "OJTypeAnnotation";
+        Syntax.OJAtTypedefDeclaration         = "OJTypedefDeclaration";
 
         Messages.OJCannotNestImplementations  = "OJ: Cannot nest @implementation blocks";
     }
@@ -4615,6 +4619,28 @@ parseStatement: true, parseSourceElement: true */
         };
 
         if (id) result.id = id;
+
+        return delegate.markEnd(result, startToken);
+    }
+
+    function oj_parseTypedefDefinition() {
+        var fromIdentifier, toIdentifier, result,
+            startToken;
+
+        startToken = lookahead;
+
+        expectKeyword('@typedef');
+
+        fromIdentifier = parseVariableIdentifier();
+        toIdentifier   = parseVariableIdentifier();
+
+        consumeSemicolon();
+
+        result = {
+            type: Syntax.OJAtTypedefDeclaration,
+            from: fromIdentifier,
+            to:   toIdentifier
+        };
 
         return delegate.markEnd(result, startToken);
     }

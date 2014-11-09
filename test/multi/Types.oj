@@ -1,0 +1,51 @@
+
+// @name Basic Typedef
+
+@typedef Array Rect;
+@typedef Number MyNumber
+
+true;
+
+
+// @name Duplicate Typedef - OK
+
+@typedef Array Rect;
+@typedef Array Rect;    // This is ok, same existing value
+
+true;
+
+
+// --------------------------------------------------------------------
+// @name Typedef Exists
+
+@implementation Foo
+@end
+
+@typedef Number Foo;   //@error OJTypeAlreadyExistsError
+
+
+// --------------------------------------------------------------------
+// @name Typedef Exists
+
+@typedef Number Foo;
+
+@implementation Foo  //@error OJTypeAlreadyExistsError
+@end
+
+// --------------------------------------------------------------------
+// @name Circular Typedef 1
+// @error-no-line OJCircularTypedefHierarchyError
+
+@typedef Foo Foo2;
+@typedef Foo2 Foo3;
+@typedef Foo3 Foo;
+
+
+// --------------------------------------------------------------------
+// @name Circular Typedef 2
+// @error-no-line OJCircularTypedefHierarchyError
+
+@typedef Foo Foo2;
+@typedef Foo2 Foo;
+
+

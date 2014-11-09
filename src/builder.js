@@ -186,6 +186,11 @@ Builder.prototype.build = function()
         }
     }
 
+    function handleAtTypedefDeclaration(node)
+    {
+        model.aliasType(node.from.name, node.to.name);
+    }
+
     function handleEnumDeclaration(node)
     {
         var length = node.declarations ? node.declarations.length : 0;
@@ -327,6 +332,9 @@ Builder.prototype.build = function()
 
             } else if (type === Syntax.OJAtDynamicDirective) {
                 handleAtDynamicDirective(node);
+
+            } else if (type === Syntax.OJAtTypedefDeclaration) {
+                handleAtTypedefDeclaration(node);
 
             } else if (type === Syntax.OJMethodDefinition) {
                 handleMethodDefinition(node);
