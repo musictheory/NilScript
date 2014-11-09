@@ -457,13 +457,23 @@ Generator.prototype.generate = function()
                 var ivar = generateThisIvar(currentClass.name, receiver.name, usesSelf);
 
                 methodUsesLoneExpression = true;
-                doCommonReplacement("(" + ivar + " && " + ivar + "." + methodName + "(", "))");
+
+                if (language === LanguageTypechecker) {
+                    doCommonReplacement("(" + ivar + "." + methodName + "(", "))");
+                } else {
+                    doCommonReplacement("(" + ivar + " && " + ivar + "." + methodName + "(", "))");
+                }
 
                 return;
 
             } else {
                 methodUsesLoneExpression = true;
-                doCommonReplacement("(" + receiver.name + " && " + receiver.name + "." + methodName + "(", "))");
+
+                if (language === LanguageTypechecker) {
+                    doCommonReplacement("(" + receiver.name + "." + methodName + "(", "))");
+                } else {
+                    doCommonReplacement("(" + receiver.name + " && " + receiver.name + "." + methodName + "(", "))");
+                }
 
                 return;
             }
@@ -474,14 +484,26 @@ Generator.prototype.generate = function()
 
             replaceMessageSelectors();
 
-            modifier.from(node).to(receiver).replace("((" + OJTemporaryReturnVariable + " = (");
+            if (language === LanguageTypechecker) {
+                modifier.from(node).to(receiver).replace("(");
 
-            if (receiver.type == Syntax.Identifier && model.classes[receiver.name]) {
-                modifier.select(receiver).replace(getClassAsRuntimeVariable(receiver.name));
+                if (receiver.type == Syntax.Identifier && model.classes[receiver.name]) {
+                    modifier.select(receiver).replace(getClassAsRuntimeVariable(receiver.name));
+                }
+
+                modifier.from(receiver).to(firstSelector).replace("." + methodName + "(");
+                modifier.from(lastSelector).to(node).replace("))");
+
+            } else {
+                modifier.from(node).to(receiver).replace("((" + OJTemporaryReturnVariable + " = (");
+
+                if (receiver.type == Syntax.Identifier && model.classes[receiver.name]) {
+                    modifier.select(receiver).replace(getClassAsRuntimeVariable(receiver.name));
+                }
+
+                modifier.from(receiver).to(firstSelector).replace(")) && " + OJTemporaryReturnVariable + "." + methodName + "(");
+                modifier.from(lastSelector).to(node).replace("))");
             }
-
-            modifier.from(receiver).to(firstSelector).replace(")) && " + OJTemporaryReturnVariable + "." + methodName + "(");
-            modifier.from(lastSelector).to(node).replace("))");
 
             return;
         }
