@@ -141,11 +141,15 @@ gatherTests(path.dirname(__filename), function(err, tests) {
 
                     if (err) {
                         if (!t.error || (err.name != t.error[0]) || (err.line != t.error[1])) {
-                            throw new Error("Expected: " +
-                                t.error[0] + " on line " + t.error[1] +
-                                ", actual: " +
-                                err.name + " on line " + err.line
-                            );
+                            if (!t.error) {
+                                throw new Error("Unexpected error: " + err);
+                            } else {
+                                throw new Error("Expected: " +
+                                    t.error[0] + " on line " + t.error[1] +
+                                    ", actual: " +
+                                    err.name + " on line " + err.line
+                                );
+                            }
 
                         } else {
                             return;

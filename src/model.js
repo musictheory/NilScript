@@ -86,7 +86,19 @@ function OJModel()
     this._maxSqueezerId   = 0;
     this._squeezerToMap   = { };
     this._squeezerFromMap = { };
-    this._enumNames       = { };
+
+    this.types = { };
+    this.registerType( [
+        "Array",
+        "Boolean",
+        "Number",
+        "Object",
+        "String",
+        "Symbol"
+    ]);
+
+    this.aliasType( "Boolean", [ "boolean", "BOOL", "Bool", "bool" ] );
+    this.aliasType( "Number",  [ "number", "double", "float", "int", "char", "short", "long" ] );
 }
 
 
@@ -133,7 +145,7 @@ OJModel.prototype.loadState = function(state)
     var enums     = this.enums;
     var classes   = this.classes;
     var protocols = this.protocols;
-    var enumNames = this._enumNames;
+    var types     = this.types;
 
     if (state.squeezer) {
         this._squeezerId      = state.squeezer.id   || 0;
@@ -143,10 +155,10 @@ OJModel.prototype.loadState = function(state)
 
     _.each(state.enums, function(e) {
         enums.push(new OJEnum(e.name, e.unsigned, e.values));
-        enumNames[e.name] = true;
     });
 
     _.extend(this.consts, state.consts);
+    _.extend(this.types,  state.types);
 
     _.each(state.classes, function(c) {
         var cls = new OJClass();
@@ -175,6 +187,7 @@ OJModel.prototype.saveState = function()
         consts:    this.consts,
         enums:     this.enums,
         selectors: this.selectors,
+        types:     this.types,
 
         classes: _.map(this.classes, function(c) {
             return c.saveState();
@@ -191,8 +204,23 @@ OJModel.prototype.prepare = function()
 {
     var selectors = { };
 
-    _.each(this.classes, function(cls, name) {
+    var classes = this.classes;
+    _.each(classes, function(cls, name) {
         var i, length;
+
+        // Check for circular hierarchy
+        var visited = [ name ];
+        var superclass = cls.superclassName ? classes[cls.superclassName] : null;
+
+        while (superclass) {
+            if (visited.indexOf(superclass.name) >= 0) {
+                Utils.throwError(OJError.CircularClassHierarchy, "Circular class hierarchy detected: '" + visited.join(",") + "'");
+            }
+
+            visited.push(superclass.name);
+
+            superclass = classes[superclass.superclassName];
+        }
 
         cls.doAutomaticSynthesis();
 
@@ -216,7 +244,74 @@ OJModel.prototype.prepare = function()
         selectors[baseObjectSelectors[i]] = true;
     }
 
+    var newTypes = { }
+    var types = this.types;
+    _.each(types, function(value, key) {
+        if (!value || (key == value)) {
+            newTypes[key] = value;
+            return;
+        }
+
+        var visited = [ key ];
+        var result  = key;
+
+        while (1) {
+            var newResult = types[result];
+            if (newResult == result) break;
+
+            result = newResult;
+            if (!result) break;
+
+            if (visited.indexOf(result) >= 0) {
+                Utils.throwError(OJError.CircularTypedefHierarchy, "Circular typedef hierarchy detected: '" + visited.join(",") + "'");
+            }
+
+            visited.push(result);
+        }
+
+        newTypes[key] = result;
+    });
+    this.types = newTypes;
+
     this.selectors = selectors;
+}
+
+
+OJModel.prototype.registerType = function(typesToRegister)
+{
+    if (!_.isArray(typesToRegister)) {
+        typesToRegister = [ typesToRegister ];
+    }
+
+    for (var i = 0, length = typesToRegister.length; i < length; i++) {
+        var type = typesToRegister[i];
+
+        var currentValue = this.types[type];
+        if (currentValue && (currentValue != type)) {
+            Utils.throwError(OJError.TypeAlreadyExists, "Cannot register type '" + type + "', already declared as type '" + currentValue +  "'");
+        }
+
+        this.types[type] = type;
+    }
+}
+
+
+OJModel.prototype.aliasType = function(existing, newTypes)
+{
+    if (!_.isArray(newTypes)) {
+        newTypes = [ newTypes ];
+    }
+
+    for (var i = 0, length = newTypes.length; i < length; i++) {
+        var type = newTypes[i];
+
+        var currentValue = this.types[type];
+        if (currentValue && (currentValue != existing)) {
+            Utils.throwError(OJError.TypeAlreadyExists, "Cannot alias type '" + type + "' to '" + existing + "', already registered as type '" + currentValue + "'");
+        }
+
+        this.types[type] = existing;
+    }
 }
 
 
@@ -229,7 +324,7 @@ OJModel.prototype.addConst = function(name, value)
 OJModel.prototype.addEnum = function(e)
 {
     this.enums.push(e);
-    this._enumNames[e.name] = true;
+    this.aliasType("Number", e.name);
 }
 
 
@@ -241,12 +336,15 @@ OJModel.prototype.addClass = function(cls)
     if (existing) {
         if (existing.forward && !cls.forward) {
             this.classes[name] = cls;
+            this.registerType(cls.name);
+
         } else if (!existing.forward && !cls.forward) {
             Utils.throwError(OJError.DuplicateClassDefinition, "Duplicate declaration of class '" + name +"'");
         }
 
     } else {
         this.classes[name] = cls;
+        this.registerType(cls.name);
     } 
 }
 
@@ -265,41 +363,13 @@ OJModel.prototype.addProtocol = function(protocol)
 
 OJModel.prototype.isNumericType = function(t)
 {
-    if (!t) return false;
-
-    var words = t.split(/\s+/);
-
-    for (var i = 0, length = words.length; i < length; i++) {
-        var word = words[i];
-
-        if (word == "Number" ||
-            word == "number" ||
-            word == "float"  ||
-            word == "double" ||
-            word == "int"    ||
-            word == "char"   ||
-            word == "short"  ||
-            word == "long")
-        {
-            return true;
-        }
-
-        if (this._enumNames[word]) {
-            return true;
-        }
-    }
-
-    return false;
+    return this.types[t] == "Number";
 }         
 
 
 OJModel.prototype.isBooleanType = function(t)
 {
-    return t == "Boolean" ||
-           t == "boolean" ||
-           t == "BOOL"    ||
-           t == "Bool"    ||
-           t == "bool";
+    return this.types[t] == "Boolean";
 }
 
 

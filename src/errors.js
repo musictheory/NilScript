@@ -25,7 +25,9 @@ OJError.SelfIsReserved                 = "OJSelfIsReservedError";
 OJError.DollarOJIsReserved             = "OJDollarOJIsReservedError";
 OJError.ReservedMethodName             = "OJReservedMethodNameError";
 OJError.SqueezerReachedEndIndex        = "OJSqueezerReachedEndIndexError";
-
+OJError.TypeAlreadyExists              = "OJTypeAlreadyExistsError";
+OJError.CircularTypedefHierarchy       = "OJCircularTypedefHierarchyError";
+OJError.CircularClassHierarchy         = "OJCircularClassHierarchyError";
 
 var OJWarning = { };
 

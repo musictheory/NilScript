@@ -289,4 +289,32 @@ function test() {
 
 @end
 
+// --------------------------------------------------------------------
+// @name Circular Class 1
+// @error-no-line OJCircularClassHierarchyError
+
+@implementation CircularClassA : CircularClassB
+@end
+
+
+@implementation CircularClassB : CircularClassA
+@end
+
+
+// --------------------------------------------------------------------
+// @name Circular Class 2
+// @error-no-line OJCircularClassHierarchyError
+
+@implementation CircularClassA : CircularClassB
+@end
+
+@implementation CircularClassB : CircularClassC
+@end
+
+@implementation CircularClassC : CircularClassD
+@end
+
+@implementation CircularClassD : CircularClassA
+@end
+
 

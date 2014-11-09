@@ -877,6 +877,7 @@ Generator.prototype.generate = function()
             type === Syntax.OJInstanceVariableDeclarations       ||
             type === Syntax.OJAtSynthesizeDirective              ||
             type === Syntax.OJAtDynamicDirective                 ||
+            type === Syntax.OJAtTypedefDeclaration               ||
           ((type === Syntax.OJEnumDeclaration)  && removeEnums)  ||
           ((type === Syntax.OJConstDeclaration) && removeConsts) ||
           ((type === Syntax.OJTypeAnnotation)   && removeTypes)

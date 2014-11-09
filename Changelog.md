@@ -6,6 +6,8 @@ CHANGELOG
 
 - Update to Esprima 1.2.2 #28
 - Traverser's skip array causing 6% slowdown #29
+- Add ability for typealias / typedef #30
+- Classes can be superclasses of each other #23
 
 ---
 
