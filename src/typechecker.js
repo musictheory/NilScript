@@ -232,17 +232,17 @@ TypeChecker.prototype.check = function(callback)
                             hint.column    = m[2];
                             hint.code      = m[3];
                             hint.name     = "OJTypecheckerHint";
-                            hint.reason   = m[4];
+                            hint.reason   = fixReason(m[4], hint.code);
 
                             hints.push(hint);
 
                         } else {
 
-                            line.trim();
+                            // line.trim();
 
-                            if (hint && line.length) {
-                                hint.reason = "\n    " + hint.reason.trim() + "\n    " + line.trim();
-                            }
+                            // if (hint && line.length) {
+                            //     hint.reason = "\n    " + hint.reason.trim() + "\n    " + line.trim();
+                            // }
                         }
                     }
 
@@ -250,8 +250,7 @@ TypeChecker.prototype.check = function(callback)
                         if (hint.reason) {
                             hint.reason = generator.getSymbolicatedString(hint.reason);
                         } else {
-                        console.log(hint);
-
+                            // console.log(hint);
                         }
 
 

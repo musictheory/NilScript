@@ -4410,12 +4410,19 @@ parseStatement: true, parseSourceElement: true */
         startToken = lookahead;
 
         expectKeyword('@cast');
-        expect('<');
+        if (match('<')) {
+            expect('<');
 
-        id = parseVariableIdentifier();
+            id = parseVariableIdentifier();
 
-        expect('>');
-        expect('(');
+            expect('>');
+            expect('(');
+
+        } else {
+            expect('(');
+            id = parseVariableIdentifier();
+            expect(',');
+        }
 
         argument = parseExpression();
 

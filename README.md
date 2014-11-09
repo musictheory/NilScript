@@ -412,9 +412,13 @@ oj adds type annotations to JavaScript functions and variables, similar to Actio
         console.log(a, "-", b);
     }
 
-oj also has a cast operator, similar in syntax to C++'s `static_cast`:
+oj also has a cast operator.  It may be used similar in syntax to C++'s `static_cast`:
 
     var a : String = @cast<String>( 3 + 4 + 6 );
+
+or via function syntax:
+
+    var a : String = @cast(String, 3 + 4 + 6);
 
 When compiling to JavaScript, type annotations and the cast operator are removed.  They are used by the experimental type checker.
 
