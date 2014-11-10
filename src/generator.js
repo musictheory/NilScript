@@ -114,18 +114,43 @@ Generator.prototype.getTypecheckerType = function(inType, currentClass)
 
     if (inType == "String" || inType == "string") {
         return "string";
+
     } else if (this._model.isNumericType(inType)) {
         return "number";
+
     } else if (this._model.isBooleanType(inType)) {
         return "boolean";
+
     } else if (inType == "Array") {
         return "any[]";
+
     } else if (inType == "void") {
         return "void";
+
     } else if (inType == "instancetype" && currentClass) {
         return this.getTypecheckerType(currentClass.name);
+
     } else if ((value = this._knownTypes[inType])) {
         return value;
+
+    } else if (inType.indexOf("<") >= 0) {
+        // "Array<Array<String>>"" becomes [ "Array", "Array", "String" ]
+        var inParts  = inType.replace(">", "").split("<");
+        var brackets = "";
+
+        for (var i = 0, length = inParts.length; i < length; i++) {
+            var inPart = inParts[i];
+
+            if (inPart == "Array" || inPart == "array") {
+                brackets += "[]";
+            } else {
+                value = this.getTypecheckerType(inPart);
+                break;
+            }
+        };
+
+        return value + brackets;
+
     } else {
         return "any";
     }
@@ -530,7 +555,7 @@ Generator.prototype.generate = function()
 
     function handleClassImplementation(node)
     {
-        var superClass = (node.superClass && node.superClass.value);
+        var superClass = (node.superClass && node.superClass.name);
 
         var superSelector = "{ " + generator.getSymbolForClassName(superClass)   + ":1 }";
         var clsSelector   = "{ " + generator.getSymbolForClassName(node.id.name) + ":1 }";

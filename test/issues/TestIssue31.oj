@@ -1,0 +1,47 @@
+var assert = require("assert");
+
+@implementation Issue31Class {
+    // Ivars
+    id<Foo>       _a;
+    id<Foo, Bar>  _b;
+    Array<String> _c;
+}
+
+// Properties
+@property id<Foo> _a;
+@property (nonatomic) id<Foo, Bar> _b;
+@property (nonatomic) Array<String> _c;
+
+// Return types
+- (id<Foo>)       resultA { return nil; }
+- (id<Foo, Bar>)  resultB { return nil; }
+- (Array<String>) resultC { return nil; }
+
+// Methods
+- (void) foo:(id<Foo>)a bar:(id<Foo, Bar>)b { }
+- (void) foo:(id<Foo>)a bar:(id<Foo, Bar>)b baz:(Array<String>)c { }
+
+- (void) check {
+    // Type annotation
+    function moo(d : Array<String>) { }
+    moo();
+}
+
+// Some special cases to check '>>', '>>>' in token stream
+- (void) checkInsaneType1:(A<B<C<D,E<F>>>,G>)insaneType { };
+- (void) checkInsaneType2:(A<B<C,D<E>>,F>)insaneType { };
+- (void) checkInsaneType3:(A<B,C,D,E,F,G>)insaneType { };
+- (void) checkInsaneType4:(A<B<C,D>,E<F,G>>)insaneType { };
+
+@end
+
+
+function runTests()
+{
+    var instance = [[Issue31Class alloc] init];
+    [instance check];
+
+    return true;
+}
+
+runTests();
