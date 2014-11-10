@@ -15,7 +15,7 @@ var assert = require("assert");
     Boolean _ivarsWithoutSemicolon2
 }
 
-@property var     property1_shouldBeNull;
+@property id      property1_shouldBeNull;
 @property Number  property2_shouldBeZero;
 @property String  property3_shouldBeNull;
 @property id      property4_shouldBeNull;
