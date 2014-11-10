@@ -67,7 +67,7 @@ Builder.prototype.build = function()
     function handleClassImplementation(node)
     {
         var name           = node.id.name;
-        var superclassName = node.superClass && node.superClass.value;
+        var superclassName = node.superClass && node.superClass.name;
         var result;
 
         var cls = new Model.OJClass(name, superclassName);
@@ -188,7 +188,7 @@ Builder.prototype.build = function()
 
     function handleAtTypedefDeclaration(node)
     {
-        model.aliasType(node.from.name, node.to.name);
+        model.aliasType(node.from, node.to);
     }
 
     function handleEnumDeclaration(node)

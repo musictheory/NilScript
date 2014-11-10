@@ -218,8 +218,6 @@ TypeChecker.prototype.check = function(callback)
     function getFileAndLine(inLine) {
         var result;
 
-        inLine - defs.length;
-
         for (var file in lineMap) { if (lineMap.hasOwnProperty(file)) {
             var entry = lineMap[file];
 
@@ -264,8 +262,9 @@ TypeChecker.prototype.check = function(callback)
                 args.push(dirPath + "/defs.ts");
                 args.push(dirPath + "/content.ts");
 
-                fs.writeFileSync("/tmp/defs.ts",    defs);
-                fs.writeFileSync("/tmp/content.ts", contents);
+                // For debugging
+                // fs.writeFileSync("/tmp/defs.ts",    defs);
+                // fs.writeFileSync("/tmp/content.ts", contents);
 
                 cp.execFile(cmd, args, { }, function (error, stdout, stderr) {
                     var lines = (stdout || stderr).split("\n");

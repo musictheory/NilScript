@@ -4005,25 +4005,88 @@ parseStatement: true, parseSourceElement: true */
         }, startToken);
     }
 
-    function oj_parseParameterType(allowVoid) {
-        var id, name, startToken;
+    function oj_parseType() {
+        var result = parseVariableIdentifier().name;
+        if (!match('<')) return result;
 
-        startToken = lookahead;
+        // Handle id<Foo>, id<Foo, Bar>, id<Foo<Bar, Foo<Baz>>, etc
+        var angles = 0;
+        var parts = [ result ];
 
-        if (allowVoid && matchKeyword('void')) {
-            lex();
-            name = 'void';
-        } else if (matchKeyword('var')) {
-            lex();
-            name = 'var';
-        } else {
-            name = parseVariableIdentifier().name;
+        function name() {
+            parts.push(parseVariableIdentifier().name);
+
+            if (match('<')) {
+                angle();
+            }
         }
+
+        function angle() {
+            lex();  // Consume '<'
+            parts.push('<');
+            angles++;
+
+            // It's possible a recursive call will handle a '>>' or '>>>' in the stream,
+            // so save angles...
+            var savedAngles = angles;
+
+            name();
+
+            while (match(',')) {
+                lex();
+                parts.push(',');
+                name();
+            }
+
+            // ...and check savedAngles here.  If angles is lower, a '>>' or '>>>' already handled our '>'
+            if (angles >= savedAngles) {
+                if (angles >= 1 && match('>')) {
+                    expect('>');
+                    parts.push('>');
+                    angles -= 1;
+
+                } else if (angles >= 2 && match('>>')) {
+                    expect('>>');
+                    parts.push('>>');
+                    angles -= 2;
+
+                } else if (angles >= 3 && match('>>>')) {
+                    expect('>>>');
+                    parts.push('>>>');
+                    angles -= 3;
+
+                } else {
+                    throwUnexpected(lookahead);
+                }
+            }
+        }
+
+        angle();
+
+        return parts.join("");
+    }
+
+    function oj_parseParameterType(identifierOnly) {
+        var startToken = lookahead,
+            name = oj_parseType();
 
         return delegate.markEnd({
             type: Syntax.OJParameterType,
             value: name
         }, startToken);
+    }
+
+    function oj_parseParameterTypeOrKeyword(keyword) {
+        var startToken;
+
+        if (matchKeyword(keyword)) {
+            startToken = lookahead;
+            lex();
+            return delegate.markEnd({ type: Syntax.OJParameterType, value: keyword }, startToken);
+
+        } else {
+            return oj_parseParameterType()
+        }
     }
 
     function oj_parseMethodSelector() {
@@ -4063,7 +4126,7 @@ parseStatement: true, parseSourceElement: true */
 
         if (match('(')) {
             expect('(');
-            returnType = oj_parseParameterType(true);
+            returnType = oj_parseParameterTypeOrKeyword('void');
             expect(')');
         }
 
@@ -4106,7 +4169,7 @@ parseStatement: true, parseSourceElement: true */
 
         if (match('(')) {
             expect('(');
-            returnType = oj_parseParameterType(true);
+            returnType = oj_parseParameterTypeOrKeyword('void');
             expect(')');
         }
 
@@ -4191,17 +4254,16 @@ parseStatement: true, parseSourceElement: true */
         };
 
         // Allow 'var' (maps to id)
+        marker = lookahead;
+
         if (matchKeyword('var')) {
-            marker = lookahead;
             lex();
             parameterType.value = "var";
-            delegate.markEnd(parameterType, marker);
-
         } else {
-            id = parseVariableIdentifier();
-            parameterType.value = id.name;
-            parameterType.loc = id.loc;
+            parameterType.value = oj_parseType();
         }
+
+        delegate.markEnd(parameterType, marker);
 
         ivars.push(parseVariableIdentifier());
 
@@ -4259,7 +4321,7 @@ parseStatement: true, parseSourceElement: true */
         // Has superclass
         if (match(':')) {
             expect(':');
-            superClass = oj_parseParameterType();
+            superClass = parseVariableIdentifier();
         }
 
         // Has ivar declarations
@@ -4631,22 +4693,22 @@ parseStatement: true, parseSourceElement: true */
     }
 
     function oj_parseTypedefDefinition() {
-        var fromIdentifier, toIdentifier, result,
+        var fromName, toName, result,
             startToken;
 
         startToken = lookahead;
 
         expectKeyword('@typedef');
 
-        fromIdentifier = parseVariableIdentifier();
-        toIdentifier   = parseVariableIdentifier();
+        fromName = oj_parseType();
+        toName   = parseVariableIdentifier().name;
 
         consumeSemicolon();
 
         result = {
             type: Syntax.OJAtTypedefDeclaration,
-            from: fromIdentifier,
-            to:   toIdentifier
+            from: fromName,
+            to:   toName
         };
 
         return delegate.markEnd(result, startToken);
@@ -4659,12 +4721,7 @@ parseStatement: true, parseSourceElement: true */
 
         expect(":");
 
-        token = lex();
-        if (token.type !== Token.Identifier) {
-            throwUnexpected(token);
-        }
-
-        value = token.value;
+        value = oj_parseType();
 
         return delegate.markEnd({
             type: Syntax.OJTypeAnnotation,
