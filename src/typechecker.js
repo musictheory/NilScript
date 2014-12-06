@@ -160,12 +160,28 @@ TypeChecker.prototype.check = function(callback)
     var generator     = this._generator;
     var noImplicitAny = this._noImplicitAny;
 
-    var tsToOj = {
-        "any[]":   "Array",
-        "number":  "Number",
-        "boolean": "BOOL",
-        "string":  "String",
-    };
+    function fromTypeScriptType(tsType) {
+        var map = {
+            "$oj_BaseObject":        "BaseObject",
+            "$oj_BaseObject$Static": "Class",
+            "any[]":                 "Array",
+            "number":                "Number",
+            "boolean":               "BOOL",
+            "string":                "String",
+        };
+
+        if (map[tsType]) {
+            return map[tsType];
+        }
+
+        if (tsType.match(/\[\]$/)) {
+            tsType = tsType.replace(/\[\]$/, "");
+            return "Array<" + fromTypeScriptType(tsType) + ">";
+        }
+
+        return generator.getSymbolicatedString(tsType);
+    }
+
 
     function fixReason(reason, code) {
         var quoted   = [ ];
@@ -183,13 +199,7 @@ TypeChecker.prototype.check = function(callback)
                 isMethod = true;
             }
 
-            arg = generator.getSymbolicatedString(arg);
-
-            // Remap TypeScript back to oj types
-            if (tsToOj[arg]) {
-                arg = tsToOj[arg];
-            }
-
+            arg = fromTypeScriptType(arg);
             quoted.push(arg);
 
             return "'" + arg + "'";
@@ -204,10 +214,6 @@ TypeChecker.prototype.check = function(callback)
                     return "No known instance method: -[" + quoted[1] + " " + quoted[0] + "]";
                 }
             }
-
-        // Argument of type '$0' is not assignable to parameter of type '$1'.
-        } else if (code == "TS2345") {
-            return "Incompatible types sending '" + quoted[0] + "' to parameter of type '" + quoted[1] + "'";
         }
 
         reason = reason.replace(/\:$/, "");
@@ -263,8 +269,8 @@ TypeChecker.prototype.check = function(callback)
                 args.push(dirPath + "/content.ts");
 
                 // For debugging
-                // fs.writeFileSync("/tmp/defs.ts",    defs);
-                // fs.writeFileSync("/tmp/content.ts", contents);
+                fs.writeFileSync("/tmp/defs.ts",    defs);
+                fs.writeFileSync("/tmp/content.ts", contents);
 
                 cp.execFile(cmd, args, { }, function (error, stdout, stderr) {
                     var lines = (stdout || stderr).split("\n");

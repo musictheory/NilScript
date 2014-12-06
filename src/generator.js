@@ -135,7 +135,7 @@ Generator.prototype.getTypecheckerType = function(inType, currentClass)
 
     } else if (inType.indexOf("<") >= 0) {
         // "Array<Array<String>>"" becomes [ "Array", "Array", "String" ]
-        var inParts  = inType.replace(">", "").split("<");
+        var inParts  = inType.replace(/\>/g, "").split("<");
         var brackets = "";
 
         for (var i = 0, length = inParts.length; i < length; i++) {
@@ -450,7 +450,8 @@ Generator.prototype.generate = function()
             if (receiver.name == "super") {
                 if (language === LanguageEcmascript5) {
                     doCommonReplacement(currentClass.name + "." + OJSuperVariable + "." + (useProto ? "prototype." : "") + methodName + ".call(this" + (hasArguments ? "," : ""), ")");
-                } else {
+
+                } else if (language === LanguageTypechecker) {
                     var method = getCurrentMethodInModel();
                     var cast = "";
 
@@ -683,7 +684,7 @@ Generator.prototype.generate = function()
 
         if (currentMethodNode && currentClass && canBeInstanceVariableOrSelf(node)) {
             if (currentClass.isIvar(name) || name == "self") {
-                var usesSelf = currentMethodNode && methodUsesSelfVar;
+                var usesSelf = currentMethodNode && (methodUsesSelfVar || (language === LanguageTypechecker));
                 var replacement;
 
                 if (name == "self") {
