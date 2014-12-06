@@ -1,0 +1,53 @@
+
+(function() { "use strict";
+
+@implementation Issue34Class {
+}
+
+@property (readonly) String getter;
+@synthesize getter = mGetter;
+
+@property String setter;
+@synthesize setter = mSetter;
+
+@property String both;
+@synthesize both = mBoth;
+
+@property String foo;
+@synthesize foo = mFoo;
+
+@property String oldStyle;
+@synthesize oldStyle;
+
+- (String) getter { return mGetter; }
+
+- (void) setSetter:(String)setter { mSetter = setter; }
+
+- (void) setBoth:(String)both { mBoth = both; }
+- (String) both { return mBoth; }
+
+- (void) setOldStyle:(String)o { oldStyle = o; }
+- (String) oldStyle { return o; }
+
+- (Number) check
+{
+    mGetter  = "getter";
+    mSetter  = "setter";
+    mBoth    = "both";
+    oldStyle = "old";
+}
+
+@end
+
+}());
+
+
+
+function runTests()
+{
+    var instance = [[Issue34Class alloc] init];
+    [instance check];
+    return true;
+}
+
+runTests();

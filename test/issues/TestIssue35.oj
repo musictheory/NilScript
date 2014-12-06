@@ -11,7 +11,7 @@
 
 @property Number foo3
 
-- (void) check
+- (Number) check
 {
     _foo1 = 1;
     _foo3 = 3;

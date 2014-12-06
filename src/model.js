@@ -512,25 +512,37 @@ OJClass.prototype.doAutomaticSynthesis = function()
 
         var name     = property.name;
         var ivarName = property.ivar;
+        var getter   = property.getter;
+        var setter   = property.setter;
 
         if (ivarName == OJDynamicProperty) continue;
 
-        if (!ivarName) {
-            property.ivar = ivarName = "_" + name;
-        }
+        var hadExplicitlySynthesizedIvarName = !!ivarName;
 
-        var getter = property.getter;
-        var setter = property.setter;
+        if (!ivarName) {
+            ivarName = "_" + name;
+            property.ivar = ivarName;
+        }
 
         var ivar         = ivarName ? this._ivarMap[ivarName]         : null;
         var getterMethod = getter   ? this._instanceMethodMap[getter] : null;
         var setterMethod = setter   ? this._instanceMethodMap[setter] : null;
 
-        var needsBackingIvar = (ivarName && !ivar);
-        if (property.writable && getterMethod && setterMethod) {
-            needsBackingIvar = false;
-        } else if (!property.writable && getterMethod) {
-            needsBackingIvar = false;
+        var generateBackingIvar = !ivar;
+
+        // If backing is nil, there was no explicit @synthesize, and we should only make the
+        // backing ivar unless: 
+        //
+        // 1) readwrite property and both -setFoo: and -foo are defined
+        //    or
+        // 2) readonly property and -foo is defined
+        //
+        if (!hadExplicitlySynthesizedIvarName) {
+            if (property.writable && getterMethod && setterMethod) {
+                generateBackingIvar = false;
+            } else if (!property.writable && getterMethod) {
+                generateBackingIvar = false;
+            }
         }
 
         if (backingIvarToPropertyNameMap[ivarName]) {
@@ -540,7 +552,7 @@ OJClass.prototype.doAutomaticSynthesis = function()
         }
 
         // Generate backing ivar
-        if (needsBackingIvar) {
+        if (generateBackingIvar) {
             ivar = new OJIvar(ivarName, this.name, property.type);
             ivar.synthesized = true;
             this._ivarMap[ivarName] = ivar;
