@@ -23,7 +23,6 @@
     }],
     "devDependencies": {
         "mocha": "*",
-        "temp":  "*",
         "cpu-profiler": "1.x"
     },
     "dependencies": {
@@ -31,7 +30,8 @@
         "estraverse":  "1.7.x",
         "source-map":  "0.1.x",
         "node-getopt": "0.2.x",
-        "jshint":      "2.x"
+        "jshint":      "2.x",
+        "temp":        "0.8"
     },
     "scripts": {
         "test": "mocha"
