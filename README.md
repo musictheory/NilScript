@@ -603,7 +603,7 @@ All identifiers that start with `$oj_` or `$oj$` are classified as Reserved Word
 
 Inside an oj method declaration, `self` is added to the list of Reserved Words.  Hence, it may not be used as a variable name.
 
-The global variable `$oj_oj` may not be modified.  In a web browser environment, runtime.js also defines a global variable `oj`.  You may use `oj.noConflict()` to restore the previous value of `oj`.
+The oj compiler uses the global variable `$oj_oj` to access the runtime.  You should not use `$oj_oj` directly or modify it in your source code.  In a web browser environment, runtime.js also defines the global variable `oj` for the runtime.  You may use `oj.noConflict()` to restore the previous value of `oj`.  If you are using a linter or obfuscator, add both `$oj_oj` and `oj` as global variable names.
 
 In order to support compiler optimizations, the following method names are reserved and may not be overridden/implemented in subclasses:
 
