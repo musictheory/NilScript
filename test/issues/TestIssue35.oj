@@ -1,0 +1,36 @@
+
+(function() { "use strict";
+
+@implementation Issue35Class {
+}
+
+@property Number foo1;
+
+@property Number foo2;
+@dynamic foo2;
+
+@property Number foo3
+
+- (void) check
+{
+    _foo1 = 1;
+    _foo3 = 3;
+
+    return [self foo1] + [self foo2] + [self foo3];
+}
+
+- (Number) foo2 { return 2; }
+
+@end
+
+}());
+
+
+
+function runTests()
+{
+    var instance = [[Issue35Class alloc] init];
+    return [instance check] == 6;
+}
+
+runTests();

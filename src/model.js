@@ -513,7 +513,7 @@ OJClass.prototype.doAutomaticSynthesis = function()
         var name     = property.name;
         var ivarName = property.ivar;
 
-        if (ivarName == OJDynamicProperty) return;
+        if (ivarName == OJDynamicProperty) continue;
 
         if (!ivarName) {
             property.ivar = ivarName = "_" + name;
