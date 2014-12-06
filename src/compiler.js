@@ -198,7 +198,7 @@ Compiler.prototype.compile = function(callback)
         var inputParserOptions = this._inputParserOptions;
         var model              = this._model;
 
-        var result;
+        var result  = { };
         var lineMap;
         var ast;
 
@@ -216,43 +216,50 @@ Compiler.prototype.compile = function(callback)
             (new Builder(ast, model)).build();
         });
 
-        var modifier  = new Modifier(this._inputFiles, this._inputLineCounts, this._inputLines, this._inputModifierOptions);
-        var generator = new Generator(ast, model, modifier, false, this._options);
-
-        var modifierForChecker;
-        var generatorForChecker;
-        if (this._options["check-types"]) {
-            modifierForChecker  = new Modifier(this._inputFiles, this._inputLineCounts, this._inputLines.slice(0), this._inputModifierOptions);
-            generatorForChecker = new Generator(ast, model, modifierForChecker, true, this._options);
+        var transpileModifier;
+        var transpileGenerator;
+        if (this._options["output-language"] != "none") {
+            transpileModifier  = new Modifier(this._inputFiles, this._inputLineCounts, this._inputLines, this._inputModifierOptions);
+            transpileGenerator = new Generator(ast, model, transpileModifier, false, this._options);
         }
 
-        // Do second pass with Generator
-        time("Generate", function() {
-            generator.generate();
-        });
+        var typeCheckModifier;
+        var typeCheckGenerator;
+        if (this._options["check-types"]) {
+            typeCheckModifier  = new Modifier(this._inputFiles, this._inputLineCounts, this._inputLines.slice(0), this._inputModifierOptions);
+            typeCheckGenerator = new Generator(ast, model, typeCheckModifier, true, this._options);
+        }
 
-        time("Finish", function() {
-            result = generator.finish();
-        });
+        // Transpiler
+        if (transpileGenerator) {
+            // Do second pass with Generator
+            time("Generate", function() {
+                transpileGenerator.generate();
+            });
 
-        // Add real file to errors
-        _.each(result.warnings || [ ], function(e) {
-            this._cleanupError(e);
-        }.bind(this));
+            time("Finish", function() {
+                result = transpileGenerator.finish();
+            });
 
-        // Add state to result
-        time("Archive", function() {
-            result.state = model.saveState();
-            lineMap = result._lines;
-            delete(result._lines);
-        });
+            // Add real file to errors
+            _.each(result.warnings || [ ], function(e) {
+                this._cleanupError(e);
+            }.bind(this));
+
+            // Add state to result
+            time("Archive", function() {
+                result.state = model.saveState();
+                lineMap = result._lines;
+                delete(result._lines);
+            });
+        }
 
         // Type checker
-        if (this._options["check-types"]) {
+        if (typeCheckGenerator) {
             var noImplicitAny = this._options["no-implicit-any"];
 
             time("Type Check", function() {
-                var checker = new TypeChecker(model, generatorForChecker, inputFiles, noImplicitAny);
+                var checker = new TypeChecker(model, typeCheckGenerator, inputFiles, noImplicitAny);
 
                 waitingForChecker = true;
 
