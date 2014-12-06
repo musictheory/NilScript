@@ -6,7 +6,7 @@
     "bin": {
         "ojc": "./bin/ojc"
     },
-    "version": "1.0.0",
+    "version": "1.0.1",
     "engines": { "node": ">=0.10" },
     "maintainers": [{
         "name": "Ricci Adams",
