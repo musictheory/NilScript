@@ -245,6 +245,7 @@ Generator.prototype.generate = function()
     var language = this._language;
     var options  = this._options;
     var inlines  = this._inlines;
+    var scope    = this._model.scope;
 
     var methodNodes = [ ];
     var methodNodeClasses = [ ];
@@ -368,7 +369,7 @@ Generator.prototype.generate = function()
 
     function canBeInstanceVariableOrSelf(node)
     {
-        var parent = node.parent;
+        var parent = node.oj_parent;
 
         if (parent.type == Syntax.MemberExpression && !parent.computed) {
             return parent.object == node;
@@ -427,7 +428,7 @@ Generator.prototype.generate = function()
                 } else {
                     modifier.select(messageSelector).remove()
                     lastSelector = messageSelector;
-                    messageSelector.skip = true;
+                    messageSelector.oj_skip = true;
                 }
             }        
         }
@@ -435,7 +436,7 @@ Generator.prototype.generate = function()
         function doCommonReplacement(start, end) {
             replaceMessageSelectors();
 
-            node.receiver.skip = true;
+            node.receiver.oj_skip = true;
 
             modifier.from(node).to(firstSelector).replace(start);
             modifier.from(lastSelector).to(node).replace(end);
@@ -467,7 +468,7 @@ Generator.prototype.generate = function()
                 var classVariable = getClassAsRuntimeVariable(receiver.name);
 
                 if (methodName == "alloc") {
-                    node.receiver.skip = true;
+                    node.receiver.oj_skip = true;
                     modifier.select(node).replace("new " + classVariable + "()");
                     return;
                 }
@@ -852,6 +853,52 @@ Generator.prototype.generate = function()
         }
     }
 
+    function handleEachStatement(node)
+    {
+        var scope  = node.oj_scope;
+        var i      = scope.makeInternalVariable();
+        var length = scope.makeInternalVariable();
+
+        var object;
+        var initLeft = "var ";
+        var initRight = "";
+        var expr = false;
+
+        // The left side is "var foo", "let foo", etc
+        if (node.left.type == Syntax.VariableDeclaration) {
+            object = node.left.declarations[0].id.name;
+            initLeft  += object + ", ";
+
+        // The left side is just an identifier
+        } else if (node.left.type == Syntax.Identifier) {
+            object = node.left.name;
+        }
+
+        // The right side is a simple identifier
+        if (node.right.type == Syntax.Identifier) {
+            array = node.right.name;
+
+        // The right side is an expression, we need an additional variable
+        } else {
+            array = scope.makeInternalVariable();
+            initLeft  += array + " = (";
+            initRight = initRight + "), ";
+            expr = true;
+        }
+
+        initRight += i + " = 0, " + length + " = " + array + ".length";
+
+        var test      = "(" + i + " < " + length + ") && (" + object + " = " + array + "[" + i + "])";
+        var increment = i + "++";
+
+        if (expr) {
+            modifier.from(node).to(node.right).replace("for (" + initLeft);
+            modifier.from(node.right).to(node.body).replace(initRight + "; " + test + "; " + increment + ") ");
+        } else {
+            modifier.from(node).to(node.body).replace("for (" + initLeft + initRight + "; " + test + "; " + increment + ") ");
+        }
+    }
+
     function handleObjectExpression_typeCheckerOnly(node)
     {
         if (language !== LanguageTypechecker) return;
@@ -917,7 +964,7 @@ Generator.prototype.generate = function()
     traverser.traverse(function(node, parent) {
         var type = node.type;
 
-        if (node.skip) return Traverser.SkipNode;
+        if (node.oj_skip) return Traverser.SkipNode;
 
         if (type === Syntax.OJProtocolDefinition                 ||
             type === Syntax.OJAtClassDirective                   ||
@@ -969,6 +1016,9 @@ Generator.prototype.generate = function()
 
         } else if (type === Syntax.OJTypeAnnotation) {
             handleTypeAnnotation(node);
+
+        } else if (type === Syntax.OJAtEachStatement) {
+            handleEachStatement(node);
 
         } else if (type === Syntax.Literal) {
             handleLiteral(node);

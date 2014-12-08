@@ -38,6 +38,7 @@ ojVisitorKeys[ Syntax.OJMethodDeclaration            ] = [ "returnType", "method
 ojVisitorKeys[ Syntax.OJIdentifierWithAnnotation     ] = [ "annotation" ];
 ojVisitorKeys[ Syntax.OJAtCastExpression             ] = [ "id", "argument" ];
 ojVisitorKeys[ Syntax.OJAtTypedefDeclaration         ] = [ "from", "to" ];
+ojVisitorKeys[ Syntax.OJAtEachStatement              ] = [ "left", "right", "body" ];
 
 
 function Traverser(ast)

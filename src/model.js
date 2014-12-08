@@ -81,6 +81,7 @@ function OJModel()
     this.classes   = { };
     this.protocols = { };
     this.selectors = { };
+    this.scope     = new OJScope(null, null, true);
 
     this._squeezerId      = 0;
     this._maxSqueezerId   = 0;
@@ -793,6 +794,63 @@ OJClass.prototype.getPropertyWithName = function(propertyName)
 }
 
 
+function OJScope(node, parent, hoist)
+{
+    this.node       = node;
+    this.parent     = parent || null;
+    this.hoist      = !!hoist;
+    this.children   = [ ];
+    this.additional = [ ];
+    this.tempCount  = 0;
+
+    if (parent) {
+        parent.children.push(this);
+    }
+}
+
+OJScope.prototype.declareVariable = function(name, kind)
+{
+    // Implement
+}
+
+
+OJScope.prototype.makeInternalVariable = function()
+{
+    if (!this.hoist) {
+        return this.parent.makeInternalVariable();
+    } else {
+        var name = "$oj_t_" + this.tempCount++;
+        this.additional.push(name);
+        return name;
+    }
+}
+
+
+OJScope.prototype.toString = function(lines, indent)
+{
+    var i, length;
+
+    if (!lines) {
+        lines = [ ];
+
+        for (i = 0, length = this.children.length; i < length; i++) {
+            this.children[i].toString(lines, "");
+        }
+
+        lines.push("");
+        return lines.join("\n");
+    }
+
+    var type = this.node.type;
+
+    lines.push(indent + "+ " + type);
+
+    for (i = 0, length = this.children.length; i < length; i++) {
+        this.children[i].toString(lines, "  " + indent);
+    }
+}
+
+
 module.exports = {
     OJModel:    OJModel,
     OJClass:    OJClass,
@@ -800,5 +858,6 @@ module.exports = {
     OJProperty: OJProperty,
     OJMethod:   OJMethod,
     OJIvar:     OJIvar,
-    OJEnum:     OJEnum
+    OJEnum:     OJEnum,
+    OJScope:    OJScope
 };
