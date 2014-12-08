@@ -40,7 +40,7 @@ function _isDescendantOf(a, b)
 {
     while (a) {
         if (a === b) return true;
-        a = a.parent;
+        a = a.oj_parent;
     }
 
     return false;

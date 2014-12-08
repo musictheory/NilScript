@@ -280,6 +280,10 @@ Compiler.prototype.compile = function(callback)
             }, 4)
         }
 
+        if (this._options["dump-scope"]) {
+            result.scope = model.scope.toString();
+        }        
+
         result.cache = this._options["cache"];
 
         if (this._options["jshint"]) {

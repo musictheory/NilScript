@@ -323,7 +323,8 @@ parseStatement: true, parseSourceElement: true */
                    (id === '@const')          ||
                    (id === '@squeeze')        ||
                    (id === '@cast')           ||
-                   (id === '@typedef');
+                   (id === '@typedef')        ||
+                   (id === '@each');
         }
         //!oj: end changes
 
@@ -3288,6 +3289,8 @@ parseStatement: true, parseSourceElement: true */
                 return delegate.markEnd(oj_parseEnumStatement(), startToken);
             case '@typedef':
                 return delegate.markEnd(oj_parseTypedefDefinition(), startToken);
+            case '@each':
+                return delegate.markEnd(oj_parseAtEachStatement(), startToken);
             default:
                 break;
             }
@@ -3805,6 +3808,7 @@ parseStatement: true, parseSourceElement: true */
         Syntax.OJAtCastExpression             = "OJAtCastExpression";
         Syntax.OJTypeAnnotation               = "OJTypeAnnotation";
         Syntax.OJAtTypedefDeclaration         = "OJTypedefDeclaration";
+        Syntax.OJAtEachStatement              = "OJAtEachStatement";
 
         Messages.OJCannotNestImplementations  = "OJ: Cannot nest @implementation blocks";
     }
@@ -4751,6 +4755,45 @@ parseStatement: true, parseSourceElement: true */
 
         return delegate.markEnd(result, startToken);
     }
+
+    function oj_parseAtEachStatement() {
+        var left, right, body, oldInIteration, startToken;
+
+        startToken = lookahead;
+
+        expectKeyword('@each');
+
+        expect('(');
+
+        if (matchKeyword('var') || matchKeyword('let')) {
+            state.allowIn = false;
+            left = parseForVariableDeclaration();
+            state.allowIn = true;
+
+        } else {
+            left = parseVariableIdentifier();
+        }
+
+        expectKeyword('in');
+        right = parseExpression();
+
+        expect(')');
+
+        oldInIteration = state.inIteration;
+        state.inIteration = true;
+
+        body = parseStatement();
+
+        state.inIteration = oldInIteration;
+
+        return delegate.markEnd({
+            type: Syntax.OJAtEachStatement,
+            left: left,
+            right: right,
+            body: body
+        }, startToken);
+    }
+
 
     oj_init();
 
