@@ -28,6 +28,8 @@ OJError.SqueezerReachedEndIndex        = "OJSqueezerReachedEndIndexError";
 OJError.TypeAlreadyExists              = "OJTypeAlreadyExistsError";
 OJError.CircularTypedefHierarchy       = "OJCircularTypedefHierarchyError";
 OJError.CircularClassHierarchy         = "OJCircularClassHierarchyError";
+OJError.VariableAlreadyDeclared        = "OJVariableAlreadyDeclaredError";
+OJError.VariableNotYetDeclared         = "OJVariableNotYetDeclaredError";
 
 var OJWarning = { };
 
@@ -35,6 +37,7 @@ OJWarning.UnknownSelector              = "OJUnknownSelectorWarning";
 OJWarning.UseOfThisInMethod            = "OJUseOfThisInMethodWarning";
 OJWarning.UnusedInstanceVariable       = "OJUnusedInstanceVariableWarning";
 OJWarning.UndeclaredInstanceVariable   = "OJUndeclaredInstanceVariableWarning";
+
 
 
 module.exports = {

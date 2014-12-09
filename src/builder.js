@@ -15,11 +15,12 @@ var Utils      = require("./utils");
 var Model      = require("./model");
 
 
-function Builder(ast, model)
+function Builder(ast, model, options)
 {
-    this._ast   = ast;
-    this._model = model;
-    this._scope = new Model.OJScope(null, null, true);
+    this._ast     = ast;
+    this._model   = model;
+    this._options = options;
+    this._scope   = new Model.OJScope(null, null, true);
 }
 
 
@@ -45,7 +46,7 @@ function sMakeOJMethodForNode(node, scope)
 
         if (variableName) {
             variableNames.push(variableName.name);
-            if (scope) scope.declareVariable(variableName.name, "param");
+            if (scope) scope.declareVariable(variableName.name, Model.OJScope.VariableKindParam);
         }
     }
 
@@ -71,6 +72,8 @@ Builder.prototype.build = function()
 
     var currentClass, currentMethod;
     var currentProtocol;
+
+    var enableBlockScope = this._options["enable-block-scope"];
 
     var traverser = new Traverser(this._ast);
 
@@ -138,7 +141,7 @@ Builder.prototype.build = function()
     {
         makeScope(node, true);
 
-        var method = sMakeOJMethodForNode(node, currentScope);
+        var method = sMakeOJMethodForNode(node, enableBlockScope ? currentScope : null);
         currentClass.addMethod(method);
         currentMethod = method;
     }
@@ -311,6 +314,8 @@ Builder.prototype.build = function()
 
     function handleVariableDeclaration(node)
     {
+        if (!enableBlockScope) return;
+
         var kind = node.kind;
 
         for (var i = 0, length = node.declarations.length; i < length; i++) {
@@ -334,7 +339,9 @@ Builder.prototype.build = function()
             for (var i = 0, length = node.params.length; i < length; i++) {
                 var param = node.params[i];
 
-                currentScope.declareVariable(param.name, "param");
+                if (enableBlockScope) {
+                    currentScope.declareVariable(param.name, Model.OJScope.VariableKindParam);
+                }
 
                 if (param.name == "self") {
                     Utils.throwError(OJError.SelfIsReserved, "Use of self as function parameter name", node);
@@ -361,6 +368,9 @@ Builder.prototype.build = function()
         var currentScopeNode = currentScope.node;
         var parentType = currentScopeNode ? currentScopeNode.type : null;
 
+        // These parent types will *always* have a { } block, so there is no need
+        // to create another
+        //
         if (parentType == Syntax.OJMethodDefinition ||
             parentType == Syntax.OJClassImplementation ||
             parentType == Syntax.FunctionDeclaration ||

@@ -18,6 +18,8 @@ var opt = getopt.create([
     [ "",  "cache=FILE",                "cache file to speed up builds" ],
     [ "",  "prepend=FILE+",             "prepend file to output (without compiling or hinting)"],
     [ "",  "append=FILE+",              "append file to output (without compiling or hinting)"],
+    [ "",  "source-map-file=FILE",      "output source map file" ],
+    [ "",  "source-map-root=URL",       "URL to use for 'sourceRoot' in source map" ],    
     [ "s", "squeeze",                   "enable squeezer" ],
     [ "",  "squeeze-start-index",       "start index for squeezer" ],
     [ "",  "squeeze-end-index",         "end index for squeezer" ],
@@ -27,11 +29,13 @@ var opt = getopt.create([
     [ "",  "inline-const",              "inline @const identifiers" ],
     [ "",  "inline-enum",               "inline @enum identifiers"  ],
 
+    [ "",  "enable-block-scope",        "enable oj block scope additions (experimental)" ],
+
     [ "",  "jshint",                    "enable jshint integration" ],
     [ "",  "jshint-config=FILE",        "config file for jshint" ],
     [ "",  "jshint-ignore=CODE+",       "ignore warning from jshint" ],
 
-    [ "",  "check-types",               "use experimental type checker"                    ],
+    [ "",  "check-types",               "use type checker (experimental)" ],
     [ "",  "no-implicit-any",           "type checker: disallow implicit any"              ],
     [ "",  "strict-functions",          "type checker: enforce TypeScript-style functions" ],
 
@@ -44,6 +48,7 @@ var opt = getopt.create([
     [ "",  "dump-ast",                  "(for development)" ],
     [ "",  "dump-time",                 "(for development)" ],
     [ "",  "dump-profile",              "(for development)" ],
+    [ "",  "dump-scope",                "(for development)" ],
 
     [ "h", "help",                      "display this help" ],
     [ "v", "version",                   "show version"      ]
@@ -124,7 +129,7 @@ var inputStateFile  = options["input-state"];
 
 var outputFile      = options["output"];
 var outputStateFile = options["output-state"];
-var outputMapFile   = options["output-map"];
+var outputMapFile   = options["source-map-file"];
 
 delete(options["input-state"]);
 delete(options["output-state"]);
@@ -174,6 +179,8 @@ try {
             } else if (result.code) {
                 if (options["dump-ast"]) {
                     process.stdout.write(result.ast);
+                } else if (options["dump-scope"]) {
+                    process.stdout.write(result.scope);
                 } else {
                     process.stdout.write(result.code);
                 }
@@ -181,15 +188,15 @@ try {
         }
 
         if (outputStateFile) {
-            fs.writeFileSync(outputStateFile, JSON.stringify(result.state || { }, null, "    "), "utf8")
+            fs.writeFileSync(outputStateFile, JSON.stringify(result.state || { }, null, "    "), "utf8");
         }
 
         if (outputMapFile) {
-            fs.writeFileSync(outputMapFile, JSON.stringify(result.map || { }, null, "    "), "utf8")
+            fs.writeFileSync(outputMapFile, result.map, "utf8");
         }
 
         if (cacheFile) {
-            fs.writeFileSync(cacheFile, JSON.stringify(result.cache || { }, null, "    "), "utf8")
+            fs.writeFileSync(cacheFile, JSON.stringify(result.cache || { }, null, "    "), "utf8");
         }
 
         process.exit(err ? 1 : 0);
