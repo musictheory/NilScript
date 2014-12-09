@@ -2,12 +2,23 @@ CHANGELOG
 
 ---
 
+1.1
+
+- @each support #36
+
+---
+
 1.0.1
 
 - Update to Esprima 1.2.2 #28
 - Traverser's skip array causing 6% slowdown #29
 - Add ability for typealias / typedef #30
 - Classes can be superclasses of each other #23
+- Dynamic property prevents synthesis of following properties #35
+- @synthesize should always make a backing ivar #34
+- Add documentation for $oj_oj #33
+- Add 'temp' dependency #32
+- Support protocols and typed arrays #31
 
 ---
 
