@@ -197,6 +197,7 @@ Compiler.prototype.compile = function(callback)
         var inputLines         = this._inputLines;
         var inputParserOptions = this._inputParserOptions;
         var model              = this._model;
+        var options            = this._options;
 
         var result  = { };
         var lineMap;
@@ -213,21 +214,21 @@ Compiler.prototype.compile = function(callback)
 
         // Do first pass with Builder and save into model
         time("Build", function() {
-            (new Builder(ast, model)).build();
+            (new Builder(ast, model, options)).build();
         });
 
         var transpileModifier;
         var transpileGenerator;
-        if (this._options["output-language"] != "none") {
+        if (options["output-language"] != "none") {
             transpileModifier  = new Modifier(this._inputFiles, this._inputLineCounts, this._inputLines, this._inputModifierOptions);
-            transpileGenerator = new Generator(ast, model, transpileModifier, false, this._options);
+            transpileGenerator = new Generator(ast, model, transpileModifier, false, options);
         }
 
         var typeCheckModifier;
         var typeCheckGenerator;
-        if (this._options["check-types"]) {
+        if (options["check-types"]) {
             typeCheckModifier  = new Modifier(this._inputFiles, this._inputLineCounts, this._inputLines.slice(0), this._inputModifierOptions);
-            typeCheckGenerator = new Generator(ast, model, typeCheckModifier, true, this._options);
+            typeCheckGenerator = new Generator(ast, model, typeCheckModifier, true, options);
         }
 
         // Transpiler
@@ -256,7 +257,7 @@ Compiler.prototype.compile = function(callback)
 
         // Type checker
         if (typeCheckGenerator) {
-            var noImplicitAny = this._options["no-implicit-any"];
+            var noImplicitAny = options["no-implicit-any"];
 
             time("Type Check", function() {
                 var checker = new TypeChecker(model, typeCheckGenerator, inputFiles, noImplicitAny);
@@ -271,7 +272,7 @@ Compiler.prototype.compile = function(callback)
             });
         }
 
-        if (this._options["dump-ast"]) {
+        if (options["dump-ast"]) {
             result.ast = JSON.stringify(this._ast, function(key, value) {
                 if (key == "parent") {
                     return undefined;
@@ -280,15 +281,15 @@ Compiler.prototype.compile = function(callback)
             }, 4)
         }
 
-        if (this._options["dump-scope"]) {
+        if (options["dump-scope"]) {
             result.scope = model.scope.toString();
         }        
 
-        result.cache = this._options["cache"];
+        result.cache = options["cache"];
 
-        if (this._options["jshint"]) {
-            var config = this._options["jshint-config"];
-            var ignore = this._options["jshint-ignore"];
+        if (options["jshint"]) {
+            var config = options["jshint-config"];
+            var ignore = options["jshint-ignore"];
 
             var hinter = new Hinter(result.code, config, ignore, lineMap, inputFiles, result.cache ? result.cache.hinter : { });
 

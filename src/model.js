@@ -803,14 +803,64 @@ function OJScope(node, parent, hoist)
     this.additional = [ ];
     this.tempCount  = 0;
 
+    this._nameToKindMap = { };
+
     if (parent) {
         parent.children.push(this);
     }
 }
 
+OJScope.VariableKindVar       = "var";
+OJScope.VariableKindConst     = "const";
+OJScope.VariableKindLet       = "let";
+OJScope.VariableKindParam     = "param";
+OJScope.VariableKindFunction  = "fun";
+OJScope.VariableKindCaught    = "caught";
+
 OJScope.prototype.declareVariable = function(name, kind)
 {
-    // Implement
+    // function isConstLet(str)
+    // {
+    //     return str === "const" || str === "let";
+    // }
+
+    // if (kind == OJScope.VariableKindFunction ||
+    //     kind == OJScope.VariableKindParam ||
+    //     kind == OJScope.VariableKindVar)
+    // {
+    //     var scope = this;
+
+    //     while (!scope.hoist) {
+    //         var kind = scope._nameToKindMap[name];
+
+    //         if (kind && isConstLet(kind)) {
+    //             Utils.throwError(OJError.VariableAlreadyDeclared, "'" + name + "' is already defined.");
+    //         }
+
+    //         scope = scope.parent;
+    //     }
+    // }
+
+    // // name exists in scope and either new or existing kind is const|let => error
+    // if (scope.decls.has(name) && (options.disallowDuplicated || isConstLet(scope.decls.get(name).kind) || isConstLet(kind))) {
+    //     return error(getline(node), "{0} is already declared", name);
+    // }
+
+    // // if (kind == OJScope.VariableKindVar && !this.hoist) {
+    // //     return this.parent.declareVariable(name, kind);
+    // // }
+
+    // // if (this._nameToKindMap[name]) {
+    // //     Utils.throwError(OJError.VariableAlreadyDeclared, "'" + name + "' is already defined.");
+    // // }
+
+    // this._nameToKindMap[name] = kind;
+}
+
+
+OJScope.prototype.initializeVariable = function(name)
+{
+
 }
 
 
