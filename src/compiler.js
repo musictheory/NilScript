@@ -142,7 +142,7 @@ Compiler.prototype._getFileAndLineForLine = function(inLine)
         var lineCount = lineCounts[i] || 0;
         endLineForFile = startLineForFile + lineCount;
 
-        if (inLine >= startLineForFile && inLine < endLineForFile) {
+        if (inLine >= startLineForFile && inLine <= endLineForFile) {
             return [ files[i], inLine - startLineForFile ];
         }
 
@@ -173,8 +173,13 @@ Compiler.prototype.compile = function(callback)
     var waitingForHinter  = false;
     var waitingForChecker = false;
 
+    var cleanupError = function(err) {
+        if (err) this._cleanupError(err);
+    }.bind(this);
+
     function finish(err, result) {
         if (err || (!waitingForHinter && !waitingForChecker)) {
+            cleanupError(err);
             callback(err, result);
         }
     }
@@ -323,7 +328,7 @@ Compiler.prototype.compile = function(callback)
             console.error("------------------------------------------------------------")
         }
 
-        this._cleanupError(e);
+        cleanupError(e);
 
         callback(e, null);
     }

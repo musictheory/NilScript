@@ -8,6 +8,8 @@
 var fs       = require("fs");
 var util     = require("util");
 var getopt   = require("node-getopt");
+var _        = require("lodash");
+
 var ojc      = require("../src/ojc");
 
 
@@ -28,8 +30,6 @@ var opt = getopt.create([
 
     [ "",  "inline-const",              "inline @const identifiers" ],
     [ "",  "inline-enum",               "inline @enum identifiers"  ],
-
-    [ "",  "enable-block-scope",        "enable oj block scope additions (experimental)" ],
 
     [ "",  "jshint",                    "enable jshint integration" ],
     [ "",  "jshint-config=FILE",        "config file for jshint" ],
@@ -67,105 +67,142 @@ opt.setHelp(
 opt.bindHelp();
 opt.parseSystem();
 
-var inputFiles = opt.parsedOption.argv;
-var options    = opt.parsedOption.options;
+var argv    = opt.parsedOption.argv;
+var options = opt.parsedOption.options;
 
 
-// Bail if no input files
-if (!inputFiles || inputFiles.length == 0) {
+function print_error(err)
+{
+    function toString(e) {
+        var result  = "";
+
+        var file   = e.file   || e.filename;
+        var line   = e.line   || e.lineNumber;
+        var column = e.column || e.columnNumber || e.col;
+        var reason = e.reason || e.description;
+
+        if (file)   result += file;
+        if (line)   result += ":" + line;
+        if (column) result += ":" + column;
+        if (reason) result += " " + reason;
+
+        return result;
+    }
+
+    var strings;
+    if (_.isArray(err)) {
+        err = _.flatten(err);
+        strings = _.map(err, function(e) { return toString(e) });
+    } else {
+        strings = [ toString(err) ];
+    }
+
+    console.error(_.uniq(strings).sort().join("\n"));        
+}
+
+
+function read_files(files)
+{
+    if (!files) return [ ];
+
+    if (!_.isArray(files)) {
+        files = [ files ];
+    }
+
+    var results = [ ];
+    _.each(files, function(file) {
+        try {
+            var contents = (fs.readFileSync(file).toString());
+            results.push({ path: file, contents: contents });
+        } catch (e) {
+            console.error("ojc: error reading file: " + e);
+            process.exit(1);
+        }
+    });
+
+    return results;
+}
+
+
+function read_contents(files)
+{
+    if (!files) return null;
+
+    var pairs = read_files(files);
+
+    if (!pairs || !pairs.length) {
+        return null;
+    }
+
+    return _.map(pairs, function(pair) {
+        return pair.contents;
+    }).join("\n");
+}
+
+
+// Bail if no input files (specified after options)
+if (!argv || argv.length == 0) {
     console.error("ojc: error: no input files");
     process.exit(1);
 }
 
 
-// Read each input file and store in inContent
-var files = [ ];
-inputFiles.forEach(function(f) {
-    try {
-        var contents = (fs.readFileSync(f).toString());
-        files.push({ path: f, contents: contents });
-    } catch (e) {
-        console.error("ojc: error: " + e);
-        process.exit(1);
-    }
-});
+// Extract these options and delete
+var inputStateFile  = options["input-state"];     delete(options["input-state"]);
+var outputFile      = options["output"];          delete(options["output"]);
+var outputStateFile = options["output-state"];    delete(options["output-state"]);
 
-// Read each prepend file and store in inputPrependContents
-var prependFiles = opt.parsedOption.prepend || [ ];
-var prependContents = [ ];
-prependFiles.forEach(function(f) {
-    try {
-        prependContents.push(fs.readFileSync(f).toString());
-    } catch (e) {
-        console.error("ojc: error: " + e);
-        process.exit(1);
-    }
-});
+// Extract these options, don't delete (used by compiler)
+var outputSourceMapFile = options["source-map-file"];
+var dumpScope           = options["dump-scope"];
+var dumpAST             = options["dump-ast"];
+var dumpProfile         = options["dump-profile"];
 
-// Read each append file and store in appendContents
-var appendFiles = opt.parsedOption.append || [ ];
-var appendContents = [ ];
-appendFiles.forEach(function(f) {
-    try {
-        appendContents.push(fs.readFileSync(f).toString());
-    } catch (e) {
-        console.error("ojc: error: " + e);
-        process.exit(1);
-    }
-});
+// Convert filenames in options to file contents
+options["files"]         = read_files(argv);
+options["prepend"]       = read_contents( options["prepend"] );
+options["append"]        = read_contents( options["append"]  );
+options["state"]         = read_contents( inputStateFile     );
 
-
-options["files"] = files;
-
-if (prependContents.length) {
-    options["prepend"]  = prependContents.join("\n");
-}
-
-if (appendContents.length) {
-    options["append"] = appendContents.join("\n");
-}
-
-var inputStateFile  = options["input-state"];
-
-var outputFile      = options["output"];
-var outputStateFile = options["output-state"];
-var outputMapFile   = options["source-map-file"];
-
-delete(options["input-state"]);
-delete(options["output-state"]);
-delete(options["output"]);
-
-
-// Read inputStateFile and save contents into options.state
-if (inputStateFile) {
-    try {
-        options["state"] = JSON.parse(fs.readFileSync(inputStateFile));
-    } catch (e) {
-        console.error("ojc: error: " + e);
-        process.exit(1);
-    }
-}
-
+// "cache" is both an input and an output file.  It may not already exist.
 var cacheFile = options["cache"];
-var cacheContents;
-if (cacheFile) {
+(function() {
+    if (!cacheFile) return;
+
+    var contents;
+
     try {
-        cacheContents = JSON.parse(fs.readFileSync(cacheFile));
+        contents = JSON.parse(fs.readFileSync(cacheFile));
     } catch (e) { };
 
-    if (!cacheContents) cacheContents = { };
-    options["cache"] = cacheContents;
-}
+    if (!contents) contents = { };
+    options["cache"] = contents;
+}());
+
+// Read and parse JSHint config
+(function() {
+    var contents = read_contents(options["jshint-config"]);
+    options["jshint-config"] = contents ? JSON.parse(contents) : null;
+}());
 
 
 try {
     var profiler;
-    if (options["dump-profile"]) {
+    if (dumpProfile) {
         profiler = require("../src/profiler");
         profiler.startProfiling("ojc");
     }
 
     ojc.compile(options, function(err, result) {
+        if (err) {
+            print_error(err);
+            process.exit(1);
+        }
+
+        _.each(result.warnings, function(warning) {
+            print_error(warning);
+        });
+
         if (profiler) {
             var cpuProfile = profiler.stopProfiling("ojc");
             fs.writeFileSync("/tmp/ojc.cpuprofile", JSON.stringify(cpuProfile));
@@ -175,11 +212,11 @@ try {
             fs.writeFileSync(outputFile, result.code, "utf8")
         } else {
             if (err) {
-                console.error(err);
+                print_error(err);
             } else if (result.code) {
-                if (options["dump-ast"]) {
+                if (dumpAST) {
                     process.stdout.write(result.ast);
-                } else if (options["dump-scope"]) {
+                } else if (dumpScope) {
                     process.stdout.write(result.scope);
                 } else {
                     process.stdout.write(result.code);
@@ -191,8 +228,8 @@ try {
             fs.writeFileSync(outputStateFile, JSON.stringify(result.state || { }, null, "    "), "utf8");
         }
 
-        if (outputMapFile) {
-            fs.writeFileSync(outputMapFile, result.map, "utf8");
+        if (outputSourceMapFile) {
+            fs.writeFileSync(outputSourceMapFile, result.map, "utf8");
         }
 
         if (cacheFile) {
@@ -204,12 +241,6 @@ try {
 
 
 } catch (e) {
-    if (inputFiles.length == 1) {
-        console.log(inputFiles[0] + ":" + e.lineNumber + " " + e.description);
-    } else {
-        console.log(e.description);
-    }
-
-    if (!e.errorType) console.log(e.stack);
+    print_error(e);
     process.exit(2);
 }
