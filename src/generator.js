@@ -871,11 +871,15 @@ Generator.prototype.generate = function()
 
         // The left side is just an identifier
         } else if (node.left.type == Syntax.Identifier) {
+            if (currentClass.isIvar(node.left.name)) {
+                Utils.throwError(OJError.CannotUseIvarHere, "Cannot use ivar \"" + node.left.name + "\" on left-hand side of @each", node);
+            }
+
             object = node.left.name;
         }
 
         // The right side is a simple identifier
-        if (node.right.type == Syntax.Identifier) {
+        if (node.right.type == Syntax.Identifier && !currentClass.isIvar(node.right.name)) {
             array = node.right.name;
 
         // The right side is an expression, we need an additional variable

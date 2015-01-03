@@ -1,0 +1,32 @@
+
+(function() { "use strict";
+
+@implementation Issue41Class {
+    Array _array;
+}
+
+- (Number) check
+{
+    _array = [ 1, 2, 3 ];
+
+    var sum;
+    @each (var i in _array) {
+        sum += i;
+    }
+
+    return sum;
+}
+
+@end
+
+}());
+
+
+
+function runTests()
+{
+    var instance = [[Issue41Class alloc] init];
+    return [instance check] == 6;
+}
+
+runTests();
