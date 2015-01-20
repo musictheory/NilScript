@@ -871,7 +871,7 @@ Generator.prototype.generate = function()
 
         // The left side is just an identifier
         } else if (node.left.type == Syntax.Identifier) {
-            if (currentClass.isIvar(node.left.name)) {
+            if (currentClass && currentClass.isIvar(node.left.name)) {
                 Utils.throwError(OJError.CannotUseIvarHere, "Cannot use ivar \"" + node.left.name + "\" on left-hand side of @each", node);
             }
 
@@ -879,7 +879,7 @@ Generator.prototype.generate = function()
         }
 
         // The right side is a simple identifier
-        if (node.right.type == Syntax.Identifier && !currentClass.isIvar(node.right.name)) {
+        if (language !== LanguageTypechecker && node.right.type == Syntax.Identifier && currentClass && !currentClass.isIvar(node.right.name)) {
             array = node.right.name;
 
         // The right side is an expression, we need an additional variable
@@ -894,6 +894,10 @@ Generator.prototype.generate = function()
 
         var test      = "(" + i + " < " + length + ") && (" + object + " = " + array + "[" + i + "])";
         var increment = i + "++";
+
+        if (language === LanguageTypechecker) {
+            increment = increment + ", $oj_$EnsureArray(" + array + ")"
+        }
 
         if (expr) {
             modifier.from(node).to(node.right).replace("for (" + initLeft);

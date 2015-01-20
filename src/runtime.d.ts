@@ -27,6 +27,7 @@ interface $oj_$Runtime {
 }
 
 
+// This allows [Foo class] to be used on the right-hand side of instanceof
 declare class $oj_$Constructor implements Function {
     apply(thisArg: any, argArray?: any): any;
     call(thisArg: any, ...argArray: any[]): any;
@@ -38,7 +39,7 @@ declare class $oj_$Constructor implements Function {
 }
 
 
-declare class $oj_BaseObject extends $oj_$Constructor {
+declare class $oj_BaseObject {
     static alloc() : $oj_BaseObject;
     static superclass() : $oj_BaseObject$Static;
     static className() : String;
@@ -82,3 +83,4 @@ declare class $oj_BaseObject$Static extends $oj_$Constructor {
 declare var $oj_oj : $oj_$Runtime;
 declare var oj     : $oj_$Runtime;
 
+declare function $oj_$EnsureArray(arg : any[]);
