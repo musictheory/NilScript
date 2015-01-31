@@ -1,17 +1,78 @@
 /*
     typechecker.js
     Generates TypeScript definition file and wraps TypeScript compiler 
-    (c) 2013-2014 musictheory.net, LLC
+    (c) 2013-2015 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
 var fs      = require("fs");
 var cp      = require("child_process");
-var temp    = require("temp");
+var path    = require("path");
 var dirname = require("path").dirname;
 var _       = require("lodash");
+var ts      = require("typescript");
 
-temp.track();
+var sLibrarySource;
+
+
+/*
+    See https://github.com/Microsoft/TypeScript/wiki/Using-the-Compiler-API
+*/
+function ts_transform(contentArray, librarySource, options)
+{
+    if (!options) options = { };
+
+    var filenameToContentMap = { };
+    var filenames = [ ];
+
+    _.each(contentArray, function(content) {
+        var filename = "file" + filenames.length + ".ts";
+        filenames.push(filename);
+        filenameToContentMap[filename] = content;
+    })
+
+    filenameToContentMap["lib.d.ts"] = librarySource;
+
+    var program = ts.createProgram(filenames, options, {
+        getSourceFile: function(filename, languageVersion) {
+            var content = filenameToContentMap[filename];
+            return content ? ts.createSourceFile(filename, content, options.target, "0") : undefined;
+        },
+
+        writeFile:                 function() { },
+        getDefaultLibFilename:     function() { return "lib.d.ts"; },
+        useCaseSensitiveFileNames: function() { return false; },
+        getCanonicalFileName:      function(filename) { return filename; },
+        getCurrentDirectory:       function() { return ""; },
+        getNewLine:                function() { return "\n"; }
+    });
+
+    var errors = program.getDiagnostics();
+
+    if (!errors.length) {
+        var checker = program.getTypeChecker(true);
+        errors = checker.getDiagnostics();
+    }
+
+    errors = errors.map(function(e) {
+        var lineColumn = e.file.getLineAndCharacterFromPosition(e.start);
+
+        var reason = e.messageText;
+        if (reason) reason = reason.split("\n");
+        if (reason) reason = reason[0];
+
+        return {
+            filename: e.file.filename,
+            line: lineColumn.line,
+            column: lineColumn.column,
+            reason: reason,
+            code: e.code
+        }
+    });
+
+    return errors;
+}
+
 
 
 function TypeChecker(model, generator, files, noImplicitAny)
@@ -206,7 +267,7 @@ TypeChecker.prototype.check = function(callback)
         });
 
         // Property '$0' does not exist on type '$1'.
-        if (code == "TS2339") { 
+        if (code == 2339) { 
             if (isMethod) {
                 if (isStatic) {
                     return "No known class method: +[" + quoted[1] + " " + quoted[0] + "]";
@@ -236,100 +297,53 @@ TypeChecker.prototype.check = function(callback)
         return result;
     }
 
-    try {
-        cp.exec("which tsc", function (error, stdout, stderr) {
-            if (error) {
-                console.error("");
-                console.error("TypeScript must be installed to use --check-types.  Install via:");
-                console.error("");
-                console.error("    npm install -g typescript");
-                console.error("");
-
-                callback(error, null);
-                return;
-            }
-
-            var cmd = stdout.trim();
-            var args = [ ];
-
-            if (noImplicitAny) {
-                args.push("--noImplicitAny" );
-            }
-
-            temp.mkdir("oj-typechecker", function(err, dirPath) {
-                if (err) {
-                    callback(err);
-                    return;
-                }
-
-                fs.writeFileSync(dirPath + "/defs.ts",    defs);
-                fs.writeFileSync(dirPath + "/content.ts", contents);
-
-                args.push(dirPath + "/defs.ts");
-                args.push(dirPath + "/content.ts");
-
-                // For debugging
-                fs.writeFileSync("/tmp/defs.ts",    defs);
-                fs.writeFileSync("/tmp/content.ts", contents);
-
-                cp.execFile(cmd, args, { }, function (error, stdout, stderr) {
-                    var lines = (stdout || stderr).split("\n");
-                    var line, m;
-
-                    var hints = [ ];
-                    var hint;
-
-                    for (var i = 0, length = lines.length; i < length; i++) {
-                        var line = lines[i];
-
-                        if ((m = line.match(/\(([0-9]+),([0-9]+)\):\s+error\s+(.*?)\:\s+(.*?)$/))) {
-                            var fileAndLine = getFileAndLine(m[1]);
-
-                            hint = { };
-                            if (fileAndLine) {
-                                hint.file      = fileAndLine[0];
-                                hint.line      = fileAndLine[1];
-                            } else {
-                                hint.file      = "<generated>";
-                                hint.line      = m[1];
-                            }
-
-                            hint.column    = m[2];
-                            hint.code      = m[3];
-                            hint.name     = "OJTypecheckerHint";
-                            hint.reason   = fixReason(m[4], hint.code);
-
-                            hints.push(hint);
-
-                        } else {
-
-                            // line.trim();
-
-                            // if (hint && line.length) {
-                            //     hint.reason = "\n    " + hint.reason.trim() + "\n    " + line.trim();
-                            // }
-                        }
-                    }
-
-                    hints = _.filter(hints, function(hint) {
-                        if (hint.reason) {
-                            hint.reason = generator.getSymbolicatedString(hint.reason);
-                        } else {
-                            // console.log(hint);
-                        }
+    var options = { };
+    if (noImplicitAny) options.noImplicitAny = true;
 
 
-                        return hint.code != "TS2087";
-                    })
-
-                    callback(null, hints);
-                });
-            });
-        });
-
-    } catch (e) {
-        callback(e);
+    // Eventually, there should be an option/way to switch to "lib.core.d.ts"
+    // Keep in sync with: https://github.com/Microsoft/TypeScript/issues/494 ?
+    //
+    if (!sLibrarySource) {
+        sLibrarySource = fs.readFileSync(path.join(path.dirname(require.resolve('typescript')), 'lib.d.ts')).toString();
     }
+
+    var errors = ts_transform([ defs, contents ], sLibrarySource, options);
+
+    var hints = [ ];
+    var hint;
+
+    _.each(errors, function(e) {
+        var fileAndLine = getFileAndLine(e.line);
+
+        hint = { };
+        if (fileAndLine) {
+            hint.file      = fileAndLine[0];
+            hint.line      = fileAndLine[1];
+        } else {
+            hint.file      = "<generated>";
+            hint.line      = e.line;
+        }
+
+        hint.column    = e.column;
+        hint.code      = e.code;
+        hint.name     = "OJTypecheckerHint";
+        hint.reason   = fixReason(e.reason, e.code);
+
+        hints.push(hint);
+    });
+
+    hints = _.filter(hints, function(hint) {
+        if (hint.reason) {
+            hint.reason = generator.getSymbolicatedString(hint.reason);
+        } else {
+            // console.log(hint);
+        }
+
+        return hint.code != 2087;
+    })
+
+    callback(null, hints);
 }
 
 

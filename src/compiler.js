@@ -170,8 +170,8 @@ Compiler.prototype.compile = function(callback)
 {
     var dumpTime = this._options["dump-time"];
 
-    var waitingForHinter  = false;
-    var waitingForChecker = false;
+    var waitingForHinter  = true;
+    var waitingForChecker = true;
 
     var cleanupError = function(err) {
         if (err) this._cleanupError(err);
@@ -260,23 +260,6 @@ Compiler.prototype.compile = function(callback)
             });
         }
 
-        // Type checker
-        if (typeCheckGenerator) {
-            var noImplicitAny = options["no-implicit-any"];
-
-            time("Type Check", function() {
-                var checker = new TypeChecker(model, typeCheckGenerator, inputFiles, noImplicitAny);
-
-                waitingForChecker = true;
-
-                checker.check(function(err, warnings) {
-                    waitingForChecker = false;
-                    result.warnings = (result.warnings || [ ]).concat(warnings);
-                    finish(err, result);
-                });
-            });
-        }
-
         if (options["dump-ast"]) {
             result.ast = JSON.stringify(this._ast, function(key, value) {
                 if (key == "parent") {
@@ -292,13 +275,34 @@ Compiler.prototype.compile = function(callback)
 
         result.cache = options["cache"];
 
+
+        // Type checker
+        //
+        if (typeCheckGenerator) {
+            var noImplicitAny = options["no-implicit-any"];
+
+            time("Type Check", function() {
+                var checker = new TypeChecker(model, typeCheckGenerator, inputFiles, noImplicitAny);
+
+                checker.check(function(err, warnings) {
+                    waitingForChecker = false;
+                    result.warnings = (result.warnings || [ ]).concat(warnings);
+                    finish(err, result);
+                });
+            });
+        } else {
+            waitingForChecker = false;
+            finish(null, result);
+        }
+
+
+        // Hinter
+        //
         if (options["jshint"]) {
             var config = options["jshint-config"];
             var ignore = options["jshint-ignore"];
 
             var hinter = new Hinter(result.code, config, ignore, lineMap, inputFiles, result.cache ? result.cache.hinter : { });
-
-            waitingForHinter = true;
 
             var start = process.hrtime();
 
@@ -316,6 +320,7 @@ Compiler.prototype.compile = function(callback)
             });
 
         } else {
+            waitingForHinter = false;
             finish(null, result);
         }
 
