@@ -136,7 +136,7 @@ function getClassList()
     var results = [ ];
 
     for (var key in _classNameToClassMap) { if (hop(_classNameToClassMap, key)) {
-        results.append(_classNameToClassMap[key]);
+        results.push(_classNameToClassMap[key]);
     }}
 
     return results;
