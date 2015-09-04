@@ -40,33 +40,30 @@ function ts_transform(contentArray, librarySource, options)
         },
 
         writeFile:                 function() { },
-        getDefaultLibFilename:     function() { return "lib.d.ts"; },
+        getDefaultLibFileName:     function() { return "lib.d.ts"; },
         useCaseSensitiveFileNames: function() { return false; },
         getCanonicalFileName:      function(filename) { return filename; },
         getCurrentDirectory:       function() { return ""; },
         getNewLine:                function() { return "\n"; }
     });
 
-    var errors = program.getDiagnostics();
+    var emitResult = program.emit();
+    var allDiagnostics = ts.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
 
-    if (!errors.length) {
-        var checker = program.getTypeChecker(true);
-        errors = checker.getDiagnostics();
-    }
+    var errors = allDiagnostics.map(function(diagnostic) {
+        var lineColumn = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
 
-    errors = errors.map(function(e) {
-        var lineColumn = e.file.getLineAndCharacterFromPosition(e.start);
-
-        var reason = e.messageText;
+        var reason = ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
+        if (!reason.split) console.log(reason)
         if (reason) reason = reason.split("\n");
         if (reason) reason = reason[0];
 
         return {
-            filename: e.file.filename,
+            filename: diagnostic.file.filename,
             line: lineColumn.line,
             column: lineColumn.column,
             reason: reason,
-            code: e.code
+            code: diagnostic.code
         }
     });
 
