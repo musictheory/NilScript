@@ -1,0 +1,60 @@
+
+(function() { "use strict";
+
+@implementation Issue59Class {
+    Array _array;
+}
+
+- (Number) check
+{
+    _array = null;
+
+    var sum = 0;
+    @each (var i in _array) {
+        sum += i;
+    }
+
+    return sum;
+}
+
+
+- (Number) check2
+{
+    function getNull() {
+        return null;
+    }
+
+    var sum = 0;
+    @each (var i in getNull()) {
+        sum += i;
+    }
+
+    return sum;
+}
+
+
+- (Number) check3
+{
+    var nullVar = null;
+
+    var sum = 0;
+    @each (var i in nullVar) {
+        sum += i;
+    }
+
+    return sum;
+}
+
+@end
+
+}());
+
+
+
+function runTests()
+{
+    var instance = [[Issue59Class alloc] init];
+    return [instance check] == 0 && [instance check2] == 0 && [instance check3] == 0;
+}
+
+runTests();

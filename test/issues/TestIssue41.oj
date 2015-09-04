@@ -9,7 +9,7 @@
 {
     _array = [ 1, 2, 3 ];
 
-    var sum;
+    var sum = 0;
     @each (var i in _array) {
         sum += i;
     }

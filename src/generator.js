@@ -588,7 +588,7 @@ Generator.prototype.generate = function()
             endText = "return " + node.id.name + ";});";
         
         } else if (language === LanguageTypechecker) {
-            startText = "var $oj_unused = function(" + OJClassMethodsVariable + ", " + OJInstanceMethodsVariable + ") { ";
+            startText = "var $oj_unused = function(" + OJClassMethodsVariable + " : any, " + OJInstanceMethodsVariable + " : any) { ";
             endText = "}";
         } 
 
@@ -608,7 +608,7 @@ Generator.prototype.generate = function()
         }
 
         if (language === LanguageTypechecker) {
-            args.push("self" + (isClassMethod ? "" : " : " + generator.getSymbolForClassName(currentClass.name)));
+            args.push("self" + " : " + generator.getSymbolForClassName(currentClass.name) + (isClassMethod ? "$Static" : ""));
         }
 
         for (var i = 0, length = node.methodSelectors.length; i < length; i++) {
@@ -638,7 +638,13 @@ Generator.prototype.generate = function()
             var varParts = [ ];
 
             if (methodUsesSelfVar && (language !== LanguageTypechecker)) varParts.push("self = this");
-            if (methodUsesTemporaryVar) varParts.push(OJTemporaryReturnVariable);
+            if (methodUsesTemporaryVar) {
+                if (language === LanguageEcmascript5) {
+                    varParts.push(OJTemporaryReturnVariable);
+                } else if (language === LanguageTypechecker) {
+                    varParts.push(OJTemporaryReturnVariable + " : " + generator.getTypecheckerType(node.returnType.value));
+                }
+            }
 
             if (methodUsesLoneExpression) {
                 toInsert += "/* jshint expr: true */";
@@ -890,7 +896,7 @@ Generator.prototype.generate = function()
             expr = true;
         }
 
-        initRight += i + " = 0, " + length + " = " + array + ".length";
+        initRight += i + " = 0, " + length + " = (" + array + " ? " + array + ".length : 0)";
 
         var test      = "(" + i + " < " + length + ") && (" + object + " = " + array + "[" + i + "])";
         var increment = i + "++";
