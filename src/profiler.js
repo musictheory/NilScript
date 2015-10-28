@@ -4,6 +4,8 @@
 // chrome-cpu-profiler / cpu-profiler can be used directly via npm
 //
 
+"use strict";
+
 var profiler = require("cpu-profiler");
 var _        = require("lodash");
 var fs       = require("fs");

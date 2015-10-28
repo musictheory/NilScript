@@ -1,8 +1,10 @@
 /*
     model.js
-    (c) 2013-2014 musictheory.net, LLC
+    (c) 2013-2015 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
+
+"use strict";
 
 var OJError     = require("./errors").OJError;
 var Utils       = require("./utils");
@@ -207,8 +209,6 @@ OJModel.prototype.prepare = function()
 
     var classes = this.classes;
     _.each(classes, function(cls, name) {
-        var i, length;
-
         // Check for circular hierarchy
         var visited = [ name ];
         var superclass = cls.superclassName ? classes[cls.superclassName] : null;
@@ -225,8 +225,8 @@ OJModel.prototype.prepare = function()
 
         cls.doAutomaticSynthesis();
 
-        methods = cls.getAllMethods();
-        for (i = 0, length = methods.length; i < length; i++) {
+        var methods = cls.getAllMethods();
+        for (var i = 0, length = methods.length; i < length; i++) {
             selectors[methods[i].selectorName] = true;
         }
     });
@@ -234,7 +234,7 @@ OJModel.prototype.prepare = function()
     _.each(this.protocols, function(protocol, name) {
         var i, length;
 
-        methods = protocol.getAllMethods();
+        var methods = protocol.getAllMethods();
         for (i = 0, length = methods.length; i < length; i++) {
             selectors[methods[i].selectorName] = true;
         }

@@ -2,14 +2,17 @@ CHANGELOG
 
 ---
 
-1.1
+1.2.0
+- Update to Esprima 2.7 (#38)
+- Throw errors when the compiler will generate invalid code (#60)
 
+1.1.1 - 1.1.4
+- Minor bug fixes and internal changes
+
+1.1.0
 - @each support #36
 
----
-
 1.0.1
-
 - Update to Esprima 1.2.2 #28
 - Traverser's skip array causing 6% slowdown #29
 - Add ability for typealias / typedef #30
@@ -57,5 +60,3 @@ Bug Fixes:
   - (3.14 * [[self foo] bar]) results in NaN (#16)
   - Automatic synthesis of properties produces too many ivars (#19)
   - ivars that are @enum types should be initialized to 0. (#21)
-
----
