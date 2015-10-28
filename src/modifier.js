@@ -1,10 +1,12 @@
 /*
     modifier.js
-    (c) 2013-2014 musictheory.net, LLC
+    (c) 2013-2015 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 
     Based on Modifier from harmonizr (http://github.com/jdiamond/harmonizr)
 */
+
+"use strict";
 
 var SourceMapGenerator = require && require("source-map").SourceMapGenerator;
 
@@ -13,8 +15,8 @@ var sTimestampCounter = 0;
 
 function _colorString(string, from, to, color)
 {
-    var gray   = "\033[37m";
-    var reset  = "\033[1;0m";
+    var gray   = "\u001b[37m";
+    var reset  = "\u001b[1;0m";
 
     var result = color + "\"" + string + "\"";
 
@@ -25,9 +27,9 @@ function _colorString(string, from, to, color)
     return result + reset;
 }
 
-function _red   (string, from, to) { return _colorString(string, from, to, "\033[1;31m"); }
-function _green (string, from, to) { return _colorString(string, from, to, "\033[1;32m"); }
-function _yellow(string, from, to) { return _colorString(string, from, to, "\033[1;33m");    }
+function _red   (string, from, to) { return _colorString(string, from, to, "\u001b[1;31m"); }
+function _green (string, from, to) { return _colorString(string, from, to, "\u001b[1;32m"); }
+function _yellow(string, from, to) { return _colorString(string, from, to, "\u001b[1;33m");    }
 
 
 function _clone(loc)

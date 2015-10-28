@@ -5,6 +5,8 @@
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
+"use strict";
+
 var fs      = require("fs");
 var cp      = require("child_process");
 var path    = require("path");

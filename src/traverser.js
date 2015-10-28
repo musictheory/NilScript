@@ -1,9 +1,11 @@
 /*
     traverser.js
     Extends estraverse with ability to traverse oj nodes
-    (c) 2013-2014 musictheory.net, LLC
+    (c) 2013-2015 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
+
+"use strict";
 
 var esprima    = require("./esprima");
 var estraverse = require("estraverse");
@@ -18,7 +20,7 @@ ojVisitorKeys[ Syntax.OJMessageSelector              ] = [ "name", "argument", "
 ojVisitorKeys[ Syntax.OJMethodNameSegment            ] = [ ];
 ojVisitorKeys[ Syntax.OJClassImplementation          ] = [ "id", "superclass", "ivarDeclarations", "body" ];
 ojVisitorKeys[ Syntax.OJMethodDefinition             ] = [ "returnType", "methodSelectors", "body" ];
-ojVisitorKeys[ Syntax.OJMethodSelector               ] = [ "name" ];
+ojVisitorKeys[ Syntax.OJMethodSelector               ] = [ "name", "variableName" ];
 ojVisitorKeys[ Syntax.OJSelector                     ] = [ ];
 ojVisitorKeys[ Syntax.OJParameterType                ] = [ ];
 ojVisitorKeys[ Syntax.OJInstanceVariableDeclarations ] = [ "declarations" ];

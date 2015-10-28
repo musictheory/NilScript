@@ -1,9 +1,11 @@
 /*
     builder.js
     Scans AST and builds internal model
-    (c) 2013-2014 musictheory.net, LLC
+    (c) 2013-2015 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
+
+"use strict";
 
 var esprima    = require("./esprima");
 var Syntax     = esprima.Syntax;
@@ -33,7 +35,7 @@ function sMakeOJMethodForNode(node, scope)
     var variableNames  = [ ];
     var parameterTypes = [ ];
 
-    var methodType;
+    var methodType, variableName;
     for (var i = 0, length = (methodSelectors.length || 0); i < length; i++) {
         methodType   = methodSelectors[i].methodType;
         variableName = methodSelectors[i].variableName;
