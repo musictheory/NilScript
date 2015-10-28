@@ -300,7 +300,6 @@ function test() {
 @implementation CircularClassB : CircularClassA
 @end
 
-
 // --------------------------------------------------------------------
 // @name Circular Class 2
 // @error-no-line OJCircularClassHierarchyError
@@ -317,4 +316,51 @@ function test() {
 @implementation CircularClassD : CircularClassA
 @end
 
+// --------------------------------------------------------------------
+// @name Restricted Usage 1
 
+@implementation RestrictedUsageClass {
+    id ivar1;
+}
+
+- (void) foo {
+    (function(ivar1) {      //@error OJRestrictedUsageError
+    });
+}
+
+@end
+
+
+// --------------------------------------------------------------------
+// @name Restricted Usage 2
+
+@implementation FooClass
+@end
+
+@implementation RestrictedUsageClass {
+    id ivar1;
+}
+
+- (void) foo {
+    var ivar1; //@error OJRestrictedUsageError
+}
+
+@end
+
+
+
+// --------------------------------------------------------------------
+// @name Restricted Usage 3
+
+@implementation FooClass
+@end
+
+@implementation RestrictedUsageClass {
+    id ivar1;
+}
+
+- (void) foo:(id)ivar1 {  //@error OJRestrictedUsageError
+
+}
+
+@end

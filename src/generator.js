@@ -269,6 +269,8 @@ Generator.prototype.generate = function()
     var removeTypes    =                            (language !== LanguageTypechecker);
     var knownSelectors = optionWarnOnUnknownSelectors ? model.selectors : null;
 
+    var unusedIvars = null;
+
     var warnings = this._warnings;
 
     function getClassAsRuntimeVariable(className)
@@ -376,6 +378,21 @@ Generator.prototype.generate = function()
         }
 
         return true;   
+    }
+
+    function checkRestrictedUsage(node)
+    {
+        var name = node.name;
+
+        if (currentMethodNode && currentClass && canBeInstanceVariableOrSelf(node)) {
+            if (currentClass && currentClass.isIvar(name)) {
+                Utils.throwError(OJError.RestrictedUsage, "Cannot use instance variable \"" + name + "\" here.", node);
+            }
+        }
+
+        if (inlines && inlines[name]) {
+            Utils.throwError(OJError.RestrictedUsage, "Cannot use compiler-inlined \"" + name + "\" here.", node);
+        }
     }
 
     function handleMessageExpression(node)
@@ -616,10 +633,14 @@ Generator.prototype.generate = function()
             var methodType   = node.methodSelectors[i].methodType;
 
             if (variableName) {
+                checkRestrictedUsage(variableName);
+
+                let name = variableName.name;
+
                 if (language === LanguageEcmascript5) {
-                    args.push(variableName.name);
+                    args.push(name);
                 } else if (language === LanguageTypechecker) {
-                    args.push(variableName.name + (methodType ? (" : " + generator.getTypecheckerType(methodType.value)) : ""));
+                    args.push(name + (methodType ? (" : " + generator.getTypecheckerType(methodType.value)) : ""));
                 }
             }
         }
@@ -745,6 +766,13 @@ Generator.prototype.generate = function()
         }
     }
 
+    function handleVariableDeclaration(node)
+    {
+        for (let declaration of node.declarations) {
+            checkRestrictedUsage(declaration.id);
+        }
+    }
+
     function handleAtPropertyDirective(node)
     {
         var name = node.id.name;
@@ -865,7 +893,7 @@ Generator.prototype.generate = function()
         var i      = scope.makeInternalVariable();
         var length = scope.makeInternalVariable();
 
-        var object;
+        var object, array;
         var initLeft = "var ";
         var initRight = "";
         var expr = false;
@@ -878,7 +906,7 @@ Generator.prototype.generate = function()
         // The left side is just an identifier
         } else if (node.left.type == Syntax.Identifier) {
             if (currentClass && currentClass.isIvar(node.left.name)) {
-                Utils.throwError(OJError.CannotUseIvarHere, "Cannot use ivar \"" + node.left.name + "\" on left-hand side of @each", node);
+                Utils.throwError(OJError.RestrictedUsage, "Cannot use ivar \"" + node.left.name + "\" on left-hand side of @each", node);
             }
 
             object = node.left.name;
@@ -926,32 +954,37 @@ Generator.prototype.generate = function()
         }
     }
 
-    function handleFunctionDeclarationOrExpression_typeCheckerOnly(node)
+    function handleFunctionDeclarationOrExpression(node)
     {
-        if (language !== LanguageTypechecker) return;
-        if (optionStrictFunctions) return;
+        for (let param of node.params) {
+            checkRestrictedUsage(param);
+        }
 
         // Unlike JavaScript, TypeScript assumes every parameter to a function is required.
         // This results in many false positives for our JavaScript code
         //
         // Disable this by rewriting the parameter list
+        //
+        if (language === LanguageTypechecker) {
+            if (optionStrictFunctions) return;
 
-        var result = "function " + (node.id ? node.id.name : "") + "(";
+            var result = "function " + (node.id ? node.id.name : "") + "(";
 
-        for (var i = 0, length = node.params.length; i < length; i++) {
-            var param = node.params[i];
+            for (var i = 0, length = node.params.length; i < length; i++) {
+                var param = node.params[i];
 
-            var type = "any";
-            if (param.annotation) {
-                type = generator.getTypecheckerType(param.annotation.value);
+                var type = "any";
+                if (param.annotation) {
+                    type = generator.getTypecheckerType(param.annotation.value);
+                }
+
+                result += param.name + "? : " + type + ", ";
             }
 
-            result += param.name + "? : " + type + ", ";
+            result += "...$oj_rest)";
+
+            modifier.from(node).to(node.body).replace(result);
         }
-
-        result += "...$oj_rest)";
-
-        modifier.from(node).to(node.body).replace(result);
     }
 
     function checkThis(thisNode, path)
@@ -1040,6 +1073,9 @@ Generator.prototype.generate = function()
         } else if (type === Syntax.Identifier) {
             handleIdentifier(node);
 
+        } else if (type === Syntax.VariableDeclaration) {
+            handleVariableDeclaration(node);
+
         } else if (type === Syntax.ThisExpression) {
             if (optionWarnOnThisInMethods) {
                 checkThis(node, traverser.getParents());
@@ -1060,9 +1096,7 @@ Generator.prototype.generate = function()
             }
 
         } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression) {
-            if (language === LanguageTypechecker) {
-                handleFunctionDeclarationOrExpression_typeCheckerOnly(node);
-            }
+            handleFunctionDeclarationOrExpression(node);
             methodUsesSelfVar = true;
         }
 
