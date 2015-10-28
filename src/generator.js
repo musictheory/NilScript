@@ -702,14 +702,54 @@ Generator.prototype.generate = function()
         }
     }
 
+    function handlePredefinedMacro(node)
+    {
+        var name = node.name;
+
+        if (name === "@CLASS") {
+            if (currentClass) {
+                modifier.select(node).replace('"' + currentClass.name + '"');
+            } else {
+                Utils.throwError(OJError.ParseError, 'Cannot use @CLASS outside of a class @implementation');
+            }
+
+        } else if (name === "@SEL") {
+            if (currentClass && currentMethodNode) {
+                modifier.select(node).replace('"' + currentMethodNode.selectorName + '"');
+            } else {
+                Utils.throwError(OJError.ParseError, 'Cannot use @SEL outside of a method definition');
+            }
+
+        } else if (name === "@FUNCTION") {
+            if (currentClass && currentMethodNode) {
+                modifier.select(node).replace('"' +
+                    currentMethodNode.selectorType + "[" + 
+                    currentClass.name              + " " +
+                    currentMethodNode.selectorName + "]" +
+                '"');
+            } else {
+                Utils.throwError(OJError.ParseError, 'Cannot use @SEL outside of a method definition');
+            }
+
+        } else {
+            Utils.throwError(OJError.DollarOJIsReserved, 'Unknown identifier: "' + name + '"');
+        }
+    }
+
     function handleIdentifier(node)
     {
         var name = node.name;
 
-        if (name.indexOf("$oj") == 0) {
-            if (name[3] == "$" || name[3] == "_") {
-                Utils.throwError(OJError.DollarOJIsReserved, "Identifiers may not start with \"$oj_\" or \"$oj$\"", node);
+        if (name[0] === "$") {
+            if (name.indexOf("$oj") == 0) {
+                if (name[3] == "$" || name[3] == "_") {
+                    Utils.throwError(OJError.DollarOJIsReserved, "Identifiers may not start with \"$oj_\" or \"$oj$\"", node);
+                }
             }
+
+        } else if (name[0] === "@") {
+            handlePredefinedMacro(node);
+            return;
         }
 
         if (currentMethodNode && currentClass && canBeInstanceVariableOrSelf(node)) {
@@ -1068,6 +1108,9 @@ Generator.prototype.generate = function()
 
         } else if (type === Syntax.OJAtEachStatement) {
             handleEachStatement(node);
+
+        } else if (type === Syntax.OJPredefinedMacro) {
+            handlePredefinedMacro(node);
 
         } else if (type === Syntax.Literal) {
             handleLiteral(node);

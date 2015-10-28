@@ -1,0 +1,39 @@
+var assert = require("assert");
+
+(function() { "use strict";
+
+@implementation Issue58Class {
+}
+
++ (BOOL) checkWithArgument:(BOOL)yn unused:(BOOL)yn2
+{
+    assert.equal( @CLASS,    "Issue58Class"                              );
+    assert.equal( @SEL,      "checkWithArgument:unused:"                 );
+    assert.equal( @FUNCTION, "+[Issue58Class checkWithArgument:unused:]" );
+
+    return YES;
+}
+
+- (BOOL) check
+{
+    assert.equal( @CLASS,    "Issue58Class"          );
+    assert.equal( @SEL,      "check"                 );
+    assert.equal( @FUNCTION, "-[Issue58Class check]" );
+
+    return YES;
+}
+
+
+@end
+
+}());
+
+
+
+function runTests()
+{
+    var instance = [[Issue58Class alloc] init];
+    return [instance check] && [[Issue58Class class] checkWithArgument:NO unused:NO];
+}
+
+runTests();
