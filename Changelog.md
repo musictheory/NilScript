@@ -4,6 +4,7 @@ CHANGELOG
 
 1.2.0
 - Update to Esprima 2.7 (#38)
+- Added @CLASS, @SEL, @FUNCTION for debugging (#58)
 - Throw errors when the compiler will generate invalid code (#60)
 
 1.1.1 - 1.1.4
