@@ -30,7 +30,7 @@ OJError.CircularTypedefHierarchy       = "OJCircularTypedefHierarchyError";
 OJError.CircularClassHierarchy         = "OJCircularClassHierarchyError";
 OJError.VariableAlreadyDeclared        = "OJVariableAlreadyDeclaredError";
 OJError.VariableNotYetDeclared         = "OJVariableNotYetDeclaredError";
-OJError.CannotUseIvarHere              = "OJCannotUseIvarHereError";
+OJError.RestrictedUsage                = "OJRestrictedUsageError";
 
 var OJWarning = { };
 
