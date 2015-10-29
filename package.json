@@ -32,7 +32,7 @@
         "node-getopt": "0.2.x",
         "jshint":      "2.x",
         "temp":        "0.8",
-        "typescript":  "1.5.x"
+        "typescript":  "1.6.x"
     },
     "scripts": {
         "test": "mocha"

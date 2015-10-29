@@ -2482,7 +2482,7 @@
             this.superClass = superClass;
             this.category = category;
             this.extension = extension;
-            this.protocols = protocolList;
+            this.protocolList = protocolList;
             this.ivarDeclarations = ivarDeclarations;
             this.finish();
             return this;        
@@ -2620,10 +2620,10 @@
             return this;
         },
 
-        oj_finishProtocolDefinition: function (id, protocols, body) {
+        oj_finishProtocolDefinition: function (id, protocolList, body) {
             this.type = Syntax.OJProtocolDefinition;
             this.id = id;
-            this.protocols = protocols;
+            this.protocolList = protocolList;
             this.body = body;
             this.finish();
             return this;
@@ -2635,6 +2635,7 @@
             this.selectorName = selectorName;
             this.returnType = returnType;
             this.methodSelectors = methodSelectors;
+            this.optional = false;
             this.finish();
             return this;
         },
@@ -6436,7 +6437,7 @@
     }
 
     function oj_parseClassImplementationDefinition(node) {
-        var id, body, previousStrict, ivarDeclarations = null, superClass = null, category = null, extension = false, protocols = null, oldLabelSet;
+        var id, body, previousStrict, ivarDeclarations = null, superClass = null, category = null, extension = false, protocolList = null, oldLabelSet;
 
         if (state.oj_inImplementation) {
             throwError(lookahead, Messages.OJCannotNestImplementations);
@@ -6471,7 +6472,7 @@
         }
 
         if (match('<')) {
-            protocols = oj_parseProtocolReferenceList();
+            protocolList = oj_parseProtocolReferenceList();
         }
 
         // Has ivar declarations
@@ -6488,7 +6489,7 @@
         state.oj_inImplementation = false;
         state.labelSet = oldLabelSet;
 
-        return node.oj_finishClassImplementation(id, superClass, category, extension, protocols, ivarDeclarations, body);
+        return node.oj_finishClassImplementation(id, superClass, category, extension, protocolList, ivarDeclarations, body);
     }
 
     function oj_parseProtocolReferenceList() {
@@ -6511,21 +6512,23 @@
             protocols.push(parseVariableIdentifier());
         }
 
-        return node.oj_finishInstanceVariableDeclarations(protocols);
+        return node.oj_finishProtocolList(protocols);
     }
 
     function oj_parseProtocolDefinitionBody() {
-        var sourceElement, sourceElements = [], token, node = new Node();
+        var sourceElement, sourceElements = [], token, optional, node = new Node();
 
         while (index < length) {
             token = lookahead;
 
             if (matchKeyword('@required')) {
                 lex();
+                optional = false;
             }
 
             if (matchKeyword('@optional')) {
                 lex();
+                optional = true;
             }
 
             if (matchKeyword('@end')) {
@@ -6538,6 +6541,8 @@
                 break;
             }
 
+            if (optional) sourceElement.optional = optional;
+
             sourceElements.push(sourceElement);
         }
 
@@ -6545,7 +6550,7 @@
     }
 
     function oj_parseProtocolDefinition() {
-        var id, body, previousStrict, oldLabelSet, protocols = null, node = new Node();
+        var id, body, previousStrict, oldLabelSet, protocolList = null, node = new Node();
 
         if (state.oj_inImplementation) {
             throwError(lookahead, Messages.OJCannotNestImplementations);
@@ -6562,7 +6567,7 @@
         id = parseVariableIdentifier();
 
         if (match('<')) {
-            protocols = oj_parseProtocolReferenceList();
+            protocolList = oj_parseProtocolReferenceList();
         }
 
         body = oj_parseProtocolDefinitionBody();
@@ -6573,7 +6578,7 @@
         state.oj_inImplementation = false;
         state.labelSet = oldLabelSet;
 
-        return node.oj_finishProtocolDefinition(id, protocols, body);
+        return node.oj_finishProtocolDefinition(id, protocolList, body);
     }
 
     function oj_parseAtClassDirective(node) {

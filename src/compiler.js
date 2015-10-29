@@ -263,17 +263,13 @@ Compiler.prototype.compile = function(callback)
         }
 
         if (options["dump-ast"]) {
-            result.ast = JSON.stringify(this._ast, function(key, value) {
+            result.dumpedAST = JSON.stringify(this._ast, function(key, value) {
                 if (key == "parent") {
                     return undefined;
                 }
                 return value;
             }, 4)
         }
-
-        if (options["dump-scope"]) {
-            result.scope = model.scope.toString();
-        }        
 
         result.cache = options["cache"];
 
@@ -286,9 +282,14 @@ Compiler.prototype.compile = function(callback)
             time("Type Check", function() {
                 var checker = new TypeChecker(model, typeCheckGenerator, inputFiles, noImplicitAny);
 
-                checker.check(function(err, warnings) {
+                checker.check(function(err, warnings, defs) {
                     waitingForChecker = false;
                     result.warnings = (result.warnings || [ ]).concat(warnings);
+
+                    if (options["dump-ts-defs"]) {
+                        result.dumpedTsDefs = defs;
+                    }
+
                     finish(err, result);
                 });
             });

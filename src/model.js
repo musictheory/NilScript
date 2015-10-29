@@ -65,13 +65,14 @@ function OJProperty(name, type, writable, getter, setter, ivar)
 }
 
 
-function OJMethod(selectorName, selectorType, returnType, parameterTypes, variableNames)
+function OJMethod(selectorName, selectorType, returnType, parameterTypes, variableNames, optional)
 {
     this.selectorName   = selectorName;
     this.selectorType   = selectorType;
     this.returnType     = returnType;
     this.parameterTypes = parameterTypes || [ ];
     this.variableNames  = variableNames  || [ ];
+    this.optional       = optional;
     this.synthesized    = false;
 }
 
@@ -374,9 +375,10 @@ OJModel.prototype.isBooleanType = function(t)
 }
 
 
-function OJProtocol(name)
+function OJProtocol(name, protocolNames)
 {
     this.name = name;
+    this.protocolNames = protocolNames || [ ];
 
     this._classMethodMap    = { };
     this._instanceMethodMap = { };
@@ -389,13 +391,14 @@ OJProtocol.prototype.loadState = function(state)
     var instanceMethodMap =  this._instanceMethodMap;
 
     this.name = state.name;
+    this.protocolNames = state.protocolNames || [ ];
 
     _.each(state.classMethods, function(m) {
-        classMethodMap[m.name] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames);
+        classMethodMap[m.name] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.optional);
     });
 
     _.each(state.instanceMethods, function(m) {
-        instanceMethodMap[m.name] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames);
+        instanceMethodMap[m.name] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.optional);
     });
 }
 
@@ -416,9 +419,11 @@ OJProtocol.prototype.addMethod = function(method)
 OJProtocol.prototype.saveState = function()
 {
     return {
-        name:            this.name,
-        classMethods:    _.values(this._classMethodMap),
-        instanceMethods: _.values(this._instanceMethodMap)
+        name:                    this.name,
+        optionalClassMethods:    _.values(this._optionalClassMethodMap),
+        optionalInstanceMethods: _.values(this._optionalInstanceMethodMap),
+        requiredClassMethods:    _.values(this._requiredClassMethodMap),
+        requiredInstanceMethods: _.values(this._requiredInstanceMethodMap)
     }
 }
 
@@ -440,10 +445,11 @@ OJProtocol.prototype.getInstanceMethods = function()
 }
 
 
-function OJClass(name, superclassName)
+function OJClass(name, superclassName, protocolNames)
 {
     this.name           = name;
     this.superclassName = superclassName;
+    this.protocolNames  = protocolNames || [ ];
     this.forward        = false;
 
     this._ivarMap           = { };
@@ -457,6 +463,7 @@ OJClass.prototype.loadState = function(state)
 {
     this.name           = state.name;
     this.superclassName = state.superclassName;
+    this.protocolNames  = state.protocolNames || [ ];
     this.forward        = state.forward; 
     this.didSynthesis   = state.didSynthesis;
 
@@ -474,11 +481,11 @@ OJClass.prototype.loadState = function(state)
     });
 
     _.each(state.classMethods, function(m) {
-        classMethodMap[m.selectorName] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames);
+        classMethodMap[m.selectorName] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, false);
     });
 
     _.each(state.instanceMethods, function(m) {
-        instanceMethodMap[m.selectorName] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames);
+        instanceMethodMap[m.selectorName] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, false);
     });
 }
 
@@ -488,6 +495,7 @@ OJClass.prototype.saveState = function()
     return {
         name:            this.name,
         superclassName:  this.superclassName,
+        protocolNames:   this.protocolNames,
         didSynthesis:  !!this.didSynthesis,
         forward:         this.forward,
 
