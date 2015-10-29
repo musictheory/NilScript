@@ -7,6 +7,7 @@
 
 "use strict";
 
+var _          = require("lodash");
 var esprima    = require("./esprima");
 var Syntax     = esprima.Syntax;
 
@@ -31,6 +32,7 @@ function sMakeOJMethodForNode(node, scope)
     var selectorName    = node.selectorName;
     var selectorType    = node.selectorType;
     var methodSelectors = node.methodSelectors;
+    var optional        = node.optional;
 
     var variableNames  = [ ];
     var parameterTypes = [ ];
@@ -56,7 +58,7 @@ function sMakeOJMethodForNode(node, scope)
     if (node.returnType) returnType = node.returnType.value;
     if (!returnType) returnType = "id";
 
-    return new Model.OJMethod(selectorName, selectorType, returnType, parameterTypes, variableNames);
+    return new Model.OJMethod(selectorName, selectorType, returnType, parameterTypes, variableNames, optional);
 }
 
 
@@ -96,10 +98,17 @@ Builder.prototype.build = function()
         var className      = node.id.name;
         var superclassName = node.superClass && node.superClass.name;
         var categoryName   = node.category;
+        var protocolNames  = [ ];
         var result;
 
         if (node.extension) {
             Utils.throwError(OJError.NotYetSupported, "Class extensions are not yet supported", node);
+        }
+
+        if (node.protocolList) {
+            _.each(node.protocolList.protocols, function(protocol) {
+                protocolNames.push(protocol.name);
+            });
         }
 
         var cls;
@@ -113,7 +122,7 @@ Builder.prototype.build = function()
             }
 
         } else {
-            cls = new Model.OJClass(className, superclassName);
+            cls = new Model.OJClass(className, superclassName, protocolNames);
             cls.forward = false;
             model.addClass(cls);
         }
@@ -132,9 +141,18 @@ Builder.prototype.build = function()
 
     function handleProtocolDefinition(node)
     {
-        var protocol = new Model.OJProtocol(node.id.name);
+        var name = node.id.name;
+        var parentProtocolNames  = [ ];
+
+        if (node.protocolList) {
+            _.each(node.protocolList.protocols, function(protocol) {
+                parentProtocolNames.push(protocol.name);
+            });
+        }
+
+        var protocol = new Model.OJProtocol(name, parentProtocolNames);
         model.addProtocol(protocol);
-        currentProtocol =  protocol;
+        currentProtocol = protocol;
     }
 
     function handleAtClassDirective(node)

@@ -56,6 +56,8 @@ function ts_transform(contentArray, librarySource, options)
         var lineColumn = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
 
         var reason = ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
+        console.log(Object.keys(diagnostic));
+
         if (!reason.split) console.log(reason)
         if (reason) reason = reason.split("\n");
         if (reason) reason = reason[0];
@@ -76,7 +78,7 @@ function ts_transform(contentArray, librarySource, options)
 
 function TypeChecker(model, generator, files, noImplicitAny)
 {
-    this._defs  = this._getDefinition(model, generator);
+    this._defs = this._getDefinition(model, generator);
 
     generator.generate();
 
@@ -118,7 +120,28 @@ TypeChecker.prototype._getDefinition = function(model, generator)
             parameters.push(variableName + " : " + generator.getTypecheckerType(parameterType));
         }
 
-        return methodName + "(" + parameters.join(", ") + ") : " + generator.getTypecheckerType(method.returnType, ojClass) + ";";
+        return methodName + (method.optional ? "?" : "") + "(" + parameters.join(", ") + ") : " + generator.getTypecheckerType(method.returnType, ojClass) + ";";
+    }
+
+    function makeProtocolList(verb, isStatic, rawProtocolNames) {
+        var protocolNames = [ ];
+
+        _.each(rawProtocolNames, function(protocolName) {
+            protocolNames.push((isStatic ? "$oj_p_" : "$oj_p_") + protocolName);
+        });
+
+        if (protocolNames.length) {
+            return " " + verb + " " + protocolNames.join(",");
+        }
+
+        return "";
+    }
+
+    function sortMethodIntoDeclarations(allMethods, classMethodDeclarations, instanceMethodDeclarations) {
+       _.each(allMethods, function(method) {
+            var arr = (method.selectorType == "+") ? classMethodDeclarations : instanceMethodDeclarations;
+            arr.push(makeDeclarationForMethod(method, null));
+        });
     }
 
     function getInstancetypeMethods(inClass) {
@@ -149,36 +172,57 @@ TypeChecker.prototype._getDefinition = function(model, generator)
         return toReturn;
     }
 
+    _.each(model.protocols, function(ojProtocol) {
+        var protocolName = "$oj_p_" + ojProtocol.name;
+        var staticName   = "$oj_P_" + ojProtocol.name;
+
+        var classMethodDeclarations    = [ ];
+        var instanceMethodDeclarations = [ ];
+
+        sortMethodIntoDeclarations(ojProtocol.getAllMethods(), classMethodDeclarations, instanceMethodDeclarations);
+
+        lines.push("declare interface " + protocolName + makeProtocolList("extends", false, ojProtocol.protocolNames) + " {");
+
+        _.each(instanceMethodDeclarations, function(decl) {
+            lines.push(decl);
+        });
+
+        lines.push("}");
+
+        lines.push("declare interface " + staticName + makeProtocolList("extends", true, ojProtocol.protocolNames) + " {");
+
+        _.each(classMethodDeclarations, function(decl) {
+            lines.push(decl);
+        });
+
+        lines.push("}");
+    });
+
     _.each(model.classes, function(ojClass) {
         var className      = generator.getSymbolForClassName(ojClass.name);
-        var staticName     = className + "$Static";
+        var staticName     = className.replace("$oj_c_", "$oj_static_");
 
-        var superclassName       = ojClass.superclassName ? generator.getSymbolForClassName(ojClass.superclassName) : "$oj_BaseObject";
-        var superclassStaticName = superclassName + "$Static";
+        var superclassName       = ojClass.superclassName ? generator.getSymbolForClassName(ojClass.superclassName) : "$oj_$Base";
+        var superclassStaticName = ojClass.superclassName ? superclassName.replace("$oj_c_", "$oj_static_")         : "$oj_$StaticBase";
 
         lines.push(
-            "declare class " + className + " extends " + superclassName + " {",
+            "declare class " + className + " extends " + superclassName +
+            makeProtocolList("implements", false, ojClass.protocolNames) +
+            " {",
 
             "static alloc() : " + className + ";",
             "class() : " + staticName + ";",
             "static class() : " + staticName + ";",
             "init()  : " + className + ";",
             "$oj_super() : " + superclassName + ";",
-            "static $oj_super() : " + superclassName + "$Static" + ";"
+            "static $oj_super() : " + superclassStaticName + ";"
         );
 
-        var methods = [ ].concat(
-            ojClass.getAllMethods(),
-            getInstancetypeMethods(ojClass)
-        );
-
+        var methods = [ ].concat(ojClass.getAllMethods(), getInstancetypeMethods(ojClass));
         var classMethodDeclarations    = [ ];
         var instanceMethodDeclarations = [ ];
 
-        _.each(methods, function(method) {
-            var arr = (method.selectorType == "+") ? classMethodDeclarations : instanceMethodDeclarations;
-            arr.push(makeDeclarationForMethod(method, ojClass));
-        });
+        sortMethodIntoDeclarations(methods, classMethodDeclarations, instanceMethodDeclarations);
 
         _.each(classMethodDeclarations, function(decl) {
             lines.push("static " + decl);
@@ -195,10 +239,12 @@ TypeChecker.prototype._getDefinition = function(model, generator)
         lines.push("}");
 
         lines.push(
-            "declare class " + staticName + " extends " + superclassStaticName + " {",
+            "declare class " + staticName + " extends " + superclassStaticName +
+            makeProtocolList("implements", true, ojClass.protocolNames) +
+            " {",
             "alloc() : " + className  + ";",
             "class() : " + staticName + ";",
-            "$oj_super() : " + superclassName + "$Static" + ";"
+            "$oj_super() : " + superclassStaticName + ";"
         );
 
         _.each(classMethodDeclarations, function(decl) {
@@ -222,12 +268,12 @@ TypeChecker.prototype.check = function(callback)
 
     function fromTypeScriptType(tsType) {
         var map = {
-            "$oj_BaseObject":        "BaseObject",
-            "$oj_BaseObject$Static": "Class",
-            "any[]":                 "Array",
-            "number":                "Number",
-            "boolean":               "BOOL",
-            "string":                "String",
+            "$oj_$Base":       "(Object)",
+            "$oj_$StaticBase": "Class",
+            "any[]":           "Array",
+            "number":          "Number",
+            "boolean":         "BOOL",
+            "string":          "String",
         };
 
         if (map[tsType]) {
@@ -329,6 +375,8 @@ TypeChecker.prototype.check = function(callback)
         hint.name     = "OJTypecheckerHint";
         hint.reason   = fixReason(e.reason, e.code);
 
+        console.log(e);
+
         hints.push(hint);
     });
 
@@ -342,7 +390,7 @@ TypeChecker.prototype.check = function(callback)
         return hint.code != 2087;
     })
 
-    callback(null, hints);
+    callback(null, hints, defs);
 }
 
 

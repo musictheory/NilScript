@@ -47,6 +47,7 @@ var opt = getopt.create([
     [ "",  "debug-message-send",        "use debug version of oj.msgSend" ],
     [ "",  "dump-ast",                  "(for development)" ],
     [ "",  "dump-time",                 "(for development)" ],
+    [ "",  "dump-ts-defs",              "(for development)" ],
     [ "",  "dump-profile",              "(for development)" ],
     [ "",  "dump-scope",                "(for development)" ],
 
@@ -154,7 +155,7 @@ var outputStateFile = options["output-state"];    delete(options["output-state"]
 
 // Extract these options, don't delete (used by compiler)
 var outputSourceMapFile = options["source-map-file"];
-var dumpScope           = options["dump-scope"];
+var dumpTypescriptDefs  = options["dump-ts-defs"];
 var dumpAST             = options["dump-ast"];
 var dumpProfile         = options["dump-profile"];
 
@@ -215,12 +216,14 @@ try {
                 print_error(err);
             } else if (result.code) {
                 if (dumpAST) {
-                    process.stdout.write(result.ast);
-                } else if (dumpScope) {
-                    process.stdout.write(result.scope);
+                    process.stdout.write(result.dumpedAST);
                 } else {
                     process.stdout.write(result.code);
                 }
+            }
+
+            if (result.dumpedTsDefs) {
+                process.stdout.write(result.dumpedTsDefs);
             }
         }
 
