@@ -8,7 +8,8 @@
 
 var OJError = { };
 
-OJError.ParseError				       = "OJParseError";
+OJError.ParseError                     = "OJParseError";
+OJError.NotYetSupported                = "OJNotYetSupportedError";
 OJError.DuplicateClassDefinition       = "OJDuplicateClassDefinitionError";
 OJError.DuplicatePropertyDefinition    = "OJDuplicatePropertyDefinitionError";
 OJError.DuplicateMethodDefinition      = "OJDuplicateMethodDefinitionError";

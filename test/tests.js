@@ -159,6 +159,7 @@ gatherTests(path.dirname(__filename), function(err, tests) {
                         assert(false, t.name + " compiled, but shouldn't have");
                     }
 
+                    oj._reset();
                     var r = eval(result.code);
                     assert(r, "Test returned " + r);
                 });

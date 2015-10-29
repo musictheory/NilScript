@@ -1,0 +1,28 @@
+var assert = require("assert");
+
+
+@implementation CategoryTests (BeforeImplementation)
+- (String) alpha { return "Alpha"; }
+@end
+
+@implementation CategoryTests
+- (String) beta { return "Beta"; }
+
+- (BOOL) runTests
+{
+    assert.equal([self alpha], "Alpha");
+    assert.equal([self beta],  "Beta");
+    assert.equal([self gamma], "Gamma");
+
+    return true;
+}
+
+@end
+
+@implementation CategoryTests (AfterImplementation)
+- (String) gamma { return "Gamma"; }
+@end
+
+
+var instance = [[CategoryTests alloc] init];
+[instance runTests]

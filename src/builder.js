@@ -72,7 +72,7 @@ Builder.prototype.build = function()
     var model        = this._model;
     var currentScope = model.scope;
 
-    var currentClass, currentMethod;
+    var currentClass, currentMethod, currentCategoryName;
     var currentProtocol;
 
     var enableBlockScope = this._options["enable-block-scope"];
@@ -93,13 +93,30 @@ Builder.prototype.build = function()
 
     function handleClassImplementation(node)
     {
-        var name           = node.id.name;
+        var className      = node.id.name;
         var superclassName = node.superClass && node.superClass.name;
+        var categoryName   = node.category;
         var result;
 
-        var cls = new Model.OJClass(name, superclassName);
-        cls.forward = false;
-        model.addClass(cls);
+        if (node.extension) {
+            Utils.throwError(OJError.NotYetSupported, "Class extensions are not yet supported", node);
+        }
+
+        var cls;
+        if (categoryName) {
+            cls = model.classes[className];
+
+            if (!cls) {
+                var cls = new Model.OJClass(className);
+                cls.forward = true;
+                model.addClass(cls);
+            }
+
+        } else {
+            cls = new Model.OJClass(className, superclassName);
+            cls.forward = false;
+            model.addClass(cls);
+        }
 
         if (superclassName) {
             var superclass = new Model.OJClass(superclassName);
@@ -108,6 +125,7 @@ Builder.prototype.build = function()
         }
 
         currentClass = cls;
+        currentCategoryName = categoryName;
 
         makeScope(node, true);
     }
@@ -173,6 +191,10 @@ Builder.prototype.build = function()
         var getter   = name;
         var setter   = "set" + name.substr(0,1).toUpperCase() + name.substr(1, name.length) + ":";
 
+        if (currentCategoryName) {
+            Utils.throwError(OJError.NotYetSupported, "@property is not yet supported in a category's implementation", node);
+        }
+
         for (var i = 0, length = node.attributes.length; i < length; i++) {
             var attribute = node.attributes[i];
             var attributeName = attribute.name;
@@ -199,6 +221,10 @@ Builder.prototype.build = function()
     function handleAtSynthesizeDirective(node) {
         var pairs = node.pairs;
 
+        if (currentCategoryName) {
+            Utils.throwError(OJError.NotYetSupported, "@synthesize is not allowed in a category's implementation", node);
+        }
+
         for (var i = 0, length = pairs.length; i < length; i++) {
             var pair    = pairs[i];
             var name    = pair.id.name;
@@ -210,6 +236,10 @@ Builder.prototype.build = function()
 
     function handleAtDynamicDirective(node) {
         var ids = node.ids;
+
+        if (currentCategoryName) {
+            Utils.throwError(OJError.NotYetSupported, "@dynamic is not yet supported in a category's implementation", node);
+        }
 
         for (var i = 0, length = ids.length; i < length; i++) {
             var name = ids[i].name;
@@ -458,6 +488,7 @@ Builder.prototype.build = function()
         if (type === Syntax.OJClassImplementation) {
             currentClass  = null;
             currentMethod = null;
+            currentCategoryName = null;
 
         } else if (type == Syntax.OJProtocolDefinition) {
             currentProtocol = null;

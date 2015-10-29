@@ -12,15 +12,27 @@ var previousOj = root.oj;
 
 var sDebugStackDepth = 0;
 var sDebugCallbacks  = null;
-var _classNameToMakerArrayMap = { };
-var _classNameToClassMap      = { };
-var _classNameToSuperNameMap  = { };
 
-function create(o)
+var BaseObject = function BaseObject() { }
+
+var _classNameToReadyArrayMap = { };
+var _classNameToSuperNameMap  = { };
+var _classNameToClassMap      = { BaseObject: BaseObject };
+
+
+function _reset()
 {
-    function f() {}
-    f.prototype = o;
-    return new f();
+    function clear(obj) {
+        for (var key in obj) {
+            obj[key] = undefined;
+        }
+    }
+
+    clear(_classNameToReadyArrayMap);
+    clear(_classNameToClassMap);
+    clear(_classNameToSuperNameMap);
+
+    _classNameToClassMap["BaseObject"] = BaseObject;
 }
 
 
@@ -55,9 +67,48 @@ function _getDisplayName(className, methodName, prefix)
 }
 
 
+function _callWhenClassReady(name, f)
+{
+    if (_classNameToClassMap[name]) {
+        f();
+
+    } else {
+        var readyArray = _classNameToReadyArrayMap[name];
+        
+        if (readyArray) {
+            readyArray.push(f);
+        } else {
+            _classNameToReadyArrayMap[name] = [ f ];
+        }
+    }
+}
+
+
 function throwUnrecognizedSelector(receiver, selector)
 {
     throw new Error("Unrecognized selector: " + sel_getName(selector) + " sent to instance " + receiver);
+}
+
+
+function _registerCategory(classNameObject, callback)
+{
+    var className = _getRawName(classNameObject);
+
+    _callWhenClassReady(className, function() {
+        var cls = _classNameToClassMap[className];
+        var instance_methods = { };
+        var class_methods    = { };
+        
+        callback(class_methods, instance_methods);
+
+        mixin(class_methods, cls, true, function(key, method) {
+            method.displayName = _getDisplayName(className, key, "+");
+        });
+
+        mixin(instance_methods, cls.prototype, true, function(key, method) {
+            method.displayName = _getDisplayName(className, key, "-");
+        });
+    });
 }
 
 
@@ -73,11 +124,11 @@ function _registerClass(nameObject, superObject, callback)
     var name = _getRawName(nameObject); 
     var superName = _getRawName(superObject);
 
-    var makerArray;
     var cls;
 
     _classNameToSuperNameMap[name] = superName;
-    var maker = function() {
+
+    _callWhenClassReady(superName, function() {
         var superclass = isSubclassOfBase ? BaseObject : _classNameToClassMap[superName];
         if (!superclass) return;     
 
@@ -103,25 +154,13 @@ function _registerClass(nameObject, superObject, callback)
 
         _classNameToClassMap[name] = cls;
 
-        var makerArray = _classNameToMakerArrayMap[name];
-        if (makerArray) {
-            for (var i = 0, length = makerArray.length; i < length; i++) {
-                makerArray[i]();
+        var readyArray = _classNameToReadyArrayMap[name];
+        if (readyArray) {
+            for (var i = 0, length = readyArray.length; i < length; i++) {
+                readyArray[i]();
             }
         }
-    }
-
-    if (isSubclassOfBase || _classNameToClassMap[superName]) {
-        maker();
-    } else {
-        makerArray = _classNameToMakerArrayMap[superName];
-        
-        if (makerArray) {
-            makerArray.push(maker);
-        } else {
-            _classNameToMakerArrayMap[superName] = [ maker ]
-        }
-    }
+    });
 }
 
 
@@ -307,7 +346,9 @@ msgSend_debug.displayName = "oj.msgSend";
 var oj = {
     _id:                      0,
     _registerClass:           _registerClass,
+    _registerCategory:        _registerCategory,
     _cls:                     _classNameToClassMap,
+    _reset:                   _reset,
 
     noConflict:               noConflict,
 
@@ -328,8 +369,6 @@ var oj = {
     setDebugCallbacks:        setDebugCallbacks
 }
 
-
-var BaseObject = function BaseObject() { }
 
 BaseObject.alloc = function() { return new this(); }
 BaseObject["class"] = function() { return this; }
@@ -356,8 +395,6 @@ BaseObject.prototype.toString = function() { return this.description(); }
 BaseObject.prototype.isKindOfClass_ = function(cls) { return class_isSubclassOf(object_getClass(this), cls); }
 BaseObject.prototype.isMemberOfClass_ = function(cls) { return object_getClass(this) === cls; }
 BaseObject.prototype.isEqual_ = function(other) { return this === other; }
-
-_classNameToClassMap["BaseObject"] = BaseObject;
 
 if (typeof module != "undefined" && typeof module != "function") {
     module.exports = oj;
