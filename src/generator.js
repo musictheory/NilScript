@@ -593,9 +593,20 @@ Generator.prototype.generate = function()
         var endText;
 
         if (language === LanguageEcmascript5) {
-            startText = "var " + node.id.name + " = " + OJGlobalVariable + "._registerClass(" +
-                clsSelector + ", " +
-                (superClass ? superSelector : "null") + ", " +
+            if (node.category) {
+                var categorySelector = "{ " + generator.getSymbolForClassName(node.category) + ":1 }";
+
+                startText = OJGlobalVariable + "._registerCategory(" +
+                    clsSelector + ", ";
+
+            } else {
+                startText = "var " + node.id.name + " = " + OJGlobalVariable + "._registerClass(" +
+                    clsSelector + ", " +
+                    (superClass ? superSelector : "null") + ", ";
+            }
+
+            startText = startText +
+               
                 "function(" + OJClassMethodsVariable + ", " + OJInstanceMethodsVariable + ") { " +
                 "function " + node.id.name + "() { " +
                 constructorCallSuper +

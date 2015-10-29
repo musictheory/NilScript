@@ -2475,12 +2475,13 @@
             return this;
         },
 
-        oj_finishClassImplementation: function (id, superClass, category, protocolList, ivarDeclarations, body) {
+        oj_finishClassImplementation: function (id, superClass, category, extension, protocolList, ivarDeclarations, body) {
             this.type = Syntax.OJClassImplementation;
             this.id   = id;
             this.body = body;
             this.superClass = superClass;
             this.category = category;
+            this.extension = extension;
             this.protocols = protocolList;
             this.ivarDeclarations = ivarDeclarations;
             this.finish();
@@ -6435,7 +6436,7 @@
     }
 
     function oj_parseClassImplementationDefinition(node) {
-        var id, body, previousStrict, ivarDeclarations = null, superClass = null, category = null, protocols = null, oldLabelSet;
+        var id, body, previousStrict, ivarDeclarations = null, superClass = null, category = null, extension = false, protocols = null, oldLabelSet;
 
         if (state.oj_inImplementation) {
             throwError(lookahead, Messages.OJCannotNestImplementations);
@@ -6459,7 +6460,13 @@
 
         if (match('(')) {
             expect('(');
-            category = parseVariableIdentifier();
+
+            if (match(')')) {
+                extension = true;
+            } else {
+                category = parseVariableIdentifier();
+            }
+
             expect(')');
         }
 
@@ -6481,7 +6488,7 @@
         state.oj_inImplementation = false;
         state.labelSet = oldLabelSet;
 
-        return node.oj_finishClassImplementation(id, superClass, category, protocols, ivarDeclarations, body);
+        return node.oj_finishClassImplementation(id, superClass, category, extension, protocols, ivarDeclarations, body);
     }
 
     function oj_parseProtocolReferenceList() {

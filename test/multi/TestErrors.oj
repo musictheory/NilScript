@@ -364,3 +364,22 @@ function test() {
 }
 
 @end
+
+
+// --------------------------------------------------------------------
+// @name Category No Ivars
+
+@implementation CategoryNoIvars (CategoryName) { //@error OJParseError
+
+}
+
+@end
+
+
+// --------------------------------------------------------------------
+// @name Category Properties Not Yet Supported
+
+@implementation CategoryNoProperties (CategoryName)
+@property String foo; //@error OJNotYetSupportedError
+@end
+
