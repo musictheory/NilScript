@@ -28,13 +28,13 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
   - [Behind the Scenes](#property-compiler)
 - [Callbacks](#callbacks)
 - [Selectors](#selector)
+- [Protocols](#protocols)
 - [Boolean/null aliases](#aliases)
 - [@enum and @const](#enum)
 - [Runtime](#runtime)
 - [Restrictions](#restrictions)
 - [Squeezing oj!](#squeeze)
-- [Checking Selectors](#check-selectors)
-- [JSHint Integration](#jshint)
+- [Hinting](#hinting)
 - [Type Checking](#typechecking)
 - [Compiler API](#compiler-api)
 - [License](#license)
@@ -307,8 +307,6 @@ To access any instance variable, simply use its name.  No `this.` or `self.` pre
         console.log(_numberOfSheep);
     }
 
-_Note:_ If the `--warn-unknown-ivars` command-line option is passed into the compiler, JavaScript identifiers that look like instance variables (with a underscore prefix) but are not defined will produce a warning.    
-
 
 ### <a name="property-attributes"></a>Property Attributes
 
@@ -505,6 +503,33 @@ The `--inline-const` option inlines `TheConstant` as well:
 Note: Inlining causes the enum or const to be lifted to the global scope.  Inlining affects all occurrences of that identifier in all files for the current compilation.  Inlined enums/consts are persisted via `--output-state` and `--input-state`.
 
 ---
+## <a name="protocols"></a>Protocols
+
+Like Objective-C, oj supports protocols with both required and optional methods:
+
+    @protocol ControllerDelegate
+    @required
+    - (void) controller:(Controller)controller didPerformAction:(String)action;
+    @optional
+    - (BOOL) controller:(Controller)controller shouldPerformAction:(String)action;
+    @end
+
+
+A class implements protocols with the following syntax:
+
+    @implementation TheClass <ControllerDelegate, TabBarDelegate>
+    
+    @end
+
+Protocols are specified in parameters, properties, and return types via the `id<ProtocolName>` type:
+
+    @implementation Controller 
+    @property id<ControllerDelegate> delegate
+    @end
+
+Unlike Objective-C, there is no `NSObject` protocol.  Instead, all protocols extend a built-in base protocol, which has identical methods to the [built-in base class](#base-class).
+
+---
 ## <a name="runtime"></a>Runtime
 
 **oj.noConflict()**  
@@ -552,31 +577,35 @@ oj features a code minifier/compressor/obfuscator called the squeezer.  When the
 Squeezed identifiers are persisted via `--output-state` and `--input-state`.
 
 ---
-## <a name="check-selectors"></a>Checking Selectors
+## <a name="hinting"></a>Hinting
 
-When the `--warn-unknown-selectors` option is used, oj warns about usage of undefined selectors/methods.  This can help catch typos at compile time:
+oj provides basic code hinting to catch common errors.
+
+When the `--warn-unknown-selectors` option is specified, oj warns about usage of undefined selectors/methods.  This can help catch typos at compile time:
 
     var c = [[TheClass allc] init]; // Warns if no +allc or -allc method exists on any class
 
-Since oj lacked `@protocol`, the delegate pattern resulted in false positives with `--warn-unknown-selectors`:
+When the `--warn-unknown-ivars` option is specified, oj checks all JavaScript identifiers prefixed with an underscore.  A warning is produced when such an identifier is used in a method declaration and the current class lacks a corresponding `@property` or instance variable declaration.
 
-    // Warns, as the compiler doesn't know about 'controller:didPerformActionWithFoo:'
-    [_delegate controller:self didPerformActionWithFoo:foo];
+    @implementation TheClass
     
-One solution was to implement a fake class with the method:
-
-    @implementation ControllerDelegate
-    - (void) controller:(Controller)controller didPerformActionWithFoo:(Foo)foo { }
+    @property String foo;
+    
+    - (void) checkFoo {
+        if (_foi) {  // Warns, likely typo
+        }    
+    }
+    
     @end
 
-A cleaner way, however, was to reintroduce protocols:
+When the `--warn-unused-ivars` option is specified, oj warns about ivar declarations that are unused within an implementation.
 
-    @protocol ControllerDelegate
-    - (void) controller:(Controller)controller didPerformActionWithFoo:(Foo)foo;
+    @implementation TheClass {
+        id _unused; // Warns
+    }
     @end
-
----
-## <a name="jshint"></a>JSHint Integration
+    
+When the `--warn-unknown-selectors` option is used, oj checks each selector against all known selectors.
 
 When the `--jshint` option is used, [JSHint](http://www.jshint.com) hints oj's results.  To prevent false positives,  the following options are forced:
 
@@ -586,8 +615,6 @@ When the `--jshint` option is used, [JSHint](http://www.jshint.com) hints oj's r
     newcap:   false
 
 `expr: true` is enabled on a per-method basis when the oj compiler uses certain optimizations.
-
-Ideally, in the future, no JSHint options are forced, and all false positives due to oj compilation are filtered.
 
 The `--jshint-ignore` option may be used to disable specific JSHint warnings.
 
