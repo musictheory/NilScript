@@ -505,7 +505,7 @@ Note: Inlining causes the enum or const to be lifted to the global scope.  Inlin
 ---
 ## <a name="protocols"></a>Protocols
 
-Like Objective-C, oj supports protocols with both required and optional methods:
+Like Objective-C, oj includes support for protocols.  Both `@required` and `@optional` methods may be specified:
 
     @protocol ControllerDelegate
     @required
@@ -514,20 +514,19 @@ Like Objective-C, oj supports protocols with both required and optional methods:
     - (BOOL) controller:(Controller)controller shouldPerformAction:(String)action;
     @end
 
-
-A class implements protocols with the following syntax:
-
-    @implementation TheClass <ControllerDelegate, TabBarDelegate>
-    
+    @implementation Controller
+    @property id<ControllerDelegate> delegate
+    ...
     @end
 
-Protocols are specified in parameters, properties, and return types via the `id<ProtocolName>` type:
-
-    @implementation Controller 
-    @property id<ControllerDelegate> delegate
+    @implementation TheClass <ControllerDelegate, TabBarDelegate>
+    - (void) controller:(Controller)controller didPerformAction:(String)action { }
+    ...
     @end
 
 Unlike Objective-C, there is no `NSObject` protocol.  Instead, all protocols extend a built-in base protocol, which has identical methods to the [built-in base class](#base-class).
+    
+Protocol conformance is enforced by the [typechecker](#typechecker).
 
 ---
 ## <a name="runtime"></a>Runtime
@@ -607,12 +606,11 @@ When the `--warn-unused-ivars` option is specified, oj warns about ivar declarat
     
 When the `--warn-unknown-selectors` option is used, oj checks each selector against all known selectors.
 
-When the `--jshint` option is used, [JSHint](http://www.jshint.com) hints oj's results.  To prevent false positives,  the following options are forced:
+---
 
-    asi:      true
-    laxbreak: true
-    laxcomma: true
-    newcap:   false
+oj integrates with [JSHint](http://www.jshint.com) via the `--jshint` option; however, this feature is deprecated and will be removed in the future (2.x).  Many JSHint warnings are duplicated by the [typechecker](#typechecking).
+
+To prevent false positives, the following JSHint options are forced: `asi: true`, `laxbreak: true`, `laxcomma: true`, `newcap:   false`.
 
 `expr: true` is enabled on a per-method basis when the oj compiler uses certain optimizations.
 
