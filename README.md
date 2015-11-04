@@ -15,7 +15,7 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 - [Classes](#class)
   - [Basic Syntax](#class-syntax)
   - [Behind the Scenes](#class-compiler)
-  - [Scope and @class](#class-scope)
+  - [Forward Declarations](#at-class)
 - [The Built-in Base Class](#base-class)
 - [Methods](#method)
   - [Falsy Messaging](#method-falsy)
@@ -37,6 +37,7 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 - [Hinting](#hinting)
 - [Type Checking](#typechecking)
 - [Compiler API](#compiler-api)
+- [Compiling Projects](#compiling-projects)
 - [License](#license)
 
 
@@ -45,9 +46,11 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 In contrast to [Objective-J](http://en.wikipedia.org/wiki/Objective-J): 
 
   - oj always uses [consistent property names](https://developers.google.com/closure/compiler/docs/api-tutorial3#propnames).
-   This allows the resulting JavaScript code to be optimized using Closure Compiler's ADVANCED_OPTIMIZATIONS or the Mauler in [our branch of UglifyJS](https://github.com/musictheory/uglifyjs).
+   This allows the resulting JavaScript code to be optimized using Closure Compiler's ADVANCED_OPTIMIZATIONS.
   - oj uses the native JavaScript runtime to call methods rather than imitating the Objective-C runtime (see below).
+  - oj focuses on being a language, not a framework.  The only requirement at runtime is the `runtime.js` file.
   - oj has full support of @property and the default synthesis of ivars/getters/setters.
+  - oj includes a [built-in obfuscator](#squeeze) which hides method and class names in compiled code.
 
 ---
 
@@ -95,29 +98,23 @@ becomes equivalent to:
         function sPrivate() { }
     });
 
-### <a name="class-scope"></a>Scope and @class
+### <a name="at-class"></a>Forward Declarations
 
-When compiling oj files separately, the oj compiler needs a [forward declaration](http://en.wikipedia.org/wiki/Forward_declaration) 
-to know that a specific identifier is actually an oj class.  This is accomplished via the `@class` directive.
+In older versions of oj (0.x), the compiler would compile each file separately.  This led to situations where a [forward declaration](http://en.wikipedia.org/wiki/Forward_declaration) of a class was needed:
 
-For example, assume the following files:
+    @class TheFirstClass;
 
-    // TheFirstClass.oj
-    @implementation TheFirstClass
-    @end
-
-and
-
-    // TheSecondClass.oj
     @implementation TheSecondClass
     
-    - (TheFirstClass) makeFirst {
-        return [[TheFirstClass alloc] init];
+    - (void) foo {
+        // Without the forward declaration, oj 0.x didn't know if TheFirstClass
+        // was a JS identifier or an oj class.
+        [TheFirstClass doSomething];
     }
 
     @end
 
-Without the forward declaration, the compiler thinks that `TheFirstClass` in `[[TheFirstClass alloc] init]` is a variable named `TheFirstClass`.  With the `@class` directive, the compiler understands that `TheFirstClass` is an oj class.
+oj 1.x+ uses a multi-pass compiler which eliminates the need for forward declarations.  In general, the need to use `@class` indicates an underlying issue with the dependency tree, which will cause issues if you need to use `@const`/`@enum` inlining or the [squeezer](#squeeze).  For more information, read [Compiling Projects](#compiling-projects).  
 
 ---
 
@@ -642,7 +639,6 @@ In order to support compiler optimizations, the following method names are reser
     isKindOfClass:
     isMemberOfClass:
 
-
 ---
 ## <a name="compiler-api"></a>Compiler API
 
@@ -681,6 +677,32 @@ Properties for the `result` object:
 |------------------------|---------|------------------------------------------------------------------|
 | code                   | String  | Compiled JavaScript source code                                  |     
 | state                  | Object  | Output compiler state                                            |     
+
+---
+## <a name="compiler-projects"></a>Compiling Projects
+
+The easiest way to use oj is to pass all `.oj` and `.js` files in your project into `ojc` and produce a single `.js` output file.  In general: the more files you compile at the same time, the easier your life will be.  However, there are specific situations where a more-complex pipeline is needed.
+
+In our usage, we have two output files: `core.js` and `webapp.js`.
+
+`core.js` contains our model and model-controller classes.  It's used by our client-side web app (running in the browser), our server-side backend (running in node/Express), and our iOS applications (running in a JavaScriptCore JSContext).
+
+`webapp.js` is used exclusively by the client-side web app and contains HTML/CSS view and view-controller classes.  In certain cases, `webapp.js` needs to allocate classes directly from `core.js`.
+
+This is accomplished via the `--output-state` and `--input-state` compiler flags, or the `options.state`/`result.state` properties in the compiler API.  Since `webapp.js` depends on `core.js`, `core.js` is compiled first, and the The compiler state from 
+
+1) All lower-level `.js` and `.oj` files are passed into the compiler.
+2) The compiler products a `result` object. `result.code` is saved as `core.js`.
+3) All higher-level `.js` and `.oj` files, as well as core's `result.state`, are passed into the compiler.  
+4) The `result.code` from this compilation pass is saved as `webapp.js`.
+5) Both `core.js` and `webapp.js` are included (in that order) in various HTML files via `<script>` elements.
+
+We've found it best to run a separate typecheck pass in parallel with the `core.js`/`webapp.js` build.  This allows one CPU to be dedicated to typechecking while the other performs transpiling.  The typecheck pass uses the following options:
+
+A) All `.js` and `.oj` files (From steps #1 and #3) are passed as `INPUT_FILES`.
+B) Several `.d.ts` definitions (for jQuery, underscore, etc.) are specified with the `--prepend` option.
+C) `--output-language` is set to `none`.
+D) `--check-types` is enabled
 
 ---
 ## <a name="license"></a>License
