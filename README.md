@@ -616,7 +616,24 @@ The `--jshint-ignore` option may be used to disable specific JSHint warnings.
 ---
 ## <a name="typechecking"></a>Type Checking
 
-When the `--check-types` option is used, oj performs static type checking via [TypeScript](http://www.typescriptlang.org).  This feature is still experimental.
+When the `--check-types` option is used, oj performs static type checking via [TypeScript](http://www.typescriptlang.org).  
+
+Most method declarations should behave exactly as their Objective-C counterparts.
+
+The following is a chart of oj types:
+
+| Type               | Description                                                      
+|--------------------|------------------------------------------------------------------
+| `Array<Number>`    | An array of numbers, corresponds to the `number[]` TypeScript type.
+| `Object<Number>`   | A JavaScript object used as a string-to-number map. corresponds to the `{ [i:string]: number }` TypeScript type
+| `Object`, `any`    | The `any` type (which effectively turns off typechecking)
+| `TheType`          | The JavaScript type (as defined by the `lib.d.ts` TypeScript file) or an instance of an oj class
+| `id<ProtocolName>` | An object which conforms to the specified protocol name(s)
+| `id`               | A special aggregate type containing all known instance methods definitions.
+| `Class`            | A special aggregate type containing all known class methods definitions.
+| `SEL`              | A special type that represents a selector
+
+For performance reasons, we recommend a separate typechecker pass (in parallel with the main build), with `--check-types` enabled, `--output-language` set to `none`, and TypeScript type definitions (such as those found at [DefinitelyTyped](http://definitelytyped.org)) specified using the `--prepend` option.
 
 ---
 ## <a name="restrictions"></a>Restrictions
