@@ -264,13 +264,17 @@ Modifier.prototype.finish = function()
 
     var finalLines = [ ];
     Array.prototype.push.apply(finalLines, this._prependLines);
+
+    var prependLineCount = finalLines.length;
+
     Array.prototype.push.apply(finalLines, this._lines0);
     Array.prototype.push.apply(finalLines, this._appendLines);
 
     return {
         code:   finalLines.join("\n"),
         map:    generator.toString(),
-        _lines: lineMap
+        _lines: lineMap,
+        _prependLineCount: prependLineCount
     }
 }
 

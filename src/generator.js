@@ -19,12 +19,9 @@ var OJError    = require("./errors").OJError;
 var OJWarning  = require("./errors").OJWarning;
 
 var OJGlobalVariable          = "$oj_oj";
-
-var OJClassPrefix             = "$oj_c_";
-var OJMethodPrefix            = "$oj_f_";
-var OJIvarPrefix              = "$oj_i_";
 var OJClassMethodsVariable    = "$oj_s";
 var OJInstanceMethodsVariable = "$oj_m";
+var OJTemporaryVariablePrefix = "$oj_t_";
 var OJTemporaryReturnVariable = "$oj_r";
 var OJSuperVariable           = "$oj_super";
 
@@ -94,160 +91,18 @@ function Generator(ast, model, modifier, forTypechecker, options)
 
     this._inlines = inlines;
     this._squeeze = options["squeeze"] && (language != LanguageTypechecker);
-
-    var knownTypes = { };
-    var generator = this;
-    if (forTypechecker) {
-        _.each(model.classes, function(value) {
-            var name = generator.getSymbolForClassName(value.name);
-            knownTypes[name] = name;
-            knownTypes[name + "$Static"] = name + "$Static";
-            knownTypes[value.name] = name;
-        });
-    }
-
-    this._knownTypes = knownTypes;
 }
-
-
-Generator.prototype.getTypecheckerType = function(inType, currentClass)
-{
-    var value;
-
-    if (inType == "String" || inType == "string") {
-        return "string";
-
-    } else if (this._model.isNumericType(inType)) {
-        return "number";
-
-    } else if (this._model.isBooleanType(inType)) {
-        return "boolean";
-
-    } else if (inType == "Array") {
-        return "any[]";
-
-    } else if (inType == "void") {
-        return "void";
-
-    } else if (inType == "instancetype" && currentClass) {
-        return this.getTypecheckerType(currentClass.name);
-
-    } else if ((value = this._knownTypes[inType])) {
-        return value;
-
-    } else if (inType.indexOf("<") >= 0) {
-        // "Array<Array<String>>"" becomes [ "Array", "Array", "String" ]
-        var inParts  = inType.replace(/\>/g, "").split("<");
-        var brackets = "";
-
-        for (var i = 0, length = inParts.length; i < length; i++) {
-            var inPart = inParts[i];
-
-            if (inPart == "Array" || inPart == "array") {
-                brackets += "[]";
-            } else {
-                value = this.getTypecheckerType(inPart);
-                break;
-            }
-        };
-
-        return value + brackets;
-
-    } else {
-        return "any";
-    }
-}
-
-
-Generator.prototype.getSymbolicatedString = function(inString)
-{
-    return inString.replace(/\$oj[_$][A-Za-z_$]+/g, function(symbol) {
-        if (symbol.indexOf("$oj$") === 0) {
-            return symbol;
-            // Unsqueeze
-        } else if (symbol.indexOf(OJClassPrefix) === 0) {
-            return symbol.substr(OJClassPrefix.length);
-
-        } else if (symbol.indexOf(OJMethodPrefix) === 0) {
-            symbol = symbol.substr(OJMethodPrefix.length);
-            symbol = symbol.replace(/_([^_])/g, ":$1");
-            symbol = symbol.replace(/_$/g,      ":");
-            symbol = symbol.replace(/__/g,    "_");
-            symbol = symbol.replace(/^\:/g,   "_");
-
-            return symbol;
-
-        } else if (symbol.indexOf(OJIvarPrefix) === 0) {
-            return symbol.substr(OJIvarPrefix.length).split("$").pop();
-
-        } else {
-            return symbol;
-        }
-    });
-}
-
-
-Generator.prototype.getSymbolForClassName = function(className)
-{
-    if (!className) return;
-
-    if (!Utils.isBaseObjectClass(className)) {
-        if (this._squeeze) {
-            return this._model.getSqueezedName(OJClassPrefix + className, true);
-        } else {
-            return OJClassPrefix + className;
-        }
-    }
-
-    return className;
-}
-
-
-Generator.prototype.getSymbolForSelectorName = function(selectorName)
-{
-    var replacedName = selectorName;
-    replacedName = replacedName.replace(/_/g,   "__");
-    replacedName = replacedName.replace(/^__/g, "_");
-    replacedName = replacedName.replace(/\:/g,  "_");
-
-    if (!Utils.isBaseObjectSelectorName(selectorName)) {
-        if (this._squeeze) {
-            return this._model.getSqueezedName(OJMethodPrefix + replacedName, true);
-        } else {
-            return OJMethodPrefix + replacedName;
-        }
-    }
-
-    return replacedName;
-}
-
-
-Generator.prototype.getSymbolForClassNameAndIvarName = function(className, ivarName)
-{
-    var result = OJIvarPrefix + className + "$" + ivarName;
-    if (this._squeeze) result = this._model.getSqueezedName(result, true);
-    return result;
-}
-
-
-Generator.prototype.getSymbolForIvar = function(ivar)
-{
-    return this.getSymbolForClassNameAndIvarName(ivar.className, ivar.name);
-}
-
 
 Generator.prototype.generate = function()
 {
     var traverser = new Traverser(this._ast);
-
-    var generator = this;
 
     var model    = this._model;
     var modifier = this._modifier;
     var language = this._language;
     var options  = this._options;
     var inlines  = this._inlines;
-    var scope    = this._model.scope;
+    var scope    = null;
 
     var methodNodes = [ ];
     var methodNodeClasses = [ ];
@@ -265,6 +120,7 @@ Generator.prototype.generate = function()
     var optionStrictFunctions        = options["strict-functions"];
 
     var optionSqueeze = this._squeeze;
+    var symbolTyper   = model.getSymbolTyper();
 
     var removeEnums    = options["inline-enum"]  || (language === LanguageTypechecker);
     var removeConsts   = options["inline-const"] || (language === LanguageTypechecker);
@@ -275,13 +131,25 @@ Generator.prototype.generate = function()
 
     var warnings = this._warnings;
 
+    function makeScope(node)
+    {
+        scope = { node: node, declarations: [ ], count: 0, previous: scope };
+    }
+
+    function makeTemporaryVariable(needsDeclaration)
+    {
+        var name = OJTemporaryVariablePrefix + scope.count++;
+        if (needsDeclaration) scope.declarations.push(name);
+        return name;
+    }
+
     function getClassAsRuntimeVariable(className)
     {
         if (language === LanguageEcmascript5) {
-            return OJGlobalVariable + "._cls." + generator.getSymbolForClassName(className);
+            return OJGlobalVariable + "._cls." + symbolTyper.getSymbolForClassName(className);
         }
 
-        return generator.getSymbolForClassName(className);
+        return symbolTyper.getSymbolForClassName(className);
     }
 
     function getCurrentMethodInModel() {
@@ -304,16 +172,16 @@ Generator.prototype.generate = function()
 
             if (Utils.isJScriptReservedWord(selectorName)) {
                 // For IE8
-                return where + "[\"" + generator.getSymbolForSelectorName(selectorName) + "\"]";
+                return where + "[\"" + symbolTyper.getSymbolForSelectorName(selectorName) + "\"]";
             } else {
-                return where + "." + generator.getSymbolForSelectorName(selectorName);
+                return where + "." + symbolTyper.getSymbolForSelectorName(selectorName);
             }
         }
     }
 
     function generateThisIvar(className, ivarName, useSelf)
     {
-        return (useSelf ? "self" : "this") + "." + generator.getSymbolForClassNameAndIvarName(className, ivarName);
+        return (useSelf ? "self" : "this") + "." + symbolTyper.getSymbolForClassNameAndIvarName(className, ivarName);
     }
 
     function generateIvarAssignments(ojClass)
@@ -345,7 +213,7 @@ Generator.prototype.generate = function()
 
         if (objectIvars.length) {
             for (i = 0, length = objectIvars.length; i < length; i++) {
-                result += "this." + generator.getSymbolForClassNameAndIvarName(ojClass.name, objectIvars[i]) + "="
+                result += "this." + symbolTyper.getSymbolForClassNameAndIvarName(ojClass.name, objectIvars[i]) + "="
             }
 
             result += "null;"
@@ -353,7 +221,7 @@ Generator.prototype.generate = function()
 
         if (numericIvars.length) {
             for (i = 0, length = numericIvars.length; i < length; i++) {
-                result += "this." + generator.getSymbolForClassNameAndIvarName(ojClass.name, numericIvars[i]) + "="
+                result += "this." + symbolTyper.getSymbolForClassNameAndIvarName(ojClass.name, numericIvars[i]) + "="
             }
 
             result += "0;"
@@ -361,7 +229,7 @@ Generator.prototype.generate = function()
 
         if (booleanIvars.length) {
             for (i = 0, length = booleanIvars.length; i < length; i++) {
-                result += "this." + generator.getSymbolForClassNameAndIvarName(ojClass.name, booleanIvars[i]) + "="
+                result += "this." + symbolTyper.getSymbolForClassNameAndIvarName(ojClass.name, booleanIvars[i]) + "="
             }
 
             result += "false;"
@@ -400,7 +268,7 @@ Generator.prototype.generate = function()
     function handleMessageExpression(node)
     {
         var receiver     = node.receiver.value;
-        var methodName   = generator.getSymbolForSelectorName(node.selectorName);
+        var methodName   = symbolTyper.getSymbolForSelectorName(node.selectorName);
         var reserved     = Utils.isJScriptReservedWord(methodName);
         var hasArguments = false;
 
@@ -476,7 +344,7 @@ Generator.prototype.generate = function()
                     var cast = "";
 
                     if (method.returnType == "instancetype") {
-                        cast = "<" + generator.getTypecheckerType(currentClass.name) + ">";
+                        cast = "<" + symbolTyper.toTypecheckerType(currentClass.name) + ">";
                     }
 
                     doCommonReplacement(cast + selfOrThis + ".$oj_super()." + methodName + "(", ")");
@@ -578,8 +446,10 @@ Generator.prototype.generate = function()
     {
         var superClass = (node.superClass && node.superClass.name);
 
-        var superSelector = "{ " + generator.getSymbolForClassName(superClass)   + ":1 }";
-        var clsSelector   = "{ " + generator.getSymbolForClassName(node.id.name) + ":1 }";
+        var superSelector = "{ " + symbolTyper.getSymbolForClassName(superClass)   + ":1 }";
+        var clsSelector   = "{ " + symbolTyper.getSymbolForClassName(node.id.name) + ":1 }";
+
+        makeScope(node);
 
         var constructorCallSuper = "";
         if (superClass) {
@@ -594,7 +464,7 @@ Generator.prototype.generate = function()
 
         if (language === LanguageEcmascript5) {
             if (node.category) {
-                var categorySelector = "{ " + generator.getSymbolForClassName(node.category) + ":1 }";
+                var categorySelector = "{ " + symbolTyper.getSymbolForClassName(node.category) + ":1 }";
 
                 startText = OJGlobalVariable + "._registerCategory(" +
                     clsSelector + ", ";
@@ -628,17 +498,19 @@ Generator.prototype.generate = function()
 
     function handleMethodDefinition(node)
     {
-        var methodName = generator.getSymbolForSelectorName(node.selectorName);
+        var methodName = symbolTyper.getSymbolForSelectorName(node.selectorName);
         var isClassMethod = node.selectorType == "+";
         var where = isClassMethod ? OJClassMethodsVariable : OJInstanceMethodsVariable;
         var args = [ ];
+
+        makeScope(node);
 
         if (Utils.isReservedSelectorName(node.selectorName)) {
             Utils.throwError(OJError.ReservedMethodName, "The method name \"" + node.selectorName + "\" is reserved by the runtime and may not be overridden.", node);
         }
 
         if (language === LanguageTypechecker) {
-            args.push("self" + " : " + generator.getSymbolForClassName(currentClass.name) + (isClassMethod ? "$Static" : ""));
+            args.push("self" + " : " + symbolTyper.getSymbolForClassName(currentClass.name, isClassMethod) );
         }
 
         for (var i = 0, length = node.methodSelectors.length; i < length; i++) {
@@ -653,7 +525,15 @@ Generator.prototype.generate = function()
                 if (language === LanguageEcmascript5) {
                     args.push(name);
                 } else if (language === LanguageTypechecker) {
-                    args.push(name + (methodType ? (" : " + generator.getTypecheckerType(methodType.value)) : ""));
+                    var outputType = methodType && methodType.value;
+
+                    if (outputType == "id") {
+                        outputType = "$oj_$id_intersection";
+                    } else if (outputType) {
+                        outputType = symbolTyper.toTypecheckerType(methodType.value);
+                    }
+
+                    args.push(name + (methodType ? (" : " + outputType) : ""));
                 }
             }
         }
@@ -661,7 +541,15 @@ Generator.prototype.generate = function()
         var definition = where + "." + methodName + " = function(" + args.join(", ") + ") ";
 
         if (language === LanguageTypechecker) {
-            definition += ": " + generator.getTypecheckerType(getCurrentMethodInModel().returnType, currentClass);
+            var returnType = getCurrentMethodInModel().returnType;
+
+            if (returnType == "id") {
+                returnType = "$oj_$id_union";
+            } else {
+                returnType = symbolTyper.toTypecheckerType(returnType, currentClass);
+            }
+
+            definition += ": " + returnType;
         }
 
         modifier.from(node).to(node.body).replace(definition);
@@ -676,7 +564,7 @@ Generator.prototype.generate = function()
                 if (language === LanguageEcmascript5) {
                     varParts.push(OJTemporaryReturnVariable);
                 } else if (language === LanguageTypechecker) {
-                    varParts.push(OJTemporaryReturnVariable + " : " + generator.getTypecheckerType(node.returnType.value));
+                    varParts.push(OJTemporaryReturnVariable + " : " + symbolTyper.toTypecheckerType(node.returnType.value));
                 }
             }
 
@@ -801,7 +689,7 @@ Generator.prototype.generate = function()
         }
 
         if (optionSqueeze) {
-            var result = model.getSqueezedName(name, false);
+            var result = symbolTyper.getSymbolForIdentifierName(name);
             if (result !== undefined) {
                 modifier.select(node).replace("" + result);
                 return;
@@ -811,7 +699,7 @@ Generator.prototype.generate = function()
         if (node.annotation) {
             if (language === LanguageTypechecker) {
                 var inType  = node.annotation.value;
-                var outType = generator.getTypecheckerType(inType);
+                var outType = symbolTyper.toTypecheckerType(inType);
                 modifier.select(node.annotation).replace(": " + outType);
             } else {
                 modifier.select(node.annotation).remove();
@@ -858,7 +746,7 @@ Generator.prototype.generate = function()
 
     function handleAtSelectorDirective(node)
     {
-        var name = generator.getSymbolForSelectorName(node.name);
+        var name = symbolTyper.getSymbolForSelectorName(node.name);
 
         if (knownSelectors && !knownSelectors[node.name]) {
             warnings.push(Utils.makeError(OJWarning.UnknownSelector, "Use of unknown selector '" + node.selectorName + "'", node));
@@ -923,7 +811,7 @@ Generator.prototype.generate = function()
         var before = "(";
 
         if (language == LanguageTypechecker) {
-            before = "<" + generator.getTypecheckerType(node.id.name) + ">(";
+            before = "<" + symbolTyper.toTypecheckerType(node.id.name) + ">(";
         }
 
         modifier.from(node).to(node.argument).replace(before);
@@ -933,7 +821,7 @@ Generator.prototype.generate = function()
     function handleTypeAnnotation(node)
     {
         var inValue  = node.inValue;
-        var outValue = generator.getTypecheckerType(inValue);
+        var outValue = symbolTyper.toTypecheckerType(inValue);
 
         if (inValue != outValue) {
             modifier.select(node).replace(": " + outValue);
@@ -942,9 +830,8 @@ Generator.prototype.generate = function()
 
     function handleEachStatement(node)
     {
-        var scope  = node.oj_scope;
-        var i      = scope.makeInternalVariable();
-        var length = scope.makeInternalVariable();
+        var i      = makeTemporaryVariable(false);
+        var length = makeTemporaryVariable(false);
 
         var object, array;
         var initLeft = "var ";
@@ -971,7 +858,7 @@ Generator.prototype.generate = function()
 
         // The right side is an expression, we need an additional variable
         } else {
-            array = scope.makeInternalVariable();
+            array = makeTemporaryVariable(false);
             initLeft  += array + " = (";
             initRight = initRight + "), ";
             expr = true;
@@ -1009,6 +896,8 @@ Generator.prototype.generate = function()
 
     function handleFunctionDeclarationOrExpression(node)
     {
+        makeScope(node);
+
         for (let param of node.params) {
             checkRestrictedUsage(param);
         }
@@ -1028,7 +917,7 @@ Generator.prototype.generate = function()
 
                 var type = "any";
                 if (param.annotation) {
-                    type = generator.getTypecheckerType(param.annotation.value);
+                    type = symbolTyper.toTypecheckerType(param.annotation.value);
                 }
 
                 result += param.name + "? : " + type + ", ";
@@ -1060,6 +949,8 @@ Generator.prototype.generate = function()
             }
         }
     }
+
+    makeScope();
 
     traverser.traverse(function(node, parent) {
         var type = node.type;
@@ -1173,6 +1064,10 @@ Generator.prototype.generate = function()
         } else if (type === Syntax.OJMethodDefinition) {
             handleMethodDefinition(node);
             currentMethodNode = null;
+        }
+
+        if (scope.node === node) {
+            scope = scope.previous;
         }
     });
 }

@@ -107,7 +107,7 @@ function Compiler(options)
     }
 
     if (options["squeeze"]) {
-        this._model.setupSqueezer(
+        this._model.getSymbolTyper().setupSqueezer(
             options["squeeze-start-index"] || 0,
             options["squeeze-end-index"]   || 0
         );
@@ -282,12 +282,13 @@ Compiler.prototype.compile = function(callback)
             time("Type Check", function() {
                 var checker = new TypeChecker(model, typeCheckGenerator, inputFiles, noImplicitAny);
 
-                checker.check(function(err, warnings, defs) {
+                checker.check(function(err, warnings, defs, code) {
                     waitingForChecker = false;
                     result.warnings = (result.warnings || [ ]).concat(warnings);
 
-                    if (options["dump-ts-defs"]) {
-                        result.dumpedTsDefs = defs;
+                    if (options["dump-types"]) {
+                        fs.writeFileSync("/tmp/ojc.defs.ts", defs);
+                        fs.writeFileSync("/tmp/ojc.code.ts", code);
                     }
 
                     finish(err, result);

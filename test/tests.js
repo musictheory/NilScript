@@ -97,6 +97,9 @@ function gatherTests(dir, callback)
                     t.error = [ m[1].trim(), i ];
                 } else if (m = line.match(/\@warning\s*\=?\s*(.*?)$/)) {
                     t.error = [ m[1].trim(), i ];
+                } else if (m = line.match(/\@typecheck\s*\=?\s*(.*?)$/)) {
+                    if (!t.typecheck) t.typecheck = { };
+                    t.typecheck[i] = m[1].trim();
                 }
 
                 i++;
@@ -111,11 +114,13 @@ function gatherTests(dir, callback)
 
         // Duplicate non-error tests to also --squeeze
         tests = _.each(tests, function(t) {
-            if (t.options.length == 0) {
+            if (t.typecheck) {
+                t.options.push({ "output-language": "none", "check-types": true });
+            } else if (t.options.length == 0) {
                 t.options.push({ });
             }
 
-            if (!t.error && !t.warning) {
+            if (!t.error && !t.warning && !t.typecheck) {
                 t.options.push({ "squeeze": true });
             } 
         });
@@ -135,6 +140,36 @@ gatherTests(path.dirname(__filename), function(err, tests) {
 
             ojc.compile(options, function(err, result) {
                 test(t.name, function() {
+                    if (t.typecheck) {
+                        var remaining = _.clone(t.typecheck);
+
+                        _.each(result.warnings, function(warning) {
+                            var expected = t.typecheck[warning.line];
+                            if (!expected) return;
+
+                            expected = expected.split(",");
+                            var code = expected.shift();
+
+                            assert(warning.code, code);
+
+                            var i = 0;
+                            warning.reason.replace(/'(.*?)'/g, function(a0, a1) {
+                                assert(expected[i] == a1);
+                                i++;
+                            });
+
+                            remaining[warning.line] = null;
+                        });
+
+                        _.each(remaining, function(value, key) {
+                            if (value) {
+                                assert(false, "Expected typechecker warning on line " + key);
+                            }
+                        });
+
+                        return;   
+                    }
+
                     if (!err && result.warnings && result.warnings.length) {
                         err = result.warnings[0];
                     }
