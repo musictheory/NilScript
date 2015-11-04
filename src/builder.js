@@ -23,11 +23,10 @@ function Builder(ast, model, options)
     this._ast     = ast;
     this._model   = model;
     this._options = options;
-    this._scope   = new Model.OJScope(null, null, true);
 }
 
 
-function sMakeOJMethodForNode(node, scope)
+function sMakeOJMethodForNode(node)
 {
     var selectorName    = node.selectorName;
     var selectorType    = node.selectorType;
@@ -50,7 +49,6 @@ function sMakeOJMethodForNode(node, scope)
 
         if (variableName) {
             variableNames.push(variableName.name);
-            if (scope) scope.declareVariable(variableName.name, Model.OJScope.VariableKindParam);
         }
     }
 
@@ -62,36 +60,15 @@ function sMakeOJMethodForNode(node, scope)
 }
 
 
-Builder.prototype.getScope = function()
-{
-    return this._scope;
-}
-
-
 Builder.prototype.build = function()
 {
     var compiler     = this;
     var model        = this._model;
-    var currentScope = model.scope;
 
     var currentClass, currentMethod, currentCategoryName;
     var currentProtocol;
 
-    var enableBlockScope = this._options["enable-block-scope"];
-
     var traverser = new Traverser(this._ast);
-
-    function isConstLet(str)
-    {
-        return str === "const" || str === "let";
-    }
-
-    function makeScope(node, hoist)
-    {
-        var scope = new Model.OJScope(node, currentScope, !!hoist);
-        node.oj_scope = scope;
-        currentScope = scope;
-    }
 
     function handleClassImplementation(node)
     {
@@ -116,14 +93,15 @@ Builder.prototype.build = function()
             cls = model.classes[className];
 
             if (!cls) {
-                var cls = new Model.OJClass(className);
-                cls.forward = true;
+                cls = new Model.OJClass(className);
+                cls.placeholder = true;
                 model.addClass(cls);
             }
 
         } else {
             cls = new Model.OJClass(className, superclassName, protocolNames);
             cls.forward = false;
+            cls.location = _.clone(node.loc);
             model.addClass(cls);
         }
 
@@ -135,8 +113,6 @@ Builder.prototype.build = function()
 
         currentClass = cls;
         currentCategoryName = categoryName;
-
-        makeScope(node, true);
     }
 
     function handleProtocolDefinition(node)
@@ -152,6 +128,7 @@ Builder.prototype.build = function()
 
         var protocol = new Model.OJProtocol(name, parentProtocolNames);
         model.addProtocol(protocol);
+        protocol.location = _.clone(node.loc);
         currentProtocol = protocol;
     }
 
@@ -171,15 +148,13 @@ Builder.prototype.build = function()
     function handleAtSqueezeDirective(node)
     {
         node.ids.forEach(function(id) {
-            model.getSqueezedName(id.name, true);
+            model.getSymbolTyper().enrollForSqueezing(id.name, true);
         });
     }
 
     function handleMethodDefinition(node)
     {
-        makeScope(node, true);
-
-        var method = sMakeOJMethodForNode(node, enableBlockScope ? currentScope : null);
+        var method = sMakeOJMethodForNode(node, null);
         currentClass.addMethod(method);
         currentMethod = method;
     }
@@ -362,18 +337,6 @@ Builder.prototype.build = function()
         }
     }
 
-    function handleVariableDeclaration(node)
-    {
-        if (!enableBlockScope) return;
-
-        var kind = node.kind;
-
-        for (var i = 0, length = node.declarations.length; i < length; i++) {
-            var declaration = node.declarations[i];
-            currentScope.declareVariable(declaration.id.name, kind);
-        }
-    }
-
     function handleVariableDeclarator(node)
     {
         if (node.id.name == "self" && currentMethod) {
@@ -383,53 +346,15 @@ Builder.prototype.build = function()
 
     function handleFunctionDeclarationOrExpression(node)
     {
-        makeScope(node, true);
-
         if (currentMethod) {
             for (var i = 0, length = node.params.length; i < length; i++) {
                 var param = node.params[i];
-
-                if (enableBlockScope) {
-                    currentScope.declareVariable(param.name, Model.OJScope.VariableKindParam);
-                }
 
                 if (param.name == "self") {
                     Utils.throwError(OJError.SelfIsReserved, "Use of self as function parameter name", node);
                 }
             }
         }
-    }
-
-    function handleForOrEachStatement(node)
-    {
-        var type = node.type;
-
-        if (node.init && node.init.type === Syntax.VariableDeclarator && isConstLet(node.init.kind)) {
-            makeScope(node);
-        } else if (node.left && node.left.type === Syntax.VariableDeclarator && isConstLet(node.left.kind)) {
-            makeScope(node);
-        } else if (node.type == Syntax.OJAtEachStatement) {
-            makeScope(node);
-        }
-    }
-
-    function handleBlockStatement(node)
-    {
-        var currentScopeNode = currentScope.node;
-        var parentType = currentScopeNode ? currentScopeNode.type : null;
-
-        // These parent types will *always* have a { } block, so there is no need
-        // to create another
-        //
-        if (parentType == Syntax.OJMethodDefinition ||
-            parentType == Syntax.OJClassImplementation ||
-            parentType == Syntax.FunctionDeclaration ||
-            parentType == Syntax.FunctionExpression)
-        {
-            return;
-        }
-
-        makeScope(node);
     }
 
     traverser.traverse(function(node, parent) {
@@ -482,17 +407,8 @@ Builder.prototype.build = function()
             } else if (type === Syntax.VariableDeclarator) {
                 handleVariableDeclarator(node);
 
-            } else if (type === Syntax.VariableDeclaration) {
-                handleVariableDeclaration(node);
-
             } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression) {
                 handleFunctionDeclarationOrExpression(node);
-
-            } else if (type === Syntax.ForStatement || type === Syntax.ForInStatement || type === Syntax.OJAtEachStatement) {
-                handleForOrEachStatement(node);
-
-            } else if (type === Syntax.BlockStatement) {
-                handleBlockStatement(node);
             }
 
         } catch (e) {
@@ -513,10 +429,6 @@ Builder.prototype.build = function()
 
         } else if (type == Syntax.OJMethodDefinition) {
             currentMethod = null;
-        }
-
-        if (node.oj_scope) {
-            currentScope = currentScope.parent;
         }
     });
 

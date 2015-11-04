@@ -14,30 +14,79 @@ var dirname = require("path").dirname;
 var _       = require("lodash");
 var ts      = require("typescript");
 
-var sLibrarySource;
+
+var sBlacklistCodes  = [ 2417 ];
+
+// See https://github.com/Microsoft/TypeScript/blob/master/src/compiler/diagnosticMessages.json
+var sReasonTemplates = [
+    // 2304: Cannot find name '{0}'.
+    { code: 2304, type: "-", text: "Unknown method '{0}'"   },
+    { code: 2304, type: "p", text: "Unknown protocol '{0}'" },
+    { code: 2304, type: "c", text: "Unknown class '{0}'"    },
+    { code: 2304,            text: "Unknown identifier '{0}'" },
+
+    // 2339: Property '{0}' does not exist on type '{1}'.
+    { code: 2339, type: "+", text: "No known class method: +[{1} {0}]"    },
+    { code: 2339, type: "-", text: "No known instance method: -[{1} {0}]" },
+
+    // 2415: Class '{0}' incorrectly extends base class '{1}'.
+    // Types of property 'buildElements' are incompatible.
+    { code: 2415, text: "'{2415:0}' and '{2415:1}' have incompatible method '{2326:0}'" },
+
+    // 2420: Class '{0}' incorrectly implements interface '{1}'.
+    // 2324: Property '{0}' is missing in type '{1}'.
+    { code: 2420, text: "Method '{2324:0}' in protocol '{2420:1}' not implemented" }
+];
+
+
+var sReasonTemplateMap;
+
+function getReasonTemplate(code, sawClass, sawProtocol, sawMethod, sawStatic) {
+    var types = [ ];
+
+    if (sawMethod)   types.push(sawStatic ? "+" : "-");
+    if (sawClass)    types.push("c");
+    if (sawProtocol) types.push("p");
+    var type = sawMethod ? (sawStatic ? "+" : "-") : "";
+
+    types.push(null);
+
+    if (!sReasonTemplateMap) {
+        sReasonTemplateMap = { };
+
+        _.each(sReasonTemplates, function(t) {
+            sReasonTemplateMap["" + t.code + (t.type || "")] = t;
+        });
+    }
+
+    for (var i = 0, length = types.length; i < length; i++) {
+        var reason = sReasonTemplateMap["" + code + (types[i] || "")];
+        if (reason) return reason;
+    }
+
+    return null;
+}
 
 
 /*
     See https://github.com/Microsoft/TypeScript/wiki/Using-the-Compiler-API
 */
-function ts_transform(contentArray, librarySource, options)
+var sLibrarySource;
+
+function ts_transform(defs, code, options)
 {
-    if (!options) options = { };
+    // Eventually, there should be an option/way to switch to "lib.core.d.ts"
+    // Keep in sync with: https://github.com/Microsoft/TypeScript/issues/494 ?
+    //
+    if (!sLibrarySource) {
+        sLibrarySource = fs.readFileSync(path.join(path.dirname(require.resolve('typescript')), 'lib.d.ts')).toString();
+    }
 
-    var filenameToContentMap = { };
-    var filenames = [ ];
+    var contentMap = { "defs.ts": defs, "lib.d.ts": sLibrarySource, "code.ts": code, };
 
-    _.each(contentArray, function(content) {
-        var filename = "file" + filenames.length + ".ts";
-        filenames.push(filename);
-        filenameToContentMap[filename] = content;
-    })
-
-    filenameToContentMap["lib.d.ts"] = librarySource;
-
-    var program = ts.createProgram(filenames, options, {
+    var program = ts.createProgram(_.keys(contentMap), options || { }, {
         getSourceFile: function(filename, languageVersion) {
-            var content = filenameToContentMap[filename];
+            var content = contentMap[filename];
             return content ? ts.createSourceFile(filename, content, options.target, "0") : undefined;
         },
 
@@ -50,97 +99,81 @@ function ts_transform(contentArray, librarySource, options)
     });
 
     var emitResult = program.emit();
-    var allDiagnostics = ts.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
+    var diagnostics = ts.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
 
-    var errors = allDiagnostics.map(function(diagnostic) {
-        var lineColumn = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
-
-        var reason = ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
-        console.log(Object.keys(diagnostic));
-
-        if (!reason.split) console.log(reason)
-        if (reason) reason = reason.split("\n");
-        if (reason) reason = reason[0];
-
-        return {
-            filename: diagnostic.file.filename,
-            line: lineColumn.line,
-            column: lineColumn.column,
-            reason: reason,
-            code: diagnostic.code
-        }
-    });
-
-    return errors;
+    return diagnostics;
 }
-
 
 
 function TypeChecker(model, generator, files, noImplicitAny)
 {
-    this._defs = this._getDefinition(model, generator);
+    var defsResult = this._generateDefs(model);
+    this._defs = defsResult.defs;
+    this._defsLineMap = defsResult.lines;
 
     generator.generate();
 
-    var result = generator.finish();
-    this._contents = result.code;
-    this._lineMap  = result._lines;
+    var codeResult = generator.finish();
+    this._code = codeResult.code;
+    this._codeLineMap = codeResult._lines;
+    this._prependLineCount = codeResult._prependLineCount;
 
     this._files = files;
-    this._generator = generator;
+    this._model = model;
     this._noImplicitAny = noImplicitAny;
 }
 
 
-TypeChecker.prototype._getDefinition = function(model, generator)
+TypeChecker.prototype._generateDefs = function(model)
 {
-    var lines = [ ];
-
-    _.each(model.enums, function(ojEnum) {
-        // Anonymous enums are inlined
-        if (!ojEnum.name) return;
-
-        lines.push("enum " + ojEnum.name + " {");
-
-        _.each(ojEnum.values, function(value, name) {
-            lines.push(name + " = " + value + ",");
-        });
-
-        lines.push("}");
-    });
+    var symbolTyper = model.getSymbolTyper();
 
     function makeDeclarationForMethod(method, ojClass) {
-        var methodName = generator.getSymbolForSelectorName(method.selectorName);
+        var methodName = symbolTyper.getSymbolForSelectorName(method.selectorName);
         var parameters = [ ];
 
         for (var i = 0, length = method.parameterTypes.length; i < length; i++) {
             var parameterType = method.parameterTypes[i];
-            var variableName  = method.variableNames[i];
+            var variableName  = method.variableNames[i] || ("a" + i);
 
-            parameters.push(variableName + " : " + generator.getTypecheckerType(parameterType));
+            if (parameterType == "id") {
+                parameterType = "$oj_$id_union"
+            } else {
+                parameterType = symbolTyper.toTypecheckerType(parameterType);
+            }
+
+            parameters.push(variableName + " : " + parameterType);
         }
 
-        return methodName + (method.optional ? "?" : "") + "(" + parameters.join(", ") + ") : " + generator.getTypecheckerType(method.returnType, ojClass) + ";";
+        var returnType;
+
+        if (method.returnType == "id") {
+            returnType = "$oj_$id_intersection";
+        } else {
+            returnType = symbolTyper.toTypecheckerType(method.returnType, ojClass);
+        }
+
+        return methodName + (method.optional ? "?" : "") + "(" + parameters.join(", ") + ") : " + returnType + ";";
     }
 
     function makeProtocolList(verb, isStatic, rawProtocolNames) {
-        var protocolNames = [ ];
+        var symbols = [ ];
 
         _.each(rawProtocolNames, function(protocolName) {
-            protocolNames.push((isStatic ? "$oj_p_" : "$oj_p_") + protocolName);
+            symbols.push( symbolTyper.getSymbolForProtocolName(protocolName, isStatic) );
         });
 
-        if (protocolNames.length) {
-            return " " + verb + " " + protocolNames.join(",");
+        if (symbols.length) {
+            return " " + verb + " " + symbols.join(",");
         }
 
         return "";
     }
 
-    function sortMethodIntoDeclarations(allMethods, classMethodDeclarations, instanceMethodDeclarations) {
+    function sortMethodIntoDeclarations(ojClass, allMethods, classMethodDeclarations, instanceMethodDeclarations) {
        _.each(allMethods, function(method) {
             var arr = (method.selectorType == "+") ? classMethodDeclarations : instanceMethodDeclarations;
-            arr.push(makeDeclarationForMethod(method, null));
+            arr.push(makeDeclarationForMethod(method, ojClass));
         });
     }
 
@@ -172,14 +205,24 @@ TypeChecker.prototype._getDefinition = function(model, generator)
         return toReturn;
     }
 
-    _.each(model.protocols, function(ojProtocol) {
-        var protocolName = "$oj_p_" + ojProtocol.name;
-        var staticName   = "$oj_P_" + ojProtocol.name;
+    function generateEnum(lines, ojEnum) {
+        lines.push("enum " + ojEnum.name + " {");
+
+        _.each(ojEnum.values, function(value, name) {
+            lines.push(name + " = " + value + ",");
+        });
+
+        lines.push("}");
+    }
+
+    function generateProtocol(lines, ojProtocol) {
+        var protocolName = symbolTyper.getSymbolForProtocolName(ojProtocol.name, false);
+        var staticName   = symbolTyper.getSymbolForProtocolName(ojProtocol.name, true);
 
         var classMethodDeclarations    = [ ];
         var instanceMethodDeclarations = [ ];
 
-        sortMethodIntoDeclarations(ojProtocol.getAllMethods(), classMethodDeclarations, instanceMethodDeclarations);
+        sortMethodIntoDeclarations(null, ojProtocol.getAllMethods(), classMethodDeclarations, instanceMethodDeclarations);
 
         lines.push("declare interface " + protocolName + makeProtocolList("extends", false, ojProtocol.protocolNames) + " {");
 
@@ -196,33 +239,32 @@ TypeChecker.prototype._getDefinition = function(model, generator)
         });
 
         lines.push("}");
-    });
+    }
 
-    _.each(model.classes, function(ojClass) {
-        var className      = generator.getSymbolForClassName(ojClass.name);
-        var staticName     = className.replace("$oj_c_", "$oj_static_");
+    function generateClass(lines, ojClass, classSymbol, staticSymbol) {
+        var superSymbol       = ojClass.superclassName ? symbolTyper.getSymbolForClassName(ojClass.superclassName, false) : "$oj_$Base";
+        var superStaticSymbol = ojClass.superclassName ? symbolTyper.getSymbolForClassName(ojClass.superclassName, true)  : "$oj_$StaticBase";
 
-        var superclassName       = ojClass.superclassName ? generator.getSymbolForClassName(ojClass.superclassName) : "$oj_$Base";
-        var superclassStaticName = ojClass.superclassName ? superclassName.replace("$oj_c_", "$oj_static_")         : "$oj_$StaticBase";
+        var declareClass = "declare class " + classSymbol +
+                           " extends " + superSymbol +
+                           makeProtocolList("implements", false, ojClass.protocolNames) +
+                           " {";
 
         lines.push(
-            "declare class " + className + " extends " + superclassName +
-            makeProtocolList("implements", false, ojClass.protocolNames) +
-            " {",
-
-            "static alloc() : " + className + ";",
-            "class() : " + staticName + ";",
-            "static class() : " + staticName + ";",
-            "init()  : " + className + ";",
-            "$oj_super() : " + superclassName + ";",
-            "static $oj_super() : " + superclassStaticName + ";"
+            declareClass,
+            "static alloc() : " + classSymbol + ";",
+            "class() : " + staticSymbol + ";",
+            "static class() : " + staticSymbol + ";",
+            "init()  : " + classSymbol + ";",
+            "$oj_super() : " + superSymbol + ";",
+            "static $oj_super() : " + superStaticSymbol + ";"
         );
 
         var methods = [ ].concat(ojClass.getAllMethods(), getInstancetypeMethods(ojClass));
         var classMethodDeclarations    = [ ];
         var instanceMethodDeclarations = [ ];
 
-        sortMethodIntoDeclarations(methods, classMethodDeclarations, instanceMethodDeclarations);
+        sortMethodIntoDeclarations(ojClass, methods, classMethodDeclarations, instanceMethodDeclarations);
 
         _.each(classMethodDeclarations, function(decl) {
             lines.push("static " + decl);
@@ -233,18 +275,21 @@ TypeChecker.prototype._getDefinition = function(model, generator)
         });
 
         _.each(ojClass.getAllIvars(), function(ivar) {
-            lines.push(generator.getSymbolForIvar(ivar) + " : " +  generator.getTypecheckerType(ivar.type) + ";");
+            lines.push(symbolTyper.getSymbolForIvar(ivar) + " : " +  symbolTyper.toTypecheckerType(ivar.type) + ";");
         });
 
         lines.push("}");
 
+        var declareStatic = "declare class " + staticSymbol +
+                            " extends " + superStaticSymbol +
+                            makeProtocolList("implements", true, ojClass.protocolNames) +
+                            " {";
+
         lines.push(
-            "declare class " + staticName + " extends " + superclassStaticName +
-            makeProtocolList("implements", true, ojClass.protocolNames) +
-            " {",
-            "alloc() : " + className  + ";",
-            "class() : " + staticName + ";",
-            "$oj_super() : " + superclassStaticName + ";"
+            declareStatic,
+            "alloc() : " + classSymbol  + ";",
+            "class() : " + staticSymbol + ";",
+            "$oj_super() : " + superStaticSymbol + ";"
         );
 
         _.each(classMethodDeclarations, function(decl) {
@@ -252,145 +297,247 @@ TypeChecker.prototype._getDefinition = function(model, generator)
         });
 
         lines.push("}");
+    }
+
+    var classSymbols  = [ ];
+    var staticSymbols = [ ];
+
+    var runtimeContents = fs.readFileSync(dirname(__filename) + "/runtime.d.ts") + "\n";
+    var lines = runtimeContents.split("\n");
+    var lineMap = [ ];
+
+    function mapLines(model, callback) {
+        var entry = { };
+        var start = lines.length;
+
+        callback();
+
+        var end = lines.length;
+
+        if (model && model.location && model.location.start && model.location.start.line) {
+            // model.location.start.line is 1-indexed, we want 0-indexed here
+            lineMap.push({ "start": start, "end": end, "mapped": (model.location.start.line - 1) });
+        }
+    }
+
+    _.each(model.enums, function(ojEnum) {
+        // Anonymous enums are inlined
+        if (!ojEnum.name) return;
+
+        generateEnum(lines, ojEnum);
     });
 
-    return fs.readFileSync(dirname(__filename) + "/runtime.d.ts") + "\n" + lines.join("\n");
+    _.each(model.protocols, function(ojProtocol) {
+        mapLines(ojProtocol, function() {
+            generateProtocol(lines, ojProtocol);
+        });
+    });
+
+    _.each(model.classes, function(ojClass) {
+        var classSymbol  = symbolTyper.getSymbolForClassName(ojClass.name, false);
+        var staticSymbol = symbolTyper.getSymbolForClassName(ojClass.name, true);
+
+        classSymbols.push(classSymbol);
+        staticSymbols.push(staticSymbol);
+
+        mapLines(ojClass, function() {
+            generateClass(lines, ojClass, classSymbol, staticSymbol);
+        });
+    });
+
+    generateClass( lines, model.getAggregateClass(), "$oj_$Combined", "$oj_$StaticCombined" );
+    classSymbols.unshift("$oj_$Combined");
+    staticSymbols.unshift("$oj_$StaticCombined")
+
+    lines.push("type $oj_$id_intersection = " + classSymbols.join("&") + ";");
+    lines.push("type $oj_$id_union = "        + classSymbols.join("|") + ";");
+
+    return {
+        defs:  lines.join("\n"),
+        lines: lineMap
+    };
 }
 
 
 TypeChecker.prototype.check = function(callback)
 {
     var defs          = this._defs;
-    var contents      = this._contents;
-    var lineMap       = this._lineMap;
-    var generator     = this._generator;
+    var defsLineMap   = this._defsLineMap;
+
+    var code          = this._code;
+    var codeLineMap   = this._codeLineMap;
+
+    var symbolTyper   = this._model.getSymbolTyper();
     var noImplicitAny = this._noImplicitAny;
 
-    function fromTypeScriptType(tsType) {
-        var map = {
-            "$oj_$Base":       "(Object)",
-            "$oj_$StaticBase": "Class",
-            "any[]":           "Array",
-            "number":          "Number",
-            "boolean":         "BOOL",
-            "string":          "String",
-        };
+    var prependLineCount = this._prependLineCount;
 
-        if (map[tsType]) {
-            return map[tsType];
-        }
+    var duplicateMap = { };
 
-        if (tsType.match(/\[\]$/)) {
-            tsType = tsType.replace(/\[\]$/, "");
-            return "Array<" + fromTypeScriptType(tsType) + ">";
-        }
+    function getFileLineWithCodeLine(codeLine) {
+        for (var file in codeLineMap) { if (codeLineMap.hasOwnProperty(file)) {
+            var entry = codeLineMap[file];
 
-        return generator.getSymbolicatedString(tsType);
-    }
-
-
-    function fixReason(reason, code) {
-        var quoted   = [ ];
-        var isStatic = false;
-        var isMethod = false;
-
-        reason = reason.replace(/'(.*?)'/g, function() {
-            var arg = arguments[1];
-
-            if (arg.match(/\$Static$/)) {
-                isStatic = true;
-                arg = arg.replace("$Static", "");
-
-            } else if (arg.match(/\$oj_f_/)) {
-                isMethod = true;
-            }
-
-            arg = fromTypeScriptType(arg);
-            quoted.push(arg);
-
-            return "'" + arg + "'";
-        });
-
-        // Property '$0' does not exist on type '$1'.
-        if (code == 2339) { 
-            if (isMethod) {
-                if (isStatic) {
-                    return "No known class method: +[" + quoted[1] + " " + quoted[0] + "]";
-                } else {
-                    return "No known instance method: -[" + quoted[1] + " " + quoted[0] + "]";
-                }
-            }
-        }
-
-        reason = reason.replace(/\:$/, "");
-
-        return reason;
-    }
-
-    function getFileAndLine(inLine) {
-        var result;
-
-        for (var file in lineMap) { if (lineMap.hasOwnProperty(file)) {
-            var entry = lineMap[file];
-
-            if (inLine >= entry.start && inLine < entry.end) {
-                result = [ file, inLine - entry.start ];
-                break;
+            if (codeLine >= entry.start && codeLine < entry.end) {
+                return { file: file, line: (codeLine - entry.start) + 1 };
             }
         }}
 
-        return result;
+        return null;
+    }
+
+    function getFileLineWithDefsLine(defsLine) {
+        for (var i = 0, length = defsLineMap.length; i < length; i++) {
+            var entry = defsLineMap[i];
+
+            if (defsLine >= entry.start && defsLine < entry.end) {
+                // entry.mapped is the original AST node's (location.start.line - 1)
+                // This doesn't account for prepended files (added by the modifier), so
+                // offset accordingly
+
+                console.log(defsLine, entry.start, entry.end, entry.mapped, prependLineCount);
+
+                return getFileLineWithCodeLine(entry.mapped + prependLineCount);
+            }
+        }
+
+        return null;
+    }
+
+    function makeHintsWithDiagnostic(diagnostic) {
+        var lineColumn  = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
+        var fileLine    = null;
+
+        if (diagnostic.file.fileName == "code.ts") {
+            fileLine = getFileLineWithCodeLine(lineColumn.line);
+        } else if (diagnostic.file.fileName == "defs.ts") {
+            fileLine = getFileLineWithDefsLine(lineColumn.line);
+        }
+
+        var code        = diagnostic.code;
+        var quotedMap   = { };
+        var sawStatic   = false;
+        var sawMethod   = false;
+        var sawClass    = false;
+        var sawProtocol = false;
+
+        if (_.include(sBlacklistCodes, code)) {
+            return null;
+        }
+
+        var reason = ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
+        reason = reason.split("\n")[0];
+
+        // messageText is a linked list of { messageText: , next: } objects
+        // Traverse through it and set up quotedMap / saw*
+        //
+        (function() {
+            function parseMessageText(object) {
+                var code = object.code || code;
+                var i    = 0;
+
+                (object.messageText || object).replace(/'(.*?)'/g, function(a0, a1) {
+                    if (a1.match(/^\$oj_C_/)) {
+                        sawStatic = true;
+                        sawClass = true;
+
+                    } else if (a1.match(/\$oj_P_/)) {
+                        sawStatic = true;
+                        sawProtocol = true;
+
+                    } else if (a1.match(/\$oj_c_/)) {
+                        sawClass = true;
+
+                    } else if (a1.match(/\$oj_p_/)) {
+                        sawProtocol = true;
+
+                    } else if (a1.match(/\$oj_f_/)) {
+                        sawMethod = true;
+                    }
+
+                    a1 = symbolTyper.fromTypecheckerType(a1);
+
+                    quotedMap[i] = a1;
+                    quotedMap["" + code + ":" + i] = a1;
+
+                    i++;
+
+                    return a1;
+                });
+            }
+
+            var messageText = diagnostic.messageText;
+            while (messageText) {
+                parseMessageText(messageText);
+                messageText = messageText.next;
+            }
+        }());
+
+        // Now look up the friendlier reason string from the map
+        //
+        (function() {
+            var template = getReasonTemplate(code, sawClass, sawProtocol, sawMethod, sawStatic);
+
+            var valid  = true;
+            var result = null;
+            if (!result) result = sReasonTemplateMap["" + code];
+
+            if (template) {
+                result = template.text.replace(/\{(.*?)\}/g, function(a0, a1) {
+                    var replacement = quotedMap[a1];
+                    if (!replacement) valid = false;
+                    return replacement;
+                });
+            }
+
+            if (valid && result) {
+                reason = result;
+            }
+        }());
+
+        // Fixup reason string - convert TypeScript types to oj types and reformat
+        //
+        (function() {
+            reason = reason.replace(/'(.*?)'/g, function(a0, a1) {
+                return "'" + symbolTyper.fromTypecheckerType(a1) + "'";
+            });
+
+            reason = symbolTyper.getSymbolicatedString(reason);
+
+            reason = reason.replace(/[\:\.]$/, "");
+        }());
+
+
+
+        var result = {
+            code:   code,
+            column: lineColumn.column,
+            name:   "OJTypecheckerHint",
+            file:   fileLine ? fileLine.file : "generated",
+            line:   fileLine ? fileLine.line : lineColumn.line,
+            reason: reason 
+        };
+
+        // Only return if this error message is unique (defs can spam duplicate messages)
+        var key = result.file + ":" + result.line + ":" + result.reason;
+        if (!duplicateMap[key]) {
+            duplicateMap[key] = true;
+            return result;
+        }
+
+        return null;
     }
 
     var options = { };
     if (noImplicitAny) options.noImplicitAny = true;
 
+    var hints = _.flatten(_.map(ts_transform(defs, code, options), function(diagnostic) {
+        return makeHintsWithDiagnostic(diagnostic);
+    }));
 
-    // Eventually, there should be an option/way to switch to "lib.core.d.ts"
-    // Keep in sync with: https://github.com/Microsoft/TypeScript/issues/494 ?
-    //
-    if (!sLibrarySource) {
-        sLibrarySource = fs.readFileSync(path.join(path.dirname(require.resolve('typescript')), 'lib.d.ts')).toString();
-    }
+    hints = _.without(hints, null);
 
-    var errors = ts_transform([ defs, contents ], sLibrarySource, options);
-
-    var hints = [ ];
-    var hint;
-
-    _.each(errors, function(e) {
-        var fileAndLine = getFileAndLine(e.line);
-
-        hint = { };
-        if (fileAndLine) {
-            hint.file      = fileAndLine[0];
-            hint.line      = fileAndLine[1];
-        } else {
-            hint.file      = "<generated>";
-            hint.line      = e.line;
-        }
-
-        hint.column    = e.column;
-        hint.code      = e.code;
-        hint.name     = "OJTypecheckerHint";
-        hint.reason   = fixReason(e.reason, e.code);
-
-        console.log(e);
-
-        hints.push(hint);
-    });
-
-    hints = _.filter(hints, function(hint) {
-        if (hint.reason) {
-            hint.reason = generator.getSymbolicatedString(hint.reason);
-        } else {
-            // console.log(hint);
-        }
-
-        return hint.code != 2087;
-    })
-
-    callback(null, hints, defs);
+    callback(null, hints, defs, code);
 }
 
 

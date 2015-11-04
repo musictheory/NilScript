@@ -6061,7 +6061,7 @@
         } else if (token.type == Token.BooleanLiteral) {
             value = token.value;
         } else {
-            throwUnexpected(token);
+            throwUnexpectedToken(token);
         }
 
         return node.oj_finishMethodNameSegment(value);
@@ -6116,7 +6116,7 @@
             selector = oj_parseSelector(true);
 
         } else if (allowedNames.indexOf(name) < 0) {
-            throwUnexpected(token);
+            throwUnexpectedToken(token);
         }
 
         return node.oj_finishAtPropertyAttribute(name, selector);
@@ -6246,7 +6246,7 @@
                     angles -= 3;
 
                 } else {
-                    throwUnexpected(lookahead);
+                    throwUnexpectedToken(lookahead);
                 }
             }
         }
@@ -6652,7 +6652,7 @@
 
 
         if (!(isSuper || isValidType)) {
-            throwUnexpected(token);
+            throwUnexpectedToken(token);
         }
 
         return node.finishIdentifier(token.value);

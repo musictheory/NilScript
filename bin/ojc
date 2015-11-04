@@ -47,9 +47,8 @@ var opt = getopt.create([
     [ "",  "debug-message-send",        "use debug version of oj.msgSend" ],
     [ "",  "dump-ast",                  "(for development)" ],
     [ "",  "dump-time",                 "(for development)" ],
-    [ "",  "dump-ts-defs",              "(for development)" ],
+    [ "",  "dump-types",                "(for development)" ],
     [ "",  "dump-profile",              "(for development)" ],
-    [ "",  "dump-scope",                "(for development)" ],
 
     [ "h", "help",                      "display this help" ],
     [ "v", "version",                   "show version"      ]
@@ -155,7 +154,7 @@ var outputStateFile = options["output-state"];    delete(options["output-state"]
 
 // Extract these options, don't delete (used by compiler)
 var outputSourceMapFile = options["source-map-file"];
-var dumpTypescriptDefs  = options["dump-ts-defs"];
+var dumpTypes           = options["dump-types"];
 var dumpAST             = options["dump-ast"];
 var dumpProfile         = options["dump-profile"];
 
@@ -209,21 +208,17 @@ try {
             fs.writeFileSync("/tmp/ojc.cpuprofile", JSON.stringify(cpuProfile));
         }
 
+        if (dumpAST) {
+            if (result.dumpedAST) fs.writeFileSync("/tmp/ojc.ast", result.dumpedAST);
+        }
+
         if (outputFile) {
             fs.writeFileSync(outputFile, result.code, "utf8")
         } else {
             if (err) {
                 print_error(err);
             } else if (result.code) {
-                if (dumpAST) {
-                    process.stdout.write(result.dumpedAST);
-                } else {
-                    process.stdout.write(result.code);
-                }
-            }
-
-            if (result.dumpedTsDefs) {
-                process.stdout.write(result.dumpedTsDefs);
+                process.stdout.write(result.code);
             }
         }
 
