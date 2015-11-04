@@ -691,18 +691,18 @@ In our usage, we have two output files: `core.js` and `webapp.js`.
 
 This is accomplished via the `--output-state` and `--input-state` compiler flags, or the `options.state`/`result.state` properties in the compiler API.  Since `webapp.js` depends on `core.js`, `core.js` is compiled first, and the The compiler state from 
 
-1) All lower-level `.js` and `.oj` files are passed into the compiler.
-2) The compiler products a `result` object. `result.code` is saved as `core.js`.
-3) All higher-level `.js` and `.oj` files, as well as core's `result.state`, are passed into the compiler.  
-4) The `result.code` from this compilation pass is saved as `webapp.js`.
-5) Both `core.js` and `webapp.js` are included (in that order) in various HTML files via `<script>` elements.
+1. All lower-level `.js` and `.oj` files are passed into the compiler.
+2. The compiler products a `result` object. `result.code` is saved as `core.js`.
+3. All higher-level `.js` and `.oj` files, as well as core's `result.state`, are passed into the compiler.  
+4. The `result.code` from this compilation pass is saved as `webapp.js`.
+5. Both `core.js` and `webapp.js` are included (in that order) in various HTML files via `<script>` elements.
 
 We've found it best to run a separate typecheck pass in parallel with the `core.js`/`webapp.js` build.  This allows one CPU to be dedicated to typechecking while the other performs transpiling.  The typecheck pass uses the following options:
 
-A) All `.js` and `.oj` files (From steps #1 and #3) are passed as `INPUT_FILES`.
-B) Several `.d.ts` definitions (for jQuery, underscore, etc.) are specified with the `--prepend` option.
-C) `--output-language` is set to `none`.
-D) `--check-types` is enabled
+* All `.js` and `.oj` files (From steps #1 and #3) are passed as `INPUT_FILES`.
+* Several `.d.ts` definitions (for jQuery, underscore, etc.) are specified with the `--prepend` option.
+* `--output-language` is set to `none`.
+* `--check-types` is enabled
 
 ---
 ## <a name="license"></a>License
