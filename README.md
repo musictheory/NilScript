@@ -15,7 +15,7 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 - [Classes](#class)
   - [Basic Syntax](#class-syntax)
   - [Behind the Scenes](#class-compiler)
-  - [Scope and @class](#class-scope)
+  - [Forward Declarations](#at-class)
 - [The Built-in Base Class](#base-class)
 - [Methods](#method)
   - [Falsy Messaging](#method-falsy)
@@ -28,15 +28,16 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
   - [Behind the Scenes](#property-compiler)
 - [Callbacks](#callbacks)
 - [Selectors](#selector)
+- [Protocols](#protocols)
 - [Boolean/null aliases](#aliases)
 - [@enum and @const](#enum)
 - [Runtime](#runtime)
 - [Restrictions](#restrictions)
 - [Squeezing oj!](#squeeze)
-- [Checking Selectors](#check-selectors)
-- [JSHint Integration](#jshint)
+- [Hinting](#hinting)
 - [Type Checking](#typechecking)
 - [Compiler API](#compiler-api)
+- [Compiling Projects](#compiling-projects)
 - [License](#license)
 
 
@@ -45,9 +46,11 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 In contrast to [Objective-J](http://en.wikipedia.org/wiki/Objective-J): 
 
   - oj always uses [consistent property names](https://developers.google.com/closure/compiler/docs/api-tutorial3#propnames).
-   This allows the resulting JavaScript code to be optimized using Closure Compiler's ADVANCED_OPTIMIZATIONS or the Mauler in [our branch of UglifyJS](https://github.com/musictheory/uglifyjs).
+   This allows the resulting JavaScript code to be optimized using Closure Compiler's ADVANCED_OPTIMIZATIONS.
   - oj uses the native JavaScript runtime to call methods rather than imitating the Objective-C runtime (see below).
+  - oj focuses on being a language, not a framework.  The only requirement at runtime is the `runtime.js` file.
   - oj has full support of @property and the default synthesis of ivars/getters/setters.
+  - oj includes a [built-in obfuscator](#squeeze) which hides method and class names in compiled code.
 
 ---
 
@@ -95,29 +98,23 @@ becomes equivalent to:
         function sPrivate() { }
     });
 
-### <a name="class-scope"></a>Scope and @class
+### <a name="at-class"></a>Forward Declarations
 
-When compiling oj files separately, the oj compiler needs a [forward declaration](http://en.wikipedia.org/wiki/Forward_declaration) 
-to know that a specific identifier is actually an oj class.  This is accomplished via the `@class` directive.
+In older versions of oj (0.x), the compiler would compile each file separately.  This led to situations where a [forward declaration](http://en.wikipedia.org/wiki/Forward_declaration) of a class was needed:
 
-For example, assume the following files:
+    @class TheFirstClass;
 
-    // TheFirstClass.oj
-    @implementation TheFirstClass
-    @end
-
-and
-
-    // TheSecondClass.oj
     @implementation TheSecondClass
     
-    - (TheFirstClass) makeFirst {
-        return [[TheFirstClass alloc] init];
+    - (void) foo {
+        // Without the forward declaration, oj 0.x didn't know if TheFirstClass
+        // was a JS identifier or an oj class.
+        [TheFirstClass doSomething];
     }
 
     @end
 
-Without the forward declaration, the compiler thinks that `TheFirstClass` in `[[TheFirstClass alloc] init]` is a variable named `TheFirstClass`.  With the `@class` directive, the compiler understands that `TheFirstClass` is an oj class.
+oj 1.x+ uses a multi-pass compiler which eliminates the need for forward declarations.  In general, the need to use `@class` indicates an underlying issue with the dependency tree, which will cause issues if you need to use `@const`/`@enum` inlining or the [squeezer](#squeeze).  For more information, read [Compiling Projects](#compiling-projects).  
 
 ---
 
@@ -306,8 +303,6 @@ To access any instance variable, simply use its name.  No `this.` or `self.` pre
     {
         console.log(_numberOfSheep);
     }
-
-_Note:_ If the `--warn-unknown-ivars` command-line option is passed into the compiler, JavaScript identifiers that look like instance variables (with a underscore prefix) but are not defined will produce a warning.    
 
 
 ### <a name="property-attributes"></a>Property Attributes
@@ -505,6 +500,32 @@ The `--inline-const` option inlines `TheConstant` as well:
 Note: Inlining causes the enum or const to be lifted to the global scope.  Inlining affects all occurrences of that identifier in all files for the current compilation.  Inlined enums/consts are persisted via `--output-state` and `--input-state`.
 
 ---
+## <a name="protocols"></a>Protocols
+
+Like Objective-C, oj includes support for protocols.  Both `@required` and `@optional` methods may be specified:
+
+    @protocol ControllerDelegate
+    @required
+    - (void) controller:(Controller)controller didPerformAction:(String)action;
+    @optional
+    - (BOOL) controller:(Controller)controller shouldPerformAction:(String)action;
+    @end
+
+    @implementation Controller
+    @property id<ControllerDelegate> delegate
+    …
+    @end
+
+    @implementation TheClass <ControllerDelegate, TabBarDelegate>
+    - (void) controller:(Controller)controller didPerformAction:(String)action { … }
+    …
+    @end
+
+Unlike Objective-C, there is no `NSObject` protocol.  Instead, all protocols extend a built-in base protocol, which has identical methods to the [built-in base class](#base-class).
+    
+Protocol conformance is enforced by the [typechecker](#typechecker).
+
+---
 ## <a name="runtime"></a>Runtime
 
 **oj.noConflict()**  
@@ -552,49 +573,69 @@ oj features a code minifier/compressor/obfuscator called the squeezer.  When the
 Squeezed identifiers are persisted via `--output-state` and `--input-state`.
 
 ---
-## <a name="check-selectors"></a>Checking Selectors
+## <a name="hinting"></a>Hinting
 
-When the `--warn-unknown-selectors` option is used, oj warns about usage of undefined selectors/methods.  This can help catch typos at compile time:
+oj provides basic code hinting to catch common errors.
+
+When the `--warn-unknown-selectors` option is specified, oj warns about usage of undefined selectors/methods.  This can help catch typos at compile time:
 
     var c = [[TheClass allc] init]; // Warns if no +allc or -allc method exists on any class
 
-Since oj lacked `@protocol`, the delegate pattern resulted in false positives with `--warn-unknown-selectors`:
+When the `--warn-unknown-ivars` option is specified, oj checks all JavaScript identifiers prefixed with an underscore.  A warning is produced when such an identifier is used in a method declaration and the current class lacks a corresponding `@property` or instance variable declaration.
 
-    // Warns, as the compiler doesn't know about 'controller:didPerformActionWithFoo:'
-    [_delegate controller:self didPerformActionWithFoo:foo];
+    @implementation TheClass
     
-One solution was to implement a fake class with the method:
-
-    @implementation ControllerDelegate
-    - (void) controller:(Controller)controller didPerformActionWithFoo:(Foo)foo { }
+    @property String foo;
+    
+    - (void) checkFoo {
+        if (_foi) {  // Warns, likely typo
+        }    
+    }
+    
     @end
 
-A cleaner way, however, was to reintroduce protocols:
+When the `--warn-unused-ivars` option is specified, oj warns about ivar declarations that are unused within an implementation.
 
-    @protocol ControllerDelegate
-    - (void) controller:(Controller)controller didPerformActionWithFoo:(Foo)foo;
+    @implementation TheClass {
+        id _unused; // Warns
+    }
     @end
+    
+When the `--warn-unknown-selectors` option is used, oj checks each selector against all known selectors.
 
 ---
-## <a name="jshint"></a>JSHint Integration
 
-When the `--jshint` option is used, [JSHint](http://www.jshint.com) hints oj's results.  To prevent false positives,  the following options are forced:
+oj integrates with [JSHint](http://www.jshint.com) via the `--jshint` option; however, this feature is deprecated and will be removed in the future (2.x).  Many JSHint warnings are duplicated by the [typechecker](#typechecking).
 
-    asi:      true
-    laxbreak: true
-    laxcomma: true
-    newcap:   false
+To prevent false positives, the following JSHint options are forced: `asi: true`, `laxbreak: true`, `laxcomma: true`, `newcap:   false`.
 
 `expr: true` is enabled on a per-method basis when the oj compiler uses certain optimizations.
-
-Ideally, in the future, no JSHint options are forced, and all false positives due to oj compilation are filtered.
 
 The `--jshint-ignore` option may be used to disable specific JSHint warnings.
 
 ---
 ## <a name="typechecking"></a>Type Checking
 
-When the `--check-types` option is used, oj performs static type checking via [TypeScript](http://www.typescriptlang.org).  This feature is still experimental.
+When the `--check-types` option is used, oj performs static type checking via [TypeScript](http://www.typescriptlang.org).  
+
+Most method declarations should behave exactly as their Objective-C counterparts.
+
+The following is a chart of oj types:
+
+| Type               | Description                                                      
+|--------------------|------------------------------------------------------------------
+| `Array<Number>`    | An array of numbers, corresponds to the `number[]` TypeScript type.
+| `Object<Number>`   | A JavaScript object used as a string-to-number map. corresponds to the `{ [i:string]: number }` TypeScript type
+| `Object`, `any`    | The `any` type (which effectively turns off typechecking)
+| `TheType`          | The JavaScript type (as defined by the `lib.d.ts` TypeScript file) or an instance of an oj class
+| `id<ProtocolName>` | An object which conforms to the specified protocol name(s)
+| `id`               | A special aggregate type containing all known instance methods definitions.
+| `Class`            | A special aggregate type containing all known class methods definitions.
+| `SEL`              | A special type that represents a selector
+
+For performance reasons, we recommend a separate typechecker pass (in parallel with the main build), with `--check-types` enabled, `--output-language` set to `none`, and TypeScript type definitions (such as those found at [DefinitelyTyped](http://definitelytyped.org)) specified using the `--prepend` option.
+
+oj tries to convert TypeScript error messages back into oj syntax.  Please report any confusing error messages.
 
 ---
 ## <a name="restrictions"></a>Restrictions
@@ -616,7 +657,6 @@ In order to support compiler optimizations, the following method names are reser
     isSubclassOfClass:
     isKindOfClass:
     isMemberOfClass:
-
 
 ---
 ## <a name="compiler-api"></a>Compiler API
@@ -656,6 +696,32 @@ Properties for the `result` object:
 |------------------------|---------|------------------------------------------------------------------|
 | code                   | String  | Compiled JavaScript source code                                  |     
 | state                  | Object  | Output compiler state                                            |     
+
+---
+## <a name="compiler-projects"></a>Compiling Projects
+
+The easiest way to use oj is to pass all `.oj` and `.js` files in your project into `ojc` and produce a single `.js` output file.  In general: the more files you compile at the same time, the easier your life will be.  However, there are specific situations where a more-complex pipeline is needed.
+
+In our usage, we have two output files: `core.js` and `webapp.js`.
+
+`core.js` contains our model and model-controller classes.  It's used by our client-side web app (running in the browser), our server-side backend (running in node/Express), and our iOS applications (running in a JavaScriptCore JSContext).
+
+`webapp.js` is used exclusively by the client-side web app and contains HTML/CSS view and view-controller classes.  In certain cases, `webapp.js` needs to allocate classes directly from `core.js`.
+
+This is accomplished via the `--output-state` and `--input-state` compiler flags, or the `options.state`/`result.state` properties in the compiler API.  Since `webapp.js` depends on `core.js`, `core.js` is compiled first, and the The compiler state from 
+
+1. All lower-level `.js` and `.oj` files are passed into the compiler.
+2. The compiler products a `result` object. `result.code` is saved as `core.js`.
+3. All higher-level `.js` and `.oj` files, as well as core's `result.state`, are passed into the compiler.  
+4. The `result.code` from this compilation pass is saved as `webapp.js`.
+5. Both `core.js` and `webapp.js` are included (in that order) in various HTML files via `<script>` elements.
+
+We've found it best to run a separate typecheck pass in parallel with the `core.js`/`webapp.js` build.  This allows one CPU to be dedicated to typechecking while the other performs transpiling.  The typecheck pass uses the following options:
+
+* All `.js` and `.oj` files (From steps #1 and #3) are passed as `INPUT_FILES`.
+* Several `.d.ts` definitions (for jQuery, underscore, etc.) are specified with the `--prepend` option.
+* `--output-language` is set to `none`.
+* `--check-types` is enabled
 
 ---
 ## <a name="license"></a>License
