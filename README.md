@@ -635,6 +635,8 @@ The following is a chart of oj types:
 
 For performance reasons, we recommend a separate typechecker pass (in parallel with the main build), with `--check-types` enabled, `--output-language` set to `none`, and TypeScript type definitions (such as those found at [DefinitelyTyped](http://definitelytyped.org)) specified using the `--prepend` option.
 
+oj tries to convert TypeScript error messages back into oj syntax.  Please report any confusing error messages.
+
 ---
 ## <a name="restrictions"></a>Restrictions
 
