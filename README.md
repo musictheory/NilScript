@@ -516,12 +516,12 @@ Like Objective-C, oj includes support for protocols.  Both `@required` and `@opt
 
     @implementation Controller
     @property id<ControllerDelegate> delegate
-    ...
+    …
     @end
 
     @implementation TheClass <ControllerDelegate, TabBarDelegate>
-    - (void) controller:(Controller)controller didPerformAction:(String)action { }
-    ...
+    - (void) controller:(Controller)controller didPerformAction:(String)action { … }
+    …
     @end
 
 Unlike Objective-C, there is no `NSObject` protocol.  Instead, all protocols extend a built-in base protocol, which has identical methods to the [built-in base class](#base-class).
