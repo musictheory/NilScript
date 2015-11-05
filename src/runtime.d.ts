@@ -15,9 +15,9 @@ interface $oj_$Runtime {
     getSubclassesOfClass(cls : $oj_$StaticBase) : Array<$oj_$StaticBase>;
     getSuperclass(cls : $oj_$StaticBase) : $oj_$StaticBase;
     isObject(object : any) : boolean;
-    sel_getName(aSelector : $oj_$SEL) : String;
+    sel_getName(aSelector : $oj_$SEL) : string;
     sel_isEqual(aSelector : $oj_$SEL, bSelector : $oj_$SEL) : boolean;
-    class_getName(cls : $oj_$StaticBase) : String;
+    class_getName(cls : $oj_$StaticBase) : string;
     class_getSuperclass(cls : $oj_$StaticBase) : $oj_$StaticBase;
     class_isSubclassOf(cls : $oj_$StaticBase, superclass : $oj_$StaticBase) : boolean;
     class_respondsToSelector(cls : $oj_$StaticBase, selector : $oj_$SEL) : boolean;
@@ -50,7 +50,7 @@ declare class $oj_AnyMap {
 declare class $oj_$Base {
     static alloc() : $oj_$Base;
     static superclass() : $oj_$StaticBase;
-    static className() : String;
+    static className() : string;
     static class() : $oj_$StaticBase;
     static respondsToSelector_(aSelector : $oj_$SEL) : boolean;
     static instancesRespondToSelector_(aSelector : $oj_$SEL) : boolean;
@@ -63,13 +63,13 @@ declare class $oj_$Base {
     copy() : any;
     superclass() : $oj_$StaticBase;
     class() : $oj_$StaticBase;
-    className() : String;
+    className() : string;
     respondsToSelector_(aSelector : $oj_$SEL) : boolean;
     performSelector_(aSelector : $oj_$SEL) : any;
     performSelector_withObject_(aSelector : $oj_$SEL, object : any) : any;
     performSelector_withObject_withObject_(aSelector : $oj_$SEL, o1 : any, o2 : any) : any;
-    description() : String;
-    toString() : String;
+    description() : string;
+    toString() : string;
     isKindOfClass_(cls : $oj_$StaticBase) : boolean;
     isMemberOfClass_(cls : $oj_$StaticBase) : boolean;
     isEqual_(other : $oj_$Base) : boolean;
@@ -79,7 +79,7 @@ declare class $oj_$StaticBase extends $oj_$Constructor {
     alloc() : $oj_$Base;
     class() : $oj_$StaticBase;
     superclass() : $oj_$StaticBase;
-    className() : String;
+    className() : string;
     respondsToSelector_(aSelector : $oj_$SEL) : boolean;
     instancesRespondToSelector_(aSelector : $oj_$SEL) : boolean;
     isKindOfClass_(cls : $oj_$StaticBase) : boolean;

@@ -195,6 +195,7 @@
         OJProtocolDefinition: 'OJProtocolDefinition',
         OJProtocolList: 'OJProtocolList',
         OJMethodDeclaration: 'OJMethodDeclaration',
+        OJAtAnyExpression: 'OJAtAnyExpression',
         OJAtCastExpression: 'OJAtCastExpression',
         OJTypeAnnotation: 'OJTypeAnnotation',
         OJAtTypedefDeclaration: 'OJTypedefDeclaration',
@@ -407,6 +408,7 @@
                    (id === '@const')          ||
                    (id === '@squeeze')        ||
                    (id === '@cast')           ||
+                   (id === '@any')            ||
                    (id === '@typedef')        ||
                    (id === '@each');
         }
@@ -2648,6 +2650,13 @@
             return this;
         },
 
+        oj_finishAtAnyExpression: function (argument) {
+            this.type = Syntax.OJAtAnyExpression;
+            this.argument = argument;
+            this.finish();
+            return this;
+        },
+
         oj_finishTypeAnnotation: function (value) {
             this.type = Syntax.OJTypeAnnotation;
             this.value = value;
@@ -3849,6 +3858,8 @@
 //!oj: start changes
         } else if (matchKeyword('@cast')) {
             expr = oj_parseAtCastExpression();
+        } else if (matchKeyword('@any')) {
+            expr = oj_parseAtAnyExpression();
 //!oj: end changes
         } else {
             expr = parsePostfixExpression();
@@ -6638,6 +6649,17 @@
         expect(')');
 
         return node.oj_finishAtCastExpression(id, argument);
+    }
+
+    function oj_parseAtAnyExpression() {
+        var id, argument, node = new Node();
+
+        expectKeyword('@any');
+        expect('(');
+        argument = parseExpression();
+        expect(')');
+
+        return node.oj_finishAtAnyExpression(argument);
     }
 
     function oj_parseMessageReceiver() {

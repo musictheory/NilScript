@@ -118,6 +118,7 @@ Generator.prototype.generate = function()
     var optionWarnOnUnusedIvars      = options["warn-unused-ivars"];
     var optionWarnOnUnknownIvars     = options["warn-unknown-ivars"];
     var optionStrictFunctions        = options["strict-functions"];
+    var optionStrictObjectLiterals   = options["strict-object-literals"];
 
     var optionSqueeze = this._squeeze;
     var symbolTyper   = model.getSymbolTyper();
@@ -818,6 +819,14 @@ Generator.prototype.generate = function()
         modifier.from(node.argument).to(node).replace(")");
     }
 
+    function handleAtAnyExpression(node)
+    {
+        var before = (language == LanguageTypechecker) ? "<any>(" : "(";
+
+        modifier.from(node).to(node.argument).replace(before);
+        modifier.from(node.argument).to(node).replace(")");
+    }
+
     function handleTypeAnnotation(node)
     {
         var inValue  = node.inValue;
@@ -884,9 +893,8 @@ Generator.prototype.generate = function()
     function handleObjectExpression_typeCheckerOnly(node)
     {
         if (language !== LanguageTypechecker) return;
+        if (optionStrictObjectLiterals) return;
 
-        // We only want TypeScript errors for oj types and simple primitives
-        
         if (node.properties.length == 0) {
             modifier.select(node).replace("<any>{}");
         } else {
@@ -1004,6 +1012,9 @@ Generator.prototype.generate = function()
 
         } else if (type === Syntax.OJAtCastExpression) {
             handleAtCastExpression(node);
+
+        } else if (type === Syntax.OJAtAnyExpression) {
+            handleAtAnyExpression(node);
 
         } else if (type === Syntax.OJTypeAnnotation) {
             handleTypeAnnotation(node);

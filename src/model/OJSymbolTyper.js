@@ -139,10 +139,17 @@ OJSymbolTyper.prototype._setupTypecheckerMaps = function()
         fromMap[staticSymbol]   = className;
     }
 
-    fromMap["any"] = "any";
-    fromMap["$oj_$Base"] = "OJ.BaseObject";
-    fromMap["$oj_$StaticBase"] = "Class";
-    fromMap["boolean"] = "BOOL";
+    _.extend(fromMap, {
+        "any":              "any",
+        "any[]":            "Array",
+        "{}":               "Object",
+        "undefined[]":      "Array",
+        "boolean":          "BOOL",
+        "number":           "Number",
+        "string":           "String",
+        "$oj_$Base":        "OJ.BaseObject",
+        "$oj_$StaticBase":  "Class"
+    });
 
     this._toTypecheckerMap   = toMap;
     this._fromTypecheckerMap = fromMap;
@@ -269,16 +276,21 @@ OJSymbolTyper.prototype.toTypecheckerType = function(rawInType, currentClass)
 
 OJSymbolTyper.prototype.fromTypecheckerType = function(rawInType)
 {
-    var inType  = rawInType.replace(/\s+/g, ""); // Remove whitespace
-    var outType = this._fromTypecheckerMap[inType];;
-
-    console.log(rawInType, inType, outType);
+    var inType  = rawInType.replace(/[\s;]+/g, ""); // Remove whitespace and semicolon
+    var outType = this._fromTypecheckerMap[inType];
+    var m;
 
     if (!outType) {
         if (inType.indexOf("$oj_$Combined") >= 0 || inType.indexOf("$oj_$StaticCombined") >= 0) {
             outType = "id";
+        } else if (inType.match(/\[\]$/)) {
+            outType = "Array<" + this.fromTypecheckerType(inType.slice(0, -2)) + ">";
+
+        } else if (m = inType.match(/\{\[(.*?):string\]\:(.*)\}$/)) {
+            outType = "Object<" + this.fromTypecheckerType(m[2]) + ">";
+
         } else {
-            outType = inType;
+            outType = rawInType;
         }
     }
 
