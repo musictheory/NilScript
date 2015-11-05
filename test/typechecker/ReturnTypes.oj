@@ -24,6 +24,11 @@
 - (Foo) returnsBarInsteadOfFoo3 { return [Bar sharedBar]; }  //@typecheck 2322,Bar,Foo
 - (Foo) returnsBarInsteadOfFoo4 { return [[Bar alloc] initWithString:""]; }  //@typecheck 2322,Bar,Foo
 
+- (Object<Foo>) {
+    var a = [ ];
+    return a;
+}
+
 @end
 
 

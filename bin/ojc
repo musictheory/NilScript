@@ -38,6 +38,7 @@ var opt = getopt.create([
     [ "",  "check-types",               "use type checker (experimental)" ],
     [ "",  "no-implicit-any",           "type checker: disallow implicit any"              ],
     [ "",  "strict-functions",          "type checker: enforce TypeScript-style functions" ],
+    [ "",  "strict-object-literals",    "type checker: enforce TypeScript object literals" ],
 
     [ "",  "warn-this-in-methods",      "warn about usage of 'this' in oj methods" ],
     [ "",  "warn-unknown-selectors",    "warn about usage of unknown selectors"    ],
