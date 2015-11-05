@@ -628,6 +628,10 @@ or via function syntax:
 
     var a : String = @cast(String, 3 + 4 + 6);
 
+Sometimes you may wish to disable type checking for a specific variable or expression.  While `@cast(any, …)` accomplishes this, you can also use the `@any` convinience operator:
+
+    var o = @any({ });
+
 For some projects and coding styles, the default TypeScript rules may be too strict.  For example, the following is an error in typescript:
 
     function example() {
@@ -636,15 +640,19 @@ For some projects and coding styles, the default TypeScript rules may be too str
         o.foo = "Foo";
     }
 
-oj can mitigate this via the `--lenient-object-literals` option, which attempts to cast all objects literals to the `any` type.  However, this may cause issues with function overloading when using [external type definitions](http://definitelytyped.org).
+By default, oj mitigates this by casting all objects literals to the `any` type.  However, this may cause issues with function overloading when using [external type definitions](http://definitelytyped.org).  Hence, you can revert to the original TypeScript behavior via the `--strict-object-literals` option.
 
-An alternative is to use the `@any` convinience operator, which is the equivalent of `@cast(any, …)`: 
+TypeScript also requires function calls to strictly match the parameters of the definition.  The following is allowed in JavaScript but not in TypeScript:
 
-    function example() {
-        var o = @any({ });
-        o.foo = "Foo";  // No longer an error, as o is now untyped
+    function foo(a, b) {
+        …
     }
     
+    foo(1); // Error in TS: parameter b is required
+    foo(1, 2, 3); // Error in TS
+    
+By default, oj mitigates this by rewriting function definitions so that all parameters are optional.  You can revert to the original TypeScript behavior via the `--strict-functions` option.
+
 ---
 
 For performance reasons, we recommend a separate typechecker pass (in parallel with the main build), with `--check-types` enabled, `--output-language` set to `none`, and TypeScript type definitions (such as those found at [DefinitelyTyped](http://definitelytyped.org)) specified using the `--prepend` option.
