@@ -125,8 +125,9 @@ Generator.prototype.generate = function()
 
     var removeEnums    = options["inline-enum"]  || (language === LanguageTypechecker);
     var removeConsts   = options["inline-const"] || (language === LanguageTypechecker);
-    var removeTypes    =                            (language !== LanguageTypechecker);
     var knownSelectors = optionWarnOnUnknownSelectors ? model.selectors : null;
+
+    var rewriteFunctionParameters = (language === LanguageTypechecker) && !optionStrictFunctions;
 
     var unusedIvars = null;
 
@@ -696,16 +697,6 @@ Generator.prototype.generate = function()
                 return;
             }
         }
-
-        if (node.annotation) {
-            if (language === LanguageTypechecker) {
-                var inType  = node.annotation.value;
-                var outType = symbolTyper.toTypecheckerType(inType);
-                modifier.select(node.annotation).replace(": " + outType);
-            } else {
-                modifier.select(node.annotation).remove();
-            }
-        }
     }
 
     function handleVariableDeclaration(node)
@@ -827,13 +818,18 @@ Generator.prototype.generate = function()
         modifier.from(node.argument).to(node).replace(")");
     }
 
-    function handleTypeAnnotation(node)
+    function handleTypeAnnotation(node, parent)
     {
-        var inValue  = node.inValue;
-        var outValue = symbolTyper.toTypecheckerType(inValue);
+        if (language === LanguageTypechecker) {
+            var inValue  = node.value;
+            var outValue = symbolTyper.toTypecheckerType(inValue);
 
-        if (inValue != outValue) {
-            modifier.select(node).replace(": " + outValue);
+            if (inValue != outValue) {
+                modifier.select(node).replace(": " + outValue);
+            }
+
+        } else {
+            modifier.select(node).remove();
         }
     }
 
@@ -915,9 +911,7 @@ Generator.prototype.generate = function()
         //
         // Disable this by rewriting the parameter list
         //
-        if (language === LanguageTypechecker) {
-            if (optionStrictFunctions) return;
-
+        if (rewriteFunctionParameters) {
             var result = "function " + (node.id ? node.id.name : "") + "(";
 
             for (var i = 0, length = node.params.length; i < length; i++) {
@@ -926,12 +920,18 @@ Generator.prototype.generate = function()
                 var type = "any";
                 if (param.annotation) {
                     type = symbolTyper.toTypecheckerType(param.annotation.value);
+                    param.annotation.oj_skip = true;
                 }
 
                 result += param.name + "? : " + type + ", ";
             }
 
             result += "...$oj_rest)";
+
+            if (node.annotation) {
+                result += ": " + symbolTyper.toTypecheckerType(node.annotation.value);
+                node.annotation.oj_skip = true;
+            }
 
             modifier.from(node).to(node.body).replace(result);
         }
@@ -973,8 +973,7 @@ Generator.prototype.generate = function()
             type === Syntax.OJAtDynamicDirective                 ||
             type === Syntax.OJAtTypedefDeclaration               ||
           ((type === Syntax.OJEnumDeclaration)  && removeEnums)  ||
-          ((type === Syntax.OJConstDeclaration) && removeConsts) ||
-          ((type === Syntax.OJTypeAnnotation)   && removeTypes)
+          ((type === Syntax.OJConstDeclaration) && removeConsts)
         ) {
             modifier.select(node).remove();
             return Traverser.SkipNode;
@@ -1017,7 +1016,7 @@ Generator.prototype.generate = function()
             handleAtAnyExpression(node);
 
         } else if (type === Syntax.OJTypeAnnotation) {
-            handleTypeAnnotation(node);
+            handleTypeAnnotation(node, parent);
 
         } else if (type === Syntax.OJAtEachStatement) {
             handleEachStatement(node);

@@ -7,6 +7,7 @@
 
 "use strict";
 
+var _          = require("lodash");
 var esprima    = require("./esprima");
 var estraverse = require("estraverse");
 var Syntax     = esprima.Syntax;
@@ -37,11 +38,37 @@ ojVisitorKeys[ Syntax.OJConstDeclaration             ] = [ "declarations" ];
 ojVisitorKeys[ Syntax.OJEnumDeclaration              ] = [ "declarations" ];
 ojVisitorKeys[ Syntax.OJProtocolDefinition           ] = [ "id", "body" ];
 ojVisitorKeys[ Syntax.OJMethodDeclaration            ] = [ "returnType", "methodSelectors" ];
-ojVisitorKeys[ Syntax.OJIdentifierWithAnnotation     ] = [ "annotation" ];
 ojVisitorKeys[ Syntax.OJAtCastExpression             ] = [ "id", "argument" ];
 ojVisitorKeys[ Syntax.OJAtAnyExpression              ] = [ "argument" ];
 ojVisitorKeys[ Syntax.OJAtTypedefDeclaration         ] = [ "from", "to" ];
 ojVisitorKeys[ Syntax.OJAtEachStatement              ] = [ "left", "right", "body" ];
+ojVisitorKeys[ Syntax.OJTypeAnnotation               ] = [ ];
+
+// Patch FunctionExpression, FunctionDeclaration, and Identifier to deal with type annotations
+//
+(function() {
+    function addAnnotationBeforeBody(key) {
+        var children    = _.clone(estraverse.VisitorKeys[key]) || [ ];
+        var indexOfBody = children.indexOf(children, "body");
+
+        children.splice(indexOfBody, 0, "annotation");
+
+        ojVisitorKeys[key] = children;
+    }
+
+    function addAnnotationAtEnd(key) {
+        var children = _.clone(estraverse.VisitorKeys[key]);
+
+        children.push("annotation");
+
+        ojVisitorKeys[key] = children;
+    }
+
+    addAnnotationBeforeBody(Syntax.FunctionExpression);
+    addAnnotationBeforeBody(Syntax.FunctionDeclaration);
+
+    addAnnotationAtEnd(Syntax.Identifier);
+}());
 
 
 function Traverser(ast)

@@ -1,0 +1,10 @@
+
+function foo() : String { }
+
+var foo = function() : String { }
+
+
+function foo(a:Number,b:Number):String{ }
+
+var foo=function(a:Number,b:Number):String{ }
+
