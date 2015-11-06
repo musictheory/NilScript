@@ -389,35 +389,6 @@ oj handles the binding for you.  No additional code is needed to access ivars or
         }, delay);
     }
 
-
----
-### <a name="type-annotations"></a>Type Annotations
-
-As JavaScript is an untyped language, types expressed in property and method declarations are mostly for documentation purposes.  That said, oj provides an experimental [Type Checker](#typechecker) to help catch errors at compile time. 
-
-oj adds type annotations to JavaScript functions and variables, similar to ActionScript and TypeScript:
-
-    function getStringWithNumber(a : String, b : Number) : String {
-        return a + "-" + b;
-    }
-
-    function printFooAndRandom() : void {
-        var a : String = "Foo";
-        var b : Number = Math.random(); 
-        console.log(a, "-", b);
-    }
-
-oj also has a cast operator.  It may be used similar in syntax to C++'s `static_cast`:
-
-    var a : String = @cast<String>( 3 + 4 + 6 );
-
-or via function syntax:
-
-    var a : String = @cast(String, 3 + 4 + 6);
-
-When compiling to JavaScript, type annotations and the cast operator are removed.  They are used by the experimental type checker.
-
-
 ---
 ## <a name="selector"></a>Selectors
 
@@ -618,12 +589,13 @@ The `--jshint-ignore` option may be used to disable specific JSHint warnings.
 
 When the `--check-types` option is used, oj performs static type checking via [TypeScript](http://www.typescriptlang.org).  
 
-Most method declarations should behave exactly as their Objective-C counterparts.
+oj uses an Objective-C inspired syntax for types, which is automatically translated to and from TypeScript types:
 
-The following is a chart of oj types:
-
-| Type               | Description                                                      
+| oj Type            | TypeScript type / Description                                                      
 |--------------------|------------------------------------------------------------------
+| Numeric type       | `number`
+| Boolean type       | `boolean`
+| `String`           | `string`
 | `Array<Number>`    | An array of numbers, corresponds to the `number[]` TypeScript type.
 | `Object<Number>`   | A JavaScript object used as a string-to-number map. corresponds to the `{ [i:string]: number }` TypeScript type
 | `Object`, `any`    | The `any` type (which effectively turns off typechecking)
@@ -632,6 +604,56 @@ The following is a chart of oj types:
 | `id`               | A special aggregate type containing all known instance methods definitions.
 | `Class`            | A special aggregate type containing all known class methods definitions.
 | `SEL`              | A special type that represents a selector
+
+Most oj method declarations will have type information and should behave exactly as their Objective-C counterparts.  However, JavaScript functions need to be annotated via type annotations, similar to ActionScript and TypeScript:
+
+    function getStringWithNumber(a : String, b : Number) : String {
+        return a + "-" + b;
+    }
+
+TypeScript infers variables automatically; however, sometimes an explicit annotation is required:
+
+    function getNumber() { … }
+
+    function doSometingWithNumber() : void {
+        var num : Number = getNumber(); // Annotation needed since getNumber() is not annotated
+        …
+    }
+
+Casting is performed via the `@cast` operator.  It may be used similar in syntax to C++'s `static_cast`:
+
+    var a : String = @cast<String>( 3 + 4 + 6 );
+
+or via function syntax:
+
+    var a : String = @cast(String, 3 + 4 + 6);
+
+Sometimes you may wish to disable type checking for a specific variable or expression.  While `@cast(any, …)` accomplishes this, you can also use the `@any` convinience operator:
+
+    var o = @any({ });
+
+For some projects and coding styles, the default TypeScript rules may be too strict.  For example, the following is an error in typescript:
+
+    function example() {
+        var o = { };
+        // This is an error in TypeScript, as 'foo' isn't a property on the '{}' type
+        o.foo = "Foo";
+    }
+
+By default, oj mitigates this by casting all objects literals to the `any` type.  However, this may cause issues with function overloading when using [external type definitions](http://definitelytyped.org).  Hence, you can revert to the original TypeScript behavior via the `--strict-object-literals` option.
+
+TypeScript also requires function calls to strictly match the parameters of the definition.  The following is allowed in JavaScript but not in TypeScript:
+
+    function foo(a, b) {
+        …
+    }
+    
+    foo(1); // Error in TS: parameter b is required
+    foo(1, 2, 3); // Error in TS
+    
+By default, oj mitigates this by rewriting function definitions so that all parameters are optional.  You can revert to the original TypeScript behavior via the `--strict-functions` option.
+
+---
 
 For performance reasons, we recommend a separate typechecker pass (in parallel with the main build), with `--check-types` enabled, `--output-language` set to `none`, and TypeScript type definitions (such as those found at [DefinitelyTyped](http://definitelytyped.org)) specified using the `--prepend` option.
 
