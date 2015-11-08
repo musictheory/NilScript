@@ -8,3 +8,11 @@ function foo(a:Number,b:Number):String{ }
 
 var foo=function(a:Number,b:Number):String{ }
 
+
+function runTests()
+{
+    return true;
+}
+
+runTests();
+

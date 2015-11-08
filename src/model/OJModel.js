@@ -1,5 +1,5 @@
 /*
-    model.js
+    OJModel.js
     (c) 2013-2015 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
@@ -10,6 +10,7 @@ var _             = require("lodash");
 var OJError       = require("../errors").OJError;
 var Utils         = require("../utils");
 var OJClass       = require("./OJClass");
+var OJGlobal      = require("./OJGlobal");
 var OJProtocol    = require("./OJProtocol");
 var OJMethod      = require("./OJMethod");
 var OJEnum        = require("./OJEnum");
@@ -19,12 +20,14 @@ var OJSymbolTyper = require("./OJSymbolTyper")
 function OJModel()
 {
     this.enums     = [ ];
+    this.globals   = { };
     this.consts    = { };
     this.classes   = { };
     this.protocols = { };
     this.selectors = { };
 
     this._symbolTyper = new OJSymbolTyper(this);
+    this._globalsMap = null;
 
     this.types = { };
     this.registerType( [
@@ -45,6 +48,7 @@ OJModel.prototype.loadState = function(state)
 {
     var enums     = this.enums;
     var classes   = this.classes;
+    var globals   = this.globals;
     var protocols = this.protocols;
     var types     = this.types;
 
@@ -55,18 +59,25 @@ OJModel.prototype.loadState = function(state)
     _.extend(this.consts, state.consts);
     _.extend(this.types,  state.types);
 
+    _.each(state.globals, function(g) {
+        var ojGlobal = new OJGlobal();
+        ojGlobal.loadState(g);
+        ojGlobal.local = false;
+        globals[ojGlobal.name] = ojGlobal;
+    });
+
     _.each(state.classes, function(c) {
-        var cls = new OJClass();
-        cls.loadState(c);
-        cls.local = false;
-        classes[cls.name] = cls;
+        var ojClass = new OJClass();
+        ojClass.loadState(c);
+        ojClass.local = false;
+        classes[ojClass.name] = ojClass;
     });
 
     _.each(state.protocols, function(p) {
-        var protocol = new OJProtocol();
-        protocol.loadState(p);
-        protocol.local = false;
-        protocols[protocol.name] = protocol;
+        var ojProtocol = new OJProtocol();
+        ojProtocol.loadState(p);
+        ojProtocol.local = false;
+        protocols[ojProtocol.name] = ojProtocol;
     });
 
     if (state.symbols) {
@@ -85,12 +96,16 @@ OJModel.prototype.saveState = function()
         selectors: this.selectors,
         types:     this.types,
 
-        classes: _.map(this.classes, function(c) {
-            return c.saveState();
+        globals: _.map(this.globals, function(ojGlobal) {
+            return ojGlobal.saveState();
         }),
 
-        protocols: _.map(this.protocols, function(p) {
-            return p.saveState();
+        classes: _.map(this.classes, function(ojClass) {
+            return ojClass.saveState();
+        }),
+
+        protocols: _.map(this.protocols, function(ojProtocol) {
+            return ojProtocol.saveState();
         })
     }
 }
@@ -101,10 +116,10 @@ OJModel.prototype.prepare = function()
     var selectors = { };
 
     var classes = this.classes;
-    _.each(classes, function(cls, name) {
+    _.each(classes, function(ojClass, name) {
         // Check for circular hierarchy
         var visited = [ name ];
-        var superclass = cls.superclassName ? classes[cls.superclassName] : null;
+        var superclass = ojClass.superclassName ? classes[ojClass.superclassName] : null;
 
         while (superclass) {
             if (visited.indexOf(superclass.name) >= 0) {
@@ -116,19 +131,18 @@ OJModel.prototype.prepare = function()
             superclass = classes[superclass.superclassName];
         }
 
-        cls.doAutomaticSynthesis();
+        ojClass.doAutomaticSynthesis();
 
-        var methods = cls.getAllMethods();
+        var methods = ojClass.getAllMethods();
         for (var i = 0, length = methods.length; i < length; i++) {
             selectors[methods[i].selectorName] = true;
         }
     });
 
-    _.each(this.protocols, function(protocol, name) {
-        var i, length;
+    _.each(this.protocols, function(ojProtocol, name) {
+        var methods = ojProtocol.getAllMethods();
 
-        var methods = protocol.getAllMethods();
-        for (i = 0, length = methods.length; i < length; i++) {
+        for (var i = 0, length = methods.length; i < length; i++) {
             selectors[methods[i].selectorName] = true;
         }
     });
@@ -212,9 +226,9 @@ OJModel.prototype.getAggregateClass = function()
     var instanceMap = { };
     var classMap    = { };
 
-    _.each(this.classes, function(cls) {
-        extractMethodsIntoMap(cls.getClassMethods(),    classMap);
-        extractMethodsIntoMap(cls.getInstanceMethods(), instanceMap);
+    _.each(this.classes, function(ojClass) {
+        extractMethodsIntoMap(ojClass.getClassMethods(),    classMap);
+        extractMethodsIntoMap(ojClass.getInstanceMethods(), instanceMap);
     });
 
     addMethodsWithMap(classMap,    "+");
@@ -275,45 +289,57 @@ OJModel.prototype.addEnum = function(e)
 }
 
 
-OJModel.prototype.addClass = function(cls)
+OJModel.prototype.addClass = function(ojClass)
 {
-    var name = cls.name;
+    var name     = ojClass.name;
     var existing = this.classes[name];
 
     if (existing) {
-        if (existing.forward && !cls.forward) {
-            this.classes[name] = cls;
-            this.registerType(cls.name);
+        if (existing.forward && !ojClass.forward) {
+            this.classes[name] = ojClass;
+            this.registerType(name);
 
-        } else if (existing.placeholder && !cls.forward) {
-            this.classes[name] = cls;
-            this.registerType(cls.name);
+        } else if (existing.placeholder && !ojClass.forward) {
+            this.classes[name] = ojClass;
+            this.registerType(name);
 
             // This was a category placeholder and is being replaced by the real class, move over methods
             _.each(existing.getAllMethods(), function(m) {
-                cls.addMethod(m);
+                ojClass.addMethod(m);
             });
 
-        } else if (!existing.forward && !cls.forward) {
-            Utils.throwError(OJError.DuplicateClassDefinition, "Duplicate declaration of class '" + name +"'");
+        } else if (!existing.forward && !ojClass.forward) {
+            Utils.throwError(OJError.DuplicateClassDefinition, "Duplicate declaration of class '" + name + "'");
         }
 
     } else {
-        this.classes[name] = cls;
-        this.registerType(cls.name);
+        this.classes[name] = ojClass;
+        this.registerType(name);
     } 
 }
 
 
-OJModel.prototype.addProtocol = function(protocol)
+OJModel.prototype.addProtocol = function(ojProtocol)
 {
-    var name = protocol.name;
+    var name = ojProtocol.name;
 
     if (this.protocols[name]) {
-        Utils.throwError(OJError.DuplicateProtocolDefinition, "Duplicate declaration of protocol '" + name +"'");
+        Utils.throwError(OJError.DuplicateProtocolDefinition, "Duplicate declaration of protocol '" + name + "'");
     }
 
-    this.protocols[name] = protocol;
+    this.protocols[name] = ojProtocol;
+}
+
+
+OJModel.prototype.addGlobal = function(ojGlobal)
+{
+    var name = ojGlobal.name;
+
+    if (this.protocols[name]) {
+        Utils.throwError(OJError.DuplicateGlobalDefinition, "Duplicate declaration of global '" + name + "'");
+    }
+
+    this.globals[name] = ojGlobal;
 }
 
 

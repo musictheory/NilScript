@@ -1,0 +1,42 @@
+//@opts = { }
+
+var assert = require("assert");
+
+// Check basic behavior
+(function() {
+
+@global function globalFunction(unused:String):Number {
+    return 1;
+}
+
+@global globalA:String = "a", globalB:String = "b", globalC:String= "c";
+
+}());
+
+// Check for false positives
+function checkMembers()
+{
+    var g = {
+        globalA: 1,
+        globalB: 2,
+        globalC: 3
+    };
+
+    return assert.equal(g.globalA + g.globalB + g.globalC, 6);
+}
+
+
+function runTest()
+{
+    checkMembers();
+
+    assert.equal(
+        globalA +
+        globalFunction("") +
+        globalB +
+        globalC, "a1bc");
+
+    return true;
+}
+
+runTest();

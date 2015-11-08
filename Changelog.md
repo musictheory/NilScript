@@ -5,7 +5,9 @@ CHANGELOG
 1.2.0
 - Update to Esprima 2.7 (#38)
 - Added @CLASS, @SEL, @FUNCTION for debugging (#58)
+- Category (#55) and protocol (#57) support
 - Throw errors when the compiler will generate invalid code (#60)
+- Major changes to the typechecker (#64, #65)
 
 1.1.1 - 1.1.4
 - Minor bug fixes and internal changes

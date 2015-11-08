@@ -182,24 +182,25 @@
         OJParameterType: 'OJParameterType',
         OJInstanceVariableDeclarations: 'OJInstanceVariableDeclarations',
         OJInstanceVariableDeclaration: 'OJInstanceVariableDeclaration',
-        OJAtPropertyDirective: 'OJAtPropertyDirective',
-        OJAtPropertyAttribute: 'OJAtPropertyAttribute',
-        OJAtSynthesizeDirective: 'OJAtSynthesizeDirective',
-        OJAtClassDirective: 'OJAtClassDirective',
-        OJAtSqueezeDirective    : 'OJAtSqueezeDirective',
-        OJAtSynthesizePair: 'OJAtSynthesizePair',
-        OJAtDynamicDirective: 'OJAtDynamicDirective',
-        OJAtSelectorDirective: 'OJAtSelectorDirective',
+        OJPropertyDirective: 'OJPropertyDirective',
+        OJPropertyAttribute: 'OJPropertyAttribute',
+        OJSynthesizeDirective: 'OJSynthesizeDirective',
+        OJClassDirective: 'OJClassDirective',
+        OJSqueezeDirective    : 'OJSqueezeDirective',
+        OJSynthesizePair: 'OJSynthesizePair',
+        OJDynamicDirective: 'OJDynamicDirective',
+        OJSelectorDirective: 'OJSelectorDirective',
         OJConstDeclaration: 'OJConstDeclaration',
         OJEnumDeclaration: 'OJEnumDeclaration',
         OJProtocolDefinition: 'OJProtocolDefinition',
         OJProtocolList: 'OJProtocolList',
         OJMethodDeclaration: 'OJMethodDeclaration',
-        OJAtAnyExpression: 'OJAtAnyExpression',
-        OJAtCastExpression: 'OJAtCastExpression',
+        OJAnyExpression: 'OJAnyExpression',
+        OJCastExpression: 'OJCastExpression',
         OJTypeAnnotation: 'OJTypeAnnotation',
-        OJAtTypedefDeclaration: 'OJTypedefDeclaration',
-        OJAtEachStatement: 'OJAtEachStatement'
+        OJTypedefDeclaration: 'OJTypedefDeclaration',
+        OJEachStatement: 'OJEachStatement',
+        OJGlobalDeclaration: 'OJGlobalDeclaration'
 //!oj: end changes
     };
 
@@ -410,7 +411,8 @@
                    (id === '@cast')           ||
                    (id === '@any')            ||
                    (id === '@typedef')        ||
-                   (id === '@each');
+                   (id === '@each')           ||
+                   (id === '@global');
         }
         //!oj: end changes
 
@@ -2541,8 +2543,8 @@
             return this;
         },
 
-        oj_finishAtPropertyDirective: function (id, attributes, parameterType) {
-            this.type = Syntax.OJAtPropertyDirective;
+        oj_finishPropertyDirective: function (id, attributes, parameterType) {
+            this.type = Syntax.OJPropertyDirective;
             this.id = id;
             this.attributes = attributes;
             this.parameterType = parameterType;
@@ -2550,52 +2552,52 @@
             return this;
         },
 
-        oj_finishAtPropertyAttribute: function (name, selector) {
-            this.type = Syntax.OJAtPropertyAttribute;
+        oj_finishPropertyAttribute: function (name, selector) {
+            this.type = Syntax.OJPropertyAttribute;
             this.name = name;
             this.selector = selector;
             this.finish();
             return this;
         },
 
-        oj_finishAtSynthesizeDirective: function (pairs) {
-            this.type = Syntax.OJAtSynthesizeDirective;
+        oj_finishSynthesizeDirective: function (pairs) {
+            this.type = Syntax.OJSynthesizeDirective;
             this.pairs = pairs;
             this.finish();
             return this;
         },
 
-        oj_finishAtClassDirective: function (ids) {
-            this.type = Syntax.OJAtClassDirective;
+        oj_finishClassDirective: function (ids) {
+            this.type = Syntax.OJClassDirective;
             this.ids = ids;
             this.finish();
             return this;        
         },
 
-        oj_finishAtSqueezeDirective: function (ids) {
-            this.type = Syntax.OJAtSqueezeDirective;
+        oj_finishSqueezeDirective: function (ids) {
+            this.type = Syntax.OJSqueezeDirective;
             this.ids = ids;
             this.finish();
             return this;        
         },
 
-        oj_finishAtSynthesizePair: function (id, backing) {
-            this.type = Syntax.OJAtSynthesizePair;
+        oj_finishSynthesizePair: function (id, backing) {
+            this.type = Syntax.OJSynthesizePair;
             this.id = id;
             this.backing = backing;
             this.finish();
             return this;
         },
 
-        oj_finishAtDynamicDirective: function (ids) {
-            this.type = Syntax.OJAtDynamicDirective;
+        oj_finishDynamicDirective: function (ids) {
+            this.type = Syntax.OJDynamicDirective;
             this.ids = ids;
             this.finish();
             return this;
         },
 
-        oj_finishAtSelectorDirective: function (name) {
-            this.type = Syntax.OJAtSelectorDirective;
+        oj_finishSelectorDirective: function (name) {
+            this.type = Syntax.OJSelectorDirective;
             this.name = name;
             this.finish();
             return this;
@@ -2644,16 +2646,16 @@
             return this;
         },
 
-        oj_finishAtCastExpression: function (id, argument) {
-            this.type = Syntax.OJAtCastExpression;
+        oj_finishCastExpression: function (id, argument) {
+            this.type = Syntax.OJCastExpression;
             this.id = id;
             this.argument = argument;
             this.finish();
             return this;
         },
 
-        oj_finishAtAnyExpression: function (argument) {
-            this.type = Syntax.OJAtAnyExpression;
+        oj_finishAnyExpression: function (argument) {
+            this.type = Syntax.OJAnyExpression;
             this.argument = argument;
             this.finish();
             return this;
@@ -2666,19 +2668,27 @@
             return this;
         },
  
-        oj_finishAtTypedefDeclaration: function (fromName, toName) {
-            this.type = Syntax.OJAtTypedefDeclaration;
+        oj_finishTypedefDeclaration: function (fromName, toName) {
+            this.type = Syntax.OJTypedefDeclaration;
             this.from = fromName;
             this.to = toName;
             this.finish();
             return this;
         },
 
-        oj_finishAtEachStatement: function (left, right, body) {
-            this.type = Syntax.OJAtEachStatement;
+        oj_finishEachStatement: function (left, right, body) {
+            this.type = Syntax.OJEachStatement;
             this.left = left;
             this.right = right;
             this.body = body;
+            this.finish();
+            return this;
+        },
+
+        oj_finishGlobalDeclaration: function (declaration, declarators) {
+            this.type = Syntax.OJGlobalDeclaration;
+            this.declaration = declaration;
+            this.declarators = declarators;
             this.finish();
             return this;
         },
@@ -3581,7 +3591,7 @@
             }
 //!oj: start changes
             if (matchKeyword('@selector')) {
-                return oj_parseAtSelector();
+                return oj_parseSelectorDirective();
             }
 //!oj: end changes
             if (matchKeyword('class')) {
@@ -3859,9 +3869,9 @@
             isAssignmentTarget = isBindingElement = false;
 //!oj: start changes
         } else if (matchKeyword('@cast')) {
-            expr = oj_parseAtCastExpression();
+            expr = oj_parseCastExpression();
         } else if (matchKeyword('@any')) {
-            expr = oj_parseAtAnyExpression();
+            expr = oj_parseAnyExpression();
 //!oj: end changes
         } else {
             expr = parsePostfixExpression();
@@ -4293,6 +4303,10 @@
                 return parseLexicalDeclaration({inFor: false});
             case 'function':
                 return parseFunctionDeclaration(new Node());
+//!oj: start changes
+            case '@global':
+                return oj_parseGlobalDeclaration();
+//!oj: end changes
             case 'class':
                 return parseClassDeclaration();
             }
@@ -5116,9 +5130,9 @@
             case '@protocol':
                 return oj_parseProtocolDefinition(node);
             case '@class':
-                return oj_parseAtClassDirective(node);
+                return oj_parseClassDirective(node);
             case '@squeeze':
-                return oj_parseAtSqueezeDirective(node);
+                return oj_parseSqueezeDirective(node);
             case '@const':
                 return oj_parseConstStatement(node);
             case '@enum':
@@ -5128,7 +5142,9 @@
             case '@typedef':
                 return oj_parseTypedefDefinition(node);
             case '@each':
-                return oj_parseAtEachStatement(node);
+                return oj_parseEachStatement(node);
+            case '@global':
+                return oj_parseGlobalDeclaration(node);
 //!oj: End changes
             default:
                 break;
@@ -5354,7 +5370,7 @@
             message = tmp.message;
         }
 
-        var annotation = match(":") ? oj_parseTypeAnnotation() : null;  //!oj: Allow annotations
+        var annotation = match(":") ? oj_parseTypeAnnotation(true) : null;  //!oj: Allow annotations
 
         previousStrict = strict;
         body = parseFunctionSourceElements();
@@ -5413,7 +5429,7 @@
             message = tmp.message;
         }
 
-        var annotation = match(":") ? oj_parseTypeAnnotation() : null;  //!oj: Allow annotations
+        var annotation = match(":") ? oj_parseTypeAnnotation(true) : null;  //!oj: Allow annotations
 
         previousStrict = strict;
         body = parseFunctionSourceElements();
@@ -6099,7 +6115,7 @@
         return node.oj_finishSelector(name);
     }
 
-    function oj_parseAtSelector() {
+    function oj_parseSelectorDirective() {
         var id, name = "", node = new Node();
 
         expectKeyword("@selector");
@@ -6117,10 +6133,10 @@
 
         expect(")");
 
-        return node.oj_finishAtSelectorDirective(name);
+        return node.oj_finishSelectorDirective(name);
     }
 
-    function oj_parseAtPropertyAttribute() {
+    function oj_parsePropertyAttribute() {
         var names, name, allowedNames, token, selector = null, node = new Node();
 
         token = lookahead;
@@ -6135,10 +6151,10 @@
             throwUnexpectedToken(token);
         }
 
-        return node.oj_finishAtPropertyAttribute(name, selector);
+        return node.oj_finishPropertyAttribute(name, selector);
     }
 
-    function oj_parseAtPropertyDirective() {
+    function oj_parsePropertyDirective() {
         var attributes = [ ], parameterType, id, node = new Node();
 
         expectKeyword('@property');
@@ -6146,11 +6162,11 @@
         if (match('(')) {
             expect('(');
 
-            attributes.push(oj_parseAtPropertyAttribute());
+            attributes.push(oj_parsePropertyAttribute());
 
             while (match(',')) {
                 expect(',');
-                attributes.push(oj_parseAtPropertyAttribute());
+                attributes.push(oj_parsePropertyAttribute());
             }
 
             expect(')');
@@ -6161,10 +6177,10 @@
 
         consumeSemicolon();
 
-        return node.oj_finishAtPropertyDirective(id, attributes, parameterType);
+        return node.oj_finishPropertyDirective(id, attributes, parameterType);
     }
 
-    function oj_parseAtSynthesizePair() {
+    function oj_parseSynthesizePair() {
         var name, ivar = null, node = new Node();
 
         name = parseVariableIdentifier();
@@ -6174,27 +6190,27 @@
             ivar = parseVariableIdentifier();
         }
 
-        return node.oj_finishAtSynthesizePair(name, ivar);
+        return node.oj_finishSynthesizePair(name, ivar);
     }
     
-    function oj_parseAtSynthesizeDirective() {
+    function oj_parseSynthesizeDirective() {
         var pairs = [ ], node = new Node();
 
         expectKeyword('@synthesize');
 
-        pairs.push(oj_parseAtSynthesizePair());
+        pairs.push(oj_parseSynthesizePair());
 
         while (match(',')) {
             expect(',');
-            pairs.push(oj_parseAtSynthesizePair());
+            pairs.push(oj_parseSynthesizePair());
         }
 
         consumeSemicolon();
 
-        return node.oj_finishAtSynthesizeDirective(pairs);
+        return node.oj_finishSynthesizeDirective(pairs);
     }
 
-    function oj_parseAtDynamicDirective() {
+    function oj_parseDynamicDirective() {
         var ids = [ ], node = new Node();
 
         expectKeyword('@dynamic');
@@ -6208,11 +6224,19 @@
 
         consumeSemicolon();
 
-        return node.oj_finishAtDynamicDirective(ids);
+        return node.oj_finishDynamicDirective(ids);
     }
 
-    function oj_parseType() {
-        var result = parseVariableIdentifier().name;
+    function oj_parseType(allowVoid) {
+        var result;
+
+        if (matchKeyword("void")) {
+            lex();
+            result = "void";
+        } else {
+            result = parseVariableIdentifier().name;
+        }
+
         if (!match('<')) return result;
 
         // Handle id<Foo>, id<Foo, Bar>, id<Foo<Bar, Foo<Baz>>, etc
@@ -6274,7 +6298,7 @@
 
     function oj_parseParameterType(identifierOnly) {
         var node = new Node();
-        return node.oj_finishParameterType(oj_parseType());
+        return node.oj_finishParameterType(oj_parseType(false));
     }
 
     function oj_parseParameterTypeOrKeyword(keyword) {
@@ -6388,13 +6412,13 @@
             } else if (token.type === Token.Keyword) {
                 switch (token.value) {
                 case '@property':
-                    sourceElement = oj_parseAtPropertyDirective();
+                    sourceElement = oj_parsePropertyDirective();
                     break;
                 case '@synthesize':
-                    sourceElement = oj_parseAtSynthesizeDirective();
+                    sourceElement = oj_parseSynthesizeDirective();
                     break;
                 case '@dynamic':
-                    sourceElement = oj_parseAtDynamicDirective();
+                    sourceElement = oj_parseDynamicDirective();
                     break;
                 default:
                     sourceElement = parseStatementListItem();
@@ -6424,7 +6448,7 @@
             lex();
             parameterType.oj_finishParameterType("var");
         } else {
-            parameterType.oj_finishParameterType(oj_parseType());
+            parameterType.oj_finishParameterType(oj_parseType(false));
         }
 
         ivars.push(parseVariableIdentifier());
@@ -6597,7 +6621,7 @@
         return node.oj_finishProtocolDefinition(id, protocolList, body);
     }
 
-    function oj_parseAtClassDirective(node) {
+    function oj_parseClassDirective(node) {
         var ids = [ ];
 
         expectKeyword('@class');
@@ -6611,10 +6635,10 @@
 
         consumeSemicolon();
 
-        return node.oj_finishAtClassDirective(ids);
+        return node.oj_finishClassDirective(ids);
     }
 
-    function oj_parseAtSqueezeDirective(node) {
+    function oj_parseSqueezeDirective(node) {
         var ids = [ ];
 
         expectKeyword('@squeeze');
@@ -6628,10 +6652,10 @@
 
         consumeSemicolon();
 
-        return node.oj_finishAtSqueezeDirective(ids);
+        return node.oj_finishSqueezeDirective(ids);
     }
 
-    function oj_parseAtCastExpression() {
+    function oj_parseCastExpression() {
         var id, argument, node = new Node();
 
         expectKeyword('@cast');
@@ -6653,10 +6677,10 @@
 
         expect(')');
 
-        return node.oj_finishAtCastExpression(id, argument);
+        return node.oj_finishCastExpression(id, argument);
     }
 
-    function oj_parseAtAnyExpression() {
+    function oj_parseAnyExpression() {
         var id, argument, node = new Node();
 
         expectKeyword('@any');
@@ -6664,7 +6688,7 @@
         argument = parseExpression();
         expect(')');
 
-        return node.oj_finishAtAnyExpression(argument);
+        return node.oj_finishAnyExpression(argument);
     }
 
     function oj_parseMessageReceiver() {
@@ -6854,18 +6878,18 @@
 
         expectKeyword('@typedef');
 
-        fromName = oj_parseType();
+        fromName = oj_parseType(true);
         toName   = parseVariableIdentifier().name;
 
         consumeSemicolon();
 
-        return node.oj_finishAtTypedefDeclaration(fromName, toName);
+        return node.oj_finishTypedefDeclaration(fromName, toName);
     }
 
-    function oj_parseTypeAnnotation() {
+    function oj_parseTypeAnnotation(allowVoid) {
         var node = new Node();
         expect(":");
-        return node.oj_finishTypeAnnotation(oj_parseType());
+        return node.oj_finishTypeAnnotation(oj_parseType(allowVoid));
     }
 
     function oj_parseVariableIdentifierWithOptionalTypeAnnotation(kind) {
@@ -6892,13 +6916,13 @@
         }
 
         if (match(":")) {
-            return node.oj_finishIdentifierWithAnnotation(token.value, oj_parseTypeAnnotation());
+            return node.oj_finishIdentifierWithAnnotation(token.value, oj_parseTypeAnnotation(false));
         } else {
             return node.finishIdentifier(token.value);
         }
     }
 
-    function oj_parseAtEachStatement(node) {
+    function oj_parseEachStatement(node) {
         var left, right, body, oldInIteration;
 
         expectKeyword('@each');
@@ -6929,7 +6953,21 @@
 
         state.inIteration = oldInIteration;
 
-        return node.oj_finishAtEachStatement(left, right, body);
+        return node.oj_finishEachStatement(left, right, body);
+    }
+
+    function oj_parseGlobalDeclaration(node) {
+        var node = new Node(), declaration, declarators;
+
+        expectKeyword('@global');
+
+        if (matchKeyword("function")) {
+            declaration = parseFunctionDeclaration(new Node());
+        } else {
+            declarators = parseBindingList('var', {inFor: false});
+        }
+
+        return node.oj_finishGlobalDeclaration(declaration, declarators);
     }
 //!oj: end changes
 

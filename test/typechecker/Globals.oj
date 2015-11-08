@@ -1,0 +1,12 @@
+
+
+(function() {
+@global function TakesNumber(x : Number) : void { }
+@global GlobalString : String = "";
+}());
+
+TakesNumber(GlobalString); //@typecheck 2322,Number,String
+
+
+
+true;

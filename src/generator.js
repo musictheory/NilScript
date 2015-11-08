@@ -18,12 +18,18 @@ var OJModel    = require("./model").OJModel;
 var OJError    = require("./errors").OJError;
 var OJWarning  = require("./errors").OJWarning;
 
-var OJGlobalVariable          = "$oj_oj";
+var TypecheckerSymbols = require("./model/OJSymbolTyper").TypecheckerSymbols;
+
+var OJRootVariable            = "$oj_oj";
 var OJClassMethodsVariable    = "$oj_s";
 var OJInstanceMethodsVariable = "$oj_m";
 var OJTemporaryVariablePrefix = "$oj_t_";
 var OJTemporaryReturnVariable = "$oj_r";
 var OJSuperVariable           = "$oj_super";
+
+var OJRootWithGlobalPrefix = OJRootVariable + "._g."
+var OJRootWithClassPrefix  = OJRootVariable + "._cls.";
+
 
 var LanguageEcmascript5 = "ecmascript5";
 var LanguageTypechecker = "typechecker";
@@ -79,6 +85,14 @@ function Generator(ast, model, modifier, forTypechecker, options)
             }
         });
     }
+
+    _.each(model.globals, function(global) {
+        var name = global.name;
+
+        if (inlines[name] === undefined) {
+            inlines[name] = OJRootWithGlobalPrefix + name;
+        }
+    });
 
     var additionalInlines = options["additional-inlines"];
     if (additionalInlines) {
@@ -148,7 +162,7 @@ Generator.prototype.generate = function()
     function getClassAsRuntimeVariable(className)
     {
         if (language === LanguageEcmascript5) {
-            return OJGlobalVariable + "._cls." + symbolTyper.getSymbolForClassName(className);
+            return OJRootWithClassPrefix + symbolTyper.getSymbolForClassName(className);
         }
 
         return symbolTyper.getSymbolForClassName(className);
@@ -427,7 +441,7 @@ Generator.prototype.generate = function()
         // Slow path
         replaceMessageSelectors();
 
-        modifier.from(node).to(receiver).replace(OJGlobalVariable + ".msgSend(");
+        modifier.from(node).to(receiver).replace(OJRootVariable + ".msgSend(");
 
         if (receiver.type == Syntax.Identifier && model.classes[receiver.name]) {
             modifier.select(receiver).replace(getClassAsRuntimeVariable(receiver.name));
@@ -468,11 +482,11 @@ Generator.prototype.generate = function()
             if (node.category) {
                 var categorySelector = "{ " + symbolTyper.getSymbolForClassName(node.category) + ":1 }";
 
-                startText = OJGlobalVariable + "._registerCategory(" +
+                startText = OJRootVariable + "._registerCategory(" +
                     clsSelector + ", ";
 
             } else {
-                startText = "var " + node.id.name + " = " + OJGlobalVariable + "._registerClass(" +
+                startText = "var " + node.id.name + " = " + OJRootVariable + "._registerClass(" +
                     clsSelector + ", " +
                     (superClass ? superSelector : "null") + ", ";
             }
@@ -484,7 +498,7 @@ Generator.prototype.generate = function()
                 constructorCallSuper +
                 constructorSetIvars  +
                 "this.constructor = " + node.id.name + ";" +
-                "this.$oj_id = ++" + OJGlobalVariable + "._id;" +
+                "this.$oj_id = ++" + OJRootVariable + "._id;" +
                 "}";
 
             endText = "return " + node.id.name + ";});";
@@ -530,7 +544,7 @@ Generator.prototype.generate = function()
                     var outputType = methodType && methodType.value;
 
                     if (outputType == "id") {
-                        outputType = "$oj_$id_intersection";
+                        outputType = TypecheckerSymbols.IdIntersection;
                     } else if (outputType) {
                         outputType = symbolTyper.toTypecheckerType(methodType.value);
                     }
@@ -546,7 +560,7 @@ Generator.prototype.generate = function()
             var returnType = getCurrentMethodInModel().returnType;
 
             if (returnType == "id") {
-                returnType = "$oj_$id_union";
+                returnType = TypecheckerSymbols.IdUnion;
             } else {
                 returnType = symbolTyper.toTypecheckerType(returnType, currentClass);
             }
@@ -699,14 +713,14 @@ Generator.prototype.generate = function()
         }
     }
 
-    function handleVariableDeclaration(node)
+    function handleVariableDeclaration(node, parent)
     {
         for (let declaration of node.declarations) {
             checkRestrictedUsage(declaration.id);
         }
     }
 
-    function handleAtPropertyDirective(node)
+    function handlePropertyDirective(node)
     {
         var name = node.id.name;
 
@@ -736,7 +750,7 @@ Generator.prototype.generate = function()
         }
     }
 
-    function handleAtSelectorDirective(node)
+    function handleSelectorDirective(node)
     {
         var name = symbolTyper.getSymbolForSelectorName(node.name);
 
@@ -798,7 +812,7 @@ Generator.prototype.generate = function()
         }
     }
 
-    function handleAtCastExpression(node)
+    function handleCastExpression(node)
     {
         var before = "(";
 
@@ -810,7 +824,7 @@ Generator.prototype.generate = function()
         modifier.from(node.argument).to(node).replace(")");
     }
 
-    function handleAtAnyExpression(node)
+    function handleAnyExpression(node)
     {
         var before = (language == LanguageTypechecker) ? "<any>(" : "(";
 
@@ -883,6 +897,49 @@ Generator.prototype.generate = function()
             modifier.from(node.right).to(node.body).replace(initRight + "; " + test + "; " + increment + ") ");
         } else {
             modifier.from(node).to(node.body).replace("for (" + initLeft + initRight + "; " + test + "; " + increment + ") ");
+        }
+    }
+
+    function handleGlobalDeclaration(node)
+    {
+        var declaration = node.declaration;
+        var declarators = node.declarators;
+
+        if (language !== LanguageTypechecker) {
+            if (declaration) {
+                modifier.from(node).to(declaration).replace(OJRootWithGlobalPrefix + declaration.id.name + "=");
+                modifier.select(declaration.id).remove();
+                declaration.id.oj_skip = true;
+
+            } else if (declarators) {
+                modifier.from(node).to(declarators[0]).remove();
+
+                _.each(declarators, function(declarator) {
+                    modifier.select(declarator.id).replace(OJRootWithGlobalPrefix + declarator.id.name);
+                    declarator.id.oj_skip = true;
+                })
+            }
+
+        } else {
+            if (declaration) {
+                modifier.from(node).to(declaration.id).replace("(function ");
+                modifier.select(declaration.id).remove();
+                modifier.after(node).insert(");");
+
+                declaration.id.oj_skip = true;
+
+            } else if (declarators) {
+                modifier.from(node).to(declarators[0]).replace("(function() { var ");
+
+                // modifier.from(node).to(declarators[0]).replace("class " + globalClassName + " {");
+                modifier.after(node).insert("});");
+
+                var index = 0;
+                _.each(declarators, function(declarator) {
+                    modifier.select(declarator.id).replace("a" + index++);
+                    declarator.id.oj_skip = true;
+                });
+            }
         }
     }
 
@@ -966,12 +1023,12 @@ Generator.prototype.generate = function()
         if (node.oj_skip) return Traverser.SkipNode;
 
         if (type === Syntax.OJProtocolDefinition                 ||
-            type === Syntax.OJAtClassDirective                   ||
-            type === Syntax.OJAtSqueezeDirective                 ||
+            type === Syntax.OJClassDirective                     ||
+            type === Syntax.OJSqueezeDirective                   ||
             type === Syntax.OJInstanceVariableDeclarations       ||
-            type === Syntax.OJAtSynthesizeDirective              ||
-            type === Syntax.OJAtDynamicDirective                 ||
-            type === Syntax.OJAtTypedefDeclaration               ||
+            type === Syntax.OJSynthesizeDirective                ||
+            type === Syntax.OJDynamicDirective                   ||
+            type === Syntax.OJTypedefDeclaration                 ||
           ((type === Syntax.OJEnumDeclaration)  && removeEnums)  ||
           ((type === Syntax.OJConstDeclaration) && removeConsts)
         ) {
@@ -996,12 +1053,12 @@ Generator.prototype.generate = function()
         } else if (type === Syntax.OJMessageExpression) {
             handleMessageExpression(node);
 
-        } else if (type === Syntax.OJAtPropertyDirective) {
-            handleAtPropertyDirective(node);
+        } else if (type === Syntax.OJPropertyDirective) {
+            handlePropertyDirective(node);
             return Traverser.SkipNode;
 
-        } else if (type === Syntax.OJAtSelectorDirective) {
-            handleAtSelectorDirective(node);
+        } else if (type === Syntax.OJSelectorDirective) {
+            handleSelectorDirective(node);
 
         } else if (type === Syntax.OJEnumDeclaration) {
             handleEnumDeclaration(node);
@@ -1009,17 +1066,20 @@ Generator.prototype.generate = function()
         } else if (type === Syntax.OJConstDeclaration) {
             handleConstDeclaration(node);
 
-        } else if (type === Syntax.OJAtCastExpression) {
-            handleAtCastExpression(node);
+        } else if (type === Syntax.OJCastExpression) {
+            handleCastExpression(node);
 
-        } else if (type === Syntax.OJAtAnyExpression) {
-            handleAtAnyExpression(node);
+        } else if (type === Syntax.OJAnyExpression) {
+            handleAnyExpression(node);
 
         } else if (type === Syntax.OJTypeAnnotation) {
             handleTypeAnnotation(node, parent);
 
-        } else if (type === Syntax.OJAtEachStatement) {
+        } else if (type === Syntax.OJEachStatement) {
             handleEachStatement(node);
+
+        } else if (type === Syntax.OJGlobalDeclaration) {
+            handleGlobalDeclaration(node);
 
         } else if (type === Syntax.OJPredefinedMacro) {
             handlePredefinedMacro(node);

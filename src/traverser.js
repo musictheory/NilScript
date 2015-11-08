@@ -26,23 +26,24 @@ ojVisitorKeys[ Syntax.OJSelector                     ] = [ ];
 ojVisitorKeys[ Syntax.OJParameterType                ] = [ ];
 ojVisitorKeys[ Syntax.OJInstanceVariableDeclarations ] = [ "declarations" ];
 ojVisitorKeys[ Syntax.OJInstanceVariableDeclaration  ] = [ "parameterType", "ivars" ];
-ojVisitorKeys[ Syntax.OJAtPropertyDirective          ] = [ "attributes", "parameterType", "id" ];
-ojVisitorKeys[ Syntax.OJAtPropertyAttribute          ] = [ ];
-ojVisitorKeys[ Syntax.OJAtSynthesizeDirective        ] = [ "pairs" ];
-ojVisitorKeys[ Syntax.OJAtClassDirective             ] = [ "ids" ];
-ojVisitorKeys[ Syntax.OJAtSqueezeDirective           ] = [ "ids" ];
-ojVisitorKeys[ Syntax.OJAtSynthesizePair             ] = [ "id", "backing" ];
-ojVisitorKeys[ Syntax.OJAtDynamicDirective           ] = [ "ids" ];
-ojVisitorKeys[ Syntax.OJAtSelectorDirective          ] = [ ];
+ojVisitorKeys[ Syntax.OJPropertyDirective            ] = [ "attributes", "parameterType", "id" ];
+ojVisitorKeys[ Syntax.OJPropertyAttribute            ] = [ ];
+ojVisitorKeys[ Syntax.OJSynthesizeDirective          ] = [ "pairs" ];
+ojVisitorKeys[ Syntax.OJClassDirective               ] = [ "ids" ];
+ojVisitorKeys[ Syntax.OJSqueezeDirective             ] = [ "ids" ];
+ojVisitorKeys[ Syntax.OJSynthesizePair               ] = [ "id", "backing" ];
+ojVisitorKeys[ Syntax.OJDynamicDirective             ] = [ "ids" ];
+ojVisitorKeys[ Syntax.OJSelectorDirective            ] = [ ];
 ojVisitorKeys[ Syntax.OJConstDeclaration             ] = [ "declarations" ];
 ojVisitorKeys[ Syntax.OJEnumDeclaration              ] = [ "declarations" ];
 ojVisitorKeys[ Syntax.OJProtocolDefinition           ] = [ "id", "body" ];
 ojVisitorKeys[ Syntax.OJMethodDeclaration            ] = [ "returnType", "methodSelectors" ];
-ojVisitorKeys[ Syntax.OJAtCastExpression             ] = [ "id", "argument" ];
-ojVisitorKeys[ Syntax.OJAtAnyExpression              ] = [ "argument" ];
-ojVisitorKeys[ Syntax.OJAtTypedefDeclaration         ] = [ "from", "to" ];
-ojVisitorKeys[ Syntax.OJAtEachStatement              ] = [ "left", "right", "body" ];
+ojVisitorKeys[ Syntax.OJCastExpression               ] = [ "id", "argument" ];
+ojVisitorKeys[ Syntax.OJAnyExpression                ] = [ "argument" ];
+ojVisitorKeys[ Syntax.OJTypedefDeclaration           ] = [ "from", "to" ];
+ojVisitorKeys[ Syntax.OJEachStatement                ] = [ "left", "right", "body" ];
 ojVisitorKeys[ Syntax.OJTypeAnnotation               ] = [ ];
+ojVisitorKeys[ Syntax.OJGlobalDeclaration            ] = [ "declaration", "declarators" ];
 
 // Patch FunctionExpression, FunctionDeclaration, and Identifier to deal with type annotations
 //

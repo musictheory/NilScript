@@ -23,6 +23,19 @@ var OJStaticProtocolPrefix    = "$oj_P_";   // Typechecker only
 var OJMethodPrefix            = "$oj_f_";
 var OJIvarPrefix              = "$oj_i_";
 
+var TypecheckerSymbols = {
+    Combined:       "$oj_$Combined",
+    StaticCombined: "$oj_$StaticCombined",
+
+    Base:           "$oj_$Base",
+    StaticBase:     "$oj_$StaticBase",
+
+    IdIntersection: "$oj_$id_intersection",
+    IdUnion:        "$oj_$id_union",
+
+    GlobalType:     "$oj_$Globals"
+};
+
 
 var sBase52Digits = "etnrisouaflchpdvmgybwESxTNCkLAOMDPHBjFIqRUzWXVJKQGYZ0516372984";
 
@@ -146,10 +159,11 @@ OJSymbolTyper.prototype._setupTypecheckerMaps = function()
         "undefined[]":      "Array",
         "boolean":          "BOOL",
         "number":           "Number",
-        "string":           "String",
-        "$oj_$Base":        "OJ.BaseObject",
-        "$oj_$StaticBase":  "Class"
+        "string":           "String"
     });
+
+    fromMap[TypecheckerSymbols.Base] = "OJ.BaseObject";
+    fromMap[TypecheckerSymbols.StaticBase] = "Class";
 
     this._toTypecheckerMap   = toMap;
     this._fromTypecheckerMap = fromMap;
@@ -174,7 +188,7 @@ OJSymbolTyper.prototype._getBracketedType = function(inType, currentClass)
             return "{[i:string ]:" + getStringWithSegments(rest) + "}";
 
         } else if (first == "id" && (rest.length > 0)) {
-            var protocolSymbols = [ "$oj_$Base" ];
+            var protocolSymbols = [ TypecheckerSymbols.Base ];
 
             _.each(rest[0].split(","), function(protocol) {
                 protocolSymbols.push(self.getSymbolForProtocolName(protocol));
@@ -203,6 +217,8 @@ OJSymbolTyper.prototype.enrollForSqueezing = function(name)
 
 OJSymbolTyper.prototype.toTypecheckerType = function(rawInType, currentClass)
 {
+    if (!rawInType) return "any";
+
     if (!this._toTypecheckerMap) {
         this._setupTypecheckerMaps();
     }
@@ -276,12 +292,16 @@ OJSymbolTyper.prototype.toTypecheckerType = function(rawInType, currentClass)
 
 OJSymbolTyper.prototype.fromTypecheckerType = function(rawInType)
 {
+    if (!this._fromTypecheckerMap) {
+        this._setupTypecheckerMaps();
+    }
+
     var inType  = rawInType.replace(/[\s;]+/g, ""); // Remove whitespace and semicolon
     var outType = this._fromTypecheckerMap[inType];
     var m;
 
     if (!outType) {
-        if (inType.indexOf("$oj_$Combined") >= 0 || inType.indexOf("$oj_$StaticCombined") >= 0) {
+        if (inType.indexOf(TypecheckerSymbols.Combined) >= 0 || inType.indexOf(TypecheckerSymbols.StaticCombined) >= 0) {
             outType = "id";
         } else if (inType.match(/\[\]$/)) {
             outType = "Array<" + this.fromTypecheckerType(inType.slice(0, -2)) + ">";
@@ -390,5 +410,6 @@ OJSymbolTyper.prototype.getSymbolForIvar = function(ivar)
     return this.getSymbolForClassNameAndIvarName(ivar.className, ivar.name);
 }
 
+OJSymbolTyper.TypecheckerSymbols = TypecheckerSymbols;
 
 module.exports = OJSymbolTyper;

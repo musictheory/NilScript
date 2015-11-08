@@ -14,6 +14,7 @@ OJError.DuplicateClassDefinition       = "OJDuplicateClassDefinitionError";
 OJError.DuplicatePropertyDefinition    = "OJDuplicatePropertyDefinitionError";
 OJError.DuplicateMethodDefinition      = "OJDuplicateMethodDefinitionError";
 OJError.DuplicateProtocolDefinition    = "OJDuplicateProtocolDefinition";
+OJError.DuplicateGlobalDefinition      = "OJDuplicateGlobalDefinition";
 OJError.DuplicateIvarDefinition        = "OJDuplicateIvarDefinitionError";
 OJError.DuplicateEnumDefinition        = "OJDuplicateEnumDefinition";
 OJError.UnknownProperty                = "OJUnknownPropertyError";
