@@ -5,7 +5,7 @@
 @global GlobalString : String = "";
 }());
 
-TakesNumber(GlobalString); //@typecheck 2322,Number,String
+TakesNumber(GlobalString); //@typecheck 2345,String,Number
 
 
 
