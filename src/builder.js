@@ -132,7 +132,7 @@ Builder.prototype.build = function()
         currentProtocol = protocol;
     }
 
-    function handleAtClassDirective(node)
+    function handleClassDirective(node)
     {
         var ids = node.ids;
         var i, length;
@@ -145,7 +145,7 @@ Builder.prototype.build = function()
         }
     }
  
-    function handleAtSqueezeDirective(node)
+    function handleSqueezeDirective(node)
     {
         node.ids.forEach(function(id) {
             model.getSymbolTyper().enrollForSqueezing(id.name, true);
@@ -175,7 +175,7 @@ Builder.prototype.build = function()
         }
     }
 
-    function handleAtPropertyDirective(node)
+    function handlePropertyDirective(node)
     {
         var name = node.id.name;
 
@@ -211,7 +211,7 @@ Builder.prototype.build = function()
         currentClass.addProperty(property);
     }        
 
-    function handleAtSynthesizeDirective(node) {
+    function handleSynthesizeDirective(node) {
         var pairs = node.pairs;
 
         if (currentCategoryName) {
@@ -227,7 +227,7 @@ Builder.prototype.build = function()
         }        
     }
 
-    function handleAtDynamicDirective(node) {
+    function handleDynamicDirective(node) {
         var ids = node.ids;
 
         if (currentCategoryName) {
@@ -240,7 +240,7 @@ Builder.prototype.build = function()
         }
     }
 
-    function handleAtTypedefDeclaration(node)
+    function handleTypedefDeclaration(node)
     {
         model.aliasType(node.from, node.to);
     }
@@ -337,6 +337,39 @@ Builder.prototype.build = function()
         }
     }
 
+    function handleGlobalDeclaration(inNode)
+    {
+        function addGlobalWithNode(node) {
+            var name = node.id.name;
+            var annotation;
+
+            if (node.type === Syntax.FunctionDeclaration ||
+                node.type === Syntax.FunctionExpression)
+            {
+                annotation = [ ];
+                annotation.push(node.annotation && node.annotation.value);
+
+                _.each(node.params, function(param) {
+                    annotation.push(param.annotation.value);
+                });
+
+            } else {
+                annotation = node.id.annotation && node.id.annotation.value;
+            }
+
+            model.addGlobal(new Model.OJGlobal(name, annotation));
+        }
+
+        if (inNode.declaration) {
+            addGlobalWithNode(inNode.declaration);
+
+        } else {
+            _.each(inNode.declarators, function(declarator) {
+                addGlobalWithNode(declarator);
+            });
+        }
+    }
+
     function handleVariableDeclarator(node)
     {
         if (node.id.name == "self" && currentMethod) {
@@ -371,26 +404,26 @@ Builder.prototype.build = function()
             } else if (type === Syntax.OJProtocolDefinition) {
                 handleProtocolDefinition(node);
 
-            } else if (type === Syntax.OJAtClassDirective) {
-                handleAtClassDirective(node);
+            } else if (type === Syntax.OJClassDirective) {
+                handleClassDirective(node);
 
-            } else if (type === Syntax.OJAtSqueezeDirective) {
-                handleAtSqueezeDirective(node);
+            } else if (type === Syntax.OJSqueezeDirective) {
+                handleSqueezeDirective(node);
 
             } else if (type === Syntax.OJInstanceVariableDeclaration) {
                 handleInstanceVariableDeclaration(node);
 
-            } else if (type === Syntax.OJAtPropertyDirective) {
-                handleAtPropertyDirective(node);
+            } else if (type === Syntax.OJPropertyDirective) {
+                handlePropertyDirective(node);
 
-            } else if (type === Syntax.OJAtSynthesizeDirective) {
-                handleAtSynthesizeDirective(node);
+            } else if (type === Syntax.OJSynthesizeDirective) {
+                handleSynthesizeDirective(node);
 
-            } else if (type === Syntax.OJAtDynamicDirective) {
-                handleAtDynamicDirective(node);
+            } else if (type === Syntax.OJDynamicDirective) {
+                handleDynamicDirective(node);
 
-            } else if (type === Syntax.OJAtTypedefDeclaration) {
-                handleAtTypedefDeclaration(node);
+            } else if (type === Syntax.OJTypedefDeclaration) {
+                handleTypedefDeclaration(node);
 
             } else if (type === Syntax.OJMethodDefinition) {
                 handleMethodDefinition(node);
@@ -403,6 +436,9 @@ Builder.prototype.build = function()
 
             } else if (type === Syntax.OJConstDeclaration) {
                 handleConstDeclaration(node);
+
+            } else if (type === Syntax.OJGlobalDeclaration) {
+                handleGlobalDeclaration(node);
 
             } else if (type === Syntax.VariableDeclarator) {
                 handleVariableDeclarator(node);

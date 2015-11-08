@@ -348,6 +348,7 @@ var oj = {
     _registerClass:           _registerClass,
     _registerCategory:        _registerCategory,
     _cls:                     _classNameToClassMap,
+    _g:                       { },
     _reset:                   _reset,
 
     noConflict:               noConflict,

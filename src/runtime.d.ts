@@ -9,6 +9,7 @@
 interface $oj_$SEL   { }
 
 interface $oj_$Runtime {
+    _g : $oj_$Globals;
     noConflict() : $oj_$Runtime;
 
     getClassList() : Array<$oj_$StaticBase>;

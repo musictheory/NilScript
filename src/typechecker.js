@@ -14,6 +14,8 @@ var dirname = require("path").dirname;
 var _       = require("lodash");
 var ts      = require("typescript");
 
+var TypecheckerSymbols = require("./model/OJSymbolTyper").TypecheckerSymbols;
+
 
 var sBlacklistCodes  = [ 2417 ];
 
@@ -137,7 +139,7 @@ TypeChecker.prototype._generateDefs = function(model)
             var variableName  = method.variableNames[i] || ("a" + i);
 
             if (parameterType == "id") {
-                parameterType = "$oj_$id_union"
+                parameterType = TypecheckerSymbols.IdUnion;
             } else {
                 parameterType = symbolTyper.toTypecheckerType(parameterType);
             }
@@ -148,7 +150,7 @@ TypeChecker.prototype._generateDefs = function(model)
         var returnType;
 
         if (method.returnType == "id") {
-            returnType = "$oj_$id_intersection";
+            returnType = TypecheckerSymbols.IdIntersection;
         } else {
             returnType = symbolTyper.toTypecheckerType(method.returnType, ojClass);
         }
@@ -242,8 +244,8 @@ TypeChecker.prototype._generateDefs = function(model)
     }
 
     function generateClass(lines, ojClass, classSymbol, staticSymbol) {
-        var superSymbol       = ojClass.superclassName ? symbolTyper.getSymbolForClassName(ojClass.superclassName, false) : "$oj_$Base";
-        var superStaticSymbol = ojClass.superclassName ? symbolTyper.getSymbolForClassName(ojClass.superclassName, true)  : "$oj_$StaticBase";
+        var superSymbol       = ojClass.superclassName ? symbolTyper.getSymbolForClassName(ojClass.superclassName, false) : TypecheckerSymbols.Base;
+        var superStaticSymbol = ojClass.superclassName ? symbolTyper.getSymbolForClassName(ojClass.superclassName, true)  : TypecheckerSymbols.StaticBase;
 
         var declareClass = "declare class " + classSymbol +
                            " extends " + superSymbol +
@@ -345,12 +347,34 @@ TypeChecker.prototype._generateDefs = function(model)
         });
     });
 
-    generateClass( lines, model.getAggregateClass(), "$oj_$Combined", "$oj_$StaticCombined" );
-    classSymbols.unshift("$oj_$Combined");
-    staticSymbols.unshift("$oj_$StaticCombined")
+    lines.push("declare class " + TypecheckerSymbols.GlobalType + " {");
+    _.each(model.globals, function(ojGlobal) {
+        var annotation = _.clone(ojGlobal.annotation);
 
-    lines.push("type $oj_$id_intersection = " + classSymbols.join("&") + ";");
-    lines.push("type $oj_$id_union = "        + classSymbols.join("|") + ";");
+        if (_.isArray(annotation)) {
+            var line = ojGlobal.name;
+            var returnType = annotation.shift();
+
+            line += "(" + _.map(annotation, function(a, index) {
+                return "a" + index + ":" + symbolTyper.toTypecheckerType(a);
+            }).join(",") + ")";
+
+            line += " : " + symbolTyper.toTypecheckerType(returnType) + ";";
+
+            lines.push(line);
+
+        } else {
+            lines.push(ojGlobal.name + " : " + symbolTyper.toTypecheckerType(annotation) + ";");
+        }
+    });
+    lines.push("}");
+
+    generateClass( lines, model.getAggregateClass(), TypecheckerSymbols.Combined, TypecheckerSymbols.StaticCombined );
+    classSymbols .unshift(TypecheckerSymbols.Combined);
+    staticSymbols.unshift(TypecheckerSymbols.StaticCombined)
+
+    lines.push("type " + TypecheckerSymbols.IdIntersection + " = " + classSymbols.join("&") + ";");
+    lines.push("type " + TypecheckerSymbols.IdUnion        + " = " + classSymbols.join("|") + ";");
 
     return {
         defs:  lines.join("\n"),

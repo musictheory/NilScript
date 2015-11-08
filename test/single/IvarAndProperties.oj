@@ -25,6 +25,8 @@ var assert = require("assert");
 @property Boolean propertyWithoutSemicolon
 @property Boolean propertyWithoutSemicolon2
 
+@property (getter=propertyWithGetter) Boolean propertyWithGetterRaw
+
 @property Number synthesizeTest0;
 // Use default synthesize
 
