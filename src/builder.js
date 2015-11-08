@@ -70,7 +70,7 @@ Builder.prototype.build = function()
 
     var traverser = new Traverser(this._ast);
 
-    function handleClassImplementation(node)
+    function handleOJClassImplementation(node)
     {
         var className      = node.id.name;
         var superclassName = node.superClass && node.superClass.name;
@@ -115,7 +115,7 @@ Builder.prototype.build = function()
         currentCategoryName = categoryName;
     }
 
-    function handleProtocolDefinition(node)
+    function handleOJProtocolDefinition(node)
     {
         var name = node.id.name;
         var parentProtocolNames  = [ ];
@@ -132,7 +132,7 @@ Builder.prototype.build = function()
         currentProtocol = protocol;
     }
 
-    function handleClassDirective(node)
+    function handleOJClassDirective(node)
     {
         var ids = node.ids;
         var i, length;
@@ -145,27 +145,27 @@ Builder.prototype.build = function()
         }
     }
  
-    function handleSqueezeDirective(node)
+    function handleOJSqueezeDirective(node)
     {
         node.ids.forEach(function(id) {
-            model.getSymbolTyper().enrollForSqueezing(id.name, true);
+            model.getSymbolTyper().enrollForSqueezing(id.name);
         });
     }
 
-    function handleMethodDefinition(node)
+    function handleOJMethodDefinition(node)
     {
         var method = sMakeOJMethodForNode(node, null);
         currentClass.addMethod(method);
         currentMethod = method;
     }
 
-    function handleMethodDeclaration(node)
+    function handleOJMethodDeclaration(node)
     {
         var method = sMakeOJMethodForNode(node);
         currentProtocol.addMethod(method);
     }
 
-    function handleInstanceVariableDeclaration(node)
+    function handleOJInstanceVariableDeclaration(node)
     {
         var type = node.parameterType ? node.parameterType.value : null;
 
@@ -175,7 +175,7 @@ Builder.prototype.build = function()
         }
     }
 
-    function handlePropertyDirective(node)
+    function handleOJPropertyDirective(node)
     {
         var name = node.id.name;
 
@@ -211,7 +211,7 @@ Builder.prototype.build = function()
         currentClass.addProperty(property);
     }        
 
-    function handleSynthesizeDirective(node) {
+    function handleOJSynthesizeDirective(node) {
         var pairs = node.pairs;
 
         if (currentCategoryName) {
@@ -227,7 +227,7 @@ Builder.prototype.build = function()
         }        
     }
 
-    function handleDynamicDirective(node) {
+    function handleOJDynamicDirective(node) {
         var ids = node.ids;
 
         if (currentCategoryName) {
@@ -240,12 +240,12 @@ Builder.prototype.build = function()
         }
     }
 
-    function handleTypedefDeclaration(node)
+    function handleOJTypedefDeclaration(node)
     {
         model.aliasType(node.from, node.to);
     }
 
-    function handleEnumDeclaration(node)
+    function handleOJEnumDeclaration(node)
     {
         var length = node.declarations ? node.declarations.length : 0;
         var last = node;
@@ -305,7 +305,7 @@ Builder.prototype.build = function()
         model.addEnum(e);
     }
 
-    function handleConstDeclaration(node)
+    function handleOJConstDeclaration(node)
     {
         var length = node.declarations ? node.declarations.length : 0;
         var values = [ ];
@@ -337,7 +337,7 @@ Builder.prototype.build = function()
         }
     }
 
-    function handleGlobalDeclaration(inNode)
+    function handleOJGlobalDeclaration(inNode)
     {
         function addGlobalWithNode(node) {
             var name = node.id.name;
@@ -358,6 +358,7 @@ Builder.prototype.build = function()
             }
 
             model.addGlobal(new Model.OJGlobal(name, annotation));
+            model.getSymbolTyper().enrollForSqueezing(name);
         }
 
         if (inNode.declaration) {
@@ -399,46 +400,46 @@ Builder.prototype.build = function()
 
         try {
             if (type === Syntax.OJClassImplementation) {
-                handleClassImplementation(node);
+                handleOJClassImplementation(node);
 
             } else if (type === Syntax.OJProtocolDefinition) {
-                handleProtocolDefinition(node);
+                handleOJProtocolDefinition(node);
 
             } else if (type === Syntax.OJClassDirective) {
-                handleClassDirective(node);
+                handleOJClassDirective(node);
 
             } else if (type === Syntax.OJSqueezeDirective) {
-                handleSqueezeDirective(node);
+                handleOJSqueezeDirective(node);
 
             } else if (type === Syntax.OJInstanceVariableDeclaration) {
-                handleInstanceVariableDeclaration(node);
+                handleOJInstanceVariableDeclaration(node);
 
             } else if (type === Syntax.OJPropertyDirective) {
-                handlePropertyDirective(node);
+                handleOJPropertyDirective(node);
 
             } else if (type === Syntax.OJSynthesizeDirective) {
-                handleSynthesizeDirective(node);
+                handleOJSynthesizeDirective(node);
 
             } else if (type === Syntax.OJDynamicDirective) {
-                handleDynamicDirective(node);
+                handleOJDynamicDirective(node);
 
             } else if (type === Syntax.OJTypedefDeclaration) {
-                handleTypedefDeclaration(node);
+                handleOJTypedefDeclaration(node);
 
             } else if (type === Syntax.OJMethodDefinition) {
-                handleMethodDefinition(node);
+                handleOJMethodDefinition(node);
 
             } else if (type === Syntax.OJMethodDeclaration) {
-                handleMethodDeclaration(node);
+                handleOJMethodDeclaration(node);
 
             } else if (type === Syntax.OJEnumDeclaration) {
-                handleEnumDeclaration(node);
+                handleOJEnumDeclaration(node);
 
             } else if (type === Syntax.OJConstDeclaration) {
-                handleConstDeclaration(node);
+                handleOJConstDeclaration(node);
 
             } else if (type === Syntax.OJGlobalDeclaration) {
-                handleGlobalDeclaration(node);
+                handleOJGlobalDeclaration(node);
 
             } else if (type === Syntax.VariableDeclarator) {
                 handleVariableDeclarator(node);

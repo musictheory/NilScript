@@ -86,14 +86,6 @@ function Generator(ast, model, modifier, forTypechecker, options)
         });
     }
 
-    _.each(model.globals, function(global) {
-        var name = global.name;
-
-        if (inlines[name] === undefined) {
-            inlines[name] = OJRootWithGlobalPrefix + name;
-        }
-    });
-
     var additionalInlines = options["additional-inlines"];
     if (additionalInlines) {
         for (var key in additionalInlines) {
@@ -254,13 +246,31 @@ Generator.prototype.generate = function()
         return result;
     }
 
-
-    function canBeInstanceVariableOrSelf(node)
+    function isIdentifierTransformable(node)
     {
         var parent = node.oj_parent;
 
-        if (parent.type == Syntax.MemberExpression && !parent.computed) {
-            return parent.object == node;
+        if (parent.type === Syntax.MemberExpression) {
+            // identifier.x -> true
+            if (parent.object === node) {
+                return true;
+
+            // x[identifier] =  computed = true
+            // x.identifier  = !computed = false
+            } else {
+                return parent.computed;
+            }
+
+        } else if (parent.type === Syntax.Property) {
+            // { x: identifier }
+            if (parent.value === node) {
+                return true;
+
+            // { [identifier]: x } =  computed = true
+            // {  identifier : x } = !computed = false
+            } else {
+                return parent.computed;
+            }
         }
 
         return true;   
@@ -270,7 +280,9 @@ Generator.prototype.generate = function()
     {
         var name = node.name;
 
-        if (currentMethodNode && currentClass && canBeInstanceVariableOrSelf(node)) {
+        if (!isIdentifierTransformable(node)) return;
+
+        if (currentMethodNode && currentClass) {
             if (currentClass && currentClass.isIvar(name)) {
                 Utils.throwError(OJError.RestrictedUsage, "Cannot use instance variable \"" + name + "\" here.", node);
             }
@@ -281,7 +293,7 @@ Generator.prototype.generate = function()
         }
     }
 
-    function handleMessageExpression(node)
+    function handleOJMessageExpression(node)
     {
         var receiver     = node.receiver.value;
         var methodName   = symbolTyper.getSymbolForSelectorName(node.selectorName);
@@ -458,7 +470,7 @@ Generator.prototype.generate = function()
         modifier.from(lastSelector).to(node).replace(")");
     }
 
-    function handleClassImplementation(node)
+    function handleOJClassImplementation(node)
     {
         var superClass = (node.superClass && node.superClass.name);
 
@@ -617,7 +629,7 @@ Generator.prototype.generate = function()
         }
     }
 
-    function handlePredefinedMacro(node)
+    function handleOJPredefinedMacro(node)
     {
         var name = node.name;
 
@@ -663,14 +675,24 @@ Generator.prototype.generate = function()
             }
 
         } else if (name[0] === "@") {
-            handlePredefinedMacro(node);
+            handleOJPredefinedMacro(node);
             return;
         }
 
-        if (currentMethodNode && currentClass && canBeInstanceVariableOrSelf(node)) {
+        if (!isIdentifierTransformable(node)) return;
+
+        var ojGlobal = model.globals[name];
+        var replacement;
+
+        if (ojGlobal) {
+            replacement = OJRootWithGlobalPrefix + (optionSqueeze ? symbolTyper.getSymbolForIdentifierName(name) : name);
+
+            modifier.select(node).replace(replacement);
+            return;
+
+        } else if (currentMethodNode && currentClass) {
             if (currentClass.isIvar(name) || name == "self") {
                 var usesSelf = currentMethodNode && (methodUsesSelfVar || (language === LanguageTypechecker));
-                var replacement;
 
                 if (name == "self") {
                     replacement = usesSelf ? "self" : "this";
@@ -686,6 +708,7 @@ Generator.prototype.generate = function()
                 }
 
                 modifier.select(node).replace(replacement);
+                return;
 
             } else {
                 if (name[0] == "_" && optionWarnOnUnknownIvars && (name.length > 1)) {
@@ -720,7 +743,7 @@ Generator.prototype.generate = function()
         }
     }
 
-    function handlePropertyDirective(node)
+    function handleOJPropertyDirective(node)
     {
         var name = node.id.name;
 
@@ -750,7 +773,7 @@ Generator.prototype.generate = function()
         }
     }
 
-    function handleSelectorDirective(node)
+    function handleOJSelectorDirective(node)
     {
         var name = symbolTyper.getSymbolForSelectorName(node.name);
 
@@ -761,7 +784,7 @@ Generator.prototype.generate = function()
         modifier.select(node).replace("{ " + name + ": 1 }");
     }
 
-    function handleEnumDeclaration(node)
+    function handleOJEnumDeclaration(node)
     {
         var length = node.declarations ? node.declarations.length : 0;
         var last   = node;
@@ -798,7 +821,7 @@ Generator.prototype.generate = function()
         }
     }
 
-    function handleConstDeclaration(node)
+    function handleOJConstDeclaration(node)
     {
         var length = node.declarations ? node.declarations.length : 0;
         var values = [ ];
@@ -812,7 +835,7 @@ Generator.prototype.generate = function()
         }
     }
 
-    function handleCastExpression(node)
+    function handleOJCastExpression(node)
     {
         var before = "(";
 
@@ -824,7 +847,7 @@ Generator.prototype.generate = function()
         modifier.from(node.argument).to(node).replace(")");
     }
 
-    function handleAnyExpression(node)
+    function handleOJAnyExpression(node)
     {
         var before = (language == LanguageTypechecker) ? "<any>(" : "(";
 
@@ -832,7 +855,7 @@ Generator.prototype.generate = function()
         modifier.from(node.argument).to(node).replace(")");
     }
 
-    function handleTypeAnnotation(node, parent)
+    function handleOJTypeAnnotation(node, parent)
     {
         if (language === LanguageTypechecker) {
             var inValue  = node.value;
@@ -847,7 +870,7 @@ Generator.prototype.generate = function()
         }
     }
 
-    function handleEachStatement(node)
+    function handleOJEachStatement(node)
     {
         var i      = makeTemporaryVariable(false);
         var length = makeTemporaryVariable(false);
@@ -900,14 +923,17 @@ Generator.prototype.generate = function()
         }
     }
 
-    function handleGlobalDeclaration(node)
+    function handleOJGlobalDeclaration(node)
     {
         var declaration = node.declaration;
         var declarators = node.declarators;
+        var name;
 
         if (language !== LanguageTypechecker) {
             if (declaration) {
-                modifier.from(node).to(declaration).replace(OJRootWithGlobalPrefix + declaration.id.name + "=");
+                name = symbolTyper.getSymbolForIdentifierName(declaration.id.name);
+
+                modifier.from(node).to(declaration).replace(OJRootWithGlobalPrefix + name + "=");
                 modifier.select(declaration.id).remove();
                 declaration.id.oj_skip = true;
 
@@ -915,7 +941,9 @@ Generator.prototype.generate = function()
                 modifier.from(node).to(declarators[0]).remove();
 
                 _.each(declarators, function(declarator) {
-                    modifier.select(declarator.id).replace(OJRootWithGlobalPrefix + declarator.id.name);
+                    name = symbolTyper.getSymbolForIdentifierName(declarator.id.name);
+
+                    modifier.select(declarator.id).replace(OJRootWithGlobalPrefix + name);
                     declarator.id.oj_skip = true;
                 })
             }
@@ -930,8 +958,6 @@ Generator.prototype.generate = function()
 
             } else if (declarators) {
                 modifier.from(node).to(declarators[0]).replace("(function() { var ");
-
-                // modifier.from(node).to(declarators[0]).replace("class " + globalClassName + " {");
                 modifier.after(node).insert("});");
 
                 var index = 0;
@@ -1042,7 +1068,7 @@ Generator.prototype.generate = function()
                 unusedIvars = currentClass.getAllIvarNamesWithoutProperties();
             }
 
-            handleClassImplementation(node);
+            handleOJClassImplementation(node);
 
         } else if (type === Syntax.OJMethodDefinition) {
             currentMethodNode        = node;
@@ -1051,38 +1077,38 @@ Generator.prototype.generate = function()
             methodUsesLoneExpression = false;
 
         } else if (type === Syntax.OJMessageExpression) {
-            handleMessageExpression(node);
+            handleOJMessageExpression(node);
 
         } else if (type === Syntax.OJPropertyDirective) {
-            handlePropertyDirective(node);
+            handleOJPropertyDirective(node);
             return Traverser.SkipNode;
 
         } else if (type === Syntax.OJSelectorDirective) {
-            handleSelectorDirective(node);
+            handleOJSelectorDirective(node);
 
         } else if (type === Syntax.OJEnumDeclaration) {
-            handleEnumDeclaration(node);
+            handleOJEnumDeclaration(node);
 
         } else if (type === Syntax.OJConstDeclaration) {
-            handleConstDeclaration(node);
+            handleOJConstDeclaration(node);
 
         } else if (type === Syntax.OJCastExpression) {
-            handleCastExpression(node);
+            handleOJCastExpression(node);
 
         } else if (type === Syntax.OJAnyExpression) {
-            handleAnyExpression(node);
+            handleOJAnyExpression(node);
 
         } else if (type === Syntax.OJTypeAnnotation) {
-            handleTypeAnnotation(node, parent);
+            handleOJTypeAnnotation(node, parent);
 
         } else if (type === Syntax.OJEachStatement) {
-            handleEachStatement(node);
+            handleOJEachStatement(node);
 
         } else if (type === Syntax.OJGlobalDeclaration) {
-            handleGlobalDeclaration(node);
+            handleOJGlobalDeclaration(node);
 
         } else if (type === Syntax.OJPredefinedMacro) {
-            handlePredefinedMacro(node);
+            handleOJPredefinedMacro(node);
 
         } else if (type === Syntax.Literal) {
             handleLiteral(node);

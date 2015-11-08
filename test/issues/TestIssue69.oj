@@ -1,0 +1,82 @@
+//@opts { "inline-const": true }
+
+@const Hundred = "100";
+
+@implementation Issue69Class {
+    String _foo;
+}
+
+
+- (void) testIvar
+{
+    _foo = "100";
+
+    var o = { _foo: "string", [_foo]: "ivar" };
+
+    assert.equal(o["_foo"], "string");
+    assert.equal(o._foo,    "string");
+
+    assert.equal(o["100"], "ivar");
+    assert.equal(o[_foo],  "ivar");
+
+    _foo = "999";
+
+    o._foo = "string2";
+    o[_foo] = "ivar2";
+
+    assert.equal(o["_foo"], "string2");
+    assert.equal(o._foo,    "string2");
+
+    assert.equal(o["999"], "ivar2");
+    assert.equal(o[_foo],  "ivar2");
+
+    return true;
+}
+
+- (void) testInline
+{
+    assert.equal(Hundred, "100");
+
+    var o = { Hundred: "string", [Hundred]: "const" };
+
+    assert.equal(o["Hundred"], "string");
+    assert.equal(o.Hundred,    "string");
+
+    assert.equal(o["100"],   "const");
+    assert.equal(o[Hundred], "const");
+
+    o.Hundred  = "string2";
+    o[Hundred] = "const2";
+
+    assert.equal(o["Hundred"], "string2");
+    assert.equal(o.Hundred,    "string2");
+
+    assert.equal(o["100"],   "const2");
+    assert.equal(o[Hundred], "const2");
+
+    return true;
+}
+
+- (void) testGlobal
+{
+    return true;
+}
+
+
+
+@end
+
+
+
+function runTests()
+{
+    var instance = [[Issue69Class alloc] init];
+
+    assert([instance testIvar]);
+    assert([instance testInline]);
+    assert([instance testGlobal]);
+
+    return true;
+}
+
+runTests();

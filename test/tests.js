@@ -48,12 +48,15 @@ function gatherTests(dir, callback)
             var fileTestCount = 0;
             var t;
 
+            var components = file.split(path.sep);
+            var dir = components.slice(-2).shift();
+
             var makeTest = function() {
                 fileTestCount++;
 
                 t = {
                     file: file,
-                    name: path.basename(file) + " #" + fileTestCount,
+                    name: dir + path.sep + path.basename(file) + (fileTestCount > 1 ? " #" + fileTestCount : ""),
                     options: [ ],
                     error: null,
                     contents: [ ]
@@ -139,7 +142,12 @@ gatherTests(path.dirname(__filename), function(err, tests) {
             options.files = [ { path: t.file, contents: t.contents } ];
 
             ojc.compile(options, function(err, result) {
-                test(t.name, function() {
+                var name = t.name;
+                if (options.squeeze)         name += " +squeeze";
+                if (options["inline-const"]) name += " +const";
+                if (options["inline-enum"])  name += " +enum";
+
+                test(name, function() {
                     if (t.typecheck) {
                         var remaining = _.clone(t.typecheck);
 
@@ -150,11 +158,11 @@ gatherTests(path.dirname(__filename), function(err, tests) {
                             expected = expected.split(",");
                             var code = expected.shift();
 
-                            assert(warning.code, code);
+                            assert.equal(warning.code, code);
 
                             var i = 0;
                             warning.reason.replace(/'(.*?)'/g, function(a0, a1) {
-                                assert(expected[i] == a1);
+                                assert.equal(expected[i], a1);
                                 i++;
                             });
 
