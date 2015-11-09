@@ -111,11 +111,11 @@ OJSymbolTyper.prototype._getSqueezedSymbol = function(readableName, add)
 
 OJSymbolTyper.prototype.loadState = function(state)
 {
-    if (state.squeeze) {
+    if (state.squeezer) {
         this._squeeze         = true;
-        this._squeezerId      = state.squeeze.id   || 0;
-        this._fromSqueezedMap = state.squeeze.from || { };
-        this._toSqueezedMap   = state.squeeze.to   || { };
+        this._squeezerId      = state.squeezer.id   || 0;
+        this._fromSqueezedMap = state.squeezer.from || { };
+        this._toSqueezedMap   = state.squeezer.to   || { };
     }
 }
 
@@ -123,7 +123,7 @@ OJSymbolTyper.prototype.loadState = function(state)
 OJSymbolTyper.prototype.saveState = function()
 {
     return {
-        "squeeze": this._squeeze ? {
+        squeezer: this._squeeze ? {
             from: this._fromSqueezedMap,
             to:   this._toSqueezedMap,
             id:   this._squeezerId

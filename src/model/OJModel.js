@@ -80,17 +80,17 @@ OJModel.prototype.loadState = function(state)
         protocols[ojProtocol.name] = ojProtocol;
     });
 
-    if (state.symbols) {
-        this._symbolTyper.loadState(state.symbols);
-    }
+    // OJSymbolTyper state us at same level for backwards compatibility
+    this._symbolTyper.loadState(state);
 }
 
 
 OJModel.prototype.saveState = function()
 {
-    return {
-        symbols:   this._symbolTyper.saveState(),
+    // OJSymbolTyper state us at same level for backwards compatibility
+    var symbolTyperState = this._symbolTyper.saveState();
 
+    return _.extend({
         consts:    this.consts,
         enums:     this.enums,
         selectors: this.selectors,
@@ -107,7 +107,7 @@ OJModel.prototype.saveState = function()
         protocols: _.map(this.protocols, function(ojProtocol) {
             return ojProtocol.saveState();
         })
-    }
+    }, symbolTyperState);
 }
 
 
