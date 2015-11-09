@@ -8,7 +8,10 @@
 "use strict";
 
 
-function OJProperty(name, type, writable, getter, setter, ivar)
+module.exports = class OJProperty {
+
+
+constructor(name, type, writable, getter, setter, ivar)
 {
     this.name     = name;
     this.type     = type;
@@ -19,4 +22,4 @@ function OJProperty(name, type, writable, getter, setter, ivar)
 }
 
 
-module.exports = OJProperty;
+}

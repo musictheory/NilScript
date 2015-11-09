@@ -12,7 +12,10 @@ var Utils       = require("../utils");
 var _           = require("lodash");
 
 
-function OJProtocol(name, protocolNames)
+module.exports = class OJProtocol {
+
+
+constructor(name, protocolNames)
 {
     this.name = name;
     this.protocolNames = protocolNames || [ ];
@@ -28,7 +31,7 @@ function OJProtocol(name, protocolNames)
 }
 
 
-OJProtocol.prototype.loadState = function(state)
+loadState(state)
 {
     var classMethodMap    =  this._classMethodMap;
     var instanceMethodMap =  this._instanceMethodMap;
@@ -46,7 +49,7 @@ OJProtocol.prototype.loadState = function(state)
 }
 
 
-OJProtocol.prototype.addMethod = function(method)
+addMethod(method)
 {
     var selectorName = method.selectorName;
     var map = (method.selectorType == "+") ? this._classMethodMap : this._instanceMethodMap;
@@ -59,7 +62,7 @@ OJProtocol.prototype.addMethod = function(method)
 }
 
 
-OJProtocol.prototype.saveState = function()
+saveState()
 {
     return {
         name:                    this.name,
@@ -70,22 +73,23 @@ OJProtocol.prototype.saveState = function()
     }
 }
 
-OJProtocol.prototype.getAllMethods = function()
+
+getAllMethods()
 {
     return _.values(this._classMethodMap).concat(_.values(this._instanceMethodMap));
 }
 
 
-OJProtocol.prototype.getClassMethods = function()
+getClassMethods()
 {
     return _.values(this._classMethodMap);
 }
 
 
-OJProtocol.prototype.getInstanceMethods = function()
+getInstanceMethods()
 {
     return _.values(this._instanceMethodMap);
 }
 
 
-module.exports = OJProtocol;
+}

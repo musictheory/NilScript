@@ -8,7 +8,10 @@
 "use strict";
 
 
-function OJIvar(name, className, type)
+module.exports = class OJIvar {
+
+
+constructor(name, className, type)
 {
     this.name        = name;
     this.className   = className;
@@ -17,4 +20,4 @@ function OJIvar(name, className, type)
 }
 
 
-module.exports = OJIvar;
+}

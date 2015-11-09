@@ -18,7 +18,6 @@ var TypeChecker = require("./typechecker");
 
 var OJError     = require("./errors").OJError;
 var OJModel     = require("./model").OJModel;
-var OJFile      = require("./model").OJFile;
 
 var _           = require("lodash");
 var fs          = require("fs");
@@ -41,228 +40,6 @@ function errorForEsprimaError(inError)
 }
 
 
-class Compiler {
-
-
-
-_extractFilesFromOptions(optionsFiles, previousFiles)
-{
-    var existingMap = { };
-    var outFiles = [ ];
-
-    _.each(previousFiles, function(ojFile) {
-        existingMap[ojFile.path] = ojFile;
-    });
-
-    // The 'files' option can either be an Array of String file paths, or
-    // an Array of Objects with the following keys:
-    //        path: file path 
-    //    contents: file contents
-    //        time: file modification time
-    //
-    _.each(optionsFiles, function(f) {
-        var ojFile, path, contents, time;
-
-        if (_.isString(f)) {
-            path = f;
-        } else {
-            path     = f.path;
-            contents = f.contents;
-            time     = f.time || Date.now()
-        }
-
-        if (!path) return;
-
-        ojFile = existingMap[path] || new OJFile(path);
-
-        if (contents && time) {
-            ojFile.updateWithContentsAndTime(contents, time);
-        } else {
-            ojFile.updateFromDisk();
-        }
-
-        outFiles.push(ojFile);
-    });
-
-    return outFiles;
-}
-
-
-_parseFiles(files)
-{
-    var ok = true;
-
-    _.each(this.files, ojFile => {
-        if (!ojFile.ast) {
-            try { 
-                ojFile.ast = esprima.parse(ojFile.contents, { loc: true });
-            } catch (inError) {
-                var outError = new Error(message);
-
-                outError.line   = inError.lineNumber;
-                outError.column = inError.column;
-                outError.name   = OJError.ParseError;
-                outError.reason = inError.description.replace(/$.*Line:/, "");
-
-                // set parseError on ojFile
-                ojFile.ast = null;
-                ojFile.parseError = outError;
-
-                ok = false;
-            }
-        }
-    });
-
-    return ok;
-}
-
-
-_buildFiles(files, model, options)
-{
-    _.each(files, ojFile => {
-        var builder = new Builder(ojFile.ast, model, options);
-        builder.build();
-    });
-}
-
-
-_requiresRecompile(model1, model2)
-{
-
-}
-
-
-_generateJavaScript()
-{
-    var files   = this._files;
-    var model   = this._model;
-
-    var modifierOptions = this._modifierOptions;
-
-    _.each(files, ojFile => {
-        if (!ojFile.jsCode) {
-
-            var modifier  = new Modifier(ojFile, this._inputModifierOptions);
-            var generator = new Generator(ast, model, transpileModifier, false, options);
-        }
-    });
-
-
-        var transpileModifier;
-        var transpileGenerator;
-        if (options["output-language"] != "none") {
-        }
-
-
-}
-
-
-_runTypechecker()
-{
-
-
-}
-
-
-_finish()
-{
-
-}
-
-
-loadCache(cache)
-{
-
-}
-
-
-saveCache()
-{
-
-}
-
-
-compile(options, callback)
-{
-    var previousFiles   = this._files;
-    var previousOptions = this._options;
-    var previousModel   = this._model;
-
-    // Extract options which don't affect parse/build/compile stages
-    //
-    function extractOption(key) {
-        var result = options[key];
-        options[key] = null;
-        return result;
-    }
-
-    var optionsFiles         = extractOption("files");
-    var optionsPrepend       = extractOption("prepend");
-    var optionsAppend        = extractOption("append");
-    var optionsSourceMapFile = extractOption("source-map-file");
-    var optionsSourceMapRoot = extractOption("source-map-root");
-
-    // Extract options.files and convert to a map of path->OJFiles
-    var files = this._extractFilesFromOptions(optionsFiles, previousFiles);
-    options.files = null;
-
-    // If remaining options changed, invalidate everything
-    //
-    if (!_.isEqual(options, previousOptions)) {
-        previousOptions = options;
-        previousModel   = new OJModel();
-
-        _.each(files, ojFile => {
-            ojFile.invalidateAllResults();
-        });
-    }
-
-    var model = new OJModel();
-
-    this._parseFiles(files);
-    this._buildFiles(files, model, options);
-
-    var this._diffModels(previousModel, model);
-
-    var changes = previousModel.diffWithModel(model);
-    if (changes == OJModel.DiffResultGlobalsChanged) {
-
-    } else if (changes == OJModel.DiffResultSelectorsChanged) {
-
-    }
-
-    // If the global state changed (new classes/globals/inlines)
-    if (this._requiresRecompile(previousModel, model)) {
-        _.each(this.files, ojFile => {
-            ojFile.jsCode = null;
-            ojFile.tsCode = null;
-            ojFile.tsDefs = null;
-        });
-    }
-
-    // this._buildFiles(files, model, options);
-
-
-    // If only the known selectors changed, do a 
-
-
-    if (model.didGlobalStateChange(() => {
-    })) {
-    }
-
-    if ()
-
-
-
-
-}
-
-}
-
-
-
-/*
-
 function Compiler(options)
 {
     options = options || { };
@@ -270,10 +47,46 @@ function Compiler(options)
     var paths    = [ ];
     var contents = [ ];
 
+    // The 'files' option can either be an Array of String file paths, or
+    // an Array of Objects with the following keys:
+    //        path: file path 
+    //    contents: file contents
+    //
+    _.each(options.files, function(f) {
+        if (_.isString(f)) {
+            paths.push(f);
+            contents.push(fs.readFileSync(f).toString());
 
+        } else {
+            if (f.path && f.contents) {
+                paths.push(f.path);
+                contents.push(f.contents);
+            }
+        }
+    });
 
     var parserOptions   = { loc: true }
     var modifierOptions = { };
+
+    if (options["prepend"]) {
+        var prependLines = options["prepend"];
+
+        if (typeof prependLines == "string") {
+            prependLines = prependLines.split("\n")
+        }
+
+        modifierOptions["prepend"] = prependLines;
+    }
+
+    if (options["append"]) {
+        var appendLines = options["append"];
+
+        if (typeof appendLines == "string") {
+            appendLines = appendLines.split("\n")
+        }
+
+        modifierOptions["append"] = appendLines;
+    }
 
     if (options["source-map-file"]) {
         modifierOptions.sourceMapFile = options["source-map-file"];
@@ -529,27 +342,6 @@ Compiler.prototype.compile = function(callback)
         callback(e, null);
     }
 }
-*/
 
 
-module.exports = {
-    Compiler: Compiler,
-
-    compile: function(options, callback) {
-        try {
-            var compiler = new Compiler();
-            compiler.compile(options, callback);
-
-        } catch (e) {
-            if (e.name.indexOf("OJ") !== 0) {
-                console.error("Internal oj error!")
-                console.error("------------------------------------------------------------")
-                console.error(e);
-                console.error(e.stack);
-                console.error("------------------------------------------------------------")
-            }
-
-            callback(e, null);
-        }
-    }
-}
+module.exports = Compiler;

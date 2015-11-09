@@ -8,7 +8,10 @@
 "use strict";
 
 
-function OJMethod(selectorName, selectorType, returnType, parameterTypes, variableNames, optional)
+module.exports = class OJMethod {
+
+
+constructor(selectorName, selectorType, returnType, parameterTypes, variableNames, optional)
 {
     this.selectorName   = selectorName;
     this.selectorType   = selectorType;
@@ -20,4 +23,4 @@ function OJMethod(selectorName, selectorType, returnType, parameterTypes, variab
 }
 
 
-module.exports = OJMethod;
+}

@@ -17,6 +17,10 @@ var OJEnum        = require("./OJEnum");
 var OJSymbolTyper = require("./OJSymbolTyper")
 
 
+const DiffResultNoChange         = "none";
+const DiffResultGlobalsChanged   = "globals";
+const DiffResultSelectorsChanged = "selectors";
+
 function OJModel()
 {
     this.enums     = [ ];
