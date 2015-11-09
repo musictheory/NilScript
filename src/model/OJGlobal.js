@@ -7,7 +7,11 @@
 
 "use strict";
 
-function OJGlobal(name, annotation)
+
+module.exports = class OJGlobal {
+
+
+constructor(name, annotation)
 {
     this.name = name;
     this.annotation = annotation || null;
@@ -17,14 +21,14 @@ function OJGlobal(name, annotation)
 }
 
 
-OJGlobal.prototype.loadState = function(state)
+loadState(state)
 {
     this.name = state.name;
     this.annotation = state.annotation || null;
 }
 
 
-OJGlobal.prototype.saveState = function()
+saveState()
 {
     return {
         name: this.name,
@@ -33,4 +37,4 @@ OJGlobal.prototype.saveState = function()
 }
 
 
-module.exports = OJGlobal;
+}

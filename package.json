@@ -2,12 +2,12 @@
     "name": "ojc",
     "description": "compiler for the oj language",
     "homepage": "http://github.com/musictheory/oj",
-    "main": "./src/ojc.js",
+    "main": "./src/compiler.js",
     "bin": {
         "ojc": "./bin/ojc"
     },
-    "version": "1.2.0",
-    "engines": { "node": ">=0.10" },
+    "version": "2.0.0",
+    "engines": { "node": ">=4.2" },
     "maintainers": [{
         "name": "Ricci Adams",
         "email": "npm@ricciadams.com",

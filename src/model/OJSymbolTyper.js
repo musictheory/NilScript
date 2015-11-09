@@ -54,7 +54,9 @@ function sToBase52(index)
 }
 
 
-function OJSymbolTyper(model)
+class OJSymbolTyper {
+
+constructor(model)
 {
     this._model           = model;
     this._squeeze         = false;
@@ -68,7 +70,7 @@ function OJSymbolTyper(model)
 }
 
 
-OJSymbolTyper.prototype.setupSqueezer = function(start, max)
+setupSqueezer(start, max)
 {
     this._squeeze         = true;
     this._squeezerId      = start;
@@ -78,38 +80,7 @@ OJSymbolTyper.prototype.setupSqueezer = function(start, max)
 }
 
 
-OJSymbolTyper.prototype._getSqueezedSymbol = function(readableName, add)
-{
-    var fromMap = this._fromSqueezedMap;
-    var toMap   = this._toSqueezedMap;
-
-    var squeezedName = toMap[readableName];
-    var hasName = toMap.hasOwnProperty(readableName);
-
-    if (!hasName && add) {
-        while (!squeezedName) {
-            var nameToTry = "$oj$" + sToBase52(this._squeezerId);
-            if (!fromMap[nameToTry]) {
-                squeezedName = nameToTry;
-            }
-
-            this._squeezerId++;
-
-            if (this._maxSqueezerId && (this._squeezerId >= this._maxSqueezerId)) {
-                Utils.throwError(OJError.SqueezerReachedEndIndex, "Squeezer reached max index of " + this._maxSqueezerId);
-            }
-        }
-
-        toMap[readableName]   = squeezedName;
-        fromMap[squeezedName] = readableName;
-        hasName = true;
-    }
-
-    return hasName ? squeezedName : undefined;
-}
-
-
-OJSymbolTyper.prototype.loadState = function(state)
+loadState(state)
 {
     if (state.squeeze) {
         this._squeeze         = true;
@@ -120,7 +91,7 @@ OJSymbolTyper.prototype.loadState = function(state)
 }
 
 
-OJSymbolTyper.prototype.saveState = function()
+saveState()
 {
     return {
         "squeeze": this._squeeze ? {
@@ -132,7 +103,7 @@ OJSymbolTyper.prototype.saveState = function()
 }
 
 
-OJSymbolTyper.prototype._setupTypecheckerMaps = function()
+_setupTypecheckerMaps()
 {
     var toMap     = { };
     var fromMap   = { };
@@ -170,7 +141,38 @@ OJSymbolTyper.prototype._setupTypecheckerMaps = function()
 }
 
 
-OJSymbolTyper.prototype._getBracketedType = function(inType, currentClass)
+_getSqueezedSymbol(readableName, add)
+{
+    var fromMap = this._fromSqueezedMap;
+    var toMap   = this._toSqueezedMap;
+
+    var squeezedName = toMap[readableName];
+    var hasName = toMap.hasOwnProperty(readableName);
+
+    if (!hasName && add) {
+        while (!squeezedName) {
+            var nameToTry = "$oj$" + sToBase52(this._squeezerId);
+            if (!fromMap[nameToTry]) {
+                squeezedName = nameToTry;
+            }
+
+            this._squeezerId++;
+
+            if (this._maxSqueezerId && (this._squeezerId >= this._maxSqueezerId)) {
+                Utils.throwError(OJError.SqueezerReachedEndIndex, "Squeezer reached max index of " + this._maxSqueezerId);
+            }
+        }
+
+        toMap[readableName]   = squeezedName;
+        fromMap[squeezedName] = readableName;
+        hasName = true;
+    }
+
+    return hasName ? squeezedName : undefined;
+}
+
+
+_getBracketedType(inType, currentClass)
 {
     var self = this;
 
@@ -207,7 +209,7 @@ OJSymbolTyper.prototype._getBracketedType = function(inType, currentClass)
 }
 
 
-OJSymbolTyper.prototype.enrollForSqueezing = function(name)
+enrollForSqueezing(name)
 {
     if (this._squeeze) {
         this._getSqueezedSymbol(name, true);
@@ -215,7 +217,7 @@ OJSymbolTyper.prototype.enrollForSqueezing = function(name)
 }
 
 
-OJSymbolTyper.prototype.toTypecheckerType = function(rawInType, currentClass)
+toTypecheckerType(rawInType, currentClass)
 {
     if (!rawInType) return "any";
 
@@ -290,7 +292,7 @@ OJSymbolTyper.prototype.toTypecheckerType = function(rawInType, currentClass)
 }
 
 
-OJSymbolTyper.prototype.fromTypecheckerType = function(rawInType)
+fromTypecheckerType(rawInType)
 {
     if (!this._fromTypecheckerMap) {
         this._setupTypecheckerMaps();
@@ -318,7 +320,7 @@ OJSymbolTyper.prototype.fromTypecheckerType = function(rawInType)
 }
 
 
-OJSymbolTyper.prototype.getSymbolicatedString = function(inString)
+getSymbolicatedString(inString)
 {
     return inString.replace(/\$oj[_$][A-Za-z_$]+/g, function(symbol) {
         if (symbol.indexOf("$oj$") === 0) {
@@ -343,14 +345,14 @@ OJSymbolTyper.prototype.getSymbolicatedString = function(inString)
 }
 
 
-OJSymbolTyper.prototype.getSymbolForProtocolName = function(protocolName, isTypecheckerStatic)
+getSymbolForProtocolName(protocolName, isTypecheckerStatic)
 {
     var prefix = isTypecheckerStatic ? OJStaticProtocolPrefix : OJProtocolPrefix;
     return prefix + protocolName;
 }
 
 
-OJSymbolTyper.prototype.getSymbolForClassName = function(className, isTypecheckerStatic)
+getSymbolForClassName(className, isTypecheckerStatic)
 {
     var prefix = isTypecheckerStatic ? OJStaticClassPrefix : OJClassPrefix;
 
@@ -368,7 +370,7 @@ OJSymbolTyper.prototype.getSymbolForClassName = function(className, isTypechecke
 }
 
 
-OJSymbolTyper.prototype.getSymbolForSelectorName = function(selectorName)
+getSymbolForSelectorName(selectorName)
 {
     var replacedName = selectorName;
     replacedName = replacedName.replace(/_/g,   "__");
@@ -387,7 +389,7 @@ OJSymbolTyper.prototype.getSymbolForSelectorName = function(selectorName)
 }
 
 
-OJSymbolTyper.prototype.getSymbolForIdentifierName = function(name)
+getSymbolForIdentifierName(name)
 {
     if (this._squeeze) {
         return this._getSqueezedSymbol(name, false);
@@ -397,7 +399,7 @@ OJSymbolTyper.prototype.getSymbolForIdentifierName = function(name)
 }
 
 
-OJSymbolTyper.prototype.getSymbolForClassNameAndIvarName = function(className, ivarName)
+getSymbolForClassNameAndIvarName(className, ivarName)
 {
     var result = OJIvarPrefix + className + "$" + ivarName;
     if (this._squeeze) result = this._getSqueezedSymbol(result, true);
@@ -405,10 +407,14 @@ OJSymbolTyper.prototype.getSymbolForClassNameAndIvarName = function(className, i
 }
 
 
-OJSymbolTyper.prototype.getSymbolForIvar = function(ivar)
+getSymbolForIvar(ivar)
 {
     return this.getSymbolForClassNameAndIvarName(ivar.className, ivar.name);
 }
+
+
+}
+
 
 OJSymbolTyper.TypecheckerSymbols = TypecheckerSymbols;
 

@@ -8,7 +8,10 @@
 "use strict";
 
 
-function OJEnum(name, unsigned, values)
+module.exports = class OJEnum {
+
+
+constructor(name, unsigned, values)
 {
     this.name     = name;
     this.unsigned = unsigned;
@@ -16,10 +19,10 @@ function OJEnum(name, unsigned, values)
 }
 
 
-OJEnum.prototype.addValue = function(name, value)
+addValue(name, value)
 {
     this.values[name] = value;
 }
 
 
-module.exports = OJEnum;
+}

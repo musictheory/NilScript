@@ -8,7 +8,7 @@ var path   = require("path");
 
 var OJError = require("../src/errors.js").OJError;
 var oj      = require("../src/runtime.js");
-var ojc     = require("../src/ojc");
+var ojc     = require("../src/compiler");
 
 
 function gatherTests(dir, callback)

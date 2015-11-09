@@ -17,7 +17,10 @@ var OJMethod    = require("./OJMethod");
 var OJDynamicProperty = " OJDynamicProperty ";
 
 
-function OJClass(name, superclassName, protocolNames)
+module.exports = class OJClass {
+
+
+constructor(name, superclassName, protocolNames)
 {
     this.name           = name;
     this.superclassName = superclassName;
@@ -42,7 +45,7 @@ function OJClass(name, superclassName, protocolNames)
 }
 
 
-OJClass.prototype.loadState = function(state)
+loadState(state)
 {
     this.name           = state.name;
     this.superclassName = state.superclassName;
@@ -74,7 +77,7 @@ OJClass.prototype.loadState = function(state)
 }
 
 
-OJClass.prototype.saveState = function()
+saveState()
 {
     return {
         name:            this.name,
@@ -92,7 +95,7 @@ OJClass.prototype.saveState = function()
 }
 
 
-OJClass.prototype.doAutomaticSynthesis = function()
+doAutomaticSynthesis()
 {
     if (this.didSynthesis) {
         return;
@@ -169,13 +172,13 @@ OJClass.prototype.doAutomaticSynthesis = function()
 }
 
 
-OJClass.prototype.isIvar = function(ivar)
+isIvar(ivarName)
 {
-    return !!this._ivarMap[ivar];
+    return !!this._ivarMap[ivarName];
 }
 
 
-OJClass.prototype.getIvarNameForPropertyName = function(propertyName)
+getIvarNameForPropertyName(propertyName)
 {
     var property = this._propertyMap[propertyName];
     if (!propertyName) return null;
@@ -188,7 +191,7 @@ OJClass.prototype.getIvarNameForPropertyName = function(propertyName)
 }
 
 
-OJClass.prototype.shouldSynthesizeIvarForPropertyName = function(propertyName)
+shouldSynthesizeIvarForPropertyName(propertyName)
 {
     var property = this._propertyMap[propertyName];
     if (!property) return false;
@@ -212,7 +215,7 @@ OJClass.prototype.shouldSynthesizeIvarForPropertyName = function(propertyName)
 }
 
 
-OJClass.prototype.shouldGenerateGetterImplementationForPropertyName = function(propertyName)
+shouldGenerateGetterImplementationForPropertyName(propertyName)
 {
     var property = this._propertyMap[propertyName];
     if (!property) return false;
@@ -228,7 +231,7 @@ OJClass.prototype.shouldGenerateGetterImplementationForPropertyName = function(p
 }
 
 
-OJClass.prototype.shouldGenerateSetterImplementationForPropertyName = function(propertyName)
+shouldGenerateSetterImplementationForPropertyName(propertyName)
 {
     var property = this._propertyMap[propertyName];
     if (!property) return false;
@@ -244,7 +247,7 @@ OJClass.prototype.shouldGenerateSetterImplementationForPropertyName = function(p
 }
 
 
-OJClass.prototype.addIvar = function(ivar)
+addIvar(ivar)
 {
     var name = ivar.name;
 
@@ -256,19 +259,19 @@ OJClass.prototype.addIvar = function(ivar)
 }
 
 
-OJClass.prototype.addProperty = function(property)
+addProperty(ojProperty)
 {
-    var name = property.name;
+    var name = ojProperty.name;
 
     if (this._propertyMap[name]) {
         Utils.throwError(OJError.DuplicatePropertyDefinition, "Property " + name + " has previous declaration");
     }
 
-    this._propertyMap[name] = property;
+    this._propertyMap[name] = ojProperty;
 }
 
 
-OJClass.prototype.makePropertySynthesized = function(name, backing)
+makePropertySynthesized(name, backing)
 {
     var property = this._propertyMap[name];
     if (!property) {
@@ -283,7 +286,7 @@ OJClass.prototype.makePropertySynthesized = function(name, backing)
 }
 
 
-OJClass.prototype.makePropertyDynamic = function(name)
+makePropertyDynamic(name)
 {
     var property = this._propertyMap[name];
     if (!property) {
@@ -300,7 +303,7 @@ OJClass.prototype.makePropertyDynamic = function(name)
 }
 
 
-OJClass.prototype.addMethod = function(method)
+addMethod(method)
 {
     var selectorName = method.selectorName;
     var selectorType = method.selectorType;
@@ -328,13 +331,13 @@ OJClass.prototype.addMethod = function(method)
 }
 
 
-OJClass.prototype.getAllIvars = function()
+getAllIvars()
 {
     return _.values(this._ivarMap);
 }
 
 
-OJClass.prototype.getAllIvarNamesWithoutProperties = function()
+getAllIvarNamesWithoutProperties()
 {
     var names = _.map(this.getAllIvars(), function(ivar) {
         return ivar.name;
@@ -351,40 +354,39 @@ OJClass.prototype.getAllIvarNamesWithoutProperties = function()
 }
 
 
-OJClass.prototype.getAllMethods = function()
+getAllMethods()
 {
     return _.values(this._classMethodMap).concat(_.values(this._instanceMethodMap));
 }
 
 
-OJClass.prototype.getClassMethods = function()
+getClassMethods()
 {
     return _.values(this._classMethodMap);
 }
 
 
-OJClass.prototype.getInstanceMethods = function()
+getInstanceMethods()
 {
     return _.values(this._instanceMethodMap);
 }
 
 
-OJClass.prototype.getInstanceMethodWithName = function(selectorName)
+getInstanceMethodWithName(selectorName)
 {
     return this._instanceMethodMap[selectorName];
 }
 
 
-OJClass.prototype.getClassMethodWithName = function(selectorName)
+getClassMethodWithName(selectorName)
 {
     return this._classMethodMap[selectorName];
 }
 
 
-OJClass.prototype.getPropertyWithName = function(propertyName)
+getPropertyWithName(propertyName)
 {
     return this._propertyMap[propertyName];
 }
 
-
-module.exports = OJClass;
+}
