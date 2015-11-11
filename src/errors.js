@@ -10,11 +10,9 @@ var OJError = { };
 
 OJError.ParseError                     = "OJParseError";
 OJError.NotYetSupported                = "OJNotYetSupportedError";
-OJError.DuplicateClassDefinition       = "OJDuplicateClassDefinitionError";
+OJError.DuplicateDeclaration           = "OJDuplicateDeclarationError";
 OJError.DuplicatePropertyDefinition    = "OJDuplicatePropertyDefinitionError";
 OJError.DuplicateMethodDefinition      = "OJDuplicateMethodDefinitionError";
-OJError.DuplicateProtocolDefinition    = "OJDuplicateProtocolDefinition";
-OJError.DuplicateGlobalDefinition      = "OJDuplicateGlobalDefinition";
 OJError.DuplicateIvarDefinition        = "OJDuplicateIvarDefinitionError";
 OJError.DuplicateEnumDefinition        = "OJDuplicateEnumDefinition";
 OJError.UnknownProperty                = "OJUnknownPropertyError";
@@ -42,7 +40,7 @@ OJWarning.UnknownSelector              = "OJUnknownSelectorWarning";
 OJWarning.UseOfThisInMethod            = "OJUseOfThisInMethodWarning";
 OJWarning.UnusedInstanceVariable       = "OJUnusedInstanceVariableWarning";
 OJWarning.UndeclaredInstanceVariable   = "OJUndeclaredInstanceVariableWarning";
-
+OJWarning.MissingTypeAnnotation        = "OJMissingTypeAnnotationWarning";
 
 
 module.exports = {

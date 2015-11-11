@@ -14,6 +14,7 @@ var OJGlobal      = require("./OJGlobal");
 var OJProtocol    = require("./OJProtocol");
 var OJMethod      = require("./OJMethod");
 var OJEnum        = require("./OJEnum");
+var OJStruct      = require("./OJStruct");
 var OJSymbolTyper = require("./OJSymbolTyper")
 
 
@@ -23,11 +24,11 @@ function OJModel()
     this.globals   = { };
     this.consts    = { };
     this.classes   = { };
+    this.structs   = { };
     this.protocols = { };
     this.selectors = { };
 
     this._symbolTyper = new OJSymbolTyper(this);
-    this._globalsMap = null;
 
     this.types = { };
     this.registerType( [
@@ -51,6 +52,7 @@ OJModel.prototype.loadState = function(state)
     var globals   = this.globals;
     var protocols = this.protocols;
     var types     = this.types;
+    var structs   = this.structs;
 
     _.each(state.enums, function(e) {
         enums.push(new OJEnum(e.name, e.unsigned, e.values));
@@ -80,6 +82,13 @@ OJModel.prototype.loadState = function(state)
         protocols[ojProtocol.name] = ojProtocol;
     });
 
+    _.each(state.structs, function(s) {
+        var ojStruct = new OJStruct();
+        ojStruct.loadState(s);
+        ojStruct.local = false;
+        structs[ojStruct.name] = ojStruct;
+    });
+
     // OJSymbolTyper state us at same level for backwards compatibility
     this._symbolTyper.loadState(state);
 }
@@ -106,7 +115,12 @@ OJModel.prototype.saveState = function()
 
         protocols: _.map(this.protocols, function(ojProtocol) {
             return ojProtocol.saveState();
+        }),
+
+        structs: _.map(this.structs, function(ojStruct) {
+            return ojStruct.saveState();
         })
+
     }, symbolTyperState);
 }
 
@@ -309,13 +323,13 @@ OJModel.prototype.addClass = function(ojClass)
             });
 
         } else if (!existing.forward && !ojClass.forward) {
-            Utils.throwError(OJError.DuplicateClassDefinition, "Duplicate declaration of class '" + name + "'");
+            Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of class '" + name + "'");
         }
 
     } else {
         this.classes[name] = ojClass;
         this.registerType(name);
-    } 
+    }
 }
 
 
@@ -324,10 +338,22 @@ OJModel.prototype.addProtocol = function(ojProtocol)
     var name = ojProtocol.name;
 
     if (this.protocols[name]) {
-        Utils.throwError(OJError.DuplicateProtocolDefinition, "Duplicate declaration of protocol '" + name + "'");
+        Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of protocol '" + name + "'");
     }
 
     this.protocols[name] = ojProtocol;
+}
+
+
+OJModel.prototype.addStruct = function(ojStruct)
+{
+    var name = ojStruct.name;
+
+    if (this.structs[name]) {
+        Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of struct '" + name + "'");
+    }
+
+    this.structs[name] = ojStruct;
 }
 
 
@@ -336,7 +362,7 @@ OJModel.prototype.addGlobal = function(ojGlobal)
     var name = ojGlobal.name;
 
     if (this.protocols[name]) {
-        Utils.throwError(OJError.DuplicateGlobalDefinition, "Duplicate declaration of global '" + name + "'");
+        Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of global '" + name + "'");
     }
 
     this.globals[name] = ojGlobal;

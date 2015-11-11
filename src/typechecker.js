@@ -15,6 +15,7 @@ var _       = require("lodash");
 var ts      = require("typescript");
 
 var TypecheckerSymbols = require("./model/OJSymbolTyper").TypecheckerSymbols;
+var Location           = require("./model/OJSymbolTyper").Location;
 
 
 var sBlacklistCodes  = [ 2417 ];
@@ -32,18 +33,22 @@ var sReasonTemplates = [
     { code: 2339, type: "-", text: "No known instance method: -[{1} {0}]" },
 
     // 2415: Class '{0}' incorrectly extends base class '{1}'.
-    // Types of property 'buildElements' are incompatible.
+    // 2326: Types of property 'buildElements' are incompatible.
     { code: 2415, text: "'{2415:0}' and '{2415:1}' have incompatible method '{2326:0}'" },
 
     // 2420: Class '{0}' incorrectly implements interface '{1}'.
     // 2324: Property '{0}' is missing in type '{1}'.
-    { code: 2420, text: "Method '{2324:0}' in protocol '{2420:1}' not implemented" }
+    { code: 2420, next: 2324, text: "Method '{2324:0}' in protocol '{2420:1}' not implemented" },
+
+    // 2420: Class '{0}' incorrectly implements interface '{1}'.
+    // 2326: Types of property 'buildElements' are incompatible.
+    { code: 2420, next: 2326, text: "'{2420:0}' and protocol '{2420:1}' have incompatible method '{2326:0}'" }
 ];
 
 
 var sReasonTemplateMap;
 
-function getReasonTemplate(code, sawClass, sawProtocol, sawMethod, sawStatic) {
+function getReasonTemplate(code, nextCode, sawClass, sawProtocol, sawMethod, sawStatic) {
     var types = [ ];
 
     if (sawMethod)   types.push(sawStatic ? "+" : "-");
@@ -57,12 +62,12 @@ function getReasonTemplate(code, sawClass, sawProtocol, sawMethod, sawStatic) {
         sReasonTemplateMap = { };
 
         _.each(sReasonTemplates, function(t) {
-            sReasonTemplateMap["" + t.code + (t.type || "")] = t;
+            sReasonTemplateMap["" + t.code + "." + (t.next || 0) + (t.type || "")] = t;
         });
     }
 
     for (var i = 0, length = types.length; i < length; i++) {
-        var reason = sReasonTemplateMap["" + code + (types[i] || "")];
+        var reason = sReasonTemplateMap["" + code + "." + nextCode + (types[i] || "")];
         if (reason) return reason;
     }
 
@@ -135,25 +140,13 @@ TypeChecker.prototype._generateDefs = function(model)
         var parameters = [ ];
 
         for (var i = 0, length = method.parameterTypes.length; i < length; i++) {
-            var parameterType = method.parameterTypes[i];
             var variableName  = method.variableNames[i] || ("a" + i);
-
-            if (parameterType == "id") {
-                parameterType = TypecheckerSymbols.IdUnion;
-            } else {
-                parameterType = symbolTyper.toTypecheckerType(parameterType);
-            }
+            var parameterType = symbolTyper.toTypecheckerType(method.parameterTypes[i], Location.DeclarationParameter);
 
             parameters.push(variableName + " : " + parameterType);
         }
 
-        var returnType;
-
-        if (method.returnType == "id") {
-            returnType = TypecheckerSymbols.IdIntersection;
-        } else {
-            returnType = symbolTyper.toTypecheckerType(method.returnType, ojClass);
-        }
+        var returnType = symbolTyper.toTypecheckerType(method.returnType, Location.DeclarationReturn, ojClass);
 
         return methodName + (method.optional ? "?" : "") + "(" + parameters.join(", ") + ") : " + returnType + ";";
     }
@@ -347,6 +340,18 @@ TypeChecker.prototype._generateDefs = function(model)
         });
     });
 
+    _.each(model.structs, function(ojStruct) {
+        var structSymbol = symbolTyper.getSymbolForStructName(ojStruct.name);
+
+        lines.push("interface " + structSymbol + "{");
+
+        _.each(ojStruct.variables, function(variable) {
+            lines.push(variable.name + " : " + symbolTyper.toTypecheckerType(variable.annotation));
+        });
+
+        lines.push("}");
+    });
+
     lines.push("declare class " + TypecheckerSymbols.GlobalType + " {");
     _.each(model.globals, function(ojGlobal) {
         var annotation = _.clone(ojGlobal.annotation);
@@ -419,8 +424,6 @@ TypeChecker.prototype.check = function(callback)
                 // This doesn't account for prepended files (added by the modifier), so
                 // offset accordingly
 
-                console.log(defsLine, entry.start, entry.end, entry.mapped, prependLineCount);
-
                 return getFileLineWithCodeLine(entry.mapped + prependLineCount);
             }
         }
@@ -439,6 +442,7 @@ TypeChecker.prototype.check = function(callback)
         }
 
         var code        = diagnostic.code;
+        var next;
         var quotedMap   = { };
         var sawStatic   = false;
         var sawMethod   = false;
@@ -481,8 +485,10 @@ TypeChecker.prototype.check = function(callback)
 
                     a1 = symbolTyper.fromTypecheckerType(a1);
 
-                    quotedMap[i] = a1;
-                    quotedMap["" + code + ":" + i] = a1;
+                    var key = "" + code + ":" + i;
+
+                    if (!quotedMap[i])   quotedMap[i]   = a1;
+                    if (!quotedMap[key]) quotedMap[key] = a1;
 
                     i++;
 
@@ -494,13 +500,14 @@ TypeChecker.prototype.check = function(callback)
             while (messageText) {
                 parseMessageText(messageText);
                 messageText = messageText.next;
+                if (!next) next = messageText ? messageText.code : 0;
             }
         }());
 
         // Now look up the friendlier reason string from the map
         //
         (function() {
-            var template = getReasonTemplate(code, sawClass, sawProtocol, sawMethod, sawStatic);
+            var template = getReasonTemplate(code, next, sawClass, sawProtocol, sawMethod, sawStatic);
 
             var valid  = true;
             var result = null;

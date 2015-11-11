@@ -66,7 +66,7 @@ Builder.prototype.build = function()
     var model        = this._model;
 
     var currentClass, currentMethod, currentCategoryName;
-    var currentProtocol;
+    var currentStruct, currentProtocol;
 
     var traverser = new Traverser(this._ast);
 
@@ -113,6 +113,14 @@ Builder.prototype.build = function()
 
         currentClass = cls;
         currentCategoryName = categoryName;
+    }
+
+    function handleOJStructDefinition(node)
+    {
+        var struct = new Model.OJStruct(node.id.name);
+        model.addStruct(struct);
+
+        currentStruct = struct;
     }
 
     function handleOJProtocolDefinition(node)
@@ -165,13 +173,18 @@ Builder.prototype.build = function()
         currentProtocol.addMethod(method);
     }
 
-    function handleOJInstanceVariableDeclaration(node)
+    function handleOJBracketVariableDeclaration(node)
     {
         var type = node.parameterType ? node.parameterType.value : null;
 
-        for (var i = 0, length = node.ivars.length; i < length; i++) {
-            var name = node.ivars[i].name;
-            currentClass.addIvar(new Model.OJIvar(name, currentClass.name, type));
+        for (var i = 0, length = node.ids.length; i < length; i++) {
+            var name = node.ids[i].name;
+
+            if (currentClass) {
+                currentClass.addIvar(new Model.OJIvar(name, currentClass.name, type));
+            } else if (currentStruct) {
+                currentStruct.addVariable(name, type);
+            }
         }
     }
 
@@ -347,14 +360,14 @@ Builder.prototype.build = function()
                 node.type === Syntax.FunctionExpression)
             {
                 annotation = [ ];
-                annotation.push(node.annotation && node.annotation.value);
+                annotation.push(node.annotation ? node.annotation.value : null);
 
                 _.each(node.params, function(param) {
-                    annotation.push(param.annotation.value);
+                    annotation.push(param.annotation ? param.annotation.value : null);
                 });
 
             } else {
-                annotation = node.id.annotation && node.id.annotation.value;
+                annotation = node.id.annotation ? node.id.annotation.value : null;
             }
 
             model.addGlobal(new Model.OJGlobal(name, annotation));
@@ -402,6 +415,9 @@ Builder.prototype.build = function()
             if (type === Syntax.OJClassImplementation) {
                 handleOJClassImplementation(node);
 
+            } else if (type === Syntax.OJStructDefinition) {
+                handleOJStructDefinition(node);
+
             } else if (type === Syntax.OJProtocolDefinition) {
                 handleOJProtocolDefinition(node);
 
@@ -411,8 +427,8 @@ Builder.prototype.build = function()
             } else if (type === Syntax.OJSqueezeDirective) {
                 handleOJSqueezeDirective(node);
 
-            } else if (type === Syntax.OJInstanceVariableDeclaration) {
-                handleOJInstanceVariableDeclaration(node);
+            } else if (type === Syntax.OJBracketVariableDeclaration) {
+                handleOJBracketVariableDeclaration(node);
 
             } else if (type === Syntax.OJPropertyDirective) {
                 handleOJPropertyDirective(node);
@@ -461,10 +477,13 @@ Builder.prototype.build = function()
             currentMethod = null;
             currentCategoryName = null;
 
-        } else if (type == Syntax.OJProtocolDefinition) {
+        } else if (type === Syntax.OJStructDefinition) {
+            currentStruct = null;
+
+        } else if (type === Syntax.OJProtocolDefinition) {
             currentProtocol = null;
 
-        } else if (type == Syntax.OJMethodDefinition) {
+        } else if (type === Syntax.OJMethodDefinition) {
             currentMethod = null;
         }
     });

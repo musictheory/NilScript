@@ -15,5 +15,6 @@ module.exports = {
     OJMethod:   require("./OJMethod"),
     OJIvar:     require("./OJIvar"),
     OJEnum:     require("./OJEnum"),
-    OJGlobal:   require("./OJGlobal")
+    OJGlobal:   require("./OJGlobal"),
+    OJStruct:   require("./OJStruct")
 };
