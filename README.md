@@ -31,6 +31,7 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 - [Protocols](#protocols)
 - [Boolean/null aliases](#aliases)
 - [@enum and @const](#enum)
+- [@global](#global)
 - [Runtime](#runtime)
 - [Restrictions](#restrictions)
 - [Squeezing oj!](#squeeze)
@@ -469,6 +470,18 @@ The `--inline-const` option inlines `TheConstant` as well:
     someFunction(0, 1, 2, 3, 4, "Hello World");
 
 Note: Inlining causes the enum or const to be lifted to the global scope.  Inlining affects all occurrences of that identifier in all files for the current compilation.  Inlined enums/consts are persisted via `--output-state` and `--input-state`.
+
+---
+## <a name="global"></a>@global
+
+To mimic C APIs such as CoreGraphics, oj has the ability to declare global functions and variables with `@global`.
+
+    @global function CGRectMake(x : Number, y : Number, width : Number, height : Number) {
+        return { origin: { x, y }, size: { width, height } };
+    }
+    
+    @global CGRectZero = CGRectMake(0, 0, 0, 0);
+    @global CGRectNull = CGRectMake(Infinity, Infinity, 0, 0);
 
 ---
 ## <a name="protocols"></a>Protocols
