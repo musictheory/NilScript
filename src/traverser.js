@@ -24,8 +24,8 @@ ojVisitorKeys[ Syntax.OJMethodDefinition             ] = [ "returnType", "method
 ojVisitorKeys[ Syntax.OJMethodSelector               ] = [ "name", "variableName" ];
 ojVisitorKeys[ Syntax.OJSelector                     ] = [ ];
 ojVisitorKeys[ Syntax.OJParameterType                ] = [ ];
-ojVisitorKeys[ Syntax.OJInstanceVariableDeclarations ] = [ "declarations" ];
-ojVisitorKeys[ Syntax.OJInstanceVariableDeclaration  ] = [ "parameterType", "ivars" ];
+ojVisitorKeys[ Syntax.OJBracketVariableBlock         ] = [ "declarations" ];
+ojVisitorKeys[ Syntax.OJBracketVariableDeclaration   ] = [ "parameterType", "ids" ];
 ojVisitorKeys[ Syntax.OJPropertyDirective            ] = [ "attributes", "parameterType", "id" ];
 ojVisitorKeys[ Syntax.OJPropertyAttribute            ] = [ ];
 ojVisitorKeys[ Syntax.OJSynthesizeDirective          ] = [ "pairs" ];
@@ -44,6 +44,7 @@ ojVisitorKeys[ Syntax.OJTypedefDeclaration           ] = [ "from", "to" ];
 ojVisitorKeys[ Syntax.OJEachStatement                ] = [ "left", "right", "body" ];
 ojVisitorKeys[ Syntax.OJTypeAnnotation               ] = [ ];
 ojVisitorKeys[ Syntax.OJGlobalDeclaration            ] = [ "declaration", "declarators" ];
+ojVisitorKeys[ Syntax.OJStructDefinition             ] = [ "id", "variables" ];
 
 // Patch FunctionExpression, FunctionDeclaration, and Identifier to deal with type annotations
 //

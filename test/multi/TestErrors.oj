@@ -263,7 +263,7 @@ function test() {
 @implementation DuplicateClass
 @end
 
-@implementation DuplicateClass //@error OJDuplicateClassDefinitionError
+@implementation DuplicateClass //@error OJDuplicateDeclarationError
 @end
 
 
@@ -275,7 +275,7 @@ function test() {
 @implementation DuplicateClass
 @end
 
-@implementation DuplicateClass //@error OJDuplicateClassDefinitionError
+@implementation DuplicateClass //@error OJDuplicateDeclarationError
 @end
 
 

@@ -44,6 +44,7 @@ var opt = getopt.create([
     [ "",  "warn-unknown-selectors",    "warn about usage of unknown selectors"    ],
     [ "",  "warn-unknown-ivars",        "warn about unknown ivars"                 ],
     [ "",  "warn-unused-ivars",         "warn about unused ivars"                  ],
+    [ "",  "warn-global-no-type",       "warn about missing type annotations on @globals" ],
 
     [ "",  "debug-message-send",        "use debug version of oj.msgSend" ],
     [ "",  "dump-ast",                  "(for development)" ],
