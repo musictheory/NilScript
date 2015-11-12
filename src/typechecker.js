@@ -354,10 +354,11 @@ TypeChecker.prototype._generateDefs = function(model)
 
     lines.push("declare class " + TypecheckerSymbols.GlobalType + " {");
     _.each(model.globals, function(ojGlobal) {
+        var name       = symbolTyper.getSymbolForIdentifierName(ojGlobal.name);
         var annotation = _.clone(ojGlobal.annotation);
 
         if (_.isArray(annotation)) {
-            var line = ojGlobal.name;
+            var line = name;
             var returnType = annotation.shift();
 
             line += "(" + _.map(annotation, function(a, index) {
@@ -369,7 +370,7 @@ TypeChecker.prototype._generateDefs = function(model)
             lines.push(line);
 
         } else {
-            lines.push(ojGlobal.name + " : " + symbolTyper.toTypecheckerType(annotation) + ";");
+            lines.push(name + " : " + symbolTyper.toTypecheckerType(annotation) + ";");
         }
     });
     lines.push("}");

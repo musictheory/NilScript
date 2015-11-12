@@ -384,9 +384,11 @@ OJSymbolTyper.prototype.fromTypecheckerType = function(rawInType)
 
 OJSymbolTyper.prototype.getSymbolicatedString = function(inString)
 {
+    var fromSqueezedMap = this._fromSqueezedMap;
+
     return inString.replace(/\$oj[_$][A-Za-z_$]+/g, function(symbol) {
         if (symbol.indexOf("$oj$") === 0) {
-            return this._fromSqueezedMap[symbol];
+            return fromSqueezedMap[symbol];
 
         } else if (symbol.match(/^\$oj_[cCpPi]_/)) {
             return symbol.substr(OJClassPrefix.length);
