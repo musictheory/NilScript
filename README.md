@@ -31,6 +31,7 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 - [Protocols](#protocols)
 - [Boolean/null aliases](#aliases)
 - [@enum and @const](#enum)
+- [@global](#global)
 - [Runtime](#runtime)
 - [Restrictions](#restrictions)
 - [Squeezing oj!](#squeeze)
@@ -471,6 +472,29 @@ The `--inline-const` option inlines `TheConstant` as well:
 Note: Inlining causes the enum or const to be lifted to the global scope.  Inlining affects all occurrences of that identifier in all files for the current compilation.  Inlined enums/consts are persisted via `--output-state` and `--input-state`.
 
 ---
+## <a name="global"></a>@global
+
+To mimic C APIs such as CoreGraphics, oj has the ability to declare global functions and variables with `@global`.
+
+    @global function CGRectMake(x : Number, y : Number, width : Number, height : Number) {
+        return { origin: { x, y }, size: { width, height } };
+    }
+    
+    @global CGRectZero = CGRectMake(0, 0, 0, 0);
+    @global CGRectNull = CGRectMake(Infinity, Infinity, 0, 0);
+    
+Which transforms into the equivalent of:
+
+    $oj_oj._g.CGRectMake = function(x, y, width, height) {
+        return { origin: { x, y }, size: { width, height } };
+    }
+    
+    $oj_oj._g.CGRectZero = $oj_oj._g.CGRectMake(0, 0, 0, 0);
+    $oj_oj._g.CGRectNull = $oj_oj._g.CGRectMake(Infinity, Infinity, 0, 0);
+    
+Unlike inlined enums and consts, globals are assigned at runtime.  Hence, in the above code example, care must be given that `CGRectMake()` isn't used for initializing `CGRectZero` until after the `@global function CGRectMake` line.  This limitation should not affect globals used from within oj methods (as the global will already be declared by that time).
+
+---
 ## <a name="protocols"></a>Protocols
 
 Like Objective-C, oj includes support for protocols.  Both `@required` and `@optional` methods may be specified:
@@ -539,7 +563,7 @@ Returns a human-readable string of a class or selector.  Note that this is for d
 ---
 ## <a name="squeeze"></a>Squeezing oj!
 
-oj features a code minifier/compressor/obfuscator called the squeezer.  When the `--squeeze` option is passed to the compiler, all identifiers for classes (`$oj_c_ClassName`), methods (`$oj_f_MethodName`) and ivars (`$oj_i_ClassName_IvarName`) will be replaced with a shortened "squeezed" version (`$oj$ID`).  For example, all occurrences of `$oj_c_Foo` might be assigned the identifier `$oj$a`, all occurrences of `$oj_f_initWithFoo_` might be assigned `$oj$b`.  This is a safe transformation as long as all files are squeezed together.
+oj features a code minifier/compressor/obfuscator called the squeezer.  When the `--squeeze` option is passed to the compiler, all identifiers for classes (`$oj_c_ClassName`), methods (`$oj_f_MethodName`), ivars (`$oj_i_ClassName_IvarName`), and `@global`s will be replaced with a shortened "squeezed" version (`$oj$ID`).  For example, all occurrences of `$oj_c_Foo` might be assigned the identifier `$oj$a`, all occurrences of `$oj_f_initWithFoo_` might be assigned `$oj$b`.  This is a safe transformation as long as all files are squeezed together.
 
 Squeezed identifiers are persisted via `--output-state` and `--input-state`.
 
@@ -611,7 +635,7 @@ Most oj method declarations will have type information and should behave exactly
         return a + "-" + b;
     }
 
-TypeScript infers variables automatically; however, sometimes an explicit annotation is required:
+TypeScript infers variables automatically; however, sometimes an explicit annotation is required.  This annotation is similar to TypeScript syntax:
 
     function getNumber() { … }
 
@@ -619,6 +643,15 @@ TypeScript infers variables automatically; however, sometimes an explicit annota
         var num : Number = getNumber(); // Annotation needed since getNumber() is not annotated
         …
     }
+    
+    
+oj also provides syntax for basic structures, similar to the syntax for instance variable declaration.  `@struct` does not affect generated code and only provides hints to the typechecker:
+
+    @struct CGPoint { Number x;        Number y;      }
+    @struct CGSize  { Number width;    Number height; }
+    @struct CGRect  { CGPoint origin;  CGSize size;   }
+    
+    function makeSquare(length : Number) : CGRect  { … }
 
 Casting is performed via the `@cast` operator.  It may be used similar in syntax to C++'s `static_cast`:
 
