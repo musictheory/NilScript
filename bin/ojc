@@ -36,6 +36,7 @@ var opt = getopt.create([
     [ "",  "jshint-ignore=CODE+",       "ignore warning from jshint" ],
 
     [ "",  "check-types",               "use type checker (experimental)" ],
+    [ "",  "typescript-lib=FILE",       "type checker: specify an alternate lib.d.ts file" ],
     [ "",  "no-implicit-any",           "type checker: disallow implicit any"              ],
     [ "",  "strict-functions",          "type checker: enforce TypeScript-style functions" ],
     [ "",  "strict-object-literals",    "type checker: enforce TypeScript object literals" ],

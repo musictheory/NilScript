@@ -78,18 +78,30 @@ function getReasonTemplate(code, nextCode, sawClass, sawProtocol, sawMethod, saw
 /*
     See https://github.com/Microsoft/TypeScript/wiki/Using-the-Compiler-API
 */
-var sLibrarySource;
+var sCachedLibFileContents = { };
 
-function ts_transform(defs, code, options)
+function ts_transform(defs, code, options, libFileName)
 {
+    var libFileContents = sCachedLibFileContents[libFileName];
+
     // Eventually, there should be an option/way to switch to "lib.core.d.ts"
     // Keep in sync with: https://github.com/Microsoft/TypeScript/issues/494 ?
     //
-    if (!sLibrarySource) {
-        sLibrarySource = fs.readFileSync(path.join(path.dirname(require.resolve('typescript')), 'lib.d.ts')).toString();
+    if (!libFileContents) {
+        try {
+            libFileContents = fs.readFileSync(path.join(path.dirname(require.resolve("typescript")), libFileName)).toString();
+            sCachedLibFileContents[libFileName] = libFileContents;
+        } catch (e) {
+            libFileName = null;
+            libFileContents = " ";
+        }
     }
 
-    var contentMap = { "defs.ts": defs, "lib.d.ts": sLibrarySource, "code.ts": code, };
+    var contentMap = {
+        "defs.ts": defs,
+        "code.ts": code,
+        "lib.d.ts": libFileContents
+    };
 
     var program = ts.createProgram(_.keys(contentMap), options || { }, {
         getSourceFile: function(filename, languageVersion) {
@@ -112,7 +124,7 @@ function ts_transform(defs, code, options)
 }
 
 
-function TypeChecker(model, generator, files, noImplicitAny)
+function TypeChecker(model, generator, files, options)
 {
     var defsResult = this._generateDefs(model);
     this._defs = defsResult.defs;
@@ -127,7 +139,7 @@ function TypeChecker(model, generator, files, noImplicitAny)
 
     this._files = files;
     this._model = model;
-    this._noImplicitAny = noImplicitAny;
+    this._options = options;
 }
 
 
@@ -398,7 +410,7 @@ TypeChecker.prototype.check = function(callback)
     var codeLineMap   = this._codeLineMap;
 
     var symbolTyper   = this._model.getSymbolTyper();
-    var noImplicitAny = this._noImplicitAny;
+    var options       = this._options;
 
     var prependLineCount = this._prependLineCount;
 
@@ -433,12 +445,13 @@ TypeChecker.prototype.check = function(callback)
     }
 
     function makeHintsWithDiagnostic(diagnostic) {
-        var lineColumn  = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
+        var lineColumn  = diagnostic.file ? diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start) : { line: 0, column: 0 };
+        var fileName    = diagnostic.file ? diagnostic.file.fileName : "";
         var fileLine    = null;
 
-        if (diagnostic.file.fileName == "code.ts") {
+        if (fileName == "code.ts") {
             fileLine = getFileLineWithCodeLine(lineColumn.line);
-        } else if (diagnostic.file.fileName == "defs.ts") {
+        } else if (fileName == "defs.ts") {
             fileLine = getFileLineWithDefsLine(lineColumn.line);
         }
 
@@ -560,10 +573,12 @@ TypeChecker.prototype.check = function(callback)
         return null;
     }
 
-    var options = { };
-    if (noImplicitAny) options.noImplicitAny = true;
+    var tsOptions = { };
+    if (options["no-implicit-any"]) tsOptions.noImplicitAny = true;
 
-    var hints = _.flatten(_.map(ts_transform(defs, code, options), function(diagnostic) {
+    var tsLibName = options["typescript-lib"] || "lib.d.ts";
+
+    var hints = _.flatten(_.map(ts_transform(defs, code, tsOptions, tsLibName), function(diagnostic) {
         return makeHintsWithDiagnostic(diagnostic);
     }));
 
