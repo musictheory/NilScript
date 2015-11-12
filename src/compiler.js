@@ -277,10 +277,8 @@ Compiler.prototype.compile = function(callback)
         // Type checker
         //
         if (typeCheckGenerator) {
-            var noImplicitAny = options["no-implicit-any"];
-
             time("Type Check", function() {
-                var checker = new TypeChecker(model, typeCheckGenerator, inputFiles, noImplicitAny);
+                var checker = new TypeChecker(model, typeCheckGenerator, inputFiles, options);
 
                 checker.check(function(err, warnings, defs, code) {
                     waitingForChecker = false;
