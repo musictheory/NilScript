@@ -32,12 +32,6 @@ function _green (string, from, to) { return _colorString(string, from, to, "\u00
 function _yellow(string, from, to) { return _colorString(string, from, to, "\u001b[1;33m");    }
 
 
-function _clone(loc)
-{
-    return {line: loc.line, column:loc.column};
-}
-
-
 function _isDescendantOf(a, b)
 {
     while (a) {
@@ -49,9 +43,9 @@ function _isDescendantOf(a, b)
 }
 
 
-function Modifier(content, options)
+function Modifier(inLines, options)
 {
-    this._lines0 = content.split("\n");
+    this._lines0 = inLines;
 
     this._current = { };
     this._replacements = [ ];
@@ -152,8 +146,6 @@ Modifier.prototype.replace = function(text)
 
 Modifier.prototype.finish = function()
 {
-    var start = process.hrtime();
-
     this._replacements.sort(function(a, b) {
         if (a.line == b.line) {
             if (a.toColumn == b.toColumn) {
@@ -186,16 +178,6 @@ Modifier.prototype.finish = function()
     });
 
 
-    var generator = new SourceMapGenerator({
-        file:       this._options.sourceMapFile,
-        sourceRoot: this._options.sourceMapRoot
-    });
-
-    var inLine  = 1;
-    var outLine = 1;
-
-    var lineMap = { };
-
 
     for (var i = 0, length = this._replacements.length; i < length; i++) {
         var r      = this._replacements[i];
@@ -223,20 +205,7 @@ Modifier.prototype.finish = function()
         }
     }
 
-    var finalLines = [ ];
-    Array.prototype.push.apply(finalLines, this._prependLines);
-
-    var prependLineCount = finalLines.length;
-
-    Array.prototype.push.apply(finalLines, this._lines0);
-    Array.prototype.push.apply(finalLines, this._appendLines);
-
-    return {
-        code:   finalLines.join("\n"),
-        map:    generator.toString(),
-        _lines: lineMap,
-        _prependLineCount: prependLineCount
-    }
+    return this._lines0;
 }
 
 

@@ -11,8 +11,6 @@ const esprima     = require("../ext/esprima");
 const Builder     = require("./builder");
 const Modifier    = require("./modifier");
 const Generator   = require("./generator");
-
-const Hinter      = require("./hinter");
 const TypeChecker = require("./typechecker");
 
 const OJError     = require("./errors").OJError;
@@ -23,26 +21,8 @@ const _           = require("lodash");
 const fs          = require("fs");
 const async       = require("async");
 
-function errorForEsprimaError(inError)
-{
-    var line = inError.lineNumber;
-
-    var message = inError.description;
-    message = message.replace(/$.*Line:/, "");
-
-    var outError = new Error(message);
-
-    outError.line   = line;
-    outError.column = inError.column;
-    outError.name   = OJError.ParseError;
-    outError.reason = message;
-
-    return outError;
-}
-
 
 class Compiler {
-
 
 
 _extractFilesFromOptions(optionsFiles, previousFiles)
@@ -105,6 +85,7 @@ _parseFiles(files, callback)
 
                 let outError = new Error(message);
 
+                outError.file   = ojFile.path;
                 outError.line   = inError.lineNumber;
                 outError.column = inError.column;
                 outError.name   = OJError.ParseError;
@@ -147,17 +128,17 @@ _generateJavaScript(files, model, options, callback)
     var err = null;
 
     async.each(files, (ojFile, callback) => {
-        if (!ojFile.jsCode) {
+        if (!ojFile.generatorLines) {
             try {
-                var modifier  = new Modifier(ojFile.contents, options);
+                var inLines   = ojFile.contents.split("\n");
+                var modifier  = new Modifier(inLines, options);
                 var generator = new Generator(ojFile.ast, model, modifier, false, options);
 
                 generator.generate();
 
                 var result = generator.finish();
 
-                ojFile.jsCode = result.code;
-                ojFile.jsMap  = result.map;
+                ojFile.generatorLines = result.lines;
                 ojFile.generatorWarnings = result.warnings || [ ];
 
             } catch (e) {
@@ -176,12 +157,6 @@ _generateJavaScript(files, model, options, callback)
 _runTypechecker(files, model, options, callback)
 {
     callback();
-}
-
-
-_finish(files, callback)
-{
-
 }
 
 
@@ -204,6 +179,7 @@ compile(options, callback)
     var optionsAppend        = extractOption("append");
     var optionsSourceMapFile = extractOption("source-map-file");
     var optionsSourceMapRoot = extractOption("source-map-root");
+    var optionsState         = extractOption("state");
 
     // Extract options.files and convert to a map of path->OJFiles
     var files = this._extractFilesFromOptions(optionsFiles, previousFiles);
@@ -220,7 +196,9 @@ compile(options, callback)
         });
     }
 
-    var model      = new OJModel();
+    var model = new OJModel();
+    if (optionsState) model.loadState(optionsState);
+
     var outputCode = null;
     var outputMap  = null;
 
@@ -238,16 +216,25 @@ compile(options, callback)
         // Perform model diff
         callback => {
             var diffResult = previousModel.diffWithModel(model);
+            console.log(diffResult);
 
             if (diffResult == OJModel.DiffResult.GlobalsChanged || diffResult == OJModel.DiffResult.SelectorsChanged) {
-                _.each(this.files, ojFile => {
+                _.each(files, ojFile => {
                     ojFile.needsGenerate();
                     ojFile.needsTypecheck();
                 });
 
+
+                    console.log("globals changed");
+
             } else if (diffResult == OJModel.DiffResult.SelectorsChanged) {
                 // Just check some files for missing selectors?
+
+                console.log("selectors changed");
+
             }
+
+            console.log("local changed");
 
             callback();
         },
@@ -272,317 +259,56 @@ compile(options, callback)
 
         // Concatenate output
         callback => {
+            let linesArray = [ ];
+
             let prependLines = _.isArray(optionsPrepend) ? optionsPrepend : (optionsPrepend || "").split("\n");
             let appendLines  = _.isArray(optionsAppend)  ? optionsAppend  : (optionsAppend  || "").split("\n");
 
-            outputCode = prependLines.concat(
-                _.map(files, ojFile => ojFile.jsCode).join("\n"),
-                appendLines
-            ).join("\n");
+            linesArray.push(prependLines);
+            _.each(files, ojFile => {
+                linesArray.push(ojFile.generatorLines);
+            });
+            linesArray.push(appendLines);
+
+            outputCode = Array.prototype.concat.apply([ ], linesArray).join("\n");
 
             callback();
         }
 
     ], function(err) {
-        let warnings = _.compact(_.flatten(_.map(files, ojFile => [
-            ojFile.generatorWarnings,
-            ojFile.typecheckerWarnings
-        ])));
-
-        // console.log(outputCode);
-
         let errors = _.compact(_.map(files, ojFile => ojFile.error));
 
+        // If we have an internal error, throw it now
         _.each(errors, function(error) {
             if (error.name.indexOf("OJ") !== 0) {
                 throw error;
             }
         });
 
-        callback(err, {
+        var result = {
             code:     outputCode,
             map:      outputMap,
-            warnings: warnings,
-            errors:   errors
-        });
+            errors:   errors,
+
+            warnings: _.compact(_.flatten(_.map(files, ojFile => [
+                ojFile.generatorWarnings,
+                ojFile.typecheckerWarnings
+            ])))
+        };
+
+        if (options["include-state"]) {
+            result.state = model.saveState();
+        }
+
+        callback(err, result);
     });
 
-    // console.log("out of waterfall");
-
-
+    this._files   = files;
+    this._options = options;
+    this._model   = model;
 }
 
 }
-
-
-
-/*
-
-function Compiler(options)
-{
-    options = options || { };
-
-    var paths    = [ ];
-    var contents = [ ];
-
-
-
-    var parserOptions   = { loc: true }
-    var modifierOptions = { };
-
-    if (options["source-map-file"]) {
-        modifierOptions.sourceMapFile = options["source-map-file"];
-    }
-
-    if (options["source-map-root"]) {
-        modifierOptions.sourceMapRoot = options["source-map-root"];
-    }
-
-    if (options["dump-modifier"]) {
-        modifierOptions.debug = true;
-    }
-
-    this._model = new OJModel();
-
-    if (options.state) {
-        this._model.loadState(options.state);
-    }
-
-    if (options["squeeze"]) {
-        this._model.getSymbolTyper().setupSqueezer(
-            options["squeeze-start-index"] || 0,
-            options["squeeze-end-index"]   || 0
-        );
-    }
-
-    var lineCounts = [ ];
-    var allLines   = [ ];
-
-    for (var i = 0, length = contents.length; i < length; i++) {
-        var lines = contents[i].split("\n");
-        lineCounts.push(lines.length);
-        Array.prototype.push.apply(allLines, lines);
-    }
-
-    this._inputFiles           = paths;
-    this._inputLines           = allLines;
-    this._inputLineCounts      = lineCounts;
-    this._inputParserOptions   = parserOptions;
-    this._inputModifierOptions = modifierOptions;
-
-    this._options   = options;
-}
-
-
-Compiler.prototype._getFileAndLineForLine = function(inLine)
-{
-    var files      = this._inputFiles;
-    var lineCounts = this._inputLineCounts;
-
-    var startLineForFile = 0; 
-    var endLineForFile   = 0;
-
-    for (var i = 0, length = files.length; i < length; i++) {
-        var lineCount = lineCounts[i] || 0;
-        endLineForFile = startLineForFile + lineCount;
-
-        if (inLine >= startLineForFile && inLine <= endLineForFile) {
-            return [ files[i], inLine - startLineForFile ];
-        }
-
-        startLineForFile += lineCount;
-    }
-
-    return null;
-}
-
-
-Compiler.prototype._cleanupError = function(e)
-{
-    if (e.line && !e.file) {
-        var fileAndLine = this._getFileAndLineForLine(e.line);
-
-        if (fileAndLine) {
-            e.file = fileAndLine[0];
-            e.line = fileAndLine[1];
-        }
-    }
-}
-
-
-Compiler.prototype.compile = function(callback)
-{
-    var dumpTime = this._options["dump-time"];
-
-    var waitingForHinter  = true;
-    var waitingForChecker = true;
-
-    var cleanupError = function(err) {
-        if (err) this._cleanupError(err);
-    }.bind(this);
-
-    function finish(err, result) {
-        if (err || (!waitingForHinter && !waitingForChecker)) {
-            cleanupError(err);
-            callback(err, result);
-        }
-    }
-
-    function printTime(name, start) {
-        if (dumpTime) {
-            console.error(name, Math.round(process.hrtime(start)[1] / (1000 * 1000)) + "ms");
-        }
-    }
-
-    function time(name, f) {
-        var start = process.hrtime();
-        f();
-        printTime(name, start);
-    }
-
-    try {
-        var compiler           = this;
-        var inputFiles         = this._inputFiles;
-        var inputLines         = this._inputLines;
-        var inputParserOptions = this._inputParserOptions;
-        var model              = this._model;
-        var options            = this._options;
-
-        var result  = { };
-        var lineMap;
-        var ast;
-
-        // Parse to AST
-        time("Parse", function() {
-            try { 
-                ast = esprima.parse(inputLines.join("\n"), inputParserOptions);
-            } catch (e) {
-                throw errorForEsprimaError(e);
-            }
-        });
-
-        // Do first pass with Builder and save into model
-        time("Build", function() {
-            (new Builder(ast, model, options)).build();
-        });
-
-        var transpileModifier;
-        var transpileGenerator;
-        if (options["output-language"] != "none") {
-            transpileModifier  = new Modifier(this._inputFiles, this._inputLineCounts, this._inputLines, this._inputModifierOptions);
-            transpileGenerator = new Generator(ast, model, transpileModifier, false, options);
-        }
-
-        var typeCheckModifier;
-        var typeCheckGenerator;
-        if (options["check-types"]) {
-            typeCheckModifier  = new Modifier(this._inputFiles, this._inputLineCounts, this._inputLines.slice(0), this._inputModifierOptions);
-            typeCheckGenerator = new Generator(ast, model, typeCheckModifier, true, options);
-        }
-
-        // Transpiler
-        if (transpileGenerator) {
-            // Do second pass with Generator
-            time("Generate", function() {
-                transpileGenerator.generate();
-            });
-
-            time("Finish", function() {
-                result = transpileGenerator.finish();
-            });
-
-            // Add real file to errors
-            _.each(result.warnings || [ ], function(e) {
-                this._cleanupError(e);
-            }.bind(this));
-
-            // Add state to result
-            time("Archive", function() {
-                result.state = model.saveState();
-                lineMap = result._lines;
-                delete(result._lines);
-            });
-        }
-
-        if (options["dump-ast"]) {
-            result.dumpedAST = JSON.stringify(this._ast, function(key, value) {
-                if (key == "parent") {
-                    return undefined;
-                }
-                return value;
-            }, 4)
-        }
-
-        result.cache = options["cache"];
-
-
-        // Type checker
-        //
-        if (typeCheckGenerator) {
-            time("Type Check", function() {
-                var checker = new TypeChecker(model, typeCheckGenerator, inputFiles, options);
-
-                checker.check(function(err, warnings, defs, code) {
-                    waitingForChecker = false;
-                    result.warnings = (result.warnings || [ ]).concat(warnings);
-
-                    if (options["dump-types"]) {
-                        fs.writeFileSync("/tmp/ojc.defs.ts", defs);
-                        fs.writeFileSync("/tmp/ojc.code.ts", code);
-                    }
-
-                    finish(err, result);
-                });
-            });
-        } else {
-            waitingForChecker = false;
-            finish(null, result);
-        }
-
-
-        // Hinter
-        //
-        if (options["jshint"]) {
-            var config = options["jshint-config"];
-            var ignore = options["jshint-ignore"];
-
-            var hinter = new Hinter(result.code, config, ignore, lineMap, inputFiles, result.cache ? result.cache.hinter : { });
-
-            var start = process.hrtime();
-
-            hinter.run(function(err, hints) {
-                waitingForHinter = false;
-                result.warnings = (result.warnings || [ ]).concat(hints);
-
-                if (result.cache) {
-                    result.cache.hinter = hinter.getCache();
-                }
-
-                printTime("Hinter", start);
-
-                finish(err, result);
-            });
-
-        } else {
-            waitingForHinter = false;
-            finish(null, result);
-        }
-
-    } catch (e) {
-        if (e.name.indexOf("OJ") !== 0) {
-            console.error("Internal oj error!")
-            console.error("------------------------------------------------------------")
-            console.error(e);
-            console.error(e.stack);
-            console.error("------------------------------------------------------------")
-        }
-
-        cleanupError(e);
-
-        callback(e, null);
-    }
-}
-*/
 
 
 module.exports = {
@@ -590,6 +316,10 @@ module.exports = {
 
     compile: function(options, callback) {
         try {
+            if (options) {
+                options["include-state"] = true;
+            }
+
             var compiler = new Compiler();
             compiler.compile(options, callback);
 

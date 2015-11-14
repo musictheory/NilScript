@@ -63,7 +63,7 @@ needsParse()
 
 needsGenerate()
 {
-    this.jsCode = null;
+    this.generatorLines    = null;
     this.generatorWarnings = null;
 }
 
