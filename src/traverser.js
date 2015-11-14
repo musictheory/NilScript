@@ -7,10 +7,10 @@
 
 "use strict";
 
-var _          = require("lodash");
-var esprima    = require("./esprima");
-var estraverse = require("estraverse");
-var Syntax     = esprima.Syntax;
+const _          = require("lodash");
+const esprima    = require("../ext/esprima");
+const estraverse = require("estraverse");
+const Syntax     = esprima.Syntax;
 
 // Add additional visitor keys for the oj language extension
 var ojVisitorKeys = { };
@@ -24,8 +24,8 @@ ojVisitorKeys[ Syntax.OJMethodDefinition             ] = [ "returnType", "method
 ojVisitorKeys[ Syntax.OJMethodSelector               ] = [ "name", "variableName" ];
 ojVisitorKeys[ Syntax.OJSelector                     ] = [ ];
 ojVisitorKeys[ Syntax.OJParameterType                ] = [ ];
-ojVisitorKeys[ Syntax.OJInstanceVariableDeclarations ] = [ "declarations" ];
-ojVisitorKeys[ Syntax.OJInstanceVariableDeclaration  ] = [ "parameterType", "ivars" ];
+ojVisitorKeys[ Syntax.OJBracketVariableBlock         ] = [ "declarations" ];
+ojVisitorKeys[ Syntax.OJBracketVariableDeclaration   ] = [ "parameterType", "ids" ];
 ojVisitorKeys[ Syntax.OJPropertyDirective            ] = [ "attributes", "parameterType", "id" ];
 ojVisitorKeys[ Syntax.OJPropertyAttribute            ] = [ ];
 ojVisitorKeys[ Syntax.OJSynthesizeDirective          ] = [ "pairs" ];
@@ -44,6 +44,7 @@ ojVisitorKeys[ Syntax.OJTypedefDeclaration           ] = [ "from", "to" ];
 ojVisitorKeys[ Syntax.OJEachStatement                ] = [ "left", "right", "body" ];
 ojVisitorKeys[ Syntax.OJTypeAnnotation               ] = [ ];
 ojVisitorKeys[ Syntax.OJGlobalDeclaration            ] = [ "declaration", "declarators" ];
+ojVisitorKeys[ Syntax.OJStructDefinition             ] = [ "id", "variables" ];
 
 // Patch FunctionExpression, FunctionDeclaration, and Identifier to deal with type annotations
 //

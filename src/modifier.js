@@ -49,16 +49,9 @@ function _isDescendantOf(a, b)
 }
 
 
-function Modifier(files, lineCounts, lines, options)
+function Modifier(content, options)
 {
-    this._files      = files;
-    this._lineCounts = lineCounts;
-    this._lines0     = lines;
-
-    this._prependLines = options.prepend || [ ];
-    this._appendLines  = options.append  || [ ];
-
-    this._prependLines = this._prependLines.join("\n").split("\n");
+    this._lines0 = content.split("\n");
 
     this._current = { };
     this._replacements = [ ];
@@ -203,38 +196,6 @@ Modifier.prototype.finish = function()
 
     var lineMap = { };
 
-    function mapLines(files, lineCounts, nameForLineMap) {
-        for (var i = 0, iLength = files.length; i < iLength; i++) {
-            var file      = files[i];
-            var lineCount = lineCounts[i];
-
-            inLine = 1;
-
-            if (file) {
-                lineMap[file] = {
-                    start: (outLine - 1),
-                    end:   (outLine - 1) + lineCount
-                }
-            }
-
-            for (var j = 0; j < lineCount; j++) {
-                if (file) {
-                    generator.addMapping({
-                        source: file,
-                        original:  { line: inLine,  column: 0 },
-                        generated: { line: outLine, column: 0 }
-                    });
-                }
-
-                inLine++;
-                outLine++;
-            }
-        }
-    };
-
-    mapLines([ null ], [ this._prependLines.length ]);
-    mapLines(this._files, this._lineCounts);
-    mapLines([ null ], [ this._appendLines.length ]);
 
     for (var i = 0, length = this._replacements.length; i < length; i++) {
         var r      = this._replacements[i];

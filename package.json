@@ -26,6 +26,7 @@
         "cpu-profiler": "1.x"
     },
     "dependencies": {
+        "async":       "1.x",
         "lodash":      "2.x",
         "estraverse":  "4.x",
         "source-map":  "0.1.x",

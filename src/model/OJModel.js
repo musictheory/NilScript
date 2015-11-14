@@ -6,32 +6,40 @@
 
 "use strict";
 
-var _             = require("lodash");
-var OJError       = require("../errors").OJError;
-var Utils         = require("../utils");
-var OJClass       = require("./OJClass");
-var OJGlobal      = require("./OJGlobal");
-var OJProtocol    = require("./OJProtocol");
-var OJMethod      = require("./OJMethod");
-var OJEnum        = require("./OJEnum");
-var OJSymbolTyper = require("./OJSymbolTyper")
+const _             = require("lodash");
+const OJError       = require("../errors").OJError;
+const Utils         = require("../utils");
+const OJClass       = require("./OJClass");
+const OJGlobal      = require("./OJGlobal");
+const OJProtocol    = require("./OJProtocol");
+const OJMethod      = require("./OJMethod");
+const OJConst       = require("./OJConst");
+const OJEnum        = require("./OJEnum");
+const OJStruct      = require("./OJStruct");
+const OJSymbolTyper = require("./OJSymbolTyper")
 
 
-const DiffResultNoChange         = "none";
-const DiffResultGlobalsChanged   = "globals";
-const DiffResultSelectorsChanged = "selectors";
+const DiffResult = {
+    None:             "none",
+    GlobalsChanged:   "globals",
+    SelectorsChanged: "selectors"
+}
 
-function OJModel()
+
+class OJModel {
+
+
+constructor()
 {
     this.enums     = [ ];
     this.globals   = { };
     this.consts    = { };
     this.classes   = { };
+    this.structs   = { };
     this.protocols = { };
     this.selectors = { };
 
     this._symbolTyper = new OJSymbolTyper(this);
-    this._globalsMap = null;
 
     this.types = { };
     this.registerType( [
@@ -48,74 +56,58 @@ function OJModel()
 }
 
 
-OJModel.prototype.loadState = function(state)
+loadState(state)
 {
-    var enums     = this.enums;
-    var classes   = this.classes;
-    var globals   = this.globals;
-    var protocols = this.protocols;
-    var types     = this.types;
-
-    _.each(state.enums, function(e) {
-        enums.push(new OJEnum(e.name, e.unsigned, e.values));
-    });
-
-    _.extend(this.consts, state.consts);
-    _.extend(this.types,  state.types);
-
-    _.each(state.globals, function(g) {
-        var ojGlobal = new OJGlobal();
-        ojGlobal.loadState(g);
-        ojGlobal.local = false;
-        globals[ojGlobal.name] = ojGlobal;
-    });
-
-    _.each(state.classes, function(c) {
-        var ojClass = new OJClass();
-        ojClass.loadState(c);
-        ojClass.local = false;
-        classes[ojClass.name] = ojClass;
-    });
-
-    _.each(state.protocols, function(p) {
-        var ojProtocol = new OJProtocol();
-        ojProtocol.loadState(p);
-        ojProtocol.local = false;
-        protocols[ojProtocol.name] = ojProtocol;
-    });
-
-    if (state.symbols) {
-        this._symbolTyper.loadState(state.symbols);
+    function load(key, cons) {
+        _.each(state[key], jsObject => {
+            var ojObject = new cons();
+            ojObject.loadState(jsObject);
+            ojObject.local = false;
+            this[key] = ojObject;
+        });
     }
+
+    load("consts",    OJConst);
+    load("enums",     OJEnum);
+    load("globals",   OJGlobal);
+    load("classes",   OJClass);
+    load("protocols", OJProtocol);
+    load("structs",   OJStruct);
+
+    _.extend(this.types,     state.types);
+    _.extend(this.selectors, state.selectors);
+
+    // OJSymbolTyper state is at same level for backwards compatibility
+    this._symbolTyper.loadState(state);
 }
 
 
-OJModel.prototype.saveState = function()
+saveState()
 {
-    return {
-        symbols:   this._symbolTyper.saveState(),
+    function getState(objects) {
+        return _.map(objects, o => o.saveState() );
+    }
 
-        consts:    this.consts,
-        enums:     this.enums,
-        selectors: this.selectors,
+    var state = {
+        consts:    getState( this.consts    ),
+        enums:     getState( this.enums     ),
+        globals:   getState( this.globals   ),
+        classes:   getState( this.classes   ),
+        protocols: getState( this.protocols ),
+        structs:   getState( this.structs   ),
+
         types:     this.types,
+        selectors: this.selectors
+    };
 
-        globals: _.map(this.globals, function(ojGlobal) {
-            return ojGlobal.saveState();
-        }),
+    // OJSymbolTyper state is at same level for backwards compatibility
+    _.extend(state, this._symbolTyper.saveState());
 
-        classes: _.map(this.classes, function(ojClass) {
-            return ojClass.saveState();
-        }),
-
-        protocols: _.map(this.protocols, function(ojProtocol) {
-            return ojProtocol.saveState();
-        })
-    }
+    return state;
 }
 
 
-OJModel.prototype.prepare = function()
+prepare()
 {
     var selectors = { };
 
@@ -189,7 +181,32 @@ OJModel.prototype.prepare = function()
 }
 
 
-OJModel.prototype.getAggregateClass = function()
+diffWithModel(otherModel)
+{
+    function areNamesEqual(arr1, arr2) {
+        var names1 = _.map(arr1, o => o.name).sort();
+        var names2 = _.map(arr1, o => o.name).sort();
+
+        return _.isEqual(names1, names2);
+    }
+
+    if (!areNamesEqual(this.globals, otherModel.globals) ||
+        !areNamesEqual(this.enums,   otherModel.enums)   ||
+        !areNamesEqual(this.consts,  otherModel.consts)  ||
+        !areNamesEqual(this.classes, otherModel.classes))
+    {
+        return DiffResult.GlobalsChanged;
+    }
+
+    if (!_.isEqual(this.selectors, otherModel.selectors)) {
+        return DiffResult.SelectorsChanged;
+    }
+
+    return DiffResult.None;
+}
+
+
+getAggregateClass()
 {
     var result = new OJClass(null, null, null);
 
@@ -242,7 +259,7 @@ OJModel.prototype.getAggregateClass = function()
 }
 
 
-OJModel.prototype.registerType = function(typesToRegister)
+registerType(typesToRegister)
 {
     if (!_.isArray(typesToRegister)) {
         typesToRegister = [ typesToRegister ];
@@ -261,7 +278,7 @@ OJModel.prototype.registerType = function(typesToRegister)
 }
 
 
-OJModel.prototype.aliasType = function(existing, newTypes)
+aliasType(existing, newTypes)
 {
     if (!_.isArray(newTypes)) {
         newTypes = [ newTypes ];
@@ -280,20 +297,24 @@ OJModel.prototype.aliasType = function(existing, newTypes)
 }
 
 
-OJModel.prototype.addConst = function(name, value)
+addConst(ojConst)
 {
-    this.consts[name] = value;
+    var name = ojConst.name;
+
+    this.consts[name] = ojConst;
 }
 
 
-OJModel.prototype.addEnum = function(e)
+addEnum(ojEnum)
 {
-    this.enums.push(e);
-    this.aliasType("Number", e.name);
+    var name = ojEnum.name;
+
+    this.enums[name] = ojEnum;
+    this.aliasType("Number", ojEnum.name);
 }
 
 
-OJModel.prototype.addClass = function(ojClass)
+addClass(ojClass)
 {
     var name     = ojClass.name;
     var existing = this.classes[name];
@@ -313,56 +334,73 @@ OJModel.prototype.addClass = function(ojClass)
             });
 
         } else if (!existing.forward && !ojClass.forward) {
-            Utils.throwError(OJError.DuplicateClassDefinition, "Duplicate declaration of class '" + name + "'");
+            Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of class '" + name + "'");
         }
 
     } else {
         this.classes[name] = ojClass;
         this.registerType(name);
-    } 
+    }
 }
 
 
-OJModel.prototype.addProtocol = function(ojProtocol)
+addProtocol(ojProtocol)
 {
     var name = ojProtocol.name;
 
     if (this.protocols[name]) {
-        Utils.throwError(OJError.DuplicateProtocolDefinition, "Duplicate declaration of protocol '" + name + "'");
+        Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of protocol '" + name + "'");
     }
 
     this.protocols[name] = ojProtocol;
 }
 
 
-OJModel.prototype.addGlobal = function(ojGlobal)
+addStruct(ojStruct)
+{
+    var name = ojStruct.name;
+
+    if (this.structs[name]) {
+        Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of struct '" + name + "'");
+    }
+
+    this.structs[name] = ojStruct;
+}
+
+
+addGlobal(ojGlobal)
 {
     var name = ojGlobal.name;
 
-    if (this.protocols[name]) {
-        Utils.throwError(OJError.DuplicateGlobalDefinition, "Duplicate declaration of global '" + name + "'");
+    if (this.globals[name]) {
+        Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of global '" + name + "'");
     }
 
     this.globals[name] = ojGlobal;
 }
 
 
-OJModel.prototype.isNumericType = function(t)
+isNumericType(type)
 {
-    return this.types[t] == "Number";
+    return this.types[type] == "Number";
 }         
 
 
-OJModel.prototype.isBooleanType = function(t)
+isBooleanType(type)
 {
-    return this.types[t] == "Boolean";
+    return this.types[type] == "Boolean";
 }
 
 
-OJModel.prototype.getSymbolTyper = function()
+getSymbolTyper()
 {
     return this._symbolTyper;
 }
 
+
+}
+
+
+OJModel.DiffResult = DiffResult;
 
 module.exports = OJModel;

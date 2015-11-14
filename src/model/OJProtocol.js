@@ -7,9 +7,9 @@
 
 "use strict";
 
-var OJError     = require("../errors").OJError;
-var Utils       = require("../utils");
-var _           = require("lodash");
+const OJError     = require("../errors").OJError;
+const Utils       = require("../utils");
+const _           = require("lodash");
 
 
 module.exports = class OJProtocol {

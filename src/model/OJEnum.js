@@ -16,6 +16,25 @@ constructor(name, unsigned, values)
     this.name     = name;
     this.unsigned = unsigned;
     this.values   = values || { };
+    this.local    = true;
+}
+
+
+loadState(state)
+{
+    this.name     = state.name;
+    this.unsigned = !!state.unsigned;
+    this.values   = values || { };
+}
+
+
+saveState()
+{
+    return {
+        name:     this.name,
+        unsigned: this.unsigned,
+        values:   this.values
+    };
 }
 
 

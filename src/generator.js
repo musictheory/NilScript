@@ -6,34 +6,34 @@
 
 "use strict";
 
-var _          = require("lodash");
-var esprima    = require("./esprima");
-var Syntax     = esprima.Syntax;
+const _          = require("lodash");
+const esprima     = require("../ext/esprima");
+const Syntax     = esprima.Syntax;
 
-var Modifier   = require("./modifier");
-var Traverser  = require("./traverser");
-var Utils      = require("./utils");
+const Modifier   = require("./modifier");
+const Traverser  = require("./traverser");
+const Utils      = require("./utils");
 
-var OJModel    = require("./model").OJModel;
-var OJError    = require("./errors").OJError;
-var OJWarning  = require("./errors").OJWarning;
+const OJModel    = require("./model").OJModel;
+const OJError    = require("./errors").OJError;
+const OJWarning  = require("./errors").OJWarning;
 
-var TypecheckerSymbols = require("./model/OJSymbolTyper").TypecheckerSymbols;
+const Location = require("./model/OJSymbolTyper").Location;
 
-var OJRootVariable            = "$oj_oj";
-var OJClassMethodsVariable    = "$oj_s";
-var OJInstanceMethodsVariable = "$oj_m";
-var OJTemporaryVariablePrefix = "$oj_t_";
-var OJTemporaryReturnVariable = "$oj_r";
-var OJSuperVariable           = "$oj_super";
+const OJRootVariable            = "$oj_oj";
+const OJClassMethodsVariable    = "$oj_s";
+const OJInstanceMethodsVariable = "$oj_m";
+const OJTemporaryVariablePrefix = "$oj_t_";
+const OJTemporaryReturnVariable = "$oj_r";
+const OJSuperVariable           = "$oj_super";
 
-var OJRootWithGlobalPrefix = OJRootVariable + "._g."
-var OJRootWithClassPrefix  = OJRootVariable + "._cls.";
+const OJRootWithGlobalPrefix = OJRootVariable + "._g."
+const OJRootWithClassPrefix  = OJRootVariable + "._cls.";
 
 
-var LanguageEcmascript5 = "ecmascript5";
-var LanguageTypechecker = "typechecker";
-var LanguageNone        = "none";
+const LanguageEcmascript5 = "ecmascript5";
+const LanguageTypechecker = "typechecker";
+const LanguageNone        = "none";
 
 
 function Generator(ast, model, modifier, forTypechecker, options)
@@ -79,7 +79,10 @@ function Generator(ast, model, modifier, forTypechecker, options)
 
     // Typechecker forces 'inline-const'
     if (options["inline-const"] || forTypechecker) {
-        _.each(model.consts, function(value, name) {
+        _.each(model.consts, function(ojConst) {
+            let name  = ojConst.name;
+            let value = ojConst.value;
+
             if (inlines[name] === undefined) {
                 inlines[name] = value;
             }
@@ -123,6 +126,7 @@ Generator.prototype.generate = function()
     var optionWarnOnUnknownSelectors = options["warn-unknown-selectors"];
     var optionWarnOnUnusedIvars      = options["warn-unused-ivars"];
     var optionWarnOnUnknownIvars     = options["warn-unknown-ivars"];
+    var optionWarnOnGlobalNoType     = options["warn-global-no-type"];
     var optionStrictFunctions        = options["strict-functions"];
     var optionStrictObjectLiterals   = options["strict-object-literals"];
 
@@ -288,7 +292,7 @@ Generator.prototype.generate = function()
             }
         }
 
-        if (inlines && inlines[name]) {
+        if (inlines[name] || model.globals[name]) {
             Utils.throwError(OJError.RestrictedUsage, "Cannot use compiler-inlined \"" + name + "\" here.", node);
         }
     }
@@ -553,14 +557,7 @@ Generator.prototype.generate = function()
                 if (language === LanguageEcmascript5) {
                     args.push(name);
                 } else if (language === LanguageTypechecker) {
-                    var outputType = methodType && methodType.value;
-
-                    if (outputType == "id") {
-                        outputType = TypecheckerSymbols.IdIntersection;
-                    } else if (outputType) {
-                        outputType = symbolTyper.toTypecheckerType(methodType.value);
-                    }
-
+                    var outputType = symbolTyper.toTypecheckerType(methodType && methodType.value, Location.ImplementationParameter);
                     args.push(name + (methodType ? (" : " + outputType) : ""));
                 }
             }
@@ -570,13 +567,7 @@ Generator.prototype.generate = function()
 
         if (language === LanguageTypechecker) {
             var returnType = getCurrentMethodInModel().returnType;
-
-            if (returnType == "id") {
-                returnType = TypecheckerSymbols.IdUnion;
-            } else {
-                returnType = symbolTyper.toTypecheckerType(returnType, currentClass);
-            }
-
+            returnType = symbolTyper.toTypecheckerType(returnType, Location.ImplementationReturn, currentClass);
             definition += ": " + returnType;
         }
 
@@ -929,6 +920,25 @@ Generator.prototype.generate = function()
         var declarators = node.declarators;
         var name;
 
+        if (optionWarnOnGlobalNoType) {
+            var allTyped;
+
+            if (declaration) {
+                allTyped = !!declaration.annotation && _.every(declaration.params, function(param) {
+                    return !!param.annotation;
+                });
+
+            } else if (declarators) {
+                allTyped = _.every(declarators, function(declarator) {
+                    return !!declarator.id.annotation;
+                });
+            }
+
+            if (!allTyped) {
+                warnings.push(Utils.makeError(OJWarning.MissingTypeAnnotation, "Missing type annotation on @global", node));
+            }
+        }
+
         if (language !== LanguageTypechecker) {
             if (declaration) {
                 name = symbolTyper.getSymbolForIdentifierName(declaration.id.name);
@@ -1048,10 +1058,11 @@ Generator.prototype.generate = function()
 
         if (node.oj_skip) return Traverser.SkipNode;
 
-        if (type === Syntax.OJProtocolDefinition                 ||
+        if (type === Syntax.OJStructDefinition                   || 
+            type === Syntax.OJProtocolDefinition                 ||
             type === Syntax.OJClassDirective                     ||
             type === Syntax.OJSqueezeDirective                   ||
-            type === Syntax.OJInstanceVariableDeclarations       ||
+            type === Syntax.OJBracketVariableBlock               ||
             type === Syntax.OJSynthesizeDirective                ||
             type === Syntax.OJDynamicDirective                   ||
             type === Syntax.OJTypedefDeclaration                 ||

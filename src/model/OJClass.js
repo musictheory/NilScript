@@ -6,15 +6,15 @@
 
 "use strict";
 
-var _           = require("lodash");
-var OJError     = require("../errors").OJError;
-var Utils       = require("../utils");
-var OJIvar      = require("./OJIvar");
-var OJProperty  = require("./OJProperty");
-var OJMethod    = require("./OJMethod");
+const _           = require("lodash");
+const OJError     = require("../errors").OJError;
+const Utils       = require("../utils");
+const OJIvar      = require("./OJIvar");
+const OJProperty  = require("./OJProperty");
+const OJMethod    = require("./OJMethod");
 
 
-var OJDynamicProperty = " OJDynamicProperty ";
+const OJDynamicProperty = " OJDynamicProperty ";
 
 
 module.exports = class OJClass {
