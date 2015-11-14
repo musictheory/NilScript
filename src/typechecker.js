@@ -126,21 +126,273 @@ function ts_transform(defs, code, options, libFileName)
 
 function TypeChecker(files, model, options)
 {
-    var defsResult = this._generateDefs(model);
+    var defsResult = this._generateDefs(files, model);
     this._defs = defsResult.defs;
     this._defsLineMap = defsResult.lines;
-
-    generator.generate();
-
-    var codeResult = generator.finish();
-    this._code = codeResult.code;
-    this._codeLineMap = codeResult._lines;
-    this._prependLineCount = codeResult._prependLineCount;
 
     this._files = files;
     this._model = model;
     this._options = options;
 }
+
+
+TypeChecker.prototype._generateDefs = function(files, model)
+{
+    var symbolTyper = model.getSymbolTyper();
+
+    function makeDeclarationForMethod(method, ojClass) {
+        var methodName = symbolTyper.getSymbolForSelectorName(method.selectorName);
+        var parameters = [ ];
+
+        for (var i = 0, length = method.parameterTypes.length; i < length; i++) {
+            var variableName  = method.variableNames[i] || ("a" + i);
+            var parameterType = symbolTyper.toTypecheckerType(method.parameterTypes[i], Location.DeclarationParameter);
+
+            parameters.push(variableName + " : " + parameterType);
+        }
+
+        var returnType = symbolTyper.toTypecheckerType(method.returnType, Location.DeclarationReturn, ojClass);
+
+        return methodName + (method.optional ? "?" : "") + "(" + parameters.join(", ") + ") : " + returnType + ";";
+    }
+
+    function makeProtocolList(verb, isStatic, rawProtocolNames) {
+        var symbols = [ ];
+
+        _.each(rawProtocolNames, function(protocolName) {
+            symbols.push( symbolTyper.getSymbolForProtocolName(protocolName, isStatic) );
+        });
+
+        if (symbols.length) {
+            return " " + verb + " " + symbols.join(",");
+        }
+
+        return "";
+    }
+
+    function sortMethodIntoDeclarations(ojClass, allMethods, classMethodDeclarations, instanceMethodDeclarations) {
+       _.each(allMethods, function(method) {
+            var arr = (method.selectorType == "+") ? classMethodDeclarations : instanceMethodDeclarations;
+            arr.push(makeDeclarationForMethod(method, ojClass));
+        });
+    }
+
+    function getInstancetypeMethods(inClass) {
+        var declaredMethods = { };
+        var toReturn = [ ];
+        var ojClass = inClass;
+
+        while (ojClass) {
+            var methods = ojClass.getAllMethods();
+
+            _.each(methods, function(m) {
+                var name = m.selectorType + m.selectorName;
+
+                if (m.returnType == "instancetype") {
+                    if (!declaredMethods[name]) {
+                        declaredMethods[name] = true;
+
+                        if (ojClass != inClass) {
+                            toReturn.push(m);
+                        }
+                    }
+                }
+            });
+
+            ojClass = model.classes[ojClass.superclassName];
+        }
+
+        return toReturn;
+    }
+
+    function generateEnum(lines, ojEnum) {
+        lines.push("enum " + ojEnum.name + " {");
+
+        _.each(ojEnum.values, function(value, name) {
+            lines.push(name + " = " + value + ",");
+        });
+
+        lines.push("}");
+    }
+
+    function generateProtocol(lines, ojProtocol) {
+        var protocolName = symbolTyper.getSymbolForProtocolName(ojProtocol.name, false);
+        var staticName   = symbolTyper.getSymbolForProtocolName(ojProtocol.name, true);
+
+        var classMethodDeclarations    = [ ];
+        var instanceMethodDeclarations = [ ];
+
+        sortMethodIntoDeclarations(null, ojProtocol.getAllMethods(), classMethodDeclarations, instanceMethodDeclarations);
+
+        lines.push("declare interface " + protocolName + makeProtocolList("extends", false, ojProtocol.protocolNames) + " {");
+
+        _.each(instanceMethodDeclarations, function(decl) {
+            lines.push(decl);
+        });
+
+        lines.push("}");
+
+        lines.push("declare interface " + staticName + makeProtocolList("extends", true, ojProtocol.protocolNames) + " {");
+
+        _.each(classMethodDeclarations, function(decl) {
+            lines.push(decl);
+        });
+
+        lines.push("}");
+    }
+
+    function generateClass(lines, ojClass, classSymbol, staticSymbol) {
+        var superSymbol       = ojClass.superclassName ? symbolTyper.getSymbolForClassName(ojClass.superclassName, false) : TypecheckerSymbols.Base;
+        var superStaticSymbol = ojClass.superclassName ? symbolTyper.getSymbolForClassName(ojClass.superclassName, true)  : TypecheckerSymbols.StaticBase;
+
+        var declareClass = "declare class " + classSymbol +
+                           " extends " + superSymbol +
+                           makeProtocolList("implements", false, ojClass.protocolNames) +
+                           " {";
+
+        lines.push(
+            declareClass,
+            "static alloc() : " + classSymbol + ";",
+            "class() : " + staticSymbol + ";",
+            "static class() : " + staticSymbol + ";",
+            "init()  : " + classSymbol + ";",
+            "$oj_super() : " + superSymbol + ";",
+            "static $oj_super() : " + superStaticSymbol + ";"
+        );
+
+        var methods = [ ].concat(ojClass.getAllMethods(), getInstancetypeMethods(ojClass));
+        var classMethodDeclarations    = [ ];
+        var instanceMethodDeclarations = [ ];
+
+        sortMethodIntoDeclarations(ojClass, methods, classMethodDeclarations, instanceMethodDeclarations);
+
+        _.each(classMethodDeclarations, function(decl) {
+            lines.push("static " + decl);
+        });
+
+        _.each(instanceMethodDeclarations, function(decl) {
+            lines.push(decl);
+        });
+
+        _.each(ojClass.getAllIvars(), function(ivar) {
+            lines.push(symbolTyper.getSymbolForIvar(ivar) + " : " +  symbolTyper.toTypecheckerType(ivar.type) + ";");
+        });
+
+        lines.push("}");
+
+        var declareStatic = "declare class " + staticSymbol +
+                            " extends " + superStaticSymbol +
+                            makeProtocolList("implements", true, ojClass.protocolNames) +
+                            " {";
+
+        lines.push(
+            declareStatic,
+            "alloc() : " + classSymbol  + ";",
+            "class() : " + staticSymbol + ";",
+            "$oj_super() : " + superStaticSymbol + ";"
+        );
+
+        _.each(classMethodDeclarations, function(decl) {
+            lines.push(decl);
+        });
+
+        lines.push("}");
+    }
+
+    var classSymbols  = [ ];
+    var staticSymbols = [ ];
+
+    var runtimeContents = fs.readFileSync(dirname(__filename) + "/../runtime/runtime.d.ts") + "\n";
+    var lines = runtimeContents.split("\n");
+    var lineMap = [ ];
+
+    function mapLines(model, callback) {
+        var entry = { };
+        var start = lines.length;
+
+        callback();
+
+        var end = lines.length;
+
+        if (model && model.location && model.location.start && model.location.start.line) {
+            // model.location.start.line is 1-indexed, we want 0-indexed here
+            lineMap.push({ "start": start, "end": end, "mapped": (model.location.start.line - 1) });
+        }
+    }
+
+    _.each(model.enums, function(ojEnum) {
+        // Anonymous enums are inlined
+        if (!ojEnum.name) return;
+
+        generateEnum(lines, ojEnum);
+    });
+
+    _.each(model.protocols, function(ojProtocol) {
+        mapLines(ojProtocol, function() {
+            generateProtocol(lines, ojProtocol);
+        });
+    });
+
+    _.each(model.classes, function(ojClass) {
+        var classSymbol  = symbolTyper.getSymbolForClassName(ojClass.name, false);
+        var staticSymbol = symbolTyper.getSymbolForClassName(ojClass.name, true);
+
+        classSymbols.push(classSymbol);
+        staticSymbols.push(staticSymbol);
+
+        mapLines(ojClass, function() {
+            generateClass(lines, ojClass, classSymbol, staticSymbol);
+        });
+    });
+
+    _.each(model.structs, function(ojStruct) {
+        var structSymbol = symbolTyper.getSymbolForStructName(ojStruct.name);
+
+        lines.push("interface " + structSymbol + "{");
+
+        _.each(ojStruct.variables, function(variable) {
+            lines.push(variable.name + " : " + symbolTyper.toTypecheckerType(variable.annotation));
+        });
+
+        lines.push("}");
+    });
+
+    lines.push("declare class " + TypecheckerSymbols.GlobalType + " {");
+    _.each(model.globals, function(ojGlobal) {
+        var name       = symbolTyper.getSymbolForIdentifierName(ojGlobal.name);
+        var annotation = _.clone(ojGlobal.annotation);
+
+        if (_.isArray(annotation)) {
+            var line = name;
+            var returnType = annotation.shift();
+
+            line += "(" + _.map(annotation, function(a, index) {
+                return "a" + index + ":" + symbolTyper.toTypecheckerType(a);
+            }).join(",") + ")";
+
+            line += " : " + symbolTyper.toTypecheckerType(returnType) + ";";
+
+            lines.push(line);
+
+        } else {
+            lines.push(name + " : " + symbolTyper.toTypecheckerType(annotation) + ";");
+        }
+    });
+    lines.push("}");
+
+    generateClass( lines, model.getAggregateClass(), TypecheckerSymbols.Combined, TypecheckerSymbols.StaticCombined );
+    classSymbols .unshift(TypecheckerSymbols.Combined);
+    staticSymbols.unshift(TypecheckerSymbols.StaticCombined)
+
+    lines.push("type " + TypecheckerSymbols.IdIntersection + " = " + classSymbols.join("&") + ";");
+    lines.push("type " + TypecheckerSymbols.IdUnion        + " = " + classSymbols.join("|") + ";");
+
+    return {
+        defs:  lines.join("\n"),
+        lines: lineMap
+    };
+}
+
 
 
 TypeChecker.prototype._generateDefs = function(model)

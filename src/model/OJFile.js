@@ -19,6 +19,8 @@ constructor(path)
     this.contents = null;
     this.time     = 0;
 
+    this.calls    = null;
+
     this.invalidateAllResults();
 }
 
@@ -56,6 +58,15 @@ invalidateAllResults()
 needsParse()
 {
     this.ast = null;
+    this.needsBuild();
+}
+
+
+needsBuild()
+{
+    this.usage = null;
+    this.declarations = null;
+
     this.needsGenerate();
     this.needsTypecheck();
 }
@@ -70,8 +81,8 @@ needsGenerate()
 
 needsTypecheck()
 {
-    this.tsCode = null;
-    this.tsDefs = null;  
+    this.typecheckerLines    = null;
+    this.typecheckerDefs     = null;  
     this.typecheckerWarnings = null;
 }
 

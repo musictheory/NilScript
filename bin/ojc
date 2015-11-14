@@ -10,7 +10,7 @@ var util     = require("util");
 var getopt   = require("node-getopt");
 var _        = require("lodash");
 
-var ojc      = require("../src/compiler");
+var ojc      = require("../lib/api");
 
 
 var opt = getopt.create([

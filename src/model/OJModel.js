@@ -19,13 +19,6 @@ const OJStruct      = require("./OJStruct");
 const OJSymbolTyper = require("./OJSymbolTyper")
 
 
-const DiffResult = {
-    None:             "none",
-    GlobalsChanged:   "globals",
-    SelectorsChanged: "selectors"
-}
-
-
 class OJModel {
 
 
@@ -109,6 +102,12 @@ saveState()
 }
 
 
+mergeModel(other)
+{
+    
+}
+
+
 prepare()
 {
     var selectors = { };
@@ -183,37 +182,90 @@ prepare()
 }
 
 
-diffWithModel(other)
+hasGlobalChanges(other)
 {
-    if (!_.isEqual(
-        _.keys(this .classes).sort(),
-        _.keys(other.classes).sort()
-    )) {
-        return DiffResult.GlobalsChanged;
+    function existanceChanged(a, b) {
+        return !_.isEqual(
+            _.keys(a).sort(),
+            _.keys(b).sort()
+        );
     }
 
-    if (!_.isEqual(
-        _.keys(this .globals).sort(),
-        _.keys(other.globals).sort()
-    )) {
-        return DiffResult.GlobalsChanged;
+    function buildConstValueMap(model) {
+        let result = { };
+
+        _.each(model.consts, ojConst => {
+            result[ojConst.name] = ojConst.value;
+        });
+
+        return result;
     }
 
-    if (!_.isEqual(
-        _.keys(this .consts).sort(),
-        _.keys(other.consts).sort()
-    )) {
-        return DiffResult.GlobalsChanged;
+    function buildEnumValueMap(model) {
+        let result = { };
+
+        _.each(model.enums, ojEnum => {
+            _.extend(result, ojEnum.values);
+        });
+
+        return result;
     }
 
-    // Check enum values
 
-
-    if (!_.isEqual(this.selectors, other.selectors)) {
-        return DiffResult.SelectorsChanged;
+    if (existanceChanged(this.classes,   other.classes   ) ||
+        existanceChanged(this.globals,   other.globals   ) ||
+        existanceChanged(this.protocols, other.protocols ) ||
+        existanceChanged(this.structs,   other.structs   ) ||
+        existanceChanged(this.globals,   other.globals   ) ||
+        existanceChanged(this.enums,     other.enums     ) ||
+        existanceChanged(this.consts,    other.consts    ))
+    {
+        return true;
     }
 
-    return DiffResult.None;
+
+    // Inlined @const and inlined @enum values also count as a global change
+    //
+    if (!_.isEqual(buildConstValueMap(this), buildConstValueMap(other))) {
+        return true;
+    }
+
+    if (!_.isEqual(buildEnumValueMap(this), buildEnumValueMap(other))) {
+        return true;
+    }
+
+
+    // Types duplicate existance information from classes (covered above),
+    // but they also include @typedefs, so they need to be checked.
+    //
+    if (!_.isEqual(this.types, other.types)) {
+        return true;
+    }
+
+
+    return false;
+}
+
+
+getChangedSelectorMap(other)
+{
+    var result = null;
+
+    _.each(_.keys(this.selectors), selectorName => {
+        if (!other.selectors[selectorName]) {
+            if (!result) result = { };
+            result[selectorName] = true;
+        }
+    });
+
+    _.each(_.keys(other.selectors), selectorName => {
+        if (!this.selectors[selectorName]) {
+            if (!result) result = { };
+            result[selectorName] = true;
+        }
+    });
+
+    return result;
 }
 
 
@@ -416,7 +468,5 @@ getSymbolTyper()
 
 }
 
-
-OJModel.DiffResult = DiffResult;
 
 module.exports = OJModel;

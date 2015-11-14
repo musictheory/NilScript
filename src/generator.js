@@ -36,13 +36,12 @@ const LanguageTypechecker = "typechecker";
 const LanguageNone        = "none";
 
 
-function Generator(ast, model, modifier, forTypechecker, options)
+function Generator(file, model, modifier, forTypechecker, options)
 {
-    this._ast      = ast;
+    this._file     = file;
     this._model    = model;
     this._modifier = modifier;
     this._options  = options;
-    this._warnings = [ ];
 
     var inlines = { };
 
@@ -104,7 +103,7 @@ function Generator(ast, model, modifier, forTypechecker, options)
 
 Generator.prototype.generate = function()
 {
-    var traverser = new Traverser(this._ast);
+    var traverser = new Traverser(this._file.ast);
 
     var model    = this._model;
     var modifier = this._modifier;
@@ -141,7 +140,7 @@ Generator.prototype.generate = function()
 
     var unusedIvars = null;
 
-    var warnings = this._warnings;
+    var warnings = [ ];
 
     function makeScope(node)
     {
@@ -1177,15 +1176,17 @@ Generator.prototype.generate = function()
             scope = scope.previous;
         }
     });
-}
 
+    var path = this._file.path;
 
-Generator.prototype.finish = function()
-{
+    _.each(warnings, warning => {
+        Utils.addFilePathToError(path, warning);
+    });
+
     return {
         lines: this._modifier.finish(),
-        warnings: this._warnings
-    }
+        warnings: warnings
+    };
 }
 
 
