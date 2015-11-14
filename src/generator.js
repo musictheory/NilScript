@@ -64,10 +64,10 @@ function Generator(ast, model, modifier, forTypechecker, options)
 
     // Typechecker inlines anonymous enums
     if (options["inline-enum"] || forTypechecker) {
-        _.each(model.enums, function(e) {
-            var enumName = e.name;
+        _.each(model.enums, function(ojEnum) {
+            var enumName = ojEnum.name;
 
-            _.each(e.values, function(value, name) {
+            _.each(ojEnum.values, function(value, name) {
                 if (enumName && forTypechecker) {
                     inlines[name] = enumName + "." + name;
                 } else {
@@ -1182,9 +1182,10 @@ Generator.prototype.generate = function()
 
 Generator.prototype.finish = function()
 {
-    var result = this._modifier.finish();
-    result.warnings = this._warnings;
-    return result;
+    return {
+        lines: this._modifier.finish(),
+        warnings: this._warnings
+    }
 }
 
 

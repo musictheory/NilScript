@@ -31,7 +31,7 @@ class OJModel {
 
 constructor()
 {
-    this.enums     = [ ];
+    this.enums     = { };
     this.globals   = { };
     this.consts    = { };
     this.classes   = { };
@@ -58,21 +58,23 @@ constructor()
 
 loadState(state)
 {
-    function load(key, cons) {
-        _.each(state[key], jsObject => {
+    function load(fromStateMap, toModelMap, cons) {
+        _.each(fromStateMap, jsObject => {
             var ojObject = new cons();
+
             ojObject.loadState(jsObject);
             ojObject.local = false;
-            this[key] = ojObject;
-        });
-    }
 
-    load("consts",    OJConst);
-    load("enums",     OJEnum);
-    load("globals",   OJGlobal);
-    load("classes",   OJClass);
-    load("protocols", OJProtocol);
-    load("structs",   OJStruct);
+            toModelMap[ojObject.name] = ojObject;
+        });
+    };
+
+    load( state.consts,     this.consts,     OJConst    );
+    load( state.enums,      this.enums,      OJEnum     );
+    load( state.globals,    this.globals,    OJGlobal   );
+    load( state.classes,    this.classes,    OJClass    );
+    load( state.protocols,  this.protocols,  OJProtocol );
+    load( state.structs,    this.structs,    OJStruct   );
 
     _.extend(this.types,     state.types);
     _.extend(this.selectors, state.selectors);
@@ -181,24 +183,33 @@ prepare()
 }
 
 
-diffWithModel(otherModel)
+diffWithModel(other)
 {
-    function areNamesEqual(arr1, arr2) {
-        var names1 = _.map(arr1, o => o.name).sort();
-        var names2 = _.map(arr1, o => o.name).sort();
-
-        return _.isEqual(names1, names2);
-    }
-
-    if (!areNamesEqual(this.globals, otherModel.globals) ||
-        !areNamesEqual(this.enums,   otherModel.enums)   ||
-        !areNamesEqual(this.consts,  otherModel.consts)  ||
-        !areNamesEqual(this.classes, otherModel.classes))
-    {
+    if (!_.isEqual(
+        _.keys(this .classes).sort(),
+        _.keys(other.classes).sort()
+    )) {
         return DiffResult.GlobalsChanged;
     }
 
-    if (!_.isEqual(this.selectors, otherModel.selectors)) {
+    if (!_.isEqual(
+        _.keys(this .globals).sort(),
+        _.keys(other.globals).sort()
+    )) {
+        return DiffResult.GlobalsChanged;
+    }
+
+    if (!_.isEqual(
+        _.keys(this .consts).sort(),
+        _.keys(other.consts).sort()
+    )) {
+        return DiffResult.GlobalsChanged;
+    }
+
+    // Check enum values
+
+
+    if (!_.isEqual(this.selectors, other.selectors)) {
         return DiffResult.SelectorsChanged;
     }
 
@@ -309,8 +320,13 @@ addEnum(ojEnum)
 {
     var name = ojEnum.name;
 
+    if (name) {
+        this.aliasType("Number", ojEnum.name);
+    } else {
+        name = ojEnum.name = "$OJAnonymousEnum" + _.size(this.enums);
+    }
+
     this.enums[name] = ojEnum;
-    this.aliasType("Number", ojEnum.name);
 }
 
 

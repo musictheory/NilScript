@@ -22,9 +22,9 @@ constructor(name, unsigned, values)
 
 loadState(state)
 {
-    this.name     = state.name;
+    this.name     =   state.name;
     this.unsigned = !!state.unsigned;
-    this.values   = values || { };
+    this.values   =   state.values || { };
 }
 
 
