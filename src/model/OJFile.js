@@ -7,7 +7,7 @@
 
 "use strict";
 
-var fs = require("fs");
+const fs = require("fs");
 
 
 module.exports = class OJFile {
@@ -49,12 +49,30 @@ updateWithContentsAndTime(contents, time)
 
 invalidateAllResults()
 {
-    this.ast    = null;
+    this.needsParse();
+}
+
+
+needsParse()
+{
+    this.ast = null;
+    this.needsGenerate();
+    this.needsTypecheck();
+}
+
+
+needsGenerate()
+{
     this.jsCode = null;
+    this.generatorWarnings = null;
+}
+
+
+needsTypecheck()
+{
     this.tsCode = null;
     this.tsDefs = null;  
-
-    this.parseError = null;
+    this.typecheckerWarnings = null;
 }
 
 

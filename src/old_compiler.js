@@ -6,21 +6,21 @@
 
 "use strict";
 
-var esprima     = require("./esprima");
-var Syntax      = esprima.Syntax;
+const _           = require("lodash");
+const fs          = require("fs");
+const esprima     = require("../ext/esprima");
+const Syntax      = esprima.Syntax;
 
-var Builder     = require("./builder");
-var Modifier    = require("./modifier");
-var Generator   = require("./generator");
+const Builder     = require("./builder");
+const Modifier    = require("./modifier");
+const Generator   = require("./generator");
 
-var Hinter      = require("./hinter");
-var TypeChecker = require("./typechecker");
+const Hinter      = require("./hinter");
+const TypeChecker = require("./typechecker");
 
-var OJError     = require("./errors").OJError;
-var OJModel     = require("./model").OJModel;
+const OJError     = require("./errors").OJError;
+const OJModel     = require("./model").OJModel;
 
-var _           = require("lodash");
-var fs          = require("fs");
 
 function errorForEsprimaError(inError)
 {

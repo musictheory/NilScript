@@ -180,8 +180,8 @@
         OJMethodSelector: 'OJMethodSelector',
         OJSelector: 'OJSelector',
         OJParameterType: 'OJParameterType',
-        OJInstanceVariableDeclarations: 'OJInstanceVariableDeclarations',
-        OJInstanceVariableDeclaration: 'OJInstanceVariableDeclaration',
+        OJBracketVariableBlock: 'OJBracketVariableBlock',
+        OJBracketVariableDeclaration: 'OJBracketVariableDeclaration',
         OJPropertyDirective: 'OJPropertyDirective',
         OJPropertyAttribute: 'OJPropertyAttribute',
         OJSynthesizeDirective: 'OJSynthesizeDirective',
@@ -192,6 +192,7 @@
         OJSelectorDirective: 'OJSelectorDirective',
         OJConstDeclaration: 'OJConstDeclaration',
         OJEnumDeclaration: 'OJEnumDeclaration',
+        OJStructDefinition: 'OJStructDefinition',
         OJProtocolDefinition: 'OJProtocolDefinition',
         OJProtocolList: 'OJProtocolList',
         OJMethodDeclaration: 'OJMethodDeclaration',
@@ -412,7 +413,8 @@
                    (id === '@any')            ||
                    (id === '@typedef')        ||
                    (id === '@each')           ||
-                   (id === '@global');
+                   (id === '@global')         ||
+                   (id === '@struct');
         }
         //!oj: end changes
 
@@ -2528,17 +2530,17 @@
             return this;
         },
 
-        oj_finishInstanceVariableDeclarations: function (declarations) {
-            this.type = Syntax.OJInstanceVariableDeclarations;
+        oj_finishBracketVariableBlock: function (declarations) {
+            this.type = Syntax.OJBracketVariableBlock;
             this.declarations = declarations;
             this.finish();
             return this;
         },
 
-        oj_finishInstanceVariableDeclaration: function (parameterType, ivars) {
-            this.type = Syntax.OJInstanceVariableDeclaration;
+        oj_finishBracketVariableDeclaration: function (parameterType, ids) {
+            this.type = Syntax.OJBracketVariableDeclaration;
             this.parameterType = parameterType;
-            this.ivars = ivars;
+            this.ids = ids;
             this.finish();
             return this;
         },
@@ -2615,6 +2617,14 @@
             this.id = id;
             this.unsigned = unsigned;
             this.declarations = declarations;
+            this.finish();
+            return this;
+        },
+
+        oj_finishStructDefinition: function (id, variables) {
+            this.type = Syntax.OJStructDefinition;
+            this.id = id;
+            this.variables = variables;
             this.finish();
             return this;
         },
@@ -5127,6 +5137,8 @@
 //!oj: Start changes
             case '@implementation':
                 return oj_parseClassImplementationDefinition(node);
+            case '@struct':
+                return oj_parseStructDefinition(node);
             case '@protocol':
                 return oj_parseProtocolDefinition(node);
             case '@class':
@@ -6228,30 +6240,34 @@
     }
 
     function oj_parseType(allowVoid) {
-        var result;
+        var name, angles, parts;
 
-        if (matchKeyword("void")) {
-            lex();
-            result = "void";
-        } else {
-            result = parseVariableIdentifier().name;
+        function getName(allowVoid) {
+            var name;
+
+            if (allowVoid && matchKeyword("void")) {
+                lex();
+                name = "void";
+            } else {
+                name = parseVariableIdentifier().name;
+
+                if (name == "kindof") {
+                    name += " " + parseVariableIdentifier().name;
+                }
+            }
+            
+            return name;
         }
 
-        if (!match('<')) return result;
-
-        // Handle id<Foo>, id<Foo, Bar>, id<Foo<Bar, Foo<Baz>>, etc
-        var angles = 0;
-        var parts = [ result ];
-
-        function name() {
-            parts.push(parseVariableIdentifier().name);
+        function appendNameAngle() {
+            parts.push( getName() );
 
             if (match('<')) {
-                angle();
+                appendAngle();
             }
         }
 
-        function angle() {
+        function appendAngle() {
             lex();  // Consume '<'
             parts.push('<');
             angles++;
@@ -6260,12 +6276,12 @@
             // so save angles...
             var savedAngles = angles;
 
-            name();
+            appendNameAngle();
 
             while (match(',')) {
                 lex();
                 parts.push(',');
-                name();
+                appendNameAngle();
             }
 
             // ...and check savedAngles here.  If angles is lower, a '>>' or '>>>' already handled our '>'
@@ -6291,7 +6307,13 @@
             }
         }
 
-        angle();
+        name = getName(allowVoid);
+        if (!match('<')) return name;
+
+        // Handle id<Foo>, id<Foo, Bar>, id<Foo<Bar, Foo<Baz>>, etc
+        parts = [ name ];
+        angles = 0;
+        appendAngle();
 
         return parts.join("");
     }
@@ -6441,7 +6463,7 @@
         return node.finishBlockStatement(sourceElements);
     }
 
-    function oj_parseInstanceVariableDeclaration() {
+    function oj_parseBracketVariableDeclaration() {
         var parameterType = new Node(), ivars = [], node = new Node();
 
         if (matchKeyword('var')) {
@@ -6458,22 +6480,22 @@
             ivars.push(parseVariableIdentifier());
         }
 
-        return node.oj_finishInstanceVariableDeclaration(parameterType, ivars);
+        return node.oj_finishBracketVariableDeclaration(parameterType, ivars);
     }
 
-    function oj_parseInstanceVariableDeclarations() {
+    function oj_parseBracketVariableBlock() {
         var declarations = [], node = new Node();
 
         expect('{');
 
         while (!match('}')) {
-            declarations.push(oj_parseInstanceVariableDeclaration());
+            declarations.push(oj_parseBracketVariableDeclaration());
             consumeSemicolon();
         }
 
         expect('}');
 
-        return node.oj_finishInstanceVariableDeclarations(declarations);
+        return node.oj_finishBracketVariableBlock(declarations);
     }
 
     function oj_parseClassImplementationDefinition(node) {
@@ -6518,7 +6540,7 @@
         // Has ivar declarations
         if (match('{')) {
             if (category) throwUnexpectedToken();
-            ivarDeclarations = oj_parseInstanceVariableDeclarations();
+            ivarDeclarations = oj_parseBracketVariableBlock();
         }
 
         body = oj_parseClassImplementationBody();
@@ -6530,6 +6552,16 @@
         state.labelSet = oldLabelSet;
 
         return node.oj_finishClassImplementation(id, superClass, category, extension, protocolList, ivarDeclarations, body);
+    }
+
+    function oj_parseStructDefinition() {
+        var id, variables, node = new Node();
+
+        expectKeyword('@struct');
+        id = parseVariableIdentifier();
+        variables = oj_parseBracketVariableBlock();
+
+        return node.oj_finishStructDefinition(id, variables);
     }
 
     function oj_parseProtocolReferenceList() {

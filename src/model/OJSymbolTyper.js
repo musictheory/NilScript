@@ -18,10 +18,14 @@ var OJEnum      = require("./OJEnum");
 
 var OJClassPrefix             = "$oj_c_";
 var OJProtocolPrefix          = "$oj_p_";
-var OJStaticClassPrefix       = "$oj_C_";   // Typechecker only
-var OJStaticProtocolPrefix    = "$oj_P_";   // Typechecker only
 var OJMethodPrefix            = "$oj_f_";
 var OJIvarPrefix              = "$oj_i_";
+
+var OJKindofClassPrefix       = "$oj_k_";   // Typechecker only
+var OJStaticClassPrefix       = "$oj_C_";   // Typechecker only
+var OJStaticProtocolPrefix    = "$oj_P_";   // Typechecker only
+var OJStructPrefix            = "$oj_s_";   // Typechecker only
+
 
 var TypecheckerSymbols = {
     Combined:       "$oj_$Combined",
@@ -34,6 +38,14 @@ var TypecheckerSymbols = {
     IdUnion:        "$oj_$id_union",
 
     GlobalType:     "$oj_$Globals"
+};
+
+var Location = {
+    DeclarationReturn:    "DeclarationReturn",
+    DeclarationParameter: "DeclarationParameter",
+
+    ImplementationReturn:     "ImplementationReturn",
+    ImplementationParameter:  "ImplementationParameter"
 };
 
 
@@ -55,6 +67,7 @@ function sToBase52(index)
 
 
 class OJSymbolTyper {
+
 
 constructor(model)
 {
@@ -82,11 +95,11 @@ setupSqueezer(start, max)
 
 loadState(state)
 {
-    if (state.squeeze) {
+    if (state.squeezer) {
         this._squeeze         = true;
-        this._squeezerId      = state.squeeze.id   || 0;
-        this._fromSqueezedMap = state.squeeze.from || { };
-        this._toSqueezedMap   = state.squeeze.to   || { };
+        this._squeezerId      = state.squeezer.id   || 0;
+        this._fromSqueezedMap = state.squeezer.from || { };
+        this._toSqueezedMap   = state.squeezer.to   || { };
     }
 }
 
@@ -94,50 +107,12 @@ loadState(state)
 saveState()
 {
     return {
-        "squeeze": this._squeeze ? {
+        squeezer: this._squeeze ? {
             from: this._fromSqueezedMap,
             to:   this._toSqueezedMap,
             id:   this._squeezerId
         } : null
     };
-}
-
-
-_setupTypecheckerMaps()
-{
-    var toMap     = { };
-    var fromMap   = { };
-    var classes   = _.values(this._model.classes);
-
-    for (var i = 0, length = classes.length; i < length; i++) {
-        var className      = classes[i].name;
-        var instanceSymbol = this.getSymbolForClassName(className, false);
-        var staticSymbol   = this.getSymbolForClassName(className, true);
-
-        toMap[className]      = instanceSymbol;
-        toMap[instanceSymbol] = instanceSymbol;
-        toMap[staticSymbol]   = staticSymbol;
-
-        fromMap[className]      = className;
-        fromMap[instanceSymbol] = className;
-        fromMap[staticSymbol]   = className;
-    }
-
-    _.extend(fromMap, {
-        "any":              "any",
-        "any[]":            "Array",
-        "{}":               "Object",
-        "undefined[]":      "Array",
-        "boolean":          "BOOL",
-        "number":           "Number",
-        "string":           "String"
-    });
-
-    fromMap[TypecheckerSymbols.Base] = "OJ.BaseObject";
-    fromMap[TypecheckerSymbols.StaticBase] = "Class";
-
-    this._toTypecheckerMap   = toMap;
-    this._fromTypecheckerMap = fromMap;
 }
 
 
@@ -172,40 +147,54 @@ _getSqueezedSymbol(readableName, add)
 }
 
 
-_getBracketedType(inType, currentClass)
+_setupTypecheckerMaps()
 {
-    var self = this;
+    var toMap     = { };
+    var fromMap   = { };
+    var classes   = _.values(this._model.classes);
+    var structs   = _.values(this._model.structs);
+    var i, length;
 
-    // "Array<Array<String>>"" becomes [ "Array", "Array", "String" ]
-    var inParts = inType.replace(/\>/g, "").split("<");
+    for (i = 0, length = classes.length; i < length; i++) {
+        var className      = classes[i].name;
+        var instanceSymbol = this.getSymbolForClassName(className, false);
+        var staticSymbol   = this.getSymbolForClassName(className, true);
 
-    function getStringWithSegments(segments) {
-        var first = segments[0];
-        var rest  = segments.slice(1);
+        toMap[className]      = instanceSymbol;
+        toMap[instanceSymbol] = instanceSymbol;
+        toMap[staticSymbol]   = staticSymbol;
 
-        if (first == "Array") {
-            return getStringWithSegments(rest) + "[]";
-
-        } else if (first == "Object" && (rest.length > 0)) {
-            return "{[i:string ]:" + getStringWithSegments(rest) + "}";
-
-        } else if (first == "id" && (rest.length > 0)) {
-            var protocolSymbols = [ TypecheckerSymbols.Base ];
-
-            _.each(rest[0].split(","), function(protocol) {
-                protocolSymbols.push(self.getSymbolForProtocolName(protocol));
-            });
-
-            return protocolSymbols.join("&");
-
-        } else {
-            return self.toTypecheckerType(first, currentClass);
-        }
+        fromMap[className]      = className;
+        fromMap[instanceSymbol] = className;
+        fromMap[staticSymbol]   = className;
     }
 
-    var outType = getStringWithSegments(inParts);
+    for (i = 0, length = structs.length; i < length; i++) {
+        var structName   = structs[i].name;
+        var structSymbol = this.getSymbolForStructName(structName);
 
-    return outType;
+        toMap[structName]   = structSymbol;
+        toMap[structSymbol] = structSymbol;
+
+        fromMap[structName]   = structName;
+        fromMap[structSymbol] = structName;
+    }
+
+    _.extend(fromMap, {
+        "any":              "any",
+        "any[]":            "Array",
+        "{}":               "Object",
+        "undefined[]":      "Array",
+        "boolean":          "BOOL",
+        "number":           "Number",
+        "string":           "String"
+    });
+
+    fromMap[TypecheckerSymbols.Base] = "OJ.BaseObject";
+    fromMap[TypecheckerSymbols.StaticBase] = "Class";
+
+    this._toTypecheckerMap   = toMap;
+    this._fromTypecheckerMap = fromMap;
 }
 
 
@@ -217,7 +206,7 @@ enrollForSqueezing(name)
 }
 
 
-toTypecheckerType(rawInType, currentClass)
+toTypecheckerType(rawInType, location, currentClass)
 {
     if (!rawInType) return "any";
 
@@ -225,66 +214,141 @@ toTypecheckerType(rawInType, currentClass)
         this._setupTypecheckerMaps();
     }
 
-    var tmp;
-    var outType;
-    var addToMap = true;
+    var self  = this;
+    var model = this._model;
+    var toTypecheckerMap = this._toTypecheckerMap;
 
-    var inType  = rawInType.replace(/\s+/g, ""); // Remove whitespace
+    var inType  = rawInType.replace(/kindof\s+/, "kindof-").replace(/\s+/g, ""); // Remove whitespace
     var outType = this._toTypecheckerMap[inType];
 
     if (outType) return outType;
 
-    if (inType == "String" || inType == "string") {
-        outType = "string";
+    // "Array<Array<String>>"" becomes [ "Array", "Array", "String" ]
+    var inParts  = inType.replace(/\>/g, "").split("<");
+    var addToForwardMap = true;
+    var addToReverseMap = true;
 
-    } else if (this._model.isNumericType(inType)) {
-        outType = "number";
+    function _handleParts(parts)
+    {
+        var part = parts[0];
+        var rest = parts.slice(1);
+        var result;
+        var tmp;
 
-    } else if (this._model.isBooleanType(inType)) {
-        outType = "boolean";
+        if (rest.length > 0) {
+            if (part == "Array") {
+                result = _handleParts(rest) + "[]";
 
-    } else if (inType == "Array") {
-        outType = "any[]";
+            } else if (part == "Object" && (rest.length > 0)) {
+                result = "{[i:string ]:" + _handleParts(rest) + "}";
 
-    } else if (inType == "SEL") {
-        outType = "$oj_$SEL";
+            } else if (part == "id" && (rest.length > 0)) {
+                var protocolSymbols = [ TypecheckerSymbols.Base ];
 
-    } else if (inType == "Object" || inType == "Class" || inType == "any" || inType == "id") {
-        outType = "any";
+                _.each(rest[0].split(","), function(protocol) {
+                    protocolSymbols.push(self.getSymbolForProtocolName(protocol));
+                });
 
-    } else if (inType == "void") {
-        outType = "void";
+                result = "(" + protocolSymbols.join("&") + ")";
 
-    } else if (inType == "instancetype") {
-        addToMap = false;
+            } else {
+                Utils.throwError(OJError.ParseError, "Cannot parse type '" + rawInType + "'");
+            }
 
-        if (currentClass && currentClass.name) {
-            outType = this.toTypecheckerType(currentClass.name);
+        } else if (part == "String" || part == "string") {
+            result = "string";
+
+        } else if (model.isNumericType(part)) {
+            result = "number";
+            addToReverseMap = false;
+
+        } else if (model.isBooleanType(part)) {
+            result = "boolean";
+            addToReverseMap = false;
+
+        } else if (part == "Array") {
+            result = "any[]";
+
+        } else if (part == "SEL") {
+            result = "$oj_$SEL";
+
+        } else if (part == "Object" || part == "Class" || part == "any") {
+            result = "any";
+
+        } else if (part == "void") {
+            result = "void";
+
+        } else if (part == "id") {
+            if ((location == Location.DeclarationReturn) || (location == Location.ImplementationParameter)) {
+                result = TypecheckerSymbols.IdIntersection;
+
+            } else if ((location == Location.DeclarationParameter) || (location == Location.ImplementationReturn)) {
+                result = TypecheckerSymbols.IdUnion;
+
+            } else {
+                result = "any";
+            }
+
+            addToForwardMap = false;
+            addToReverseMap = false;
+
+        } else if (part.indexOf("kindof-") == 0) {
+            part = part.split("-")[1];
+
+            if ((location === Location.DeclarationReturn) || (location === Location.DefinitionParameter)) {
+                // To fully support kindof, this should be replaced by an aggregate class
+                result = TypecheckerSymbols.IdIntersection;
+
+            } else if ((location === Location.DeclarationParameter) || (location === Location.DefinitionReturn)) {
+                result = _handleParts([ part ]);
+
+            } else {
+                result = "any";
+            }
+
+            addToForwardMap = false;
+            addToReverseMap = false;
+
+        } else if (part == "instancetype") {
+            if (currentClass && currentClass.name) {
+                result = _handleParts([ currentClass.name ]);
+            } else {
+                result = "any";
+            }
+
+            addToForwardMap = false;
+            addToReverseMap = false;
+
+        } else if ((tmp = toTypecheckerMap[part])) {
+            return tmp;
+
+        } else if ((tmp = model.types[part])) {
+            if (tmp == part) {
+                result = tmp;
+            } else {
+                result = _handleParts([ tmp ]);
+                addToReverseMap = false;
+            }
+
         } else {
-            outType = "any";
+            result = inType;
         }
-
-    } else if ((tmp = this._model.types[inType])) {
-        if (tmp == inType) {
-            outType = tmp;
-        } else {
-            outType = this.toTypecheckerType(tmp);
-        }
-
-    } else if (inType.indexOf("<") >= 0) {
-        outType = this._getBracketedType(inType);
-
-    } else {
-        outType = inType;
+        
+        return result;
     }
 
+    outType = _handleParts(inParts);
     outType = outType.replace(/\s+/g, ""); // Remove whitespace
 
-    if (addToMap && outType) {
+    if (addToForwardMap && outType) {
         this._toTypecheckerMap[inType] = outType;
+    }
 
-        if (!this._fromTypecheckerMap[outType]) {
-            this._fromTypecheckerMap[outType] = inType;
+    if (addToReverseMap && outType) {
+        var outTypeNoParenthesis = outType.replace(/[()]/g, ""); // Remove parenthesis
+
+        if (!this._fromTypecheckerMap[outTypeNoParenthesis]) {
+            this._fromTypecheckerMap[outTypeNoParenthesis] = inType;
         }
     }
 
@@ -305,6 +369,7 @@ fromTypecheckerType(rawInType)
     if (!outType) {
         if (inType.indexOf(TypecheckerSymbols.Combined) >= 0 || inType.indexOf(TypecheckerSymbols.StaticCombined) >= 0) {
             outType = "id";
+
         } else if (inType.match(/\[\]$/)) {
             outType = "Array<" + this.fromTypecheckerType(inType.slice(0, -2)) + ">";
 
@@ -322,9 +387,11 @@ fromTypecheckerType(rawInType)
 
 getSymbolicatedString(inString)
 {
+    var fromSqueezedMap = this._fromSqueezedMap;
+
     return inString.replace(/\$oj[_$][A-Za-z_$]+/g, function(symbol) {
         if (symbol.indexOf("$oj$") === 0) {
-            return this._fromSqueezedMap[symbol];
+            return fromSqueezedMap[symbol];
 
         } else if (symbol.match(/^\$oj_[cCpPi]_/)) {
             return symbol.substr(OJClassPrefix.length);
@@ -345,13 +412,6 @@ getSymbolicatedString(inString)
 }
 
 
-getSymbolForProtocolName(protocolName, isTypecheckerStatic)
-{
-    var prefix = isTypecheckerStatic ? OJStaticProtocolPrefix : OJProtocolPrefix;
-    return prefix + protocolName;
-}
-
-
 getSymbolForClassName(className, isTypecheckerStatic)
 {
     var prefix = isTypecheckerStatic ? OJStaticClassPrefix : OJClassPrefix;
@@ -367,6 +427,19 @@ getSymbolForClassName(className, isTypecheckerStatic)
     }
 
     return className;
+}
+
+
+getSymbolForStructName(structName)
+{
+    return OJStructPrefix + structName;
+}
+
+
+getSymbolForProtocolName(protocolName, isTypecheckerStatic)
+{
+    var prefix = isTypecheckerStatic ? OJStaticProtocolPrefix : OJProtocolPrefix;
+    return prefix + protocolName;
 }
 
 
@@ -417,5 +490,6 @@ getSymbolForIvar(ivar)
 
 
 OJSymbolTyper.TypecheckerSymbols = TypecheckerSymbols;
+OJSymbolTyper.Location = Location;
 
 module.exports = OJSymbolTyper;

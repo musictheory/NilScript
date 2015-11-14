@@ -6,22 +6,22 @@
 
 "use strict";
 
-var esprima     = require("./esprima");
-var Syntax      = esprima.Syntax;
+const esprima     = require("../ext/esprima");
 
-var Builder     = require("./builder");
-var Modifier    = require("./modifier");
-var Generator   = require("./generator");
+const Builder     = require("./builder");
+const Modifier    = require("./modifier");
+const Generator   = require("./generator");
 
-var Hinter      = require("./hinter");
-var TypeChecker = require("./typechecker");
+const Hinter      = require("./hinter");
+const TypeChecker = require("./typechecker");
 
-var OJError     = require("./errors").OJError;
-var OJModel     = require("./model").OJModel;
-var OJFile      = require("./model").OJFile;
+const OJError     = require("./errors").OJError;
+const OJModel     = require("./model").OJModel;
+const OJFile      = require("./model").OJFile;
 
-var _           = require("lodash");
-var fs          = require("fs");
+const _           = require("lodash");
+const fs          = require("fs");
+const async       = require("async");
 
 function errorForEsprimaError(inError)
 {
@@ -88,95 +88,98 @@ _extractFilesFromOptions(optionsFiles, previousFiles)
 }
 
 
-_parseFiles(files)
+_parseFiles(files, callback)
 {
-    var ok = true;
+    var err = null;
 
-    _.each(this.files, ojFile => {
+    async.each(files, (ojFile, callback) => {
         if (!ojFile.ast) {
             try { 
                 ojFile.ast = esprima.parse(ojFile.contents, { loc: true });
+                ojFile.needsGenerate();
+                ojFile.needsTypecheck();
+
             } catch (inError) {
-                var outError = new Error(message);
+                let message = inError.description;
+                message = message.replace(/$.*Line:/, "");
+
+                let outError = new Error(message);
 
                 outError.line   = inError.lineNumber;
                 outError.column = inError.column;
                 outError.name   = OJError.ParseError;
-                outError.reason = inError.description.replace(/$.*Line:/, "");
+                outError.reason = message;
 
-                // set parseError on ojFile
-                ojFile.ast = null;
-                ojFile.parseError = outError;
-
-                ok = false;
+                ojFile.needsParse();
+                ojFile.error = outError;
+                if (!err) err = outError;
             }
         }
-    });
 
-    return ok;
+        callback();
+
+    }, () => { callback(err); });
 }
 
 
-_buildFiles(files, model, options)
+_buildFiles(files, model, options, callback)
 {
-    _.each(files, ojFile => {
-        var builder = new Builder(ojFile.ast, model, options);
-        builder.build();
-    });
+    var err = null;
+
+    async.each(files, (ojFile, callback) => {
+        try { 
+            var builder = new Builder(ojFile.ast, model, options);
+            builder.build();
+
+        } catch (e) {
+            ojFile.error = e;
+            if (!err) err = e;
+        }
+
+        callback();
+
+    }, () => { callback(err); });
 }
 
 
-_requiresRecompile(model1, model2)
+_generateJavaScript(files, model, options, callback)
 {
+    var err = null;
 
-}
-
-
-_generateJavaScript()
-{
-    var files   = this._files;
-    var model   = this._model;
-
-    var modifierOptions = this._modifierOptions;
-
-    _.each(files, ojFile => {
+    async.each(files, (ojFile, callback) => {
         if (!ojFile.jsCode) {
+            try {
+                var modifier  = new Modifier(ojFile.contents, options);
+                var generator = new Generator(ojFile.ast, model, modifier, false, options);
 
-            var modifier  = new Modifier(ojFile, this._inputModifierOptions);
-            var generator = new Generator(ast, model, transpileModifier, false, options);
+                generator.generate();
+
+                var result = generator.finish();
+
+                ojFile.jsCode = result.code;
+                ojFile.jsMap  = result.map;
+                ojFile.generatorWarnings = result.warnings || [ ];
+
+            } catch (e) {
+                ojFile.needsGenerate();
+                ojFile.error = e;
+                if (!err) err = e;
+            }
         }
-    });
 
+        callback();
 
-        var transpileModifier;
-        var transpileGenerator;
-        if (options["output-language"] != "none") {
-        }
-
-
+    }, () => { callback(err); });
 }
 
 
-_runTypechecker()
+_runTypechecker(files, model, options, callback)
 {
-
-
+    callback();
 }
 
 
-_finish()
-{
-
-}
-
-
-loadCache(cache)
-{
-
-}
-
-
-saveCache()
+_finish(files, callback)
 {
 
 }
@@ -217,42 +220,94 @@ compile(options, callback)
         });
     }
 
-    var model = new OJModel();
+    var model      = new OJModel();
+    var outputCode = null;
+    var outputMap  = null;
 
-    this._parseFiles(files);
-    this._buildFiles(files, model, options);
+    async.waterfall([
+        // Parse files
+        callback => {
+            this._parseFiles(files, callback);
+        },
 
-    var this._diffModels(previousModel, model);
+        // Build model
+        callback => {
+            this._buildFiles(files, model, options, callback);
+        },
 
-    var changes = previousModel.diffWithModel(model);
-    if (changes == OJModel.DiffResultGlobalsChanged) {
+        // Perform model diff
+        callback => {
+            var diffResult = previousModel.diffWithModel(model);
 
-    } else if (changes == OJModel.DiffResultSelectorsChanged) {
+            if (diffResult == OJModel.DiffResult.GlobalsChanged || diffResult == OJModel.DiffResult.SelectorsChanged) {
+                _.each(this.files, ojFile => {
+                    ojFile.needsGenerate();
+                    ojFile.needsTypecheck();
+                });
 
-    }
+            } else if (diffResult == OJModel.DiffResult.SelectorsChanged) {
+                // Just check some files for missing selectors?
+            }
 
-    // If the global state changed (new classes/globals/inlines)
-    if (this._requiresRecompile(previousModel, model)) {
-        _.each(this.files, ojFile => {
-            ojFile.jsCode = null;
-            ojFile.tsCode = null;
-            ojFile.tsDefs = null;
+            callback();
+        },
+
+        // Run generator
+        callback => {
+            if (options["output-language"] != "none") {
+                this._generateJavaScript(files, model, options, callback);
+            } else {
+                callback();
+            }
+        },
+
+        // Run typechecker
+        callback => {
+            if (options["check-types"]) {
+                this._runTypechecker(files, model, options, callback);
+            } else {
+                callback();
+            }
+        },
+
+        // Concatenate output
+        callback => {
+            let prependLines = _.isArray(optionsPrepend) ? optionsPrepend : (optionsPrepend || "").split("\n");
+            let appendLines  = _.isArray(optionsAppend)  ? optionsAppend  : (optionsAppend  || "").split("\n");
+
+            outputCode = prependLines.concat(
+                _.map(files, ojFile => ojFile.jsCode).join("\n"),
+                appendLines
+            ).join("\n");
+
+            callback();
+        }
+
+    ], function(err) {
+        let warnings = _.compact(_.flatten(_.map(files, ojFile => [
+            ojFile.generatorWarnings,
+            ojFile.typecheckerWarnings
+        ])));
+
+        // console.log(outputCode);
+
+        let errors = _.compact(_.map(files, ojFile => ojFile.error));
+
+        _.each(errors, function(error) {
+            if (error.name.indexOf("OJ") !== 0) {
+                throw error;
+            }
         });
-    }
 
-    // this._buildFiles(files, model, options);
+        callback(err, {
+            code:     outputCode,
+            map:      outputMap,
+            warnings: warnings,
+            errors:   errors
+        });
+    });
 
-
-    // If only the known selectors changed, do a 
-
-
-    if (model.didGlobalStateChange(() => {
-    })) {
-    }
-
-    if ()
-
-
+    // console.log("out of waterfall");
 
 
 }
@@ -464,10 +519,8 @@ Compiler.prototype.compile = function(callback)
         // Type checker
         //
         if (typeCheckGenerator) {
-            var noImplicitAny = options["no-implicit-any"];
-
             time("Type Check", function() {
-                var checker = new TypeChecker(model, typeCheckGenerator, inputFiles, noImplicitAny);
+                var checker = new TypeChecker(model, typeCheckGenerator, inputFiles, options);
 
                 checker.check(function(err, warnings, defs, code) {
                     waitingForChecker = false;
