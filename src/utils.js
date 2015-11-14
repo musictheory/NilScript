@@ -95,11 +95,9 @@ function makeError(name, message, node)
 {
     var error = new Error(message);
 
-    if (node) {
-        error.line    = node.loc.start.line;
-        error.column  = node.loc.start.col;
-    }
-
+    error.file    = null;
+    error.line    = node ? node.loc.start.line : 0;
+    error.column  = node ? node.loc.start.col  : 0;
     error.name    = name;
     error.reason  = message;
 
@@ -124,6 +122,14 @@ function addNodeToError(node, error)
 }
 
 
+function addFilePathToError(file, error)
+{
+    if (!error.file) {
+        error.file = file;
+    }
+}
+
+
 module.exports = {
     isJScriptReservedWord:      isJScriptReservedWord,
     isReservedSelectorName:     isReservedSelectorName,
@@ -132,5 +138,6 @@ module.exports = {
     isBaseObjectClass:          isBaseObjectClass,
     makeError:                  makeError,
     throwError:                 throwError,
-    addNodeToError:             addNodeToError
+    addNodeToError:             addNodeToError,
+    addFilePathToError:         addFilePathToError
 };

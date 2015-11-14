@@ -2,7 +2,7 @@
     "name": "ojc",
     "description": "compiler for the oj language",
     "homepage": "http://github.com/musictheory/oj",
-    "main": "./src/compiler.js",
+    "main": "./lib/api.js",
     "bin": {
         "ojc": "./bin/ojc"
     },

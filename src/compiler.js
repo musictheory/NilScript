@@ -12,6 +12,8 @@ const Builder     = require("./builder");
 const Modifier    = require("./modifier");
 const Generator   = require("./generator");
 const TypeChecker = require("./typechecker");
+const Traverser   = require("./traverser");
+const Utils       = require("./utils");
 
 const OJError     = require("./errors").OJError;
 const OJModel     = require("./model").OJModel;
@@ -22,13 +24,33 @@ const fs          = require("fs");
 const async       = require("async");
 
 
-class Compiler {
+
+    function printTime(name, start) {
+            console.error(name, Math.round(process.hrtime(start)[1] / (1000 * 1000)) + "ms");
+    }
+
+function    time(name, f) {
+        var start = process.hrtime();
+        f();
+        printTime(name, start);
+    }
+
+module.exports = class Compiler {
+
+
+constructor()
+{
+    this._files   = null;
+    this._options = null;
+    this._model   = null;   
+    this._parent  = null;
+}
 
 
 _extractFilesFromOptions(optionsFiles, previousFiles)
 {
-    var existingMap = { };
-    var outFiles = [ ];
+    let existingMap = { };
+    let outFiles = [ ];
 
     _.each(previousFiles, function(ojFile) {
         existingMap[ojFile.path] = ojFile;
@@ -41,7 +63,7 @@ _extractFilesFromOptions(optionsFiles, previousFiles)
     //        time: file modification time
     //
     _.each(optionsFiles, function(f) {
-        var ojFile, path, contents, time;
+        let ojFile, path, contents, time;
 
         if (_.isString(f)) {
             path = f;
@@ -70,7 +92,7 @@ _extractFilesFromOptions(optionsFiles, previousFiles)
 
 _parseFiles(files, callback)
 {
-    var err = null;
+    let err = null;
 
     async.each(files, (ojFile, callback) => {
         if (!ojFile.ast) {
@@ -99,49 +121,53 @@ _parseFiles(files, callback)
 
         callback();
 
-    }, () => { callback(err); });
+    }, () => {
+        callback(err);
+    });
 }
 
 
 _buildFiles(files, model, options, callback)
 {
-    var err = null;
+    let err = null;
 
     async.each(files, (ojFile, callback) => {
         try { 
-            var builder = new Builder(ojFile.ast, model, options);
+            let builder = new Builder(ojFile, model, options);
             builder.build();
 
         } catch (e) {
+            Utils.addFilePathToError(ojFile.path, e);
             ojFile.error = e;
             if (!err) err = e;
         }
 
         callback();
 
-    }, () => { callback(err); });
+    }, () => {
+        model.prepare();
+        callback(err);
+    });
 }
 
 
 _generateJavaScript(files, model, options, callback)
 {
-    var err = null;
+    let err = null;
 
     async.each(files, (ojFile, callback) => {
         if (!ojFile.generatorLines) {
             try {
-                var inLines   = ojFile.contents.split("\n");
-                var modifier  = new Modifier(inLines, options);
-                var generator = new Generator(ojFile.ast, model, modifier, false, options);
+                const inLines   = ojFile.contents.split("\n");
+                const modifier  = new Modifier(inLines, options);
+                const generator = new Generator(ojFile, model, modifier, false, options);
 
-                generator.generate();
-
-                var result = generator.finish();
-
-                ojFile.generatorLines = result.lines;
+                const result = generator.generate();
+                ojFile.generatorLines    = result.lines;
                 ojFile.generatorWarnings = result.warnings || [ ];
 
             } catch (e) {
+                Utils.addFilePathToError(ojFile.path, e);
                 ojFile.needsGenerate();
                 ojFile.error = e;
                 if (!err) err = e;
@@ -150,39 +176,84 @@ _generateJavaScript(files, model, options, callback)
 
         callback();
 
-    }, () => { callback(err); });
+    }, () => {
+        callback(err);
+    });
 }
 
 
 _runTypechecker(files, model, options, callback)
 {
-    callback();
+    let err = null;
+
+    async.each(files, (ojFile, callback) => {
+        if (!ojFile.typecheckerLines) {
+            try {
+                let inLines   = ojFile.contents.split("\n");
+                let modifier  = new Modifier(inLines, options);
+                let generator = new Generator(ojFile, model, modifier, true, options);
+
+                let result = generator.generate();
+                ojFile.typecheckerLines = result.lines;
+
+            } catch (e) {
+                Utils.addFilePathToError(ojFile.path, e);
+                ojFile.needsTypecheck();
+                ojFile.error = e;
+                if (!err) err = e;
+            }
+        }
+
+        callback();
+
+    }, () => {
+        if (err) {
+            callback(err)
+        } else {
+            try {
+                let checker = new TypeChecker(files, model, options);
+
+                checker.check((err, hints, defs, code) => {
+                    callback();
+                });
+
+            } catch (e) {
+                callback(e);
+            }
+        }
+    });
+}
+
+
+parent(compiler)
+{
+    this._parent = compiler;
 }
 
 
 compile(options, callback)
 {
-    var previousFiles   = this._files;
-    var previousOptions = this._options;
-    var previousModel   = this._model;
+    let previousFiles   = this._files;
+    let previousOptions = this._options;
+    let previousModel   = this._model;
 
     // Extract options which don't affect parse/build/compile stages
     //
     function extractOption(key) {
-        var result = options[key];
+        let result = options[key];
         options[key] = null;
         return result;
     }
 
-    var optionsFiles         = extractOption("files");
-    var optionsPrepend       = extractOption("prepend");
-    var optionsAppend        = extractOption("append");
-    var optionsSourceMapFile = extractOption("source-map-file");
-    var optionsSourceMapRoot = extractOption("source-map-root");
-    var optionsState         = extractOption("state");
+    const optionsFiles         = extractOption("files");
+    const optionsPrepend       = extractOption("prepend");
+    const optionsAppend        = extractOption("append");
+    const optionsSourceMapFile = extractOption("source-map-file");
+    const optionsSourceMapRoot = extractOption("source-map-root");
+    const optionsState         = extractOption("state");
 
     // Extract options.files and convert to a map of path->OJFiles
-    var files = this._extractFilesFromOptions(optionsFiles, previousFiles);
+    const files = this._extractFilesFromOptions(optionsFiles, previousFiles);
     options.files = null;
 
     // If remaining options changed, invalidate everything
@@ -196,45 +267,69 @@ compile(options, callback)
         });
     }
 
-    var model = new OJModel();
-    if (optionsState) model.loadState(optionsState);
+    const model = new OJModel();
+    if (this._parent && this._parent._model) {
+        model.loadState(this._parent._model.saveState());
+    } else if (optionsState) {
+        model.loadState(optionsState);
+    } 
 
-    var outputCode = null;
-    var outputMap  = null;
+    this._files   = files;
+    this._options = options;
+
+    let outputCode = null;
+    let outputMap  = null;
 
     async.waterfall([
         // Parse files
         callback => {
-            this._parseFiles(files, callback);
+            time("parse", () => {
+                this._parseFiles(files, callback);
+            });
         },
 
         // Build model
         callback => {
-            this._buildFiles(files, model, options, callback);
+            time("build", () => {
+                this._buildFiles(files, model, options, callback);
+            });
         },
 
         // Perform model diff
         callback => {
-            var diffResult = previousModel.diffWithModel(model);
-            console.log(diffResult);
-
-            if (diffResult == OJModel.DiffResult.GlobalsChanged || diffResult == OJModel.DiffResult.SelectorsChanged) {
+            if (previousModel.hasGlobalChanges(model)) {
                 _.each(files, ojFile => {
                     ojFile.needsGenerate();
                     ojFile.needsTypecheck();
                 });
 
+            } else {
+                if (options["warn-unknown-selectors"]) {
+                    var changedSelectors = previousModel.getChangedSelectorMap(model);
 
-                    console.log("globals changed");
+                    if (changedSelectors) {
+                        _.each(files, ojFile => {
+                            _.each(ojFile.usage.selectors, function(selectorName) {
+                                if (changedSelectors[selectorName]) {
+                                    ojFile.needsGenerate();
+                                }
+                            });
+                        });
+                    }
+                }
 
-            } else if (diffResult == OJModel.DiffResult.SelectorsChanged) {
-                // Just check some files for missing selectors?
-
-                console.log("selectors changed");
-
+                if (options["check-types"]) {
+                    if (previousModel.hasTypeChanges(model)) {
+                        _.each(files, ojFile => {
+                            ojFile.needsTypecheck();
+                        });
+                    }
+                }
             }
 
-            console.log("local changed");
+
+            // If we get here, our current model is valid.  Save it for next time
+            this._model = model;
 
             callback();
         },
@@ -281,11 +376,11 @@ compile(options, callback)
         // If we have an internal error, throw it now
         _.each(errors, function(error) {
             if (error.name.indexOf("OJ") !== 0) {
-                throw error;
+                callback(error);
             }
         });
 
-        var result = {
+        let result = {
             code:     outputCode,
             map:      outputMap,
             errors:   errors,
@@ -302,37 +397,7 @@ compile(options, callback)
 
         callback(err, result);
     });
-
-    this._files   = files;
-    this._options = options;
-    this._model   = model;
 }
 
 }
 
-
-module.exports = {
-    Compiler: Compiler,
-
-    compile: function(options, callback) {
-        try {
-            if (options) {
-                options["include-state"] = true;
-            }
-
-            var compiler = new Compiler();
-            compiler.compile(options, callback);
-
-        } catch (e) {
-            if (e.name.indexOf("OJ") !== 0) {
-                console.error("Internal oj error!")
-                console.error("------------------------------------------------------------")
-                console.error(e);
-                console.error(e.stack);
-                console.error("------------------------------------------------------------")
-            }
-
-            callback(e, null);
-        }
-    }
-}

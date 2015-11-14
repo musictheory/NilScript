@@ -18,9 +18,9 @@ var Utils      = require("./utils");
 var Model      = require("./model");
 
 
-function Builder(ast, model, options)
+function Builder(file, model, options)
 {
-    this._ast     = ast;
+    this._file    = file;
     this._model   = model;
     this._options = options;
 }
@@ -62,21 +62,29 @@ function sMakeOJMethodForNode(node)
 
 Builder.prototype.build = function()
 {
-    var compiler     = this;
-    var model        = this._model;
+    let ojFile = this._file;
+    let model  = this._model;
 
-    var currentClass, currentMethod, currentCategoryName;
-    var currentStruct, currentProtocol;
+    let traverser = new Traverser(ojFile.ast);
 
-    var traverser = new Traverser(this._ast);
+    let currentClass, currentMethod, currentCategoryName;
+    let currentStruct, currentProtocol;
+
+    let usedSelectorMap   = { };
+
+    let declaredClasses   = [ ];
+    let declaredGlobals   = [ ];
+    let declaredProtocols = [ ];
+    let declaredStructs   = [ ];
+
 
     function handleOJClassImplementation(node)
     {
-        var className      = node.id.name;
-        var superclassName = node.superClass && node.superClass.name;
-        var categoryName   = node.category;
-        var protocolNames  = [ ];
-        var result;
+        let className      = node.id.name;
+        let superclassName = node.superClass && node.superClass.name;
+        let categoryName   = node.category;
+        let protocolNames  = [ ];
+        let result;
 
         if (node.extension) {
             Utils.throwError(OJError.NotYetSupported, "Class extensions are not yet supported", node);
@@ -88,21 +96,21 @@ Builder.prototype.build = function()
             });
         }
 
-        var cls;
+        let ojClass;
         if (categoryName) {
-            cls = model.classes[className];
+            ojClass = model.classes[className];
 
-            if (!cls) {
-                cls = new Model.OJClass(className);
-                cls.placeholder = true;
-                model.addClass(cls);
+            if (!ojClass) {
+                ojClass = new Model.OJClass(className);
+                ojClass.placeholder = true;
+                model.addClass(ojClass);
             }
 
         } else {
-            cls = new Model.OJClass(className, superclassName, protocolNames);
-            cls.forward = false;
-            cls.location = _.clone(node.loc);
-            model.addClass(cls);
+            ojClass = new Model.OJClass(className, superclassName, protocolNames);
+            ojClass.forward = false;
+            ojClass.location = _.clone(node.loc);
+            model.addClass(ojClass);
         }
 
         if (superclassName) {
@@ -111,22 +119,26 @@ Builder.prototype.build = function()
             model.addClass(superclass);
         }
 
-        currentClass = cls;
+        currentClass = ojClass;
         currentCategoryName = categoryName;
+
+        declaredClasses.push(ojClass.name)
     }
 
     function handleOJStructDefinition(node)
     {
-        var struct = new Model.OJStruct(node.id.name);
-        model.addStruct(struct);
+        let ojStruct = new Model.OJStruct(node.id.name);
+        model.addStruct(ojStruct);
 
-        currentStruct = struct;
+        currentStruct = ojStruct;
+
+        declaredStructs.push(ojStruct.name);
     }
 
     function handleOJProtocolDefinition(node)
     {
-        var name = node.id.name;
-        var parentProtocolNames  = [ ];
+        let name = node.id.name;
+        let parentProtocolNames  = [ ];
 
         if (node.protocolList) {
             _.each(node.protocolList.protocols, function(protocol) {
@@ -134,19 +146,20 @@ Builder.prototype.build = function()
             });
         }
 
-        var protocol = new Model.OJProtocol(name, parentProtocolNames);
-        model.addProtocol(protocol);
-        protocol.location = _.clone(node.loc);
-        currentProtocol = protocol;
+        let ojProtocol = new Model.OJProtocol(name, parentProtocolNames);
+        model.addProtocol(ojProtocol);
+        ojProtocol.location = _.clone(node.loc);
+        currentProtocol = ojProtocol;
+
+        declaredProtocols.push(ojProtocol.name);
     }
 
     function handleOJClassDirective(node)
     {
-        var ids = node.ids;
-        var i, length;
+        let ids = node.ids;
 
-        for (var i = 0, length = ids.length; i < length; i++) {
-            var cls = new Model.OJClass(ids[i].name);
+        for (let i = 0, length = ids.length; i < length; i++) {
+            let cls = new Model.OJClass(ids[i].name);
             cls.forward = true;
 
             model.addClass(cls);
@@ -373,6 +386,8 @@ Builder.prototype.build = function()
 
             model.addGlobal(new Model.OJGlobal(name, annotation));
             model.getSymbolTyper().enrollForSqueezing(name);
+
+            declaredGlobals.push(name);
         }
 
         if (inNode.declaration) {
@@ -463,10 +478,26 @@ Builder.prototype.build = function()
 
             } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression) {
                 handleFunctionDeclarationOrExpression(node);
+
+            } else if (type === Syntax.OJMessageExpression) {
+                usedSelectorMap[node.selectorName] = true;
+
+            } else if (type === Syntax.OJSelectorDirective) {
+                usedSelectorMap[node.name] = true;
             }
 
         } catch (e) {
-            Utils.addNodeToError(node, e);
+            if (node) {
+                if (!e.line) {
+                    e.line    = node.loc.start.line;
+                    e.column  = node.loc.start.col;
+                }
+            }
+
+            if (!e.file) {
+                e.file = ojFile.path;
+            }
+
             throw e;
         }
 
@@ -489,7 +520,18 @@ Builder.prototype.build = function()
         }
     });
 
-    model.prepare();
+    ojFile.usage = {
+        selectors: _.keys(usedSelectorMap).sort()
+    };
+
+    ojFile.declarations = {
+        classes:   declaredClasses.sort(),
+        globals:   declaredGlobals.sort(),
+        protocols: declaredProtocols.sort(),
+        structs:   declaredStructs.sort()
+    };
+
+    console.log(ojFile.path, ojFile.declarations);
 }
 
 

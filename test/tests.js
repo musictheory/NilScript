@@ -7,7 +7,7 @@ var fs     = require("fs");
 var path   = require("path");
 
 var OJError = require("../src/errors.js").OJError;
-var ojc     = require("../src/compiler");
+var ojc     = require("../lib/api");
 var oj      = require("../runtime/runtime.js");
 
 
@@ -141,13 +141,13 @@ gatherTests(path.dirname(__filename), function(err, tests) {
             _.extend(options, o);
             options.files = [ { path: t.file, contents: t.contents } ];
 
-            ojc.compile(options, function(err, result) {
-                var name = t.name;
-                if (options.squeeze)         name += " +squeeze";
-                if (options["inline-const"]) name += " +const";
-                if (options["inline-enum"])  name += " +enum";
+            var name = t.name;
+            if (options.squeeze)         name += " +squeeze";
+            if (options["inline-const"]) name += " +const";
+            if (options["inline-enum"])  name += " +enum";
 
-                test(name, function() {
+            test(name, function() {
+                ojc.compile(options, function(err, result) {
                     if (t.typecheck) {
                         var remaining = _.clone(t.typecheck);
 
