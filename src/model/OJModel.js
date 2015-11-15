@@ -299,7 +299,7 @@ OJModel.prototype.addConst = function(name, value)
 OJModel.prototype.addEnum = function(e)
 {
     this.enums.push(e);
-    this.aliasType("Number", e.name);
+    if (e.name) this.aliasType("Number", e.name);
 }
 
 

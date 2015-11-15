@@ -25,6 +25,7 @@ var OJKindofClassPrefix       = "$oj_k_";   // Typechecker only
 var OJStaticClassPrefix       = "$oj_C_";   // Typechecker only
 var OJStaticProtocolPrefix    = "$oj_P_";   // Typechecker only
 var OJStructPrefix            = "$oj_s_";   // Typechecker only
+var OJEnumPrefix              = "$oj_e_";   // Typechecker only
 
 
 var TypecheckerSymbols = {
@@ -150,6 +151,7 @@ OJSymbolTyper.prototype._setupTypecheckerMaps = function()
     var fromMap   = { };
     var classes   = _.values(this._model.classes);
     var structs   = _.values(this._model.structs);
+    var enums     = _.values(this._model.enums);
     var i, length;
 
     for (i = 0, length = classes.length; i < length; i++) {
@@ -175,6 +177,19 @@ OJSymbolTyper.prototype._setupTypecheckerMaps = function()
 
         fromMap[structName]   = structName;
         fromMap[structSymbol] = structName;
+    }
+
+    for (i = 0, length = enums.length; i < length; i++) {
+        var enumName = enums[i].name;
+        if (!enumName) continue;
+
+        var enumSymbol = this.getSymbolForEnumName(enumName);
+
+        toMap[enumName]   = enumSymbol;
+        toMap[enumSymbol] = enumSymbol;
+
+        fromMap[enumName]   = enumName;
+        fromMap[enumSymbol] = enumName;
     }
 
     _.extend(fromMap, {
@@ -255,6 +270,9 @@ OJSymbolTyper.prototype.toTypecheckerType = function(rawInType, location, curren
         } else if (part == "String" || part == "string") {
             result = "string";
 
+        } else if ((tmp = toTypecheckerMap[part])) {
+            return tmp;
+
         } else if (model.isNumericType(part)) {
             result = "number";
             addToReverseMap = false;
@@ -316,9 +334,6 @@ OJSymbolTyper.prototype.toTypecheckerType = function(rawInType, location, curren
             addToForwardMap = false;
             addToReverseMap = false;
 
-        } else if ((tmp = toTypecheckerMap[part])) {
-            return tmp;
-
         } else if ((tmp = model.types[part])) {
             if (tmp == part) {
                 result = tmp;
@@ -328,7 +343,7 @@ OJSymbolTyper.prototype.toTypecheckerType = function(rawInType, location, curren
             }
 
         } else {
-            result = inType;
+            result = part;
         }
         
         return result;
@@ -430,6 +445,12 @@ OJSymbolTyper.prototype.getSymbolForClassName = function(className, isTypechecke
 OJSymbolTyper.prototype.getSymbolForStructName = function(structName)
 {
     return OJStructPrefix + structName;
+}
+
+
+OJSymbolTyper.prototype.getSymbolForEnumName = function(enumName)
+{
+    return OJEnumPrefix + enumName;
 }
 
 
