@@ -44,6 +44,7 @@ function Generator(file, model, modifier, forTypechecker, options)
     this._options  = options;
 
     var inlines = { };
+    var symbolTyper = model.getSymbolTyper();
 
     var language = options["output-language"];
     if (language && language.match(/typechecker/)) {
@@ -68,7 +69,7 @@ function Generator(file, model, modifier, forTypechecker, options)
 
             _.each(ojEnum.values, function(value, name) {
                 if (enumName && forTypechecker) {
-                    inlines[name] = enumName + "." + name;
+                    inlines[name] = symbolTyper.getSymbolForEnumName(enumName) + "." + name;
                 } else {
                     inlines[name] = value;
                 }
