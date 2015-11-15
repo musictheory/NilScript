@@ -465,7 +465,7 @@ TypeChecker.prototype._generateDefs = function(model)
     }
 
     function generateEnum(lines, ojEnum) {
-        lines.push("enum " + ojEnum.name + " {");
+        lines.push("enum " + symbolTyper.getSymbolForEnumName(ojEnum.name) + " {");
 
         _.each(ojEnum.values, function(value, name) {
             lines.push(name + " = " + value + ",");
