@@ -375,7 +375,10 @@ addEnum(ojEnum)
     if (name) {
         this.aliasType("Number", ojEnum.name);
     } else {
-        name = ojEnum.name = "$OJAnonymousEnum" + _.size(this.enums);
+        name = "$OJAnonymousEnum" + _.size(this.enums);
+
+        ojEnum.name = name;
+        ojEnum.anonymous = true;
     }
 
     this.enums[name] = ojEnum;

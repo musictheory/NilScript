@@ -6,23 +6,25 @@
 
 "use strict";
 
-const esprima     = require("../ext/esprima");
+const _               = require("lodash");
+const fs              = require("fs");
+const path            = require("path");
+const async           = require("async");
 
-const Builder     = require("./builder");
-const Modifier    = require("./modifier");
-const Generator   = require("./generator");
-const TypeChecker = require("./typechecker");
-const Traverser   = require("./traverser");
-const Utils       = require("./utils");
+const esprima         = require("../ext/esprima");
 
-const OJError     = require("./errors").OJError;
-const OJModel     = require("./model").OJModel;
-const OJFile      = require("./model").OJFile;
+const Builder         = require("./builder");
+const Modifier        = require("./modifier");
+const Generator       = require("./generator");
+const Utils           = require("./utils");
 
-const _           = require("lodash");
-const fs          = require("fs");
-const async       = require("async");
+const DefinitionMaker = require("./typechecker/DefinitionMaker");
+const Typechecker     = require("./typechecker/Typechecker");
 
+const OJError         = require("./errors").OJError;
+const OJModel         = require("./model").OJModel;
+const OJFile          = require("./model").OJFile;
+    
 
 
     function printTime(name, start) {
@@ -42,8 +44,10 @@ constructor()
 {
     this._files   = null;
     this._options = null;
+    this._defs    = null;
     this._model   = null;   
     this._parent  = null;
+    this._checker = null;
 }
 
 
@@ -182,19 +186,19 @@ _generateJavaScript(files, model, options, callback)
 }
 
 
-_runTypechecker(files, model, options, callback)
+_runTypechecker(typechecker, defs, files, model, options, callback)
 {
     let err = null;
 
     async.each(files, (ojFile, callback) => {
-        if (!ojFile.typecheckerLines) {
+        if (!ojFile.typecheckerCode) {
             try {
                 let inLines   = ojFile.contents.split("\n");
                 let modifier  = new Modifier(inLines, options);
                 let generator = new Generator(ojFile, model, modifier, true, options);
 
                 let result = generator.generate();
-                ojFile.typecheckerLines = result.lines;
+                ojFile.typecheckerCode = result.lines.join("\n");
 
             } catch (e) {
                 Utils.addFilePathToError(ojFile.path, e);
@@ -204,6 +208,10 @@ _runTypechecker(files, model, options, callback)
             }
         }
 
+        if (!ojFile.typecheckerDefs) {
+            ojFile.typecheckerDefs = (new DefinitionMaker(model)).getFileDefinitions(ojFile);
+        }
+
         callback();
 
     }, () => {
@@ -211,17 +219,31 @@ _runTypechecker(files, model, options, callback)
             callback(err)
         } else {
             try {
-                let checker = new TypeChecker(files, model, options);
-
-                checker.check((err, hints, defs, code) => {
-                    callback();
+                typechecker.check(model, defs, files, (err, warnings, defs, code) => {
+                    callback(null, warnings);
                 });
 
             } catch (e) {
-                callback(e);
+                callback(e, null);
             }
         }
     });
+}
+
+
+_dumpTypechecker(typechecker, files)
+{
+    let tmp = "/tmp/ojc.typechecker";
+
+    // if (!fs.)
+    // fs.mkdirSync(tmp);
+
+    _.each(files, ojFile => {
+        fs.writeFileSync(tmp + path.sep + path.basename(ojFile.path + ".ts",   ojFile.typecheckerCode));
+        fs.writeFileSync(tmp + path.sep + path.basename(ojFile.path + ".d.ts", ojFile.typecheckerDefs));
+    });
+
+    fs.writeFileSync(tmp + path.sep + "global.d.ts", typechecker.getGlobalDefs());
 }
 
 
@@ -234,6 +256,7 @@ parent(compiler)
 compile(options, callback)
 {
     let previousFiles   = this._files;
+    let previousDefs    = this._defs;
     let previousOptions = this._options;
     let previousModel   = this._model;
 
@@ -246,6 +269,7 @@ compile(options, callback)
     }
 
     const optionsFiles         = extractOption("files");
+    const optionsDefs          = extractOption("defs");
     const optionsPrepend       = extractOption("prepend");
     const optionsAppend        = extractOption("append");
     const optionsSourceMapFile = extractOption("source-map-file");
@@ -256,6 +280,13 @@ compile(options, callback)
     const files = this._extractFilesFromOptions(optionsFiles, previousFiles);
     options.files = null;
 
+    const defs = this._extractFilesFromOptions(optionsDefs, previousDefs);
+    options.defs = null;
+
+    // These options aren't extracted
+    const optionsCheckTypes     = options["check-types"];
+    const optionsOutputLanguage = options["output-language"];
+
     // If remaining options changed, invalidate everything
     //
     if (!_.isEqual(options, previousOptions)) {
@@ -265,6 +296,8 @@ compile(options, callback)
         _.each(files, ojFile => {
             ojFile.invalidateAllResults();
         });
+
+        this._checker = null;
     }
 
     const model = new OJModel();
@@ -276,9 +309,15 @@ compile(options, callback)
 
     this._files   = files;
     this._options = options;
+    this._defs    = defs;
+
+    if (optionsCheckTypes && !this._checker) {
+        this._checker = new Typechecker(options);
+    }
 
     let outputCode = null;
     let outputMap  = null;
+    let typecheckerWarnings = null;
 
     async.waterfall([
         // Parse files
@@ -303,6 +342,10 @@ compile(options, callback)
                     ojFile.needsTypecheck();
                 });
 
+                if (this._checker) {
+                    this._checker.invalidateGlobalState();
+                }
+
             } else {
                 if (options["warn-unknown-selectors"]) {
                     var changedSelectors = previousModel.getChangedSelectorMap(model);
@@ -317,14 +360,6 @@ compile(options, callback)
                         });
                     }
                 }
-
-                if (options["check-types"]) {
-                    if (previousModel.hasTypeChanges(model)) {
-                        _.each(files, ojFile => {
-                            ojFile.needsTypecheck();
-                        });
-                    }
-                }
             }
 
 
@@ -336,7 +371,7 @@ compile(options, callback)
 
         // Run generator
         callback => {
-            if (options["output-language"] != "none") {
+            if (optionsOutputLanguage != "none") {
                 this._generateJavaScript(files, model, options, callback);
             } else {
                 callback();
@@ -345,8 +380,11 @@ compile(options, callback)
 
         // Run typechecker
         callback => {
-            if (options["check-types"]) {
-                this._runTypechecker(files, model, options, callback);
+            if (optionsCheckTypes) {
+                this._runTypechecker(this._checker, defs, files, model, options, (err, warnings) => {
+                    typecheckerWarnings = warnings;
+                    callback(err);
+                });
             } else {
                 callback();
             }
@@ -370,29 +408,45 @@ compile(options, callback)
             callback();
         }
 
-    ], function(err) {
+    ], err => {
         let errors = _.compact(_.map(files, ojFile => ojFile.error));
 
         // If we have an internal error, throw it now
+        if (err && err.name && !err.name.startsWith("OJ")) {
+            throw err;
+        }
+
         _.each(errors, function(error) {
-            if (error.name.indexOf("OJ") !== 0) {
-                callback(error);
+            if (!error.name.startsWith("OJ")) {
+                throw error;
             }
         });
+
+        let warnings = _.map(files, ojFile => [
+            ojFile.generatorWarnings,
+        ]);
+
+        warnings.push(typecheckerWarnings);
 
         let result = {
             code:     outputCode,
             map:      outputMap,
             errors:   errors,
-
-            warnings: _.compact(_.flatten(_.map(files, ojFile => [
-                ojFile.generatorWarnings,
-                ojFile.typecheckerWarnings
-            ])))
+            warnings: _.compact(_.flatten(warnings))
         };
 
         if (options["include-state"]) {
             result.state = model.saveState();
+        }
+
+        if (options["development"]) {
+            if (optionsCheckTypes) {
+                this._dumpTypechecker(this._checker, files);
+            }
+
+            // if (optionsOutputLanguage != "none") {
+            //     this._dumpGenerator(files);
+            // }
         }
 
         callback(err, result);

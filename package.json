@@ -32,6 +32,7 @@
         "source-map":  "0.1.x",
         "node-getopt": "0.2.x",
         "jshint":      "2.x",
+        "mkdirp":      "0.5",
         "temp":        "0.8",
         "typescript":  "1.6.x"
     },

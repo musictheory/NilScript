@@ -76,6 +76,7 @@ Builder.prototype.build = function()
     let declaredGlobals   = [ ];
     let declaredProtocols = [ ];
     let declaredStructs   = [ ];
+    let declaredEnums     = [ ];
 
 
     function handleOJClassImplementation(node)
@@ -307,6 +308,10 @@ Builder.prototype.build = function()
         var name = node.id ? node.id.name : null;
         var e = new Model.OJEnum(name, node.unsigned);
 
+        if (name) {
+            declaredEnums.push(name);
+        }
+
         if (length) {
             var firstDeclaration = node.declarations[0];
             var lastDeclaration  = node.declarations[length - 1];
@@ -528,10 +533,9 @@ Builder.prototype.build = function()
         classes:   declaredClasses.sort(),
         globals:   declaredGlobals.sort(),
         protocols: declaredProtocols.sort(),
-        structs:   declaredStructs.sort()
+        structs:   declaredStructs.sort(),
+        enums:     declaredEnums.sort()
     };
-
-    console.log(ojFile.path, ojFile.declarations);
 }
 
 
