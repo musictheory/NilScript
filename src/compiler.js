@@ -58,9 +58,14 @@ function Compiler(options)
             contents.push(fs.readFileSync(f).toString());
 
         } else {
-            if (f.path && f.contents) {
+            if (f.path) {
                 paths.push(f.path);
-                contents.push(f.contents);
+
+                if (f.contents) {
+                    contents.push(f.contents);
+                } else {
+                    contents.push(fs.readFileSync(f.path).toString());
+                }
             }
         }
     });
