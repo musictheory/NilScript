@@ -65,11 +65,11 @@ function Generator(file, model, modifier, forTypechecker, options)
     // Typechecker inlines anonymous enums
     if (options["inline-enum"] || forTypechecker) {
         _.each(model.enums, function(ojEnum) {
-            var enumName = ojEnum.name;
+            var enumNameSymbol = (ojEnum.name && !ojEnum.anonymous) ? symbolTyper.getSymbolForEnumName(ojEnum.name) : null;
 
             _.each(ojEnum.values, function(value, name) {
-                if (enumName && forTypechecker) {
-                    inlines[name] = symbolTyper.getSymbolForEnumName(enumName) + "." + name;
+                if (enumNameSymbol && forTypechecker) {
+                    inlines[name] = enumNameSymbol + "." + name;
                 } else {
                     inlines[name] = value;
                 }
@@ -120,7 +120,6 @@ Generator.prototype.generate = function()
 
     var methodUsesSelfVar        = false;
     var methodUsesTemporaryVar   = false;
-    var methodUsesLoneExpression = false;
 
     var optionWarnOnThisInMethods    = options["warn-this-in-methods"];
     var optionWarnOnUnknownSelectors = options["warn-unknown-selectors"];
@@ -402,8 +401,6 @@ Generator.prototype.generate = function()
             } else if (currentClass.isIvar(receiver.name)) {
                 var ivar = generateThisIvar(currentClass.name, receiver.name, usesSelf);
 
-                methodUsesLoneExpression = true;
-
                 if (language === LanguageTypechecker) {
                     doCommonReplacement("(" + ivar + "." + methodName + "(", "))");
                 } else {
@@ -413,8 +410,6 @@ Generator.prototype.generate = function()
                 return;
 
             } else {
-                methodUsesLoneExpression = true;
-
                 if (language === LanguageTypechecker) {
                     doCommonReplacement("(" + receiver.name + "." + methodName + "(", "))");
                 } else {
@@ -426,7 +421,6 @@ Generator.prototype.generate = function()
 
         } else if (currentMethodNode) {
             methodUsesTemporaryVar   = true;
-            methodUsesLoneExpression = true;
 
             replaceMessageSelectors();
 
@@ -573,7 +567,7 @@ Generator.prototype.generate = function()
 
         modifier.from(node).to(node.body).replace(definition);
 
-        if (methodUsesSelfVar || methodUsesTemporaryVar || methodUsesLoneExpression) {
+        if (methodUsesSelfVar || methodUsesTemporaryVar) {
             var toInsert = "";
 
             var varParts = [ ];
@@ -585,10 +579,6 @@ Generator.prototype.generate = function()
                 } else if (language === LanguageTypechecker) {
                     varParts.push(OJTemporaryReturnVariable + " : " + symbolTyper.toTypecheckerType(node.returnType.value));
                 }
-            }
-
-            if (methodUsesLoneExpression) {
-                toInsert += "/* jshint expr: true */";
             }
 
             if (varParts.length) {
@@ -1085,7 +1075,6 @@ Generator.prototype.generate = function()
             currentMethodNode        = node;
             methodUsesSelfVar        = false;
             methodUsesTemporaryVar   = false;
-            methodUsesLoneExpression = false;
 
         } else if (type === Syntax.OJMessageExpression) {
             handleOJMessageExpression(node);

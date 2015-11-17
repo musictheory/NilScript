@@ -2,6 +2,12 @@ CHANGELOG
 
 ---
 
+2.0.0
+
+2.x is a backwards incompatible release, with a focus on incremental compiling.
+
+---
+
 1.2.0
 - Update to Esprima 2.7 (#38)
 - Added @CLASS, @SEL, @FUNCTION for debugging (#58)
@@ -29,7 +35,7 @@ CHANGELOG
 
 ---
 
-1.0.0 (Released 2014-11-04)
+1.0.0
 
 1.x is a backwards incompatible release, with a focus on enhancing runtime performance.
 

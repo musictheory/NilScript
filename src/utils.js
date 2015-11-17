@@ -6,7 +6,10 @@
 
 "use strict";
 
-var _ = require("lodash");
+const _      = require("lodash");
+const mkdirp = require("mkdirp");
+const path   = require("path");
+const fs     = require("fs");
 
 
 function isJScriptReservedWord(id)
@@ -130,6 +133,29 @@ function addFilePathToError(file, error)
 }
 
 
+function rmrf(dir)
+{
+    try {
+        _.each(fs.readdirSync(dirPath), file => {
+            if (fs.statSync(file).isFile()) {
+                fs.unlinkSync(file)
+            } else {
+                rmrf(file);
+            }
+        });
+
+        fs.rmdirSync(dir);
+    } catch(e) { }
+}
+
+
+function mkdirAndWriteFile(file, contents)
+{
+    mkdirp.sync(path.dirname(file));
+    fs.writeFileSync(file, contents);
+}
+
+
 module.exports = {
     isJScriptReservedWord:      isJScriptReservedWord,
     isReservedSelectorName:     isReservedSelectorName,
@@ -139,5 +165,8 @@ module.exports = {
     makeError:                  makeError,
     throwError:                 throwError,
     addNodeToError:             addNodeToError,
-    addFilePathToError:         addFilePathToError
+    addFilePathToError:         addFilePathToError,
+
+    rmrf:                       rmrf,
+    mkdirAndWriteFile:          mkdirAndWriteFile
 };

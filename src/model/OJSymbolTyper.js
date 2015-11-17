@@ -150,17 +150,16 @@ _getSqueezedSymbol(readableName, add)
 
 _setupTypecheckerMaps()
 {
-    var toMap     = { };
-    var fromMap   = { };
-    var classes   = _.values(this._model.classes);
-    var structs   = _.values(this._model.structs);
-    var enums     = _.values(this._model.enums);
-    var i, length;
+    let toMap     = { };
+    let fromMap   = { };
+    let classes   = _.values(this._model.classes);
+    let structs   = _.values(this._model.structs);
+    let enums     = _.values(this._model.enums);
 
-    for (i = 0, length = classes.length; i < length; i++) {
-        var className      = classes[i].name;
-        var instanceSymbol = this.getSymbolForClassName(className, false);
-        var staticSymbol   = this.getSymbolForClassName(className, true);
+    for (let i = 0, length = classes.length; i < length; i++) {
+        let className      = classes[i].name;
+        let instanceSymbol = this.getSymbolForClassName(className, false);
+        let staticSymbol   = this.getSymbolForClassName(className, true);
 
         toMap[className]      = instanceSymbol;
         toMap[instanceSymbol] = instanceSymbol;
@@ -171,9 +170,9 @@ _setupTypecheckerMaps()
         fromMap[staticSymbol]   = className;
     }
 
-    for (i = 0, length = structs.length; i < length; i++) {
-        var structName   = structs[i].name;
-        var structSymbol = this.getSymbolForStructName(structName);
+    for (let i = 0, length = structs.length; i < length; i++) {
+        let structName   = structs[i].name;
+        let structSymbol = this.getSymbolForStructName(structName);
 
         toMap[structName]   = structSymbol;
         toMap[structSymbol] = structSymbol;
@@ -182,11 +181,13 @@ _setupTypecheckerMaps()
         fromMap[structSymbol] = structName;
     }
 
-    for (i = 0, length = enums.length; i < length; i++) {
-        var enumName = enums[i].name;
-        if (!enumName) continue;
+    for (let i = 0, length = enums.length; i < length; i++) {
+        let enumName = enums[i].name;
+        if (!enumName || enums[i].anonymous) {
+            continue;
+        }
 
-        var enumSymbol = this.getSymbolForEnumName(enumName);
+        let enumSymbol = this.getSymbolForEnumName(enumName);
 
         toMap[enumName]   = enumSymbol;
         toMap[enumSymbol] = enumSymbol;
@@ -234,7 +235,7 @@ toTypecheckerType(rawInType, location, currentClass)
     var toTypecheckerMap = this._toTypecheckerMap;
 
     var inType  = rawInType.replace(/kindof\s+/, "kindof-").replace(/\s+/g, ""); // Remove whitespace
-    var outType = this._toTypecheckerMap[inType];
+    var outType = toTypecheckerMap[inType];
 
     if (outType) return outType;
 
@@ -243,8 +244,7 @@ toTypecheckerType(rawInType, location, currentClass)
     var addToForwardMap = true;
     var addToReverseMap = true;
 
-    function _handleParts(parts)
-    {
+    let _handleParts = (parts) => {
         var part = parts[0];
         var rest = parts.slice(1);
         var result;
@@ -274,7 +274,7 @@ toTypecheckerType(rawInType, location, currentClass)
             result = "string";
 
         } else if ((tmp = toTypecheckerMap[part])) {
-            return tmp;
+            result = tmp;
 
         } else if (model.isNumericType(part)) {
             result = "number";
@@ -341,7 +341,7 @@ toTypecheckerType(rawInType, location, currentClass)
             if (tmp == part) {
                 result = tmp;
             } else {
-                result = _handleParts([ tmp ]);
+                result = this.toTypecheckerType(tmp, location);
                 addToReverseMap = false;
             }
 
@@ -377,6 +377,7 @@ fromTypecheckerType(rawInType)
         this._setupTypecheckerMaps();
     }
 
+
     var inType  = rawInType.replace(/[\s;]+/g, ""); // Remove whitespace and semicolon
     var outType = this._fromTypecheckerMap[inType];
     var m;
@@ -390,6 +391,9 @@ fromTypecheckerType(rawInType)
 
         } else if (m = inType.match(/\{\[(.*?):string\]\:(.*)\}$/)) {
             outType = "Object<" + this.fromTypecheckerType(m[2]) + ">";
+
+        } else if (m = rawInType.match(/^typeof\s+(\$oj_[cCpPi]_.*?\b)/)) {
+            outType = this.fromTypecheckerType(m[1]);
 
         } else {
             outType = rawInType;

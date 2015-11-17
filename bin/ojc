@@ -18,8 +18,8 @@ var opt = getopt.create([
     [ "",  "input-state=FILE",          "input file for compiler state" ],
     [ "",  "output-state=FILE",         "output file for compiler state" ],
     [ "",  "cache=FILE",                "cache file to speed up builds" ],
-    [ "",  "prepend=FILE+",             "prepend file to output (without compiling or hinting)"],
-    [ "",  "append=FILE+",              "append file to output (without compiling or hinting)"],
+    [ "",  "prepend=FILE+",             "prepend file to output (without compiling)"],
+    [ "",  "append=FILE+",              "append file to output (without compiling)"],
     [ "",  "source-map-file=FILE",      "output source map file" ],
     [ "",  "source-map-root=URL",       "URL to use for 'sourceRoot' in source map" ],    
     [ "s", "squeeze",                   "enable squeezer" ],
@@ -31,12 +31,9 @@ var opt = getopt.create([
     [ "",  "inline-const",              "inline @const identifiers" ],
     [ "",  "inline-enum",               "inline @enum identifiers"  ],
 
-    [ "",  "jshint",                    "enable jshint integration" ],
-    [ "",  "jshint-config=FILE",        "config file for jshint" ],
-    [ "",  "jshint-ignore=CODE+",       "ignore warning from jshint" ],
-
     [ "",  "check-types",               "use type checker (experimental)" ],
-    [ "",  "typescript-lib=FILE",       "type checker: specify an alternate lib.d.ts file" ],
+    [ "",  "typescript-lib=FILE",       "type checker: specify alternate lib.d.ts file"    ],
+    [ "",  "def=FILE+",                 "type checker: specify additional definition file" ],
     [ "",  "no-implicit-any",           "type checker: disallow implicit any"              ],
     [ "",  "strict-functions",          "type checker: enforce TypeScript-style functions" ],
     [ "",  "strict-object-literals",    "type checker: enforce TypeScript object literals" ],
@@ -47,11 +44,7 @@ var opt = getopt.create([
     [ "",  "warn-unused-ivars",         "warn about unused ivars"                  ],
     [ "",  "warn-global-no-type",       "warn about missing type annotations on @globals" ],
 
-    [ "",  "debug-message-send",        "use debug version of oj.msgSend" ],
-    [ "",  "dump-ast",                  "(for development)" ],
-    [ "",  "dump-time",                 "(for development)" ],
-    [ "",  "dump-types",                "(for development)" ],
-    [ "",  "dump-profile",              "(for development)" ],
+    [ "",  "development",               "(for development)" ],
 
     [ "h", "help",                      "display this help" ],
     [ "v", "version",                   "show version"      ]
@@ -162,10 +155,11 @@ var dumpAST             = options["dump-ast"];
 var dumpProfile         = options["dump-profile"];
 
 // Convert filenames in options to file contents
-options["files"]         = read_files(argv);
-options["prepend"]       = read_contents( options["prepend"] );
-options["append"]        = read_contents( options["append"]  );
-options["state"]         = read_contents( inputStateFile     );
+options["files"]          = read_files(argv);
+options["defs"]           = read_files(options["defs"]);
+options["prepend"]        = read_contents( options["prepend"] );
+options["append"]         = read_contents( options["append"]  );
+options["state"]          = read_contents( inputStateFile     );
 
 // "cache" is both an input and an output file.  It may not already exist.
 var cacheFile = options["cache"];
@@ -180,12 +174,6 @@ var cacheFile = options["cache"];
 
     if (!contents) contents = { };
     options["cache"] = contents;
-}());
-
-// Read and parse JSHint config
-(function() {
-    var contents = read_contents(options["jshint-config"]);
-    options["jshint-config"] = contents ? JSON.parse(contents) : null;
 }());
 
 

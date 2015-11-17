@@ -27,11 +27,11 @@ constructor(path)
 
 updateFromDisk()
 {
-    var contents = fs.readFileSync(this.path);
-    var stats    = fs.statSync(file);
+    var contents = fs.readFileSync(this.path).toString();
+    var stats    = fs.statSync(this.path);
     var time     = stats.mtime.getTime();
 
-    updateWithContentsAndTime(contents, time);
+    this.updateWithContentsAndTime(contents, time);
 }
 
 
@@ -81,9 +81,12 @@ needsGenerate()
 
 needsTypecheck()
 {
-    this.typecheckerLines    = null;
-    this.typecheckerDefs     = null;  
+    this.typecheckerCode = null;
+    this.typecheckerDefs = null;  
     this.typecheckerWarnings = null;
+
+    this.typecheckerCodeSourceFile = null;
+    this.typecheckerDefsSourceFile = null;  
 }
 
 
