@@ -1,6 +1,6 @@
 /*
-    OJMethod.js
-    Simple model class for a method on a class or protocol
+    OJFile.js
+    Represents a file passed into the compiler
     (c) 2013-2015 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
