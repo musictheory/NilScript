@@ -14,28 +14,14 @@ const async           = require("async");
 const esprima         = require("../ext/esprima");
 
 const Builder         = require("./builder");
-const Modifier        = require("./modifier");
 const Generator       = require("./generator");
 const Utils           = require("./utils");
-
-const DefinitionMaker = require("./typechecker/DefinitionMaker");
 const Typechecker     = require("./typechecker/Typechecker");
 
 const OJError         = require("./errors").OJError;
 const OJModel         = require("./model").OJModel;
 const OJFile          = require("./model").OJFile;
     
-
-
-    function printTime(name, start) {
-            console.error(name, Math.round(process.hrtime(start)[1] / (1000 * 1000)) + "ms");
-    }
-
-function    time(name, f) {
-        var start = process.hrtime();
-        f();
-        printTime(name, start);
-    }
 
 module.exports = class Compiler {
 
@@ -162,11 +148,9 @@ _generateJavaScript(files, model, options, callback)
     async.each(files, (ojFile, callback) => {
         if (!ojFile.generatorLines) {
             try {
-                const inLines   = ojFile.contents.split("\n");
-                const modifier  = new Modifier(inLines, options);
-                const generator = new Generator(ojFile, model, modifier, false, options);
+                let generator = new Generator(ojFile, model, false, options);
 
-                const result = generator.generate();
+                let result = generator.generate();
                 ojFile.generatorLines    = result.lines;
                 ojFile.generatorWarnings = result.warnings || [ ];
 
@@ -193,10 +177,7 @@ _runTypechecker(typechecker, defs, files, model, options, callback)
     async.each(files, (ojFile, callback) => {
         if (!ojFile.typecheckerCode) {
             try {
-                let inLines   = ojFile.contents.split("\n");
-                let modifier  = new Modifier(inLines, options);
-                let generator = new Generator(ojFile, model, modifier, true, options);
-
+                let generator = new Generator(ojFile, model, true, options);
                 let result = generator.generate();
                 ojFile.typecheckerCode = result.lines.join("\n");
 
@@ -206,10 +187,6 @@ _runTypechecker(typechecker, defs, files, model, options, callback)
                 ojFile.error = e;
                 if (!err) err = e;
             }
-        }
-
-        if (!ojFile.typecheckerDefs) {
-            ojFile.typecheckerDefs = (new DefinitionMaker(model)).getFileDefinitions(ojFile);
         }
 
         callback();
@@ -228,22 +205,6 @@ _runTypechecker(typechecker, defs, files, model, options, callback)
             }
         }
     });
-}
-
-
-_dumpTypechecker(typechecker, files)
-{
-    let tmp = "/tmp/ojc.typechecker";
-
-    // if (!fs.)
-    // fs.mkdirSync(tmp);
-
-    _.each(files, ojFile => {
-        fs.writeFileSync(tmp + path.sep + path.basename(ojFile.path + ".ts",   ojFile.typecheckerCode));
-        fs.writeFileSync(tmp + path.sep + path.basename(ojFile.path + ".d.ts", ojFile.typecheckerDefs));
-    });
-
-    fs.writeFileSync(tmp + path.sep + "global.d.ts", typechecker.getGlobalDefs());
 }
 
 
@@ -268,24 +229,24 @@ compile(options, callback)
         return result;
     }
 
-    const optionsFiles         = extractOption("files");
-    const optionsDefs          = extractOption("defs");
-    const optionsPrepend       = extractOption("prepend");
-    const optionsAppend        = extractOption("append");
-    const optionsSourceMapFile = extractOption("source-map-file");
-    const optionsSourceMapRoot = extractOption("source-map-root");
-    const optionsState         = extractOption("state");
+    let optionsFiles         = extractOption("files");
+    let optionsDefs          = extractOption("defs");
+    let optionsPrepend       = extractOption("prepend");
+    let optionsAppend        = extractOption("append");
+    let optionsSourceMapFile = extractOption("source-map-file");
+    let optionsSourceMapRoot = extractOption("source-map-root");
+    let optionsState         = extractOption("state");
 
     // Extract options.files and convert to a map of path->OJFiles
-    const files = this._extractFilesFromOptions(optionsFiles, previousFiles);
+    let files = this._extractFilesFromOptions(optionsFiles, previousFiles);
     options.files = null;
 
-    const defs = this._extractFilesFromOptions(optionsDefs, previousDefs);
+    let defs = this._extractFilesFromOptions(optionsDefs, previousDefs);
     options.defs = null;
 
     // These options aren't extracted
-    const optionsCheckTypes     = options["check-types"];
-    const optionsOutputLanguage = options["output-language"];
+    let optionsCheckTypes     = options["check-types"];
+    let optionsOutputLanguage = options["output-language"];
 
     // If remaining options changed, invalidate everything
     //
@@ -294,13 +255,13 @@ compile(options, callback)
         previousModel   = new OJModel();
 
         _.each(files, ojFile => {
-            ojFile.invalidateAllResults();
+            ojFile.needsAll();
         });
 
         this._checker = null;
     }
 
-    const model = new OJModel();
+    let model = new OJModel();
     if (this._parent && this._parent._model) {
         model.loadState(this._parent._model.saveState());
     } else if (optionsState) {
@@ -322,16 +283,12 @@ compile(options, callback)
     async.waterfall([
         // Parse files
         callback => {
-            time("parse", () => {
-                this._parseFiles(files, callback);
-            });
+            this._parseFiles(files, callback);
         },
 
         // Build model
         callback => {
-            time("build", () => {
-                this._buildFiles(files, model, options, callback);
-            });
+            this._buildFiles(files, model, options, callback);
         },
 
         // Perform model diff
@@ -348,11 +305,11 @@ compile(options, callback)
 
             } else {
                 if (options["warn-unknown-selectors"]) {
-                    var changedSelectors = previousModel.getChangedSelectorMap(model);
+                    let changedSelectors = previousModel.getChangedSelectorMap(model);
 
                     if (changedSelectors) {
                         _.each(files, ojFile => {
-                            _.each(ojFile.usage.selectors, function(selectorName) {
+                            _.each(ojFile.uses.selectors, function(selectorName) {
                                 if (changedSelectors[selectorName]) {
                                     ojFile.needsGenerate();
                                 }
@@ -385,6 +342,7 @@ compile(options, callback)
                     typecheckerWarnings = warnings;
                     callback(err);
                 });
+
             } else {
                 callback();
             }
@@ -437,16 +395,6 @@ compile(options, callback)
 
         if (options["include-state"]) {
             result.state = model.saveState();
-        }
-
-        if (options["development"]) {
-            if (optionsCheckTypes) {
-                this._dumpTypechecker(this._checker, files);
-            }
-
-            // if (optionsOutputLanguage != "none") {
-            //     this._dumpGenerator(files);
-            // }
         }
 
         callback(err, result);

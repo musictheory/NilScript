@@ -5,19 +5,19 @@
   MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-var fs       = require("fs");
-var util     = require("util");
-var getopt   = require("node-getopt");
-var _        = require("lodash");
+const fs       = require("fs");
+const util     = require("util");
+const getopt   = require("node-getopt");
+const _        = require("lodash");
 
-var ojc      = require("../lib/api");
+const ojc      = require("../lib/api");
 
 
-var opt = getopt.create([
+let opt = getopt.create([
     [ "o", "output=FILE",               "output .js file"],
     [ "",  "input-state=FILE",          "input file for compiler state" ],
     [ "",  "output-state=FILE",         "output file for compiler state" ],
-    [ "",  "cache=FILE",                "cache file to speed up builds" ],
+    [ "",  "output-symbols=FILE",       "output file for compiler symbols JSON" ],
     [ "",  "prepend=FILE+",             "prepend file to output (without compiling)"],
     [ "",  "append=FILE+",              "append file to output (without compiling)"],
     [ "",  "source-map-file=FILE",      "output source map file" ],
@@ -63,19 +63,19 @@ opt.setHelp(
 opt.bindHelp();
 opt.parseSystem();
 
-var argv    = opt.parsedOption.argv;
-var options = opt.parsedOption.options;
+let argv    = opt.parsedOption.argv;
+let options = opt.parsedOption.options;
 
 
 function print_error(err)
 {
     function toString(e) {
-        var result  = "";
+        let result  = "";
 
-        var file   = e.file   || e.filename;
-        var line   = e.line   || e.lineNumber;
-        var column = e.column || e.columnNumber || e.col;
-        var reason = e.reason || e.description;
+        let file   = e.file   || e.filename;
+        let line   = e.line   || e.lineNumber;
+        let column = e.column || e.columnNumber || e.col;
+        let reason = e.reason || e.description;
 
         if (file)   result += file;
         if (line)   result += ":" + line;
@@ -85,7 +85,7 @@ function print_error(err)
         return result;
     }
 
-    var strings;
+    let strings;
     if (_.isArray(err)) {
         err = _.flatten(err);
         strings = _.map(err, function(e) { return toString(e) });
@@ -105,10 +105,10 @@ function read_files(files)
         files = [ files ];
     }
 
-    var results = [ ];
+    let results = [ ];
     _.each(files, function(file) {
         try {
-            var contents = (fs.readFileSync(file).toString());
+            let contents = (fs.readFileSync(file).toString());
             results.push({ path: file, contents: contents });
         } catch (e) {
             console.error("ojc: error reading file: " + e);
@@ -124,7 +124,7 @@ function read_contents(files)
 {
     if (!files) return null;
 
-    var pairs = read_files(files);
+    let pairs = read_files(files);
 
     if (!pairs || !pairs.length) {
         return null;
@@ -144,46 +144,31 @@ if (!argv || argv.length == 0) {
 
 
 // Extract these options and delete
-var inputStateFile  = options["input-state"];     delete(options["input-state"]);
-var outputFile      = options["output"];          delete(options["output"]);
-var outputStateFile = options["output-state"];    delete(options["output-state"]);
+let inputStateFile    = options["input-state"];     delete(options["input-state"]);
+let outputFile        = options["output"];          delete(options["output"]);
+let outputStateFile   = options["output-state"];    delete(options["output-state"]);
+let outputSymbolsFile = options["output-symbols"];  delete(options["output-symbols"]);
 
 // Extract these options, don't delete (used by compiler)
-var outputSourceMapFile = options["source-map-file"];
-var dumpTypes           = options["dump-types"];
-var dumpAST             = options["dump-ast"];
-var dumpProfile         = options["dump-profile"];
+let outputSourceMapFile = options["source-map-file"];
 
 // Convert filenames in options to file contents
-options["files"]          = read_files(argv);
-options["defs"]           = read_files(options["defs"]);
-options["prepend"]        = read_contents( options["prepend"] );
-options["append"]         = read_contents( options["append"]  );
-options["state"]          = read_contents( inputStateFile     );
+options["files"]   = read_files(argv);
+options["defs"]    = read_files(options["defs"]);
+options["prepend"] = read_contents( options["prepend"] );
+options["append"]  = read_contents( options["append"]  );
+options["state"]   = read_contents( inputStateFile     );
 
-// "cache" is both an input and an output file.  It may not already exist.
-var cacheFile = options["cache"];
-(function() {
-    if (!cacheFile) return;
+if (outputStateFile) {
+    options["include-state"] = true;
+}
 
-    var contents;
-
-    try {
-        contents = JSON.parse(fs.readFileSync(cacheFile));
-    } catch (e) { };
-
-    if (!contents) contents = { };
-    options["cache"] = contents;
-}());
+if (outputSymbolsFile) {
+    options["include-symbols"] = true;
+}
 
 
 try {
-    var profiler;
-    if (dumpProfile) {
-        profiler = require("../src/profiler");
-        profiler.startProfiling("ojc");
-    }
-
     ojc.compile(options, function(err, result) {
         if (err) {
             print_error(err);
@@ -193,15 +178,6 @@ try {
         _.each(result.warnings, function(warning) {
             print_error(warning);
         });
-
-        if (profiler) {
-            var cpuProfile = profiler.stopProfiling("ojc");
-            fs.writeFileSync("/tmp/ojc.cpuprofile", JSON.stringify(cpuProfile));
-        }
-
-        if (dumpAST) {
-            if (result.dumpedAST) fs.writeFileSync("/tmp/ojc.ast", result.dumpedAST);
-        }
 
         if (outputFile) {
             fs.writeFileSync(outputFile, result.code, "utf8")
@@ -221,8 +197,8 @@ try {
             fs.writeFileSync(outputSourceMapFile, result.map, "utf8");
         }
 
-        if (cacheFile) {
-            fs.writeFileSync(cacheFile, JSON.stringify(result.cache || { }, null, "    "), "utf8");
+        if (outputSymbolsFile) {
+            fs.writeFileSync(outputSourceMapFile, result.symbols, "utf8");
         }
 
         process.exit(err ? 1 : 0);
