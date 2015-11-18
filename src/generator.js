@@ -30,23 +30,30 @@ const OJSuperVariable           = "$oj_super";
 const OJRootWithGlobalPrefix = OJRootVariable + "._g."
 const OJRootWithClassPrefix  = OJRootVariable + "._cls.";
 
-
 const LanguageEcmascript5 = "ecmascript5";
 const LanguageTypechecker = "typechecker";
 const LanguageNone        = "none";
 
 
-function Generator(file, model, modifier, forTypechecker, options)
+module.exports = class Generator {
+
+
+constructor(ojFile, model, forTypechecker, options)
 {
-    this._file     = file;
+    let lines = ojFile.lines;
+    if (!lines) {
+        lines = ojFile.lines = ojFile.contents.split("\n");
+    }
+
+    this._file     = ojFile;
     this._model    = model;
-    this._modifier = modifier;
+    this._modifier = new Modifier(ojFile.lines, options);;
     this._options  = options;
 
-    var inlines = { };
-    var symbolTyper = model.getSymbolTyper();
+    let inlines = { };
+    let symbolTyper = model.getSymbolTyper();
 
-    var language = options["output-language"];
+    let language = options["output-language"];
     if (language && language.match(/typechecker/)) {
         this._language = LanguageTypechecker;
     } else if (language && language.match(/none/)) {
@@ -64,10 +71,10 @@ function Generator(file, model, modifier, forTypechecker, options)
 
     // Typechecker inlines anonymous enums
     if (options["inline-enum"] || forTypechecker) {
-        _.each(model.enums, function(ojEnum) {
-            var enumNameSymbol = (ojEnum.name && !ojEnum.anonymous) ? symbolTyper.getSymbolForEnumName(ojEnum.name) : null;
+        _.each(model.enums, ojEnum => {
+            let enumNameSymbol = (ojEnum.name && !ojEnum.anonymous) ? symbolTyper.getSymbolForEnumName(ojEnum.name) : null;
 
-            _.each(ojEnum.values, function(value, name) {
+            _.each(ojEnum.values, (value, name) => {
                 if (enumNameSymbol && forTypechecker) {
                     inlines[name] = enumNameSymbol + "." + name;
                 } else {
@@ -79,7 +86,7 @@ function Generator(file, model, modifier, forTypechecker, options)
 
     // Typechecker forces 'inline-const'
     if (options["inline-const"] || forTypechecker) {
-        _.each(model.consts, function(ojConst) {
+        _.each(model.consts, ojConst => {
             let name  = ojConst.name;
             let value = ojConst.value;
 
@@ -89,9 +96,9 @@ function Generator(file, model, modifier, forTypechecker, options)
         });
     }
 
-    var additionalInlines = options["additional-inlines"];
+    let additionalInlines = options["additional-inlines"];
     if (additionalInlines) {
-        for (var key in additionalInlines) {
+        for (let key in additionalInlines) {
             if (additionalInlines.hasOwnProperty(key)) {
                 inlines[key] = JSON.stringify(additionalInlines[key]);
             }
@@ -102,45 +109,46 @@ function Generator(file, model, modifier, forTypechecker, options)
     this._squeeze = options["squeeze"] && (language != LanguageTypechecker);
 }
 
-Generator.prototype.generate = function()
+
+generate()
 {
-    var traverser = new Traverser(this._file.ast);
+    let traverser = new Traverser(this._file.ast);
 
-    var model    = this._model;
-    var modifier = this._modifier;
-    var language = this._language;
-    var options  = this._options;
-    var inlines  = this._inlines;
-    var scope    = null;
+    let model    = this._model;
+    let modifier = this._modifier;
+    let language = this._language;
+    let options  = this._options;
+    let inlines  = this._inlines;
+    let scope    = null;
 
-    var methodNodes = [ ];
-    var methodNodeClasses = [ ];
-    var currentClass;
-    var currentMethodNode;
+    let methodNodes = [ ];
+    let methodNodeClasses = [ ];
+    let currentClass;
+    let currentMethodNode;
 
-    var methodUsesSelfVar        = false;
-    var methodUsesTemporaryVar   = false;
+    let methodUsesSelfVar        = false;
+    let methodUsesTemporaryVar   = false;
 
-    var optionWarnOnThisInMethods    = options["warn-this-in-methods"];
-    var optionWarnOnUnknownSelectors = options["warn-unknown-selectors"];
-    var optionWarnOnUnusedIvars      = options["warn-unused-ivars"];
-    var optionWarnOnUnknownIvars     = options["warn-unknown-ivars"];
-    var optionWarnOnGlobalNoType     = options["warn-global-no-type"];
-    var optionStrictFunctions        = options["strict-functions"];
-    var optionStrictObjectLiterals   = options["strict-object-literals"];
+    let optionWarnOnThisInMethods    = options["warn-this-in-methods"];
+    let optionWarnOnUnknownSelectors = options["warn-unknown-selectors"];
+    let optionWarnOnUnusedIvars      = options["warn-unused-ivars"];
+    let optionWarnOnUnknownIvars     = options["warn-unknown-ivars"];
+    let optionWarnOnGlobalNoType     = options["warn-global-no-type"];
+    let optionStrictFunctions        = options["strict-functions"];
+    let optionStrictObjectLiterals   = options["strict-object-literals"];
 
-    var optionSqueeze = this._squeeze;
-    var symbolTyper   = model.getSymbolTyper();
+    let optionSqueeze = this._squeeze;
+    let symbolTyper   = model.getSymbolTyper();
 
-    var removeEnums    = options["inline-enum"]  || (language === LanguageTypechecker);
-    var removeConsts   = options["inline-const"] || (language === LanguageTypechecker);
-    var knownSelectors = optionWarnOnUnknownSelectors ? model.selectors : null;
+    let removeEnums    = options["inline-enum"]  || (language === LanguageTypechecker);
+    let removeConsts   = options["inline-const"] || (language === LanguageTypechecker);
+    let knownSelectors = optionWarnOnUnknownSelectors ? model.selectors : null;
 
-    var rewriteFunctionParameters = (language === LanguageTypechecker) && !optionStrictFunctions;
+    let rewriteFunctionParameters = (language === LanguageTypechecker) && !optionStrictFunctions;
 
-    var unusedIvars = null;
+    let unusedIvars = null;
 
-    var warnings = [ ];
+    let warnings = [ ];
 
     function makeScope(node)
     {
@@ -149,7 +157,7 @@ Generator.prototype.generate = function()
 
     function makeTemporaryVariable(needsDeclaration)
     {
-        var name = OJTemporaryVariablePrefix + scope.count++;
+        let name = OJTemporaryVariablePrefix + scope.count++;
         if (needsDeclaration) scope.declarations.push(name);
         return name;
     }
@@ -166,8 +174,8 @@ Generator.prototype.generate = function()
     function getCurrentMethodInModel() {
         if (!currentClass || !currentMethodNode) return null;
 
-        var selectorType = currentMethodNode.selectorType;
-        var selectorName = currentMethodNode.selectorName;
+        let selectorType = currentMethodNode.selectorType;
+        let selectorName = currentMethodNode.selectorName;
 
         if (selectorType == "+") {
             return currentClass.getClassMethodWithName(selectorName);
@@ -179,7 +187,7 @@ Generator.prototype.generate = function()
     function generateMethodDeclaration(isClassMethod, selectorName)
     {
         if (language === LanguageEcmascript5) {
-            var where = isClassMethod ? OJClassMethodsVariable : OJInstanceMethodsVariable;
+            let where = isClassMethod ? OJClassMethodsVariable : OJInstanceMethodsVariable;
 
             if (Utils.isJScriptReservedWord(selectorName)) {
                 // For IE8
@@ -197,15 +205,14 @@ Generator.prototype.generate = function()
 
     function generateIvarAssignments(ojClass)
     {
-        var booleanIvars = [ ];
-        var numericIvars = [ ];
-        var objectIvars  = [ ];
-        var i, length, ivar;
+        let booleanIvars = [ ];
+        let numericIvars = [ ];
+        let objectIvars  = [ ];
 
-        var ivars = ojClass.getAllIvars();
+        let ivars = ojClass.getAllIvars();
 
-        for (i = 0, length = ivars.length; i < length; i++) {
-            var ivar = ivars[i];
+        for (let i = 0, length = ivars.length; i < length; i++) {
+            let ivar = ivars[i];
 
             if (model.isNumericType(ivar.type)) {
                 numericIvars.push(ivar.name);
@@ -220,10 +227,10 @@ Generator.prototype.generate = function()
         booleanIvars.sort();
         objectIvars.sort();
 
-        var result = "";
+        let result = "";
 
         if (objectIvars.length) {
-            for (i = 0, length = objectIvars.length; i < length; i++) {
+            for (let i = 0, length = objectIvars.length; i < length; i++) {
                 result += "this." + symbolTyper.getSymbolForClassNameAndIvarName(ojClass.name, objectIvars[i]) + "="
             }
 
@@ -231,7 +238,7 @@ Generator.prototype.generate = function()
         }
 
         if (numericIvars.length) {
-            for (i = 0, length = numericIvars.length; i < length; i++) {
+            for (let i = 0, length = numericIvars.length; i < length; i++) {
                 result += "this." + symbolTyper.getSymbolForClassNameAndIvarName(ojClass.name, numericIvars[i]) + "="
             }
 
@@ -239,7 +246,7 @@ Generator.prototype.generate = function()
         }
 
         if (booleanIvars.length) {
-            for (i = 0, length = booleanIvars.length; i < length; i++) {
+            for (let i = 0, length = booleanIvars.length; i < length; i++) {
                 result += "this." + symbolTyper.getSymbolForClassNameAndIvarName(ojClass.name, booleanIvars[i]) + "="
             }
 
@@ -251,7 +258,7 @@ Generator.prototype.generate = function()
 
     function isIdentifierTransformable(node)
     {
-        var parent = node.oj_parent;
+        let parent = node.oj_parent;
 
         if (parent.type === Syntax.MemberExpression) {
             // identifier.x -> true
@@ -281,7 +288,7 @@ Generator.prototype.generate = function()
 
     function checkRestrictedUsage(node)
     {
-        var name = node.name;
+        let name = node.name;
 
         if (!isIdentifierTransformable(node)) return;
 
@@ -298,19 +305,19 @@ Generator.prototype.generate = function()
 
     function handleOJMessageExpression(node)
     {
-        var receiver     = node.receiver.value;
-        var methodName   = symbolTyper.getSymbolForSelectorName(node.selectorName);
-        var reserved     = Utils.isJScriptReservedWord(methodName);
-        var hasArguments = false;
+        let receiver     = node.receiver.value;
+        let methodName   = symbolTyper.getSymbolForSelectorName(node.selectorName);
+        let reserved     = Utils.isJScriptReservedWord(methodName);
+        let hasArguments = false;
 
-        var firstSelector, lastSelector;
+        let firstSelector, lastSelector;
 
         if (knownSelectors && !knownSelectors[node.selectorName]) {
             warnings.push(Utils.makeError(OJWarning.UnknownSelector, "Use of unknown selector '" + node.selectorName + "'", node));
         }
 
-        for (var i = 0, length = node.messageSelectors.length; i < length; i++) {
-            var messageSelector = node.messageSelectors[i];
+        for (let i = 0, length = node.messageSelectors.length; i < length; i++) {
+            let messageSelector = node.messageSelectors[i];
 
             if (messageSelector.arguments || messageSelector.argument) {
                 hasArguments = true;
@@ -319,15 +326,15 @@ Generator.prototype.generate = function()
 
         function replaceMessageSelectors()
         {
-            for (var i = 0, length = node.messageSelectors.length; i < length; i++) {
-                var messageSelector = node.messageSelectors[i];
+            for (let i = 0, length = node.messageSelectors.length; i < length; i++) {
+                let messageSelector = node.messageSelectors[i];
 
                 if (!firstSelector) {
                     firstSelector = messageSelector;
                 }
 
                 if (messageSelector.arguments) {
-                    var lastArgument = messageSelector.arguments[messageSelector.arguments.length - 1];
+                    let lastArgument = messageSelector.arguments[messageSelector.arguments.length - 1];
 
                     modifier.from(messageSelector).to(messageSelector.arguments[0]).replace("[");
                     modifier.after(lastArgument).insert("]");
@@ -339,7 +346,7 @@ Generator.prototype.generate = function()
                     lastSelector = messageSelector.argument;
 
                     if (i < (length - 1)) {
-                        var nextSelector = node.messageSelectors[i+1];
+                        let nextSelector = node.messageSelectors[i+1];
                         modifier.from(messageSelector.argument).to(nextSelector).replace(",");
                     }
 
@@ -362,17 +369,17 @@ Generator.prototype.generate = function()
 
         // Optimization cases
         if (receiver.type == Syntax.Identifier && currentMethodNode && !reserved) {
-            var usesSelf   = methodUsesSelfVar || (language === LanguageTypechecker);
-            var selfOrThis = usesSelf ? "self" : "this";
-            var useProto   = (currentMethodNode.selectorType != "+");
+            let usesSelf   = methodUsesSelfVar || (language === LanguageTypechecker);
+            let selfOrThis = usesSelf ? "self" : "this";
+            let useProto   = (currentMethodNode.selectorType != "+");
 
             if (receiver.name == "super") {
                 if (language === LanguageEcmascript5) {
                     doCommonReplacement(currentClass.name + "." + OJSuperVariable + "." + (useProto ? "prototype." : "") + methodName + ".call(this" + (hasArguments ? "," : ""), ")");
 
                 } else if (language === LanguageTypechecker) {
-                    var method = getCurrentMethodInModel();
-                    var cast = "";
+                    let method = getCurrentMethodInModel();
+                    let cast = "";
 
                     if (method.returnType == "instancetype") {
                         cast = "<" + symbolTyper.toTypecheckerType(currentClass.name) + ">";
@@ -383,7 +390,7 @@ Generator.prototype.generate = function()
                 return;
 
             } else if (model.classes[receiver.name]) {
-                var classVariable = getClassAsRuntimeVariable(receiver.name);
+                let classVariable = getClassAsRuntimeVariable(receiver.name);
 
                 if (methodName == "alloc") {
                     node.receiver.oj_skip = true;
@@ -399,7 +406,7 @@ Generator.prototype.generate = function()
                 return;
 
             } else if (currentClass.isIvar(receiver.name)) {
-                var ivar = generateThisIvar(currentClass.name, receiver.name, usesSelf);
+                let ivar = generateThisIvar(currentClass.name, receiver.name, usesSelf);
 
                 if (language === LanguageTypechecker) {
                     doCommonReplacement("(" + ivar + "." + methodName + "(", "))");
@@ -457,7 +464,7 @@ Generator.prototype.generate = function()
             modifier.select(receiver).replace(getClassAsRuntimeVariable(receiver.name));
         }
 
-        var selector;
+        let selector;
         if (Utils.isJScriptReservedWord(methodName)) {
             selector = "{ \"" + methodName + "\": " + "1 }";
         } else {
@@ -470,27 +477,27 @@ Generator.prototype.generate = function()
 
     function handleOJClassImplementation(node)
     {
-        var superClass = (node.superClass && node.superClass.name);
+        let superClass = (node.superClass && node.superClass.name);
 
-        var superSelector = "{ " + symbolTyper.getSymbolForClassName(superClass)   + ":1 }";
-        var clsSelector   = "{ " + symbolTyper.getSymbolForClassName(node.id.name) + ":1 }";
+        let superSelector = "{ " + symbolTyper.getSymbolForClassName(superClass)   + ":1 }";
+        let clsSelector   = "{ " + symbolTyper.getSymbolForClassName(node.id.name) + ":1 }";
 
         makeScope(node);
 
-        var constructorCallSuper = "";
+        let constructorCallSuper = "";
         if (superClass) {
             constructorCallSuper = getClassAsRuntimeVariable(superClass) + ".call(this);";
         }
 
 
-        var constructorSetIvars = generateIvarAssignments(currentClass);
+        let constructorSetIvars = generateIvarAssignments(currentClass);
 
-        var startText;
-        var endText;
+        let startText;
+        let endText;
 
         if (language === LanguageEcmascript5) {
             if (node.category) {
-                var categorySelector = "{ " + symbolTyper.getSymbolForClassName(node.category) + ":1 }";
+                let categorySelector = "{ " + symbolTyper.getSymbolForClassName(node.category) + ":1 }";
 
                 startText = OJRootVariable + "._registerCategory(" +
                     clsSelector + ", ";
@@ -524,10 +531,10 @@ Generator.prototype.generate = function()
 
     function handleMethodDefinition(node)
     {
-        var methodName = symbolTyper.getSymbolForSelectorName(node.selectorName);
-        var isClassMethod = node.selectorType == "+";
-        var where = isClassMethod ? OJClassMethodsVariable : OJInstanceMethodsVariable;
-        var args = [ ];
+        let methodName = symbolTyper.getSymbolForSelectorName(node.selectorName);
+        let isClassMethod = node.selectorType == "+";
+        let where = isClassMethod ? OJClassMethodsVariable : OJInstanceMethodsVariable;
+        let args = [ ];
 
         makeScope(node);
 
@@ -539,9 +546,9 @@ Generator.prototype.generate = function()
             args.push("self" + " : " + symbolTyper.getSymbolForClassName(currentClass.name, isClassMethod) );
         }
 
-        for (var i = 0, length = node.methodSelectors.length; i < length; i++) {
-            var variableName = node.methodSelectors[i].variableName;
-            var methodType   = node.methodSelectors[i].methodType;
+        for (let i = 0, length = node.methodSelectors.length; i < length; i++) {
+            let variableName = node.methodSelectors[i].variableName;
+            let methodType   = node.methodSelectors[i].methodType;
 
             if (variableName) {
                 checkRestrictedUsage(variableName);
@@ -551,16 +558,16 @@ Generator.prototype.generate = function()
                 if (language === LanguageEcmascript5) {
                     args.push(name);
                 } else if (language === LanguageTypechecker) {
-                    var outputType = symbolTyper.toTypecheckerType(methodType && methodType.value, Location.ImplementationParameter);
+                    let outputType = symbolTyper.toTypecheckerType(methodType && methodType.value, Location.ImplementationParameter);
                     args.push(name + (methodType ? (" : " + outputType) : ""));
                 }
             }
         }
 
-        var definition = where + "." + methodName + " = function(" + args.join(", ") + ") ";
+        let definition = where + "." + methodName + " = function(" + args.join(", ") + ") ";
 
         if (language === LanguageTypechecker) {
-            var returnType = getCurrentMethodInModel().returnType;
+            let returnType = getCurrentMethodInModel().returnType;
             returnType = symbolTyper.toTypecheckerType(returnType, Location.ImplementationReturn, currentClass);
             definition += ": " + returnType;
         }
@@ -568,9 +575,9 @@ Generator.prototype.generate = function()
         modifier.from(node).to(node.body).replace(definition);
 
         if (methodUsesSelfVar || methodUsesTemporaryVar) {
-            var toInsert = "";
+            let toInsert = "";
 
-            var varParts = [ ];
+            let varParts = [ ];
 
             if (methodUsesSelfVar && (language !== LanguageTypechecker)) varParts.push("self = this");
             if (methodUsesTemporaryVar) {
@@ -595,7 +602,7 @@ Generator.prototype.generate = function()
 
     function handleLiteral(node)
     {
-        var replacement;
+        let replacement;
 
         if (node.value === null) {
             replacement = "null";
@@ -612,7 +619,7 @@ Generator.prototype.generate = function()
 
     function handleOJPredefinedMacro(node)
     {
-        var name = node.name;
+        let name = node.name;
 
         if (name === "@CLASS") {
             if (currentClass) {
@@ -646,7 +653,7 @@ Generator.prototype.generate = function()
 
     function handleIdentifier(node)
     {
-        var name = node.name;
+        let name = node.name;
 
         if (name[0] === "$") {
             if (name.indexOf("$oj") == 0) {
@@ -662,8 +669,8 @@ Generator.prototype.generate = function()
 
         if (!isIdentifierTransformable(node)) return;
 
-        var ojGlobal = model.globals[name];
-        var replacement;
+        let ojGlobal = model.globals[name];
+        let replacement;
 
         if (ojGlobal) {
             replacement = OJRootWithGlobalPrefix + (optionSqueeze ? symbolTyper.getSymbolForIdentifierName(name) : name);
@@ -673,7 +680,7 @@ Generator.prototype.generate = function()
 
         } else if (currentMethodNode && currentClass) {
             if (currentClass.isIvar(name) || name == "self") {
-                var usesSelf = currentMethodNode && (methodUsesSelfVar || (language === LanguageTypechecker));
+                let usesSelf = currentMethodNode && (methodUsesSelfVar || (language === LanguageTypechecker));
 
                 if (name == "self") {
                     replacement = usesSelf ? "self" : "this";
@@ -699,7 +706,7 @@ Generator.prototype.generate = function()
         }
 
         if (inlines) {
-            var result = inlines[name];
+            let result = inlines[name];
             if (result !== undefined) {
                 if (inlines.hasOwnProperty(name)) {
                     modifier.select(node).replace("" + result);
@@ -709,7 +716,7 @@ Generator.prototype.generate = function()
         }
 
         if (optionSqueeze) {
-            var result = symbolTyper.getSymbolForIdentifierName(name);
+            let result = symbolTyper.getSymbolForIdentifierName(name);
             if (result !== undefined) {
                 modifier.select(node).replace("" + result);
                 return;
@@ -726,13 +733,13 @@ Generator.prototype.generate = function()
 
     function handleOJPropertyDirective(node)
     {
-        var name = node.id.name;
+        let name = node.id.name;
 
-        var makeGetter = currentClass.shouldGenerateGetterImplementationForPropertyName(name);
-        var makeSetter = currentClass.shouldGenerateSetterImplementationForPropertyName(name);
-        var property   = currentClass.getPropertyWithName(name);
+        let makeGetter = currentClass.shouldGenerateGetterImplementationForPropertyName(name);
+        let makeSetter = currentClass.shouldGenerateSetterImplementationForPropertyName(name);
+        let property   = currentClass.getPropertyWithName(name);
 
-        var result = "";
+        let result = "";
         if (makeSetter) {
             if (language === LanguageEcmascript5) {
                 result += generateMethodDeclaration(false, property.setter);
@@ -756,7 +763,7 @@ Generator.prototype.generate = function()
 
     function handleOJSelectorDirective(node)
     {
-        var name = symbolTyper.getSymbolForSelectorName(node.name);
+        let name = symbolTyper.getSymbolForSelectorName(node.name);
 
         if (knownSelectors && !knownSelectors[node.name]) {
             warnings.push(Utils.makeError(OJWarning.UnknownSelector, "Use of unknown selector '" + node.selectorName + "'", node));
@@ -767,16 +774,15 @@ Generator.prototype.generate = function()
 
     function handleOJEnumDeclaration(node)
     {
-        var length = node.declarations ? node.declarations.length : 0;
-        var last   = node;
+        let length = node.declarations ? node.declarations.length : 0;
+        let last   = node;
 
         if (length) {
-            var firstDeclaration = node.declarations[0];
-            var lastDeclaration  = node.declarations[length - 1];
-            var declaration, i;
+            let firstDeclaration = node.declarations[0];
+            let lastDeclaration  = node.declarations[length - 1];
 
-            for (i = 0; i < length; i++) {
-                declaration = node.declarations[i];
+            for (let i = 0; i < length; i++) {
+                let declaration = node.declarations[i];
 
                 if (!declaration.init) {
                     modifier.after(declaration.id).insert("=" + declaration.enumValue);
@@ -804,11 +810,11 @@ Generator.prototype.generate = function()
 
     function handleOJConstDeclaration(node)
     {
-        var length = node.declarations ? node.declarations.length : 0;
-        var values = [ ];
+        let length = node.declarations ? node.declarations.length : 0;
+        let values = [ ];
 
         if (length) {
-            var firstDeclaration = node.declarations[0];
+            let firstDeclaration = node.declarations[0];
             modifier.from(node).to(firstDeclaration.id).replace("var ");
 
         } else {
@@ -818,7 +824,7 @@ Generator.prototype.generate = function()
 
     function handleOJCastExpression(node)
     {
-        var before = "(";
+        let before = "(";
 
         if (language == LanguageTypechecker) {
             before = "<" + symbolTyper.toTypecheckerType(node.id.name) + ">(";
@@ -830,7 +836,7 @@ Generator.prototype.generate = function()
 
     function handleOJAnyExpression(node)
     {
-        var before = (language == LanguageTypechecker) ? "<any>(" : "(";
+        let before = (language == LanguageTypechecker) ? "<any>(" : "(";
 
         modifier.from(node).to(node.argument).replace(before);
         modifier.from(node.argument).to(node).replace(")");
@@ -839,8 +845,8 @@ Generator.prototype.generate = function()
     function handleOJTypeAnnotation(node, parent)
     {
         if (language === LanguageTypechecker) {
-            var inValue  = node.value;
-            var outValue = symbolTyper.toTypecheckerType(inValue);
+            let inValue  = node.value;
+            let outValue = symbolTyper.toTypecheckerType(inValue);
 
             if (inValue != outValue) {
                 modifier.select(node).replace(": " + outValue);
@@ -853,13 +859,13 @@ Generator.prototype.generate = function()
 
     function handleOJEachStatement(node)
     {
-        var i      = makeTemporaryVariable(false);
-        var length = makeTemporaryVariable(false);
+        let i      = makeTemporaryVariable(false);
+        let length = makeTemporaryVariable(false);
 
-        var object, array;
-        var initLeft = "var ";
-        var initRight = "";
-        var expr = false;
+        let object, array;
+        let initLeft = "var ";
+        let initRight = "";
+        let expr = false;
 
         // The left side is "var foo", "let foo", etc
         if (node.left.type == Syntax.VariableDeclaration) {
@@ -889,8 +895,8 @@ Generator.prototype.generate = function()
 
         initRight += i + " = 0, " + length + " = (" + array + " ? " + array + ".length : 0)";
 
-        var test      = "(" + i + " < " + length + ") && (" + object + " = " + array + "[" + i + "])";
-        var increment = i + "++";
+        let test      = "(" + i + " < " + length + ") && (" + object + " = " + array + "[" + i + "])";
+        let increment = i + "++";
 
         if (language === LanguageTypechecker) {
             increment = increment + ", $oj_$EnsureArray(" + array + ")"
@@ -906,22 +912,17 @@ Generator.prototype.generate = function()
 
     function handleOJGlobalDeclaration(node)
     {
-        var declaration = node.declaration;
-        var declarators = node.declarators;
-        var name;
+        let declaration = node.declaration;
+        let declarators = node.declarators;
 
         if (optionWarnOnGlobalNoType) {
-            var allTyped;
+            let allTyped;
 
             if (declaration) {
-                allTyped = !!declaration.annotation && _.every(declaration.params, function(param) {
-                    return !!param.annotation;
-                });
+                allTyped = !!declaration.annotation && _.every(declaration.params, param => !!param.annotation);
 
             } else if (declarators) {
-                allTyped = _.every(declarators, function(declarator) {
-                    return !!declarator.id.annotation;
-                });
+                allTyped = _.every(declarators, declarator => !!declarator.id.annotation);
             }
 
             if (!allTyped) {
@@ -931,7 +932,7 @@ Generator.prototype.generate = function()
 
         if (language !== LanguageTypechecker) {
             if (declaration) {
-                name = symbolTyper.getSymbolForIdentifierName(declaration.id.name);
+                let name = symbolTyper.getSymbolForIdentifierName(declaration.id.name);
 
                 modifier.from(node).to(declaration).replace(OJRootWithGlobalPrefix + name + "=");
                 modifier.select(declaration.id).remove();
@@ -940,8 +941,8 @@ Generator.prototype.generate = function()
             } else if (declarators) {
                 modifier.from(node).to(declarators[0]).remove();
 
-                _.each(declarators, function(declarator) {
-                    name = symbolTyper.getSymbolForIdentifierName(declarator.id.name);
+                _.each(declarators, declarator => {
+                    let name = symbolTyper.getSymbolForIdentifierName(declarator.id.name);
 
                     modifier.select(declarator.id).replace(OJRootWithGlobalPrefix + name);
                     declarator.id.oj_skip = true;
@@ -960,7 +961,7 @@ Generator.prototype.generate = function()
                 modifier.from(node).to(declarators[0]).replace("(function() { var ");
                 modifier.after(node).insert("});");
 
-                var index = 0;
+                let index = 0;
                 _.each(declarators, function(declarator) {
                     modifier.select(declarator.id).replace("a" + index++);
                     declarator.id.oj_skip = true;
@@ -985,9 +986,9 @@ Generator.prototype.generate = function()
     {
         makeScope(node);
 
-        for (let param of node.params) {
+        _.each(node.params, param => {
             checkRestrictedUsage(param);
-        }
+        });
 
         // Unlike JavaScript, TypeScript assumes every parameter to a function is required.
         // This results in many false positives for our JavaScript code
@@ -995,12 +996,12 @@ Generator.prototype.generate = function()
         // Disable this by rewriting the parameter list
         //
         if (rewriteFunctionParameters) {
-            var result = "function " + (node.id ? node.id.name : "") + "(";
+            let result = "function " + (node.id ? node.id.name : "") + "(";
 
-            for (var i = 0, length = node.params.length; i < length; i++) {
-                var param = node.params[i];
+            for (let i = 0, length = node.params.length; i < length; i++) {
+                let param = node.params[i];
 
-                var type = "any";
+                let type = "any";
                 if (param.annotation) {
                     type = symbolTyper.toTypecheckerType(param.annotation.value);
                     param.annotation.oj_skip = true;
@@ -1022,11 +1023,11 @@ Generator.prototype.generate = function()
 
     function checkThis(thisNode, path)
     {
-        var inFunction = false;
-        var inMethod   = true;
+        let inFunction = false;
+        let inMethod   = true;
 
-        for (var i = path.length - 1; i >= 0; i--) {
-            var node = path[i];
+        for (let i = path.length - 1; i >= 0; i--) {
+            let node = path[i];
 
             if (node.type == Syntax.OJMethodDefinition ||
                 node.type == Syntax.OJClassImplementation ||
@@ -1044,7 +1045,7 @@ Generator.prototype.generate = function()
     makeScope();
 
     traverser.traverse(function(node, parent) {
-        var type = node.type;
+        let type = node.type;
 
         if (node.oj_skip) return Traverser.SkipNode;
 
@@ -1144,7 +1145,7 @@ Generator.prototype.generate = function()
         }
 
     }, function(node, parent) {
-        var type = node.type;
+        let type = node.type;
 
         if (type === Syntax.OJClassImplementation) {
             currentClass = null;
@@ -1167,7 +1168,7 @@ Generator.prototype.generate = function()
         }
     });
 
-    var path = this._file.path;
+    let path = this._file.path;
 
     _.each(warnings, warning => {
         Utils.addFilePathToError(path, warning);
@@ -1179,5 +1180,4 @@ Generator.prototype.generate = function()
     };
 }
 
-
-module.exports = Generator;
+}

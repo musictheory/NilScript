@@ -6,7 +6,7 @@
 
 "use strict";
 
-var OJError = { };
+const OJError = { };
 
 OJError.ParseError                     = "OJParseError";
 OJError.NotYetSupported                = "OJNotYetSupportedError";
@@ -34,7 +34,7 @@ OJError.VariableAlreadyDeclared        = "OJVariableAlreadyDeclaredError";
 OJError.VariableNotYetDeclared         = "OJVariableNotYetDeclaredError";
 OJError.RestrictedUsage                = "OJRestrictedUsageError";
 
-var OJWarning = { };
+const OJWarning = { };
 
 OJWarning.UnknownSelector              = "OJUnknownSelectorWarning";
 OJWarning.UseOfThisInMethod            = "OJUseOfThisInMethodWarning";

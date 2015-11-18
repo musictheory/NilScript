@@ -4,7 +4,23 @@ CHANGELOG
 
 2.0.0
 
-2.x is a backwards incompatible release, with a focus on incremental compiling.
+2.x is a backwards incompatible release, with a focus on improving the performance of incremental compiles.
+First, node 4.2 or later is required to run ojc.  ojc still generates ES5-compatible code; however
+
+
+While there are breaking changes in the use of the compiler, the code generated should still be compatible.
+
+Removed:
+
+Added:
+  - New 'Compiler' API (#73)
+  - API to get symbol list (for crash log symbolication) (#75)
+
+Breaking:
+  - Removed 'cache', 'jshint', 'jshint-config', 'jshint-ignore', and development `ojc` options (#7)
+  - node 4.2+ is now required to run ojc (#76)
+  - 'include-state' compiler option is needed to include the 'state' key (#74)
+  - 'runtime.js' is now located in the 'lib' directory (#72)
 
 ---
 

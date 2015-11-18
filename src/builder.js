@@ -7,37 +7,28 @@
 
 "use strict";
 
-var _          = require("lodash");
-var esprima    = require("../ext/esprima");
-var Syntax     = esprima.Syntax;
+const _          = require("lodash");
+const esprima    = require("../ext/esprima");
+const Syntax     = esprima.Syntax;
 
-var Modifier   = require("./modifier");
-var OJError    = require("./errors").OJError;
-var Traverser  = require("./traverser");
-var Utils      = require("./utils");
-var Model      = require("./model");
-
-
-function Builder(file, model, options)
-{
-    this._file    = file;
-    this._model   = model;
-    this._options = options;
-}
+const OJError    = require("./errors").OJError;
+const Traverser  = require("./traverser");
+const Utils      = require("./utils");
+const Model      = require("./model");
 
 
 function sMakeOJMethodForNode(node)
 {
-    var selectorName    = node.selectorName;
-    var selectorType    = node.selectorType;
-    var methodSelectors = node.methodSelectors;
-    var optional        = node.optional;
+    let selectorName    = node.selectorName;
+    let selectorType    = node.selectorType;
+    let methodSelectors = node.methodSelectors;
+    let optional        = node.optional;
 
-    var variableNames  = [ ];
-    var parameterTypes = [ ];
+    let variableNames  = [ ];
+    let parameterTypes = [ ];
 
-    var methodType, variableName;
-    for (var i = 0, length = (methodSelectors.length || 0); i < length; i++) {
+    let methodType, variableName;
+    for (let i = 0, length = (methodSelectors.length || 0); i < length; i++) {
         methodType   = methodSelectors[i].methodType;
         variableName = methodSelectors[i].variableName;
 
@@ -52,7 +43,7 @@ function sMakeOJMethodForNode(node)
         }
     }
 
-    var returnType;
+    let returnType;
     if (node.returnType) returnType = node.returnType.value;
     if (!returnType) returnType = "id";
 
@@ -60,7 +51,17 @@ function sMakeOJMethodForNode(node)
 }
 
 
-Builder.prototype.build = function()
+module.exports = class Builder {
+
+constructor(file, model, options)
+{
+    this._file    = file;
+    this._model   = model;
+    this._options = options;
+}
+
+
+build()
 {
     let ojFile = this._file;
     let model  = this._model;
@@ -115,7 +116,7 @@ Builder.prototype.build = function()
         }
 
         if (superclassName) {
-            var superclass = new Model.OJClass(superclassName);
+            let superclass = new Model.OJClass(superclassName);
             superclass.forward = true;
             model.addClass(superclass);
         }
@@ -176,23 +177,23 @@ Builder.prototype.build = function()
 
     function handleOJMethodDefinition(node)
     {
-        var method = sMakeOJMethodForNode(node, null);
+        let method = sMakeOJMethodForNode(node, null);
         currentClass.addMethod(method);
         currentMethod = method;
     }
 
     function handleOJMethodDeclaration(node)
     {
-        var method = sMakeOJMethodForNode(node);
+        let method = sMakeOJMethodForNode(node);
         currentProtocol.addMethod(method);
     }
 
     function handleOJBracketVariableDeclaration(node)
     {
-        var type = node.parameterType ? node.parameterType.value : null;
+        let type = node.parameterType ? node.parameterType.value : null;
 
-        for (var i = 0, length = node.ids.length; i < length; i++) {
-            var name = node.ids[i].name;
+        for (let i = 0, length = node.ids.length; i < length; i++) {
+            let name = node.ids[i].name;
 
             if (currentClass) {
                 currentClass.addIvar(new Model.OJIvar(name, currentClass.name, type));
@@ -204,20 +205,20 @@ Builder.prototype.build = function()
 
     function handleOJPropertyDirective(node)
     {
-        var name = node.id.name;
+        let name = node.id.name;
 
-        var type     = node.parameterType ? node.parameterType.value : "id";
-        var writable = true;
-        var getter   = name;
-        var setter   = "set" + name.substr(0,1).toUpperCase() + name.substr(1, name.length) + ":";
+        let type     = node.parameterType ? node.parameterType.value : "id";
+        let writable = true;
+        let getter   = name;
+        let setter   = "set" + name.substr(0,1).toUpperCase() + name.substr(1, name.length) + ":";
 
         if (currentCategoryName) {
             Utils.throwError(OJError.NotYetSupported, "@property is not yet supported in a category's implementation", node);
         }
 
-        for (var i = 0, length = node.attributes.length; i < length; i++) {
-            var attribute = node.attributes[i];
-            var attributeName = attribute.name;
+        for (let i = 0, length = node.attributes.length; i < length; i++) {
+            let attribute = node.attributes[i];
+            let attributeName = attribute.name;
 
             if (attributeName == "readonly") {
                 writable = false;
@@ -234,35 +235,35 @@ Builder.prototype.build = function()
             setter = null;
         }
 
-        var property = new Model.OJProperty(name, type, writable, getter, setter, null);
+        let property = new Model.OJProperty(name, type, writable, getter, setter, null);
         currentClass.addProperty(property);
     }        
 
     function handleOJSynthesizeDirective(node) {
-        var pairs = node.pairs;
+        let pairs = node.pairs;
 
         if (currentCategoryName) {
             Utils.throwError(OJError.NotYetSupported, "@synthesize is not allowed in a category's implementation", node);
         }
 
-        for (var i = 0, length = pairs.length; i < length; i++) {
-            var pair    = pairs[i];
-            var name    = pair.id.name;
-            var backing = pair.backing ? pair.backing.name : name;
+        for (let i = 0, length = pairs.length; i < length; i++) {
+            let pair    = pairs[i];
+            let name    = pair.id.name;
+            let backing = pair.backing ? pair.backing.name : name;
 
             currentClass.makePropertySynthesized(name, backing);
         }        
     }
 
     function handleOJDynamicDirective(node) {
-        var ids = node.ids;
+        let ids = node.ids;
 
         if (currentCategoryName) {
             Utils.throwError(OJError.NotYetSupported, "@dynamic is not yet supported in a category's implementation", node);
         }
 
-        for (var i = 0, length = ids.length; i < length; i++) {
-            var name = ids[i].name;
+        for (let i = 0, length = ids.length; i < length; i++) {
+            let name = ids[i].name;
             currentClass.makePropertyDynamic(name);
         }
     }
@@ -274,8 +275,8 @@ Builder.prototype.build = function()
 
     function handleOJEnumDeclaration(node)
     {
-        var length = node.declarations ? node.declarations.length : 0;
-        var last = node;
+        let length = node.declarations ? node.declarations.length : 0;
+        let last = node;
 
         // From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isInteger
         function isInteger(nVal) {
@@ -283,8 +284,8 @@ Builder.prototype.build = function()
         }
 
         function valueForInit(initNode) {
-            var literalNode;
-            var negative = false;
+            let literalNode;
+            let negative = false;
 
             if (initNode.type == Syntax.UnaryExpression) {
                 literalNode = initNode.argument;
@@ -297,7 +298,7 @@ Builder.prototype.build = function()
                 Utils.throwError(OJError.NonLiteralEnum, "Use of non-literal value with @enum", literalNode || initNode);
             }
 
-            var value = literalNode.value;
+            let value = literalNode.value;
             if (!isInteger(value)) {
                 Utils.throwError(OJError.NonIntegerEnum, "Use of non-integer value with @enum", literalNode || initNode);
             }
@@ -305,18 +306,18 @@ Builder.prototype.build = function()
             return negative ? -value : value;
         }
 
-        var name = node.id ? node.id.name : null;
-        var e = new Model.OJEnum(name, node.unsigned);
+        let name = node.id ? node.id.name : null;
+        let e = new Model.OJEnum(name, node.unsigned);
 
         if (name) {
             declaredEnums.push(name);
         }
 
         if (length) {
-            var firstDeclaration = node.declarations[0];
-            var lastDeclaration  = node.declarations[length - 1];
-            var currentValue = 0;
-            var declaration, i;
+            let firstDeclaration = node.declarations[0];
+            let lastDeclaration  = node.declarations[length - 1];
+            let currentValue = 0;
+            let declaration, i;
 
             for (i = 0; i < length; i++) {
                 declaration = node.declarations[i];
@@ -338,14 +339,14 @@ Builder.prototype.build = function()
 
     function handleOJConstDeclaration(node)
     {
-        var length = node.declarations ? node.declarations.length : 0;
-        var values = [ ];
+        let length = node.declarations ? node.declarations.length : 0;
+        let values = [ ];
 
-        for (var i = 0; i < length; i++) {
-            var declaration = node.declarations[i];
+        for (let i = 0; i < length; i++) {
+            let declaration = node.declarations[i];
 
             if (declaration.init.type === Syntax.Literal) {
-                var raw = declaration.init.raw;
+                let raw = declaration.init.raw;
 
                 if      (raw == "YES")   raw = "true";
                 else if (raw == "NO")    raw = "false";
@@ -362,9 +363,9 @@ Builder.prototype.build = function()
             }
         }
 
-        for (var i = 0; i < length; i++) {
-            var declaration = node.declarations[i];
-            var ojConst = new Model.OJConst(declaration.id.name, values[i]);
+        for (let i = 0; i < length; i++) {
+            let declaration = node.declarations[i];
+            let ojConst = new Model.OJConst(declaration.id.name, values[i]);
             model.addConst(ojConst);
         }
     }
@@ -372,8 +373,8 @@ Builder.prototype.build = function()
     function handleOJGlobalDeclaration(inNode)
     {
         function addGlobalWithNode(node) {
-            var name = node.id.name;
-            var annotation;
+            let name = node.id.name;
+            let annotation;
 
             if (node.type === Syntax.FunctionDeclaration ||
                 node.type === Syntax.FunctionExpression)
@@ -415,8 +416,8 @@ Builder.prototype.build = function()
     function handleFunctionDeclarationOrExpression(node)
     {
         if (currentMethod) {
-            for (var i = 0, length = node.params.length; i < length; i++) {
-                var param = node.params[i];
+            for (let i = 0, length = node.params.length; i < length; i++) {
+                let param = node.params[i];
 
                 if (param.name == "self") {
                     Utils.throwError(OJError.SelfIsReserved, "Use of self as function parameter name", node);
@@ -426,7 +427,7 @@ Builder.prototype.build = function()
     }
 
     traverser.traverse(function(node, parent) {
-        var type = node.type;
+        let type = node.type;
 
         if (parent) {
             node.oj_parent = parent;
@@ -507,7 +508,7 @@ Builder.prototype.build = function()
         }
 
     }, function(node, parent) {
-        var type = node.type;
+        let type = node.type;
 
         if (type === Syntax.OJClassImplementation) {
             currentClass  = null;
@@ -525,11 +526,11 @@ Builder.prototype.build = function()
         }
     });
 
-    ojFile.usage = {
+    ojFile.uses = {
         selectors: _.keys(usedSelectorMap).sort()
     };
 
-    ojFile.declarations = {
+    ojFile.declares = {
         classes:   declaredClasses.sort(),
         globals:   declaredGlobals.sort(),
         protocols: declaredProtocols.sort(),
@@ -539,4 +540,4 @@ Builder.prototype.build = function()
 }
 
 
-module.exports = Builder;
+}

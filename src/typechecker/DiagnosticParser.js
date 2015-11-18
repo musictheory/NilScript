@@ -190,7 +190,7 @@ getWarnings(symbolTyper, diagnostics, fileCallback)
             column: lineColumn.column,
             name:   "OJTypecheckerHint",
             file:   fileName,
-            line:   lineColumn.line,
+            line:   lineColumn.line + 1,
             reason: reason 
         };
 

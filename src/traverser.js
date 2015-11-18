@@ -13,38 +13,39 @@ const estraverse = require("estraverse");
 const Syntax     = esprima.Syntax;
 
 // Add additional visitor keys for the oj language extension
-var ojVisitorKeys = { };
+const ojVisitorKeys = {
+    [ Syntax.OJMessageExpression            ]: [ "receiver", "messageSelectors" ],
+    [ Syntax.OJMessageReceiver              ]: [ "value" ],
+    [ Syntax.OJMessageSelector              ]: [ "name", "argument", "arguments" ],
+    [ Syntax.OJMethodNameSegment            ]: [ ],
+    [ Syntax.OJClassImplementation          ]: [ "id", "superclass", "ivarDeclarations", "body" ],
+    [ Syntax.OJMethodDefinition             ]: [ "returnType", "methodSelectors", "body" ],
+    [ Syntax.OJMethodSelector               ]: [ "name", "variableName" ],
+    [ Syntax.OJSelector                     ]: [ ],
+    [ Syntax.OJParameterType                ]: [ ],
+    [ Syntax.OJBracketVariableBlock         ]: [ "declarations" ],
+    [ Syntax.OJBracketVariableDeclaration   ]: [ "parameterType", "ids" ],
+    [ Syntax.OJPropertyDirective            ]: [ "attributes", "parameterType", "id" ],
+    [ Syntax.OJPropertyAttribute            ]: [ ],
+    [ Syntax.OJSynthesizeDirective          ]: [ "pairs" ],
+    [ Syntax.OJClassDirective               ]: [ "ids" ],
+    [ Syntax.OJSqueezeDirective             ]: [ "ids" ],
+    [ Syntax.OJSynthesizePair               ]: [ "id", "backing" ],
+    [ Syntax.OJDynamicDirective             ]: [ "ids" ],
+    [ Syntax.OJSelectorDirective            ]: [ ],
+    [ Syntax.OJConstDeclaration             ]: [ "declarations" ],
+    [ Syntax.OJEnumDeclaration              ]: [ "declarations" ],
+    [ Syntax.OJProtocolDefinition           ]: [ "id", "body" ],
+    [ Syntax.OJMethodDeclaration            ]: [ "returnType", "methodSelectors" ],
+    [ Syntax.OJCastExpression               ]: [ "id", "argument" ],
+    [ Syntax.OJAnyExpression                ]: [ "argument" ],
+    [ Syntax.OJTypedefDeclaration           ]: [ "from", "to" ],
+    [ Syntax.OJEachStatement                ]: [ "left", "right", "body" ],
+    [ Syntax.OJTypeAnnotation               ]: [ ],
+    [ Syntax.OJGlobalDeclaration            ]: [ "declaration", "declarators" ],
+    [ Syntax.OJStructDefinition             ]: [ "id", "variables" ]
+};
 
-ojVisitorKeys[ Syntax.OJMessageExpression            ] = [ "receiver", "messageSelectors" ];
-ojVisitorKeys[ Syntax.OJMessageReceiver              ] = [ "value" ];
-ojVisitorKeys[ Syntax.OJMessageSelector              ] = [ "name", "argument", "arguments" ];
-ojVisitorKeys[ Syntax.OJMethodNameSegment            ] = [ ];
-ojVisitorKeys[ Syntax.OJClassImplementation          ] = [ "id", "superclass", "ivarDeclarations", "body" ];
-ojVisitorKeys[ Syntax.OJMethodDefinition             ] = [ "returnType", "methodSelectors", "body" ];
-ojVisitorKeys[ Syntax.OJMethodSelector               ] = [ "name", "variableName" ];
-ojVisitorKeys[ Syntax.OJSelector                     ] = [ ];
-ojVisitorKeys[ Syntax.OJParameterType                ] = [ ];
-ojVisitorKeys[ Syntax.OJBracketVariableBlock         ] = [ "declarations" ];
-ojVisitorKeys[ Syntax.OJBracketVariableDeclaration   ] = [ "parameterType", "ids" ];
-ojVisitorKeys[ Syntax.OJPropertyDirective            ] = [ "attributes", "parameterType", "id" ];
-ojVisitorKeys[ Syntax.OJPropertyAttribute            ] = [ ];
-ojVisitorKeys[ Syntax.OJSynthesizeDirective          ] = [ "pairs" ];
-ojVisitorKeys[ Syntax.OJClassDirective               ] = [ "ids" ];
-ojVisitorKeys[ Syntax.OJSqueezeDirective             ] = [ "ids" ];
-ojVisitorKeys[ Syntax.OJSynthesizePair               ] = [ "id", "backing" ];
-ojVisitorKeys[ Syntax.OJDynamicDirective             ] = [ "ids" ];
-ojVisitorKeys[ Syntax.OJSelectorDirective            ] = [ ];
-ojVisitorKeys[ Syntax.OJConstDeclaration             ] = [ "declarations" ];
-ojVisitorKeys[ Syntax.OJEnumDeclaration              ] = [ "declarations" ];
-ojVisitorKeys[ Syntax.OJProtocolDefinition           ] = [ "id", "body" ];
-ojVisitorKeys[ Syntax.OJMethodDeclaration            ] = [ "returnType", "methodSelectors" ];
-ojVisitorKeys[ Syntax.OJCastExpression               ] = [ "id", "argument" ];
-ojVisitorKeys[ Syntax.OJAnyExpression                ] = [ "argument" ];
-ojVisitorKeys[ Syntax.OJTypedefDeclaration           ] = [ "from", "to" ];
-ojVisitorKeys[ Syntax.OJEachStatement                ] = [ "left", "right", "body" ];
-ojVisitorKeys[ Syntax.OJTypeAnnotation               ] = [ ];
-ojVisitorKeys[ Syntax.OJGlobalDeclaration            ] = [ "declaration", "declarators" ];
-ojVisitorKeys[ Syntax.OJStructDefinition             ] = [ "id", "variables" ];
 
 // Patch FunctionExpression, FunctionDeclaration, and Identifier to deal with type annotations
 //
@@ -73,17 +74,17 @@ ojVisitorKeys[ Syntax.OJStructDefinition             ] = [ "id", "variables" ];
 }());
 
 
-function Traverser(ast)
+
+class Traverser {
+
+constructor(ast)
 {
     this._controller = new estraverse.Controller();
     this._ast = ast;
 }
 
 
-Traverser.SkipNode = estraverse.VisitorOption.Skip;
-
-
-Traverser.prototype.traverse = function(pre, post)
+traverse(pre, post)
 {
     this._controller.traverse(this._ast, {
         enter: pre,
@@ -93,10 +94,14 @@ Traverser.prototype.traverse = function(pre, post)
 }
 
 
-Traverser.prototype.getParents = function()
+getParents()
 {
     return this._controller.parents();
 }
 
+}
+
+
+Traverser.SkipNode = estraverse.VisitorOption.Skip;
 
 module.exports = Traverser;

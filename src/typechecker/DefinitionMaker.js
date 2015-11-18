@@ -93,7 +93,7 @@ _getDeclarationForMethod(method, ojClass)
 _siftMethodDeclarations(allMethods, classMethodDeclarations, instanceMethodDeclarations, ojClass)
 {
    _.each(allMethods, method => {
-        var arr = (method.selectorType == "+") ? classMethodDeclarations : instanceMethodDeclarations;
+        let arr = (method.selectorType == "+") ? classMethodDeclarations : instanceMethodDeclarations;
         arr.push(this._getDeclarationForMethod(method, ojClass));
     });
 }
@@ -246,7 +246,7 @@ getFileDefinitions(ojFile)
 
     let lines = [ ];
 
-    _.each(ojFile.declarations.classes, name => {
+    _.each(ojFile.declares.classes, name => {
         let ojClass = model.classes[name];
 
         let classSymbol  = symbolTyper.getSymbolForClassName(ojClass.name, false);
@@ -255,15 +255,15 @@ getFileDefinitions(ojFile)
         this._appendOJClass(lines, ojClass, classSymbol, staticSymbol);
     });
 
-    _.each(ojFile.declarations.protocols, name => {
+    _.each(ojFile.declares.protocols, name => {
         this._appendOJProtocol(lines, model.protocols[name]);
     });
 
-    _.each(ojFile.declarations.structs, name => {
+    _.each(ojFile.declares.structs, name => {
         this._appendOJStruct(lines, model.structs[name]);
     });
 
-    _.each(ojFile.declarations.enums, name => {
+    _.each(ojFile.declares.enums, name => {
         this._appendOJEnum(lines, model.enums[name]);
     });
 
@@ -284,12 +284,12 @@ getGlobalDefinitions()
 
     lines.push("declare class " + TypecheckerSymbols.GlobalType + " {");
     _.each(model.globals, ojGlobal => {
-        var name       = symbolTyper.getSymbolForIdentifierName(ojGlobal.name);
-        var annotation = _.clone(ojGlobal.annotation);
+        let name       = symbolTyper.getSymbolForIdentifierName(ojGlobal.name);
+        let annotation = _.clone(ojGlobal.annotation);
 
         if (_.isArray(annotation)) {
-            var line = name;
-            var returnType = annotation.shift();
+            let line = name;
+            let returnType = annotation.shift();
 
             line += "(" + _.map(annotation, function(a, index) {
                 return "a" + index + ":" + symbolTyper.toTypecheckerType(a);

@@ -30,6 +30,27 @@ constructor(options)
     this._globalDefsSourceFile  = null;
     this._runtimeDefsSourceFile = null;
     this._libDefsSourceFile     = null;
+
+    this._contentCache    = { };
+    this._sourceFileCache = { };
+}
+
+
+_getSourceFile(key, contents)
+{
+    let result;
+
+    if (this._contentCache[key] == contents) {
+        result = this._sourceFileCache[key];
+
+    } else {
+        result = ts.createSourceFile(key, contents);
+
+        this._sourceFileCache[key] = result;
+        this._contentCache[key] = contents;
+    }
+
+    return result;
 }
 
 
@@ -51,7 +72,7 @@ check(model, defs, files, callback)
     let options       = this._options;
     let development   = options["development"];
     let sourceFileMap = { };
-    let contentsMap   = { };
+    let toCheck       = [ ];
 
     let tsOptions = {
         noImplicitAny: !!options["no-implicit-any"]
@@ -68,39 +89,27 @@ check(model, defs, files, callback)
         let codeKey = ojFile.path + path.sep + codeSuffix;
         let defsKey = ojFile.path + path.sep + defsSuffix;
 
-        if (!ojFile.typecheckerCodeSourceFile) {
-            ojFile.typecheckerCodeSourceFile = ts.createSourceFile(codeKey, ojFile.typecheckerCode, tsOptions.target);
+        if (!ojFile.typecheckerDefs) {
+            ojFile.typecheckerDefs = (new DefinitionMaker(model)).getFileDefinitions(ojFile);
         }
 
-        if (!ojFile.typecheckerDefsSourceFile) {
-            ojFile.typecheckerDefsSourceFile = ts.createSourceFile(defsKey, ojFile.typecheckerDefs, tsOptions.target);
-        }
-
-        sourceFileMap[codeKey] = ojFile.typecheckerCodeSourceFile;
-        sourceFileMap[defsKey] = ojFile.typecheckerDefsSourceFile;
-
-        contentsMap[codeKey] = ojFile.typecheckerCode;
-        contentsMap[defsKey] = ojFile.typecheckerDefs;
+        sourceFileMap[codeKey] = this._getSourceFile(codeKey, ojFile.typecheckerCode);
+        sourceFileMap[defsKey] = this._getSourceFile(defsKey, ojFile.typecheckerDefs);
     });
 
     _.each(defs, ojFile => {
         let defsKey = ojFile.path + path.sep + defsSuffix;
 
-        if (!ojFile.typecheckerDefsSourceFile) {
-            ojFile.typecheckerDefsSourceFile = ts.createSourceFile(defsKey, ojFile.contents, tsOptions.target);
-        }
-
-        sourceFileMap[defsKey] = ojFile.typecheckerDefsSourceFile;
-        contentsMap[defsKey]   = ojFile.contents;
+        sourceFileMap[defsKey] = this._getSourceFile(defsKey, ojFile.contents);
     });
 
     if (!this._globalDefsSourceFile) {
         this._globalDefs = (new DefinitionMaker(model)).getGlobalDefinitions();
-        this._globalDefsSourceFile = ts.createSourceFile(globalFileName, this._globalDefs, tsOptions.target);
+        this._globalDefsSourceFile = this._getSourceFile(globalFileName, this._globalDefs);
     }
 
     if (!this._runtimeDefsSourceFile) {
-        let runtimeDefs = fs.readFileSync(dirname(__filename) + "/../../runtime/runtime.d.ts") + "\n";
+        let runtimeDefs = fs.readFileSync(dirname(__filename) + "/../../lib/runtime.d.ts") + "\n";
         this._runtimeDefsSourceFile = ts.createSourceFile(runtimeFileName, runtimeDefs || "", tsOptions.target);
     }
 
@@ -119,8 +128,6 @@ check(model, defs, files, callback)
     sourceFileMap[globalFileName]  = this._globalDefsSourceFile;
     sourceFileMap[libFileName]     = this._libDefsSourceFile;
 
-    contentsMap[globalFileName] = this._globalDefs;
-
     let compilerHost = {
         getSourceFile:             (n, v) => sourceFileMap[n],
         writeFile:                 () => { },
@@ -134,10 +141,7 @@ check(model, defs, files, callback)
     let program = ts.createProgram(_.keys(sourceFileMap), tsOptions, compilerHost, this._program);
 
     let diagnostics = [ ].concat(
-        ts.getPreEmitDiagnostics(program),
-        program.getSyntacticDiagnostics(),
-        program.getSemanticDiagnostics(),
-        program.getDeclarationDiagnostics()
+        ts.getPreEmitDiagnostics(program)
     );
 
     let debugTmp = "/tmp/ojc.typechecker";
@@ -165,7 +169,7 @@ check(model, defs, files, callback)
         Utils.rmrf(debugTmp);
 
         _.each(debugFilesToWrite, (outFile, key) => {
-            Utils.mkdirAndWriteFile(outFile, contentsMap[key]);
+            Utils.mkdirAndWriteFile(outFile, this._contentCache[key]);
         });
     }
 
