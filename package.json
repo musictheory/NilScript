@@ -22,8 +22,7 @@
         "url": "http://github.com/musictheory/oj/raw/master/LICENSE.MIT"
     }],
     "devDependencies": {
-        "mocha": "*",
-        "cpu-profiler": "1.x"
+        "mocha": "*"
     },
     "dependencies": {
         "async":       "1.x",

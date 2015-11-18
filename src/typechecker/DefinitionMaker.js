@@ -1,6 +1,6 @@
 /*
-    typechecker.js
-    Generates TypeScript definition file and wraps TypeScript compiler 
+    DefinitionMaker.js
+    Responsible for generating TypeScript definition files for oj model objects
     (c) 2013-2015 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
