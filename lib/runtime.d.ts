@@ -24,7 +24,6 @@ interface $oj_$Runtime {
     class_respondsToSelector(cls : $oj_$StaticBase, selector : $oj_$SEL) : boolean;
     object_getClass(object : $oj_$Base) : $oj_$StaticBase;
     msgSend(receiver : any, selector : $oj_$SEL, ...args : any[]) : any;
-    msgSend_debug(receiver : any, selector : $oj_$SEL, ...args : any[]) : any;
 }
 
 

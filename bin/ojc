@@ -5,6 +5,8 @@
   MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
+"use strict";
+
 const fs       = require("fs");
 const util     = require("util");
 const getopt   = require("node-getopt");
