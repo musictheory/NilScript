@@ -189,13 +189,7 @@ generate()
     {
         if (language === LanguageEcmascript5) {
             let where = isClassMethod ? OJClassMethodsVariable : OJInstanceMethodsVariable;
-
-            if (Utils.isJScriptReservedWord(selectorName)) {
-                // For IE8
-                return where + "[\"" + symbolTyper.getSymbolForSelectorName(selectorName) + "\"]";
-            } else {
-                return where + "." + symbolTyper.getSymbolForSelectorName(selectorName);
-            }
+            return where + "." + symbolTyper.getSymbolForSelectorName(selectorName);
         }
     }
 
@@ -308,7 +302,6 @@ generate()
     {
         let receiver     = node.receiver.value;
         let methodName   = symbolTyper.getSymbolForSelectorName(node.selectorName);
-        let reserved     = Utils.isJScriptReservedWord(methodName);
         let hasArguments = false;
 
         let firstSelector, lastSelector;
@@ -369,7 +362,7 @@ generate()
         }
 
         // Optimization cases
-        if (receiver.type == Syntax.Identifier && currentMethodNode && !reserved) {
+        if (receiver.type == Syntax.Identifier && currentMethodNode) {
             let usesSelf   = methodUsesSelfVar || (language === LanguageTypechecker);
             let selfOrThis = usesSelf ? "self" : "this";
             let useProto   = (currentMethodNode.selectorType != "+");
@@ -387,6 +380,14 @@ generate()
                     }
 
                     doCommonReplacement(cast + selfOrThis + ".$oj_super()." + methodName + "(", ")");
+                }
+                return;
+
+            } else if (methodName == "class" && (language !== LanguageTypechecker)) {
+                if (model.classes[receiver.name]) {
+                    doCommonReplacement(getClassAsRuntimeVariable(receiver.name));
+                } else {
+                    doCommonReplacement(selfOrThis + ".constructor");
                 }
                 return;
 
@@ -465,12 +466,7 @@ generate()
             modifier.select(receiver).replace(getClassAsRuntimeVariable(receiver.name));
         }
 
-        let selector;
-        if (Utils.isJScriptReservedWord(methodName)) {
-            selector = "{ \"" + methodName + "\": " + "1 }";
-        } else {
-            selector = "{ " + methodName + ": " + "1 }";
-        }
+        let selector = "{ " + methodName + ": 1 }";
 
         modifier.from(receiver).to(firstSelector).replace("," + selector + (hasArguments ? "," : ""));
         modifier.from(lastSelector).to(node).replace(")");

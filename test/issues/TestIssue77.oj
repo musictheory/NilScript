@@ -1,0 +1,35 @@
+
+@implementation Issue77Class
+
++ (void) runTests
+{
+    var instance1 = [[Issue77Class alloc] init];
+    var instance2 = [[Issue77Class alloc] init];
+
+    assert.equal([instance1 class], [Issue77Class class]);
+    assert.equal([instance2 class], [Issue77Class class]);
+    assert.equal([instance1 class], [instance2    class]);
+
+    assert.equal([[instance1    class] return42], 42);
+    assert.equal([[Issue77Class class] return42], 42);
+
+    return true;
+}
+
+
++ (Number) return42
+{
+    return 42;
+}
+
+
+@end
+
+
+
+function runTests()
+{
+    return [Issue77Class runTests];
+}
+
+runTests();
