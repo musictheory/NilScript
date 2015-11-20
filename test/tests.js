@@ -133,6 +133,67 @@ function gatherTests(dir, callback)
 }
 
 
+function checkResults(err, result, t)
+{
+    if (t.typecheck) {
+        var remaining = _.clone(t.typecheck);
+
+        _.each(result.warnings, function(warning) {
+            var expected = t.typecheck[warning.line];
+            if (!expected) return;
+
+            expected = expected.split(",");
+            var code = expected.shift();
+
+            assert.equal(warning.code, code);
+
+            var i = 0;
+            warning.reason.replace(/'(.*?)'/g, function(a0, a1) {
+                assert.equal(expected[i], a1);
+                i++;
+            });
+
+            remaining[warning.line] = null;
+        });
+
+        _.each(remaining, function(value, key) {
+            if (value) {
+                assert(false, "Expected typechecker warning on line " + key);
+            }
+        });
+
+        return;   
+    }
+
+    if (!err && result.warnings && result.warnings.length) {
+        err = result.warnings[0];
+    }
+
+    if (err) {
+        if (!t.error || (err.name != t.error[0]) || (err.line != t.error[1])) {
+            if (!t.error) {
+                throw new Error("Unexpected error: " + err);
+            } else {
+                throw new Error("Expected: " +
+                    t.error[0] + " on line " + t.error[1] +
+                    ", actual: " +
+                    err.name + " on line " + err.line
+                );
+            }
+        } else {
+            return;
+        }
+
+    } else if (t.error && !err) {
+        assert(false, t.name + " compiled, but shouldn't have");
+    }
+
+    oj._reset();
+    var r = eval(result.code);
+    assert(r, "Test returned " + r);
+}
+
+
 gatherTests(path.dirname(__filename), function(err, tests) {
     _.each(tests, function(t) {
         _.each(t.options, function(o) {
@@ -146,65 +207,14 @@ gatherTests(path.dirname(__filename), function(err, tests) {
             if (options["inline-const"]) name += " +const";
             if (options["inline-enum"])  name += " +enum";
 
-            test(name, function() {
+            test(name, done => {
                 ojc.compile(options, function(err, result) {
-                    if (t.typecheck) {
-                        var remaining = _.clone(t.typecheck);
-
-                        _.each(result.warnings, function(warning) {
-                            var expected = t.typecheck[warning.line];
-                            if (!expected) return;
-
-                            expected = expected.split(",");
-                            var code = expected.shift();
-
-                            assert.equal(warning.code, code);
-
-                            var i = 0;
-                            warning.reason.replace(/'(.*?)'/g, function(a0, a1) {
-                                assert.equal(expected[i], a1);
-                                i++;
-                            });
-
-                            remaining[warning.line] = null;
-                        });
-
-                        _.each(remaining, function(value, key) {
-                            if (value) {
-                                assert(false, "Expected typechecker warning on line " + key);
-                            }
-                        });
-
-                        return;   
+                    try {
+                        checkResults(err, result, t);
+                        done();
+                    } catch (e) {
+                        done(e);
                     }
-
-                    if (!err && result.warnings && result.warnings.length) {
-                        err = result.warnings[0];
-                    }
-
-                    if (err) {
-                        if (!t.error || (err.name != t.error[0]) || (err.line != t.error[1])) {
-                            if (!t.error) {
-                                throw new Error("Unexpected error: " + err);
-                            } else {
-                                throw new Error("Expected: " +
-                                    t.error[0] + " on line " + t.error[1] +
-                                    ", actual: " +
-                                    err.name + " on line " + err.line
-                                );
-                            }
-
-                        } else {
-                            return;
-                        }
-
-                    } else if (t.error && !err) {
-                        assert(false, t.name + " compiled, but shouldn't have");
-                    }
-
-                    oj._reset();
-                    var r = eval(result.code);
-                    assert(r, "Test returned " + r);
                 });
             });
         })

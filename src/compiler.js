@@ -15,13 +15,14 @@ const esprima         = require("../ext/esprima");
 
 const Builder         = require("./builder");
 const Generator       = require("./generator");
-const Utils           = require("./utils");
 const Typechecker     = require("./typechecker/Typechecker");
+const Utils           = require("./utils");
 
 const OJError         = require("./errors").OJError;
+const OJWarning       = require("./errors").OJWarning;
 const OJModel         = require("./model").OJModel;
 const OJFile          = require("./model").OJFile;
-    
+
 
 module.exports = class Compiler {
 
@@ -135,24 +136,86 @@ _buildFiles(files, model, options, callback)
         callback();
 
     }, () => {
-        model.prepare();
-        callback(err);
+        if (err) {
+            callback(err);
+        } else {
+            try {
+                model.prepare();
+            } catch (e) {
+                callback(e);
+            }
+
+            callback();
+        }
     });
 }
 
 
-_generateJavaScript(files, model, options, callback)
+_runOnCompileCallback(onCompileCallback, ojFile, doneCallback)
+{
+    let lines    = ojFile.generatorLines;
+    let warnings = ojFile.generatorWarnings;
+
+    onCompileCallback({
+        setContents: (contents) => {
+            let newLines = contents.split("\n");
+
+            if (newLines.length > lines.length) {
+                throw new Error("Line count mismatch: " + newLines.length + " vs. " + lines.length);
+            }
+
+            // Insert newlines, as babel likes to trim the end
+            while (newLines.length < lines.length) {
+                newLines.push("");
+            }
+
+            lines = newLines;
+        },
+
+        getContents: () => {
+            return lines.join("\n");
+        },
+
+        addWarning: (line, message) => {
+            var warning = Utils.makeError(OJWarning.OnCompileFunction, message, line);
+            Utils.addFilePathToError(ojFile.path, warning);
+            warnings.push(warning);
+        },
+
+    }, (error) => {
+        if (error) {
+            Utils.addFilePathToError(ojFile.path, error);
+            ojFile.needsGenerate();
+            ojFile.error = error;
+
+        } else {
+            ojFile.generatorLines    = lines;
+            ojFile.generatorWarnings = warnings;
+        }
+
+        doneCallback(error);
+    });
+}
+
+
+_generateJavaScript(files, model, options, onCompileCallback, callback)
 {
     let err = null;
 
     async.each(files, (ojFile, callback) => {
         if (!ojFile.generatorLines) {
             try {
+                console.log("Generating ", ojFile.path);
                 let generator = new Generator(ojFile, model, false, options);
+                let result    = generator.generate();
 
-                let result = generator.generate();
                 ojFile.generatorLines    = result.lines;
                 ojFile.generatorWarnings = result.warnings || [ ];
+
+                if (onCompileCallback) {
+                    this._runOnCompileCallback(onCompileCallback, ojFile, callback);
+                    return;                    
+                }
 
             } catch (e) {
                 Utils.addFilePathToError(ojFile.path, e);
@@ -229,6 +292,11 @@ compile(options, callback)
         return result;
     }
 
+    function extractFunction(key) {
+        let result = extractOption(key);
+        return _.isFunction(result) ? result : null;
+    }
+
     let optionsFiles         = extractOption("files");
     let optionsDefs          = extractOption("defs");
     let optionsPrepend       = extractOption("prepend");
@@ -236,6 +304,9 @@ compile(options, callback)
     let optionsSourceMapFile = extractOption("source-map-file");
     let optionsSourceMapRoot = extractOption("source-map-root");
     let optionsState         = extractOption("state");
+
+    // Extract functions
+    let onCompileCallback    = extractFunction("on-compile");
 
     // Extract options.files and convert to a map of path->OJFiles
     let files = this._extractFilesFromOptions(optionsFiles, previousFiles);
@@ -267,6 +338,13 @@ compile(options, callback)
     } else if (optionsState) {
         model.loadState(optionsState);
     } 
+
+    if (options["squeeze"]) {
+        model.getSymbolTyper().setupSqueezer(
+            options["squeeze-start-index"] || 0,
+            options["squeeze-end-index"]   || 0
+        );
+    }
 
     this._files   = files;
     this._options = options;
@@ -329,7 +407,7 @@ compile(options, callback)
         // Run generator
         callback => {
             if (optionsOutputLanguage != "none") {
-                this._generateJavaScript(files, model, options, callback);
+                this._generateJavaScript(files, model, options, onCompileCallback, callback);
             } else {
                 callback();
             }

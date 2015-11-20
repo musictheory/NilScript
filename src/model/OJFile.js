@@ -17,7 +17,6 @@ constructor(path)
 {
     this.path     = path;
     this.contents = null;
-    this.lines    = null;
     this.time     = 0;
 
     this.calls    = null;
@@ -41,7 +40,6 @@ updateWithContentsAndTime(contents, time)
     if (time > this.time) {
         if (contents != this.contents) {
             this.contents = contents;
-            this.lines = null;
             this.time = time;
 
             // A change in contents invalidates everything

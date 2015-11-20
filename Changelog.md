@@ -15,12 +15,14 @@ Removed:
 Added:
   - New 'Compiler' API (#73)
   - API to get symbol list (for crash log symbolication) (#75)
+  - "on-compile" hook to add custom linters/transformers (#79)
 
 Breaking:
-  - Removed 'cache', 'jshint', 'jshint-config', 'jshint-ignore', and development `ojc` options (#7)
   - node 4.2+ is now required to run ojc (#76)
   - 'include-state' compiler option is needed to include the 'state' key (#74)
   - 'runtime.js' is now located in the 'lib' directory (#72)
+  - Removed 'cache', 'jshint', 'jshint-config', 'jshint-ignore', and development `ojc` options (#7)
+  - Removed JSHint integration (#78) in favor of a generic "on-compile" hook (#79)
 
 ---
 
