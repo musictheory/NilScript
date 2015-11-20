@@ -40,11 +40,13 @@ let opt = getopt.create([
     [ "",  "strict-functions",          "type checker: enforce TypeScript-style functions" ],
     [ "",  "strict-object-literals",    "type checker: enforce TypeScript object literals" ],
 
-    [ "",  "warn-this-in-methods",      "warn about usage of 'this' in oj methods" ],
-    [ "",  "warn-unknown-selectors",    "warn about usage of unknown selectors"    ],
-    [ "",  "warn-unknown-ivars",        "warn about unknown ivars"                 ],
-    [ "",  "warn-unused-ivars",         "warn about unused ivars"                  ],
+    [ "",  "warn-debugger",             "warn about use of 'debugger' statement"   ],
+    [ "",  "warn-empty-array-element",  "warn about empty array element"           ],
     [ "",  "warn-global-no-type",       "warn about missing type annotations on @globals" ],
+    [ "",  "warn-this-in-methods",      "warn about usage of 'this' in oj methods" ],
+    [ "",  "warn-unknown-ivars",        "warn about unknown ivars"                 ],
+    [ "",  "warn-unknown-selectors",    "warn about usage of unknown selectors"    ],
+    [ "",  "warn-unused-ivars",         "warn about unused ivars"                  ],
 
     [ "",  "development",               "(for development)" ],
 

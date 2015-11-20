@@ -383,3 +383,19 @@ function test() {
 @property String foo; //@error OJNotYetSupportedError
 @end
 
+
+// --------------------------------------------------------------------
+// @name Warn Debugger
+// @opts { "warn-debugger": true  }
+
+function foo() {
+    debugger;  //@warning OJUseOfDebuggerWarning
+}
+
+
+// --------------------------------------------------------------------
+// @name Warn Empty Array
+// @opts { "warn-empty-array-element": true  }
+
+var arr = [,,,,];  //@warning OJUseOfEmptyArrayElementWarning
+

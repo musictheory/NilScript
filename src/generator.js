@@ -41,14 +41,9 @@ module.exports = class Generator {
 
 constructor(ojFile, model, forTypechecker, options)
 {
-    let lines = ojFile.lines;
-    if (!lines) {
-        lines = ojFile.lines = ojFile.contents.split("\n");
-    }
-
     this._file     = ojFile;
     this._model    = model;
-    this._modifier = new Modifier(ojFile.lines, options);;
+    this._modifier = new Modifier(ojFile.contents.split("\n"), options);
     this._options  = options;
 
     let inlines = { };
@@ -130,11 +125,14 @@ generate()
     let methodUsesSelfVar        = false;
     let methodUsesTemporaryVar   = false;
 
-    let optionWarnOnThisInMethods    = options["warn-this-in-methods"];
-    let optionWarnOnUnknownSelectors = options["warn-unknown-selectors"];
-    let optionWarnOnUnusedIvars      = options["warn-unused-ivars"];
-    let optionWarnOnUnknownIvars     = options["warn-unknown-ivars"];
-    let optionWarnOnGlobalNoType     = options["warn-global-no-type"];
+    let optionWarnDebugger           = options["warn-debugger"];
+    let optionWarnEmptyArrayElement  = options["warn-empty-array-element"];
+    let optionWarnGlobalNoType       = options["warn-global-no-type"];
+    let optionWarnThisInMethods      = options["warn-this-in-methods"];
+    let optionWarnUnknownIvars       = options["warn-unknown-ivars"];
+    let optionWarnUnknownSelectors   = options["warn-unknown-selectors"];
+    let optionWarnUnusedIvars        = options["warn-unused-ivars"];
+
     let optionStrictFunctions        = options["strict-functions"];
     let optionStrictObjectLiterals   = options["strict-object-literals"];
 
@@ -143,7 +141,7 @@ generate()
 
     let removeEnums    = options["inline-enum"]  || (language === LanguageTypechecker);
     let removeConsts   = options["inline-const"] || (language === LanguageTypechecker);
-    let knownSelectors = optionWarnOnUnknownSelectors ? model.selectors : null;
+    let knownSelectors = optionWarnUnknownSelectors ? model.selectors : null;
 
     let rewriteFunctionParameters = (language === LanguageTypechecker) && !optionStrictFunctions;
 
@@ -386,8 +384,10 @@ generate()
             } else if (methodName == "class" && (language !== LanguageTypechecker)) {
                 if (model.classes[receiver.name]) {
                     doCommonReplacement(getClassAsRuntimeVariable(receiver.name));
-                } else {
+                } else if (receiver.name == "self") {
                     doCommonReplacement(selfOrThis + ".constructor");
+                } else {
+                    doCommonReplacement("(" + receiver.name + " && " + receiver.name + ".constructor)");
                 }
                 return;
 
@@ -685,7 +685,7 @@ generate()
                     replacement = generateThisIvar(currentClass.name, name, usesSelf);
 
                     // remove ivar from unusedIvars
-                    if (optionWarnOnUnusedIvars) {
+                    if (optionWarnUnusedIvars) {
                         if (unusedIvars && unusedIvars.indexOf(name) >= 0) {
                             unusedIvars = _.without(unusedIvars, name);
                         }
@@ -696,7 +696,7 @@ generate()
                 return;
 
             } else {
-                if (name[0] == "_" && optionWarnOnUnknownIvars && (name.length > 1)) {
+                if (name[0] == "_" && optionWarnUnknownIvars && (name.length > 1)) {
                     warnings.push(Utils.makeError(OJWarning.UndeclaredInstanceVariable, "Use of undeclared instance variable " + node.name, node));
                 }
             } 
@@ -912,7 +912,7 @@ generate()
         let declaration = node.declaration;
         let declarators = node.declarators;
 
-        if (optionWarnOnGlobalNoType) {
+        if (optionWarnGlobalNoType) {
             let allTyped;
 
             if (declaration) {
@@ -1063,7 +1063,7 @@ generate()
         } else if (type === Syntax.OJClassImplementation) {
             currentClass = model.classes[node.id.name];
 
-            if (optionWarnOnUnusedIvars) {
+            if (optionWarnUnusedIvars) {
                 unusedIvars = currentClass.getAllIvarNamesWithoutProperties();
             }
 
@@ -1118,7 +1118,7 @@ generate()
             handleVariableDeclaration(node);
 
         } else if (type === Syntax.ThisExpression) {
-            if (optionWarnOnThisInMethods) {
+            if (optionWarnThisInMethods) {
                 checkThis(node, traverser.getParents());
             }
 
@@ -1139,6 +1139,21 @@ generate()
         } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression) {
             handleFunctionDeclarationOrExpression(node);
             methodUsesSelfVar = true;
+
+        // Additional warnings
+        } else if (type === Syntax.ArrayExpression) {
+            if (optionWarnEmptyArrayElement) {
+                _.each(node.elements, element => {
+                    if (element === null) {
+                        warnings.push(Utils.makeError(OJWarning.UseOfEmptyArrayElement, "Use of empty array element", node));
+                    }
+                });
+            }
+
+        } else if (type === Syntax.DebuggerStatement) {
+            if (optionWarnDebugger) {
+                warnings.push(Utils.makeError(OJWarning.UseOfDebugger, "Use of debugger statement", node));
+            }
         }
 
     }, function(node, parent) {
@@ -1147,7 +1162,7 @@ generate()
         if (type === Syntax.OJClassImplementation) {
             currentClass = null;
 
-            if (optionWarnOnUnusedIvars && unusedIvars && unusedIvars.length) {
+            if (optionWarnUnusedIvars && unusedIvars && unusedIvars.length) {
                 _.each(unusedIvars, function(unusedIvar) {
                     warnings.push(Utils.makeError(OJWarning.UnusedInstanceVariable, "Unused instance variable " + unusedIvar, node));
                 });

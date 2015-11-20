@@ -38,9 +38,12 @@ const OJWarning = { };
 
 OJWarning.UnknownSelector              = "OJUnknownSelectorWarning";
 OJWarning.UseOfThisInMethod            = "OJUseOfThisInMethodWarning";
+OJWarning.UseOfDebugger                = "OJUseOfDebuggerWarning";
+OJWarning.UseOfEmptyArrayElement       = "OJUseOfEmptyArrayElementWarning";
 OJWarning.UnusedInstanceVariable       = "OJUnusedInstanceVariableWarning";
 OJWarning.UndeclaredInstanceVariable   = "OJUndeclaredInstanceVariableWarning";
 OJWarning.MissingTypeAnnotation        = "OJMissingTypeAnnotationWarning";
+OJWarning.OnCompileFunction            = "OJOnCompileFunctionWarning";
 
 
 module.exports = {

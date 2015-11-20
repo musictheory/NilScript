@@ -72,13 +72,26 @@ function isBaseObjectClass(name)
 }
 
 
-function makeError(name, message, node)
+function makeError(name, message, arg)
 {
     var error = new Error(message);
 
+    let line, column;
+
+    if (_.isObject(arg) && arg.loc && arg.loc.start) {
+        line   = arg.loc.start.line;
+        column = arg.loc.start.col;
+
+    } else if (_.isString(arg)) {
+        line = parseInt(arg, 10);
+
+    } else if (_.isNumber(arg)) {
+        line = arg;
+    }
+
     error.file    = null;
-    error.line    = node ? node.loc.start.line : 0;
-    error.column  = node ? node.loc.start.col  : 0;
+    error.line    = line;
+    error.column  = column;
     error.name    = name;
     error.reason  = message;
 
@@ -86,9 +99,9 @@ function makeError(name, message, node)
 }
 
 
-function throwError(name, message, node)
+function throwError(name, message)
 {
-    throw makeError(name, message, node);
+    throw makeError.apply(null, _.toArray(arguments));
 }
 
 

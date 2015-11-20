@@ -213,7 +213,6 @@ hasGlobalChanges(other)
 
 
     if (existanceChanged(this.classes,   other.classes   ) ||
-        existanceChanged(this.globals,   other.globals   ) ||
         existanceChanged(this.protocols, other.protocols ) ||
         existanceChanged(this.structs,   other.structs   ) ||
         existanceChanged(this.globals,   other.globals   ) ||

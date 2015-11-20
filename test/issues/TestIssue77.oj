@@ -13,7 +13,24 @@
     assert.equal([[instance1    class] return42], 42);
     assert.equal([[Issue77Class class] return42], 42);
 
+    assert.equal([instance1 returnClass],  [Issue77Class class]);
+    assert.equal([instance2 returnClass2], [Issue77Class class]);
+
     return true;
+}
+
+
+- (Class) returnClass
+{
+    return [self class];
+}
+
+
+- (Class) returnClass2
+{
+    return (function() {
+        return [self class];
+    }());
 }
 
 
