@@ -7,9 +7,9 @@
 
 "use strict";
 
-const _  = require("lodash");
-const ts = require("typescript");
-
+const _         = require("lodash");
+const ts        = require("typescript");
+const OJWarning = require("../errors").OJWarning;
 
 const sBlacklistCodes  = [ 2417 ];
 
@@ -77,7 +77,10 @@ getWarnings(symbolTyper, diagnostics, fileCallback)
     let duplicateMap = { };
 
     function makeHintsWithDiagnostic(diagnostic) {
-        var fileName = fileCallback(diagnostic.file.fileName);
+        let fileName = diagnostic && diagnostic.file && diagnostic.file.fileName;
+        if (!fileName) return null;
+
+        fileName = fileCallback(fileName);
         if (!fileName) return null;
 
         var lineColumn  = diagnostic.file ? diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start) : { line: 0, column: 0 };
@@ -188,7 +191,7 @@ getWarnings(symbolTyper, diagnostics, fileCallback)
         var result = {
             code:   code,
             column: lineColumn.column,
-            name:   "OJTypecheckerHint",
+            name:   OJWarning.Typechecker,
             file:   fileName,
             line:   lineColumn.line + 1,
             reason: reason 

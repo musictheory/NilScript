@@ -33,6 +33,7 @@ OJError.CircularClassHierarchy         = "OJCircularClassHierarchyError";
 OJError.VariableAlreadyDeclared        = "OJVariableAlreadyDeclaredError";
 OJError.VariableNotYetDeclared         = "OJVariableNotYetDeclaredError";
 OJError.RestrictedUsage                = "OJRestrictedUsageError";
+OJError.APIMisuse                      = "OJAPIMisuseError";
 
 const OJWarning = { };
 
@@ -44,6 +45,7 @@ OJWarning.UnusedInstanceVariable       = "OJUnusedInstanceVariableWarning";
 OJWarning.UndeclaredInstanceVariable   = "OJUndeclaredInstanceVariableWarning";
 OJWarning.MissingTypeAnnotation        = "OJMissingTypeAnnotationWarning";
 OJWarning.OnCompileFunction            = "OJOnCompileFunctionWarning";
+OJWarning.Typechecker                  = "OJTypecheckerWarning";
 
 
 module.exports = {

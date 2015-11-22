@@ -1,0 +1,79 @@
+//@opts = { "output-language": "none", "check-types": true }
+
+@implementation Singleton
++ (instancetype) sharedInstance { return null; }
+- (void) doSomething { }
+@end
+
+@implementation Foo
+- (BOOL) isFoo { return true; }
+@end
+
+@implementation Bar
+- (id) initWithString:(String)string { return [self init]; }
+- (BOOL) isBar { return true; }
+@end
+
+
+@implementation TestReturnTypes
+
+- (BOOL) returnsStringInsteadOfBOOL { return 5; }   //@typecheck 2322,Number,BOOL
+
+- (Singleton) returnsSingleton  { return null;                          }
+- (Singleton) returnsSingleton2 { return [[Singleton alloc] init];      }
+- (Singleton) returnsSingleton3 { return [Singleton sharedInstance];    }
+
+- (Class) returnsClass { return [Singleton class]; }
+
+- (Foo) returnsStringInsteadOfFoo { return "asdf";                                    }  //@typecheck 2322,String,Foo
+- (Foo) returnsNumberInsteadOfFoo { return 5;                                         }  //@typecheck 2322,Number,Foo
+
+- (Foo) returnsBarInsteadOfFoo    { return [[Bar alloc] init];                        }  //@typecheck 2322,Bar,Foo
+- (Foo) returnsBarInsteadOfFoo2   { return [[[Bar class] alloc] init];                }  //@typecheck 2322,Bar,Foo
+- (Foo) returnsBarInsteadOfFoo3   { return [[[[[Bar alloc] init] class] alloc] init]; }  //@typecheck 2322,Bar,Foo
+- (Foo) returnsBarInsteadOfFoo4   { return [[Bar alloc] initWithString:""];           }  //@typecheck 2322,Bar,Foo
+
+- (Object<Foo>) {
+    var a = [ ];
+    return a;       //@typecheck 2322,Array,Object<Foo>
+}
+
+@end
+
+
+@implementation TestMethodCalls
+
+- (void) doSomethingWithFoo:(Foo)foo { }
+- (void) doSomethingWithBar:(Bar)bar { }
+- (void) doSomethingWithClass:(Class)cls { }
+
+- (void) test
+{
+    var foo = [[Foo alloc] init];
+    var bar = [[Bar alloc] init];
+
+    [self doSomethingWithClass:[Foo class]];
+    [self doSomethingWithFoo: [[Foo alloc] init] ];
+    [self doSomethingWithBar: [[Bar alloc] init] ];
+    [self doSomethingWithFoo: foo ];
+    [self doSomethingWithBar: bar ];
+
+    [self doSomethingWithBar: [[Foo alloc] init] ]; //@typecheck 2345,Foo,Bar
+    [self doSomethingWithFoo: [[Bar alloc] init] ]; //@typecheck 2345,Bar,Foo
+    [self doSomethingWithBar: foo                ]; //@typecheck 2345,Foo,Bar
+    [self doSomethingWithFoo: bar                ]; //@typecheck 2345,Bar,Foo
+}
+
+@end
+
+
+
+(function() {
+@global function TakesNumber(x : Number) : void { }
+@global GlobalString : String = "";
+}());
+
+TakesNumber(GlobalString); //@typecheck 2345,String,Number
+
+
+true;

@@ -7,7 +7,7 @@
 @property id foo;
 
 - (void) setFoo:(id)foo { _foo = foo; } //@warning OJUndeclaredInstanceVariableWarning
-- (id) foo { return _foo; }
+- (id) foo { return _foo; }             //@warning OJUndeclaredInstanceVariableWarning
 
 @end
 
