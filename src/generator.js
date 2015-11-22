@@ -727,9 +727,9 @@ Generator.prototype.generate = function()
 
     function handleVariableDeclaration(node, parent)
     {
-        for (let declaration of node.declarations) {
+        _.each(node.declarations, function(declaration) {
             checkRestrictedUsage(declaration.id);
-        }
+        });
     }
 
     function handleOJPropertyDirective(node)
