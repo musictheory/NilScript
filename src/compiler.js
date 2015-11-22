@@ -127,6 +127,10 @@ _extractFilesFromOptions(optionsFiles, previousFiles)
         existingMap[ojFile.path] = ojFile;
     });
 
+    if (!_.isArray(optionsFiles)) {
+        Utils.throwError(OJError.APIMisuse, "options.files must be an array");
+    }
+
     // The 'files' option can either be an Array of String file paths, or
     // an Array of Objects with the following keys:
     //        path: file path 
@@ -138,13 +142,19 @@ _extractFilesFromOptions(optionsFiles, previousFiles)
 
         if (_.isString(f)) {
             path = f;
-        } else {
+
+        } else if (_.isObject(f)) {
             path     = f.path;
             contents = f.contents;
             time     = f.time || Date.now()
+
+        } else {
+            Utils.throwError(OJError.APIMisuse, "Each member of options.files must be a string or object");
         }
 
-        if (!path) return;
+        if (!path) {
+            Utils.throwError(OJError.APIMisuse, "No 'path' key in " + f);
+        }
 
         ojFile = existingMap[path] || new OJFile(path);
 
@@ -394,7 +404,7 @@ compile(options, callback)
     let files = this._extractFilesFromOptions(optionsFiles, previousFiles);
     options.files = null;
 
-    let defs = this._extractFilesFromOptions(optionsDefs, previousDefs);
+    let defs = optionsDefs ? this._extractFilesFromOptions(optionsDefs, previousDefs) : null;
     options.defs = null;
 
     // These options aren't extracted
@@ -530,15 +540,17 @@ compile(options, callback)
         let errors = _.compact(_.map(files, ojFile => ojFile.error));
 
         // If we have an internal error, throw it now
-        if (err && err.name && !err.name.startsWith("OJ")) {
-            throw err;
-        }
-
-        _.each(errors, function(error) {
-            if (!error.name.startsWith("OJ")) {
-                throw error;
+        {
+            if (err && err.name && !err.name.startsWith("OJ")) {
+                throw err;
             }
-        });
+
+            _.each(errors, function(error) {
+                if (!error.name.startsWith("OJ")) {
+                    throw error;
+                }
+            });
+        }
 
         let warnings = _.map(files, ojFile => [
             ojFile.generatorWarnings,
@@ -550,7 +562,7 @@ compile(options, callback)
             code:     outputCode,
             map:      outputMap,
             errors:   errors,
-            warnings: _.compact(_.flatten(warnings))
+            warnings: _.compact(_.flattenDeep(warnings))
         };
 
         if (options["include-state"]) {

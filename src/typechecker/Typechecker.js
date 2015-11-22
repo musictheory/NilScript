@@ -87,8 +87,8 @@ check(model, defs, files, callback)
     const libFileName     = "$oj-lib"     + path.sep + defsSuffix;
 
     _.each(files, ojFile => {
-        let codeKey = ojFile.path + path.sep + codeSuffix;
-        let defsKey = ojFile.path + path.sep + defsSuffix;
+        let codeKey = path.normalize(ojFile.path) + path.sep + codeSuffix;
+        let defsKey = path.normalize(ojFile.path) + path.sep + defsSuffix;
 
         if (!ojFile.typecheckerDefs) {
             ojFile.typecheckerDefs = (new DefinitionMaker(model)).getFileDefinitions(ojFile);
@@ -135,7 +135,7 @@ check(model, defs, files, callback)
         getDefaultLibFileName:     () => libFileName,
         useCaseSensitiveFileNames: () => false,
         getCanonicalFileName:      n  => n,
-        getCurrentDirectory:       () => "",
+        getCurrentDirectory:       () => process.cwd(),
         getNewLine:                () => "\n"
     };
 
@@ -150,9 +150,7 @@ check(model, defs, files, callback)
 
     let warnings = (new DiagnosticParser()).getWarnings(model.getSymbolTyper(), diagnostics, filePath => {
         if (development) {
-            let outFile = debugTmp + path.sep + filePath;
-            debugFilesToWrite[filePath] = outFile;
-            return outFile;
+            return debugTmp + path.sep + filePath;
 
         } else {
             let components = filePath.split(path.sep);
@@ -169,8 +167,10 @@ check(model, defs, files, callback)
     if (development) {
         Utils.rmrf(debugTmp);
 
-        _.each(debugFilesToWrite, (outFile, key) => {
-            Utils.mkdirAndWriteFile(outFile, this._contentCache[key]);
+        console.log(_.keys(this._contentCache));
+
+        _.each(this._contentCache, (value, key) => {
+            Utils.mkdirAndWriteFile(debugTmp + path.sep + key, this._contentCache[key]);
         });
     }
 

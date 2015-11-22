@@ -74,8 +74,7 @@ function isBaseObjectClass(name)
 
 function makeError(name, message, arg)
 {
-    var error = new Error(message);
-
+    let error = new Error(message);
     let line, column;
 
     if (_.isObject(arg) && arg.loc && arg.loc.start) {
@@ -127,7 +126,8 @@ function addFilePathToError(file, error)
 function rmrf(dir)
 {
     try {
-        _.each(fs.readdirSync(dirPath), file => {
+        _.each(fs.readdirSync(dir), file => {
+            file = dir + path.sep + file;
             if (fs.statSync(file).isFile()) {
                 fs.unlinkSync(file)
             } else {

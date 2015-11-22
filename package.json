@@ -26,9 +26,9 @@
     },
     "dependencies": {
         "async":       "1.x",
-        "lodash":      "2.x",
+        "lodash":      "3.x",
         "estraverse":  "4.x",
-        "source-map":  "0.1.x",
+        "source-map":  "0.5.x",
         "node-getopt": "0.2.x",
         "mkdirp":      "0.5",
         "temp":        "0.8",

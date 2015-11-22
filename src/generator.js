@@ -500,7 +500,7 @@ generate()
                     clsSelector + ", ";
 
             } else {
-                startText = "var " + node.id.name + " = " + OJRootVariable + "._registerClass(" +
+                startText = OJRootVariable + "._registerClass(" +
                     clsSelector + ", " +
                     (superClass ? superSelector : "null") + ", ";
             }
@@ -518,8 +518,8 @@ generate()
             endText = "return " + node.id.name + ";});";
         
         } else if (language === LanguageTypechecker) {
-            startText = "var $oj_unused = function(" + OJClassMethodsVariable + " : any, " + OJInstanceMethodsVariable + " : any) { ";
-            endText = "}";
+            startText = "var $oj_unused = (function(" + OJClassMethodsVariable + " : any, " + OJInstanceMethodsVariable + " : any) { ";
+            endText = "});";
         } 
 
         modifier.from(node).to(node.ivarDeclarations || node.body).replace(startText);
