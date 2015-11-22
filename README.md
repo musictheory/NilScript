@@ -728,6 +728,8 @@ Traditionally, oj's API consisted of a single `compile` method:
 To allow for fast incremental compiles, oj 2.x adds a `Compiler` constructor:
 
     var ojc = require("ojc");
+    
+    // Important: create one compiler per output file.
     var compiler = new ojc.Compiler();
     
     var options = { … };
@@ -750,9 +752,9 @@ prepend                  | String   | Content to prepend, not compiled or typech
 append                   | String   | Content to append, not compiled or typechecked
 state                    | Private  | Input compiler state, corresponds to contents of `--input-state`
 output-language          | String   | If 'none', disable source code output
-include-map              | Boolean  | If true, include 'map' key in results object
-include-state            | Boolean  | If true, include 'state' key in results object
-include-symbols          | Boolean  | If true, include 'symbols' key in results object
+include-map              | Boolean  | If true, include `map` key in results object
+include-state            | Boolean  | If true, include `state` key in results object
+include-symbols          | Boolean  | If true, include `symbols` key in results object
 source-map-file          | String   | Output source map file name
 source-map-root          | String   | Output source map root URL
 on-compile               | Function | Post-compile callback (see below)
@@ -788,11 +790,11 @@ Properties for the `result` object:
 Key     | Type    | Description
 ------- | ------- | ---
 code    | String  | Compiled JavaScript source code
-state   | Private | Output compiler state (if include-state is true).  See Compiling Projects below.
-map     | String  | Source map (if include-map is true)
-symbols | Object  | Symbol-to-readable-name map (if include-symbols is true).  For symbolicating stack traces.
+state   | Private | Output compiler state (if `include-state` is true).  See Compiling Projects below.
+map     | String  | Source map (if `include-map` is true)
+symbols | Object  | Symbol-to-readable-name map (if `include-symbols` is true).  For symbolicating stack traces.
 
-Note: `options.state` and `result.state` are private objects and the format/contents may change between releases.  Users are encouraged to use the new `Compiler#uses` API rather than `state`. (See below).
+Note: `options.state` and `result.state` are private objects and the format/contents will change between releases.  Users are encouraged to use the new `Compiler#uses` API rather than `state`. (See below).
 
 ---
 ## <a name="compiler-projects"></a>Compiling Projects
