@@ -847,39 +847,12 @@ oj 2 introduces a new `Compiler` API with `Compiler#uses` and `Compiler#compile`
 
 --
 
-We've found it best to run a separate typecheck pass in parallel with the `core.js`/`webapp.js` build.  This allows one CPU to be dedicated to typechecking while the other performs transpiling.  The typecheck pass uses the following options:
+We've found it best to run a separate typecheck pass in parallel with the `core.js`/`webapp.js` build (via a separate `node` process).  This allows one CPU to be dedicated to typechecking while the other performs transpiling.  The typecheck pass uses the following options:
 
-* All `.js` and `.oj` files (From steps #1 and #3) are passed as `INPUT_FILES`.
-* Several `.d.ts` definitions (for jQuery, underscore, etc.) are specified with the `--prepend` option.
+* All `.js` and `.oj` files (From steps #1 and #3) are passed as `INPUT_FILES` (or `options.files`).
+* Several `.d.ts` definitions (for jQuery, underscore, etc.) are specified with the `--defs` option (or `options.defs`).
 * `--output-language` is set to `none`.
 * `--check-types` is enabled 
-
----
-
-
-
-
-`Compiler` provides a `uses` method, which allows
-
-    var ojc = require("ojc");
-    var coreCompiler = new ojc.Compiler();
-    var uiCompiler   = new ojc.Compiler();
-
-    var coreOptions = { … };
-    var uiOptions   = { … };
-
-    // Call doCoreCompile() each time one of the core files changes
-    function doCoreCompile(callback) {
-        coreCompiler.compile(options, function(err, results) {
-            callback(err, results);
-        });
-    }
-    
-    // Call doUICompile() each time one of the core files changes
-
-
-
-
 
 ---
 ## <a name="license"></a>License
