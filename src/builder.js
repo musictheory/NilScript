@@ -273,10 +273,11 @@ build()
         model.aliasType(node.from, node.to);
     }
 
-    function handleOJEnumDeclaration(node)
+    function handleOJEnumDeclaration(node, parent)
     {
-        let length = node.declarations ? node.declarations.length : 0;
-        let last = node;
+        let length  = node.declarations ? node.declarations.length : 0;
+        let last    = node;
+        let bridged = (parent.type === Syntax.OJBridgedDeclaration);
 
         // From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isInteger
         function isInteger(nVal) {
@@ -307,7 +308,7 @@ build()
         }
 
         let name = node.id ? node.id.name : null;
-        let e = new Model.OJEnum(name, node.unsigned);
+        let e = new Model.OJEnum(name, node.unsigned, bridged);
 
         if (name) {
             declaredEnums.push(name);
@@ -337,10 +338,11 @@ build()
         model.addEnum(e);
     }
 
-    function handleOJConstDeclaration(node)
+    function handleOJConstDeclaration(node, parent)
     {
-        let length = node.declarations ? node.declarations.length : 0;
-        let values = [ ];
+        let length  = node.declarations ? node.declarations.length : 0;
+        let values  = [ ];
+        let bridged = (parent.type === Syntax.OJBridgedDeclaration);
 
         for (let i = 0; i < length; i++) {
             let declaration = node.declarations[i];
@@ -365,7 +367,7 @@ build()
 
         for (let i = 0; i < length; i++) {
             let declaration = node.declarations[i];
-            let ojConst = new Model.OJConst(declaration.id.name, values[i]);
+            let ojConst = new Model.OJConst(declaration.id.name, values[i], bridged);
             model.addConst(ojConst);
         }
     }
@@ -471,10 +473,10 @@ build()
                 handleOJMethodDeclaration(node);
 
             } else if (type === Syntax.OJEnumDeclaration) {
-                handleOJEnumDeclaration(node);
+                handleOJEnumDeclaration(node, parent);
 
             } else if (type === Syntax.OJConstDeclaration) {
-                handleOJConstDeclaration(node);
+                handleOJConstDeclaration(node, parent);
 
             } else if (type === Syntax.OJGlobalDeclaration) {
                 handleOJGlobalDeclaration(node);

@@ -102,9 +102,51 @@ saveState()
 }
 
 
-mergeModel(other)
+saveSymbols()
 {
-    
+    let symbolTyper = this._symbolTyper;
+    let result = { };
+
+    _.each(this.classes, ojClass => {
+        result[ symbolTyper.getSymbolForClassName(ojClass.name) ] = ojClass.name;
+
+        _.each(ojClass.getAllIvars(), function(ojIvar) {
+            result[ symbolTyper.getSymbolForIvar(ojIvar) ] = ojIvar.name;
+        });
+    });
+
+    _.each(_.keys(this.selectors), name => {
+        result[ symbolTyper.getSymbolForSelectorName(name) ] = name;
+    });
+
+    return result;
+}
+
+
+saveBridged()
+{
+    var consts = _.compact(_.map(this.consts, ojConst => {
+        if (ojConst.bridged) {
+            return { name: ojConst.name, value: ojConst.value };
+        } else {
+            return null;
+        }
+    }));
+
+    var enums  = _.compact(_.map(this.enums, ojEnum => {
+        if (ojEnum.bridged) {
+            return {
+                name: ojEnum.anonymous ? null : ojEnum.name,
+                unsigned: ojEnum.unsigned,
+                values: _.clone(ojEnum.values)
+            };
+
+        } else {
+            return null;
+        }
+    }));
+
+    return { consts: consts, enums: enums };
 }
 
 

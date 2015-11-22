@@ -43,7 +43,8 @@ const ojVisitorKeys = {
     [ Syntax.OJEachStatement                ]: [ "left", "right", "body" ],
     [ Syntax.OJTypeAnnotation               ]: [ ],
     [ Syntax.OJGlobalDeclaration            ]: [ "declaration", "declarators" ],
-    [ Syntax.OJStructDefinition             ]: [ "id", "variables" ]
+    [ Syntax.OJStructDefinition             ]: [ "id", "variables" ],
+    [ Syntax.OJBridgedDeclaration           ]: [ "declaration" ]
 };
 
 
