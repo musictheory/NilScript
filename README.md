@@ -716,41 +716,83 @@ In order to support compiler optimizations, the following method names are reser
 ---
 ## <a name="compiler-api"></a>Compiler API
 
+Traditionally, oj's API consisted of a single `compile` method:
+
     var ojc = require("ojc");
-    var options = { ... };
+    var options = { … };
     
     ojc.compile(options, function(err, results) {
     
     });
 
-Below is a list of supported properties for `options` and `results`.  While other properties are available (see `bin/ojc`), they are not yet official API.
+To allow for fast incremental compiles, oj 2.x adds a `Compiler` constructor:
 
-Properties for the `options` object:
+    var ojc = require("ojc");
+    var compiler = new ojc.Compiler();
+    
+    var options = { … };
+    
+    // Call doCompile() each time one of the files specified by options.files changes
+    function doCompile(callback) {
+        compiler.compile(options, function(err, results) {
+            callback(err, results);
+        });
+    }
 
-| Key                    | Type    | Description                                                      |
-|------------------------|---------|------------------------------------------------------------------|
-| files                  | Array   | Strings of paths to compile, or Objects of `file` type (see below)  |
-| state                  | Object  | Input compiler state, corresponds to contents of `--input-state` |
-| inline-const           | Boolean | inline @const identifiers                                        |
-| inline-enum            | Boolean | inline @enum identifiers                                         |
-| warn-this-in-methods   | Boolean | warn about usage of 'this' in oj methods                         |
-| warn-unknown-selectors | Boolean | warn about usage of unknown selectors                            |
-| warn-unknown-ivars     | Boolean | warn about unknown ivars                                         |
-| warn-unused-ivars      | Boolean | warn about unused ivars                                          |
+Below is a list of supported properties for `options` and `results`.  While other properties are available (see `bin/ojc`), they are not official API.
 
-Valid properties for each `file` object:
+Valid properties for the `options` object:
 
-| Key                    | Type    | Description                                                      |
-|------------------------|---------|------------------------------------------------------------------|
-| path                   | String  | Path of file                                                     |     
-| contents               | String  | Content of file                                                  |     
+Key                      | Type     | Description
+------------------------ | -------- | ---
+files                    | Array    | Strings of paths to compile, or Objects of `file` type (see below)
+prepend                  | String   | Content to prepend, not compiled or typechecked
+append                   | String   | Content to append, not compiled or typechecked
+state                    | Private  | Input compiler state, corresponds to contents of `--input-state`
+output-language          | String   | If 'none', disable source code output
+include-map              | Boolean  | If true, include 'map' key in results object
+include-state            | Boolean  | If true, include 'state' key in results object
+include-symbols          | Boolean  | If true, include 'symbols' key in results object
+source-map-file          | String   | Output source map file name
+source-map-root          | String   | Output source map root URL
+on-compile               | Function | Post-compile callback (see below)
+inline-const             | Boolean  | inline @const identifiers
+inline-enum              | Boolean  | inline @enum identifiers
+squeeze                  | Boolean  | If true, enable squeezer
+squeeze-start-index      | Number   | Start index for squeezer
+squeeze-end-index        | Number   | End index for squeezer
+check-types              | Boolean  | Enable type checker
+defs                     | Array    | Additional typechecker definition files (same format as `files`)
+typescript-lib           | String   | Alternate lib.d.ts file
+no-implicit-any          | Boolean  | If true, disallow implicit any
+strict-functions         | Boolean  | If true, enforce TypeScript-style functions
+strict-object-literals   | Boolean  | If true, enforce TypeScript object literals
+warn-debugger            | Boolean  | warn about use of 'debugger' statement
+warn-empty-array-element | Boolean  | warn about empty array element
+warn-global-no-type      | Boolean  | warn about missing type annotations on @globals
+warn-this-in-methods     | Boolean  | warn about usage of 'this' in oj methods
+warn-unknown-ivars       | Boolean  | warn about unknown ivars
+warn-unknown-selectors   | Boolean  | warn about usage of unknown selectors
+warn-unused-ivars        | Boolean  | warn about unused ivars
+
+Valid properties for each `file` or `defs` object:
+
+Key      | Type    | Description
+-------- | ------- | ---
+path     | String  | Path of file     
+contents | String  | Content of file                                                  |     
+time     | Number  | Modification time of the file (ms since 1970)                    |
 
 Properties for the `result` object:
 
-| Key                    | Type    | Description                                                      |
-|------------------------|---------|------------------------------------------------------------------|
-| code                   | String  | Compiled JavaScript source code                                  |     
-| state                  | Object  | Output compiler state                                            |     
+Key     | Type    | Description
+------- | ------- | ---
+code    | String  | Compiled JavaScript source code
+state   | Private | Output compiler state (if include-state is true).  See Compiling Projects below.
+map     | String  | Source map (if include-map is true)
+symbols | Object  | Symbol-to-readable-name map (if include-symbols is true).  For symbolicating stack traces.
+
+Note: `options.state` and `result.state` are private objects and the format/contents may change between releases.  Users are encouraged to use the new `Compiler#uses` API rather than `state`. (See below).
 
 ---
 ## <a name="compiler-projects"></a>Compiling Projects
@@ -763,20 +805,81 @@ In our usage, we have two output files: `core.js` and `webapp.js`.
 
 `webapp.js` is used exclusively by the client-side web app and contains HTML/CSS view and view-controller classes.  In certain cases, `webapp.js` needs to allocate classes directly from `core.js`.
 
-This is accomplished via the `--output-state` and `--input-state` compiler flags, or the `options.state`/`result.state` properties in the compiler API.  Since `webapp.js` depends on `core.js`, `core.js` is compiled first, and the The compiler state from 
+In previous versions of oj, this was accomplished via the `--output-state` and `--input-state` compiler flags, or the `options.state`/`result.state` properties in the compiler API.  The state output from `core.js` would be passed as the state input to `webapp.js`.
 
-1. All lower-level `.js` and `.oj` files are passed into the compiler.
+oj 2 introduces a new `Compiler` API with `Compiler#uses` and `Compiler#compile`.  This allows both incremental compiles, and allows for more efficient state sharing:
+
+    var ojc = require("ojc");
+    var coreCompiler   = new ojc.Compiler();
+    var webAppCompiler = new ojc.Compiler();
+    
+    var coreOptions   = { … };
+    var webAppOptions = { … };
+
+    // This tells webAppCompiler to always pull the last state from coreCompiler 
+    //
+    // It's your responsibility to watch files for changes and kick off the correct
+    // doXCompile() functions.
+    //
+    // If core.js includes the compiled result of foo.oj, a change to foo.oj 
+    // needs to call *both* doCoreCompile() and doWebAppCompile()
+    //
+    webAppCompiler.uses(coreCompiler);
+    
+    // These functions are called due to file modification events (fs.watch)
+    function doCoreCompile(callback) {
+        coreCompiler.compile(coreOptions, function(err, results) {
+            callback(err, results);
+        });
+    }
+        
+    function doWebAppCompile(callback) {
+        webAppCompiler.compile(webAppOptions, function(err, results) {
+            callback(err, results);
+        });
+    }    
+
+1. All lower-level `.js` and `.oj` files are passed into `coreCompiler` via `coreOptions`.
 2. The compiler products a `result` object. `result.code` is saved as `core.js`.
-3. All higher-level `.js` and `.oj` files, as well as core's `result.state`, are passed into the compiler.  
+3. All higher-level `.js` and `.oj` files are passed into `webAppCompiler`.  `webAppCompiler` pulls state from `coreCompiler` due to the `Compiler#uses` API.
 4. The `result.code` from this compilation pass is saved as `webapp.js`.
 5. Both `core.js` and `webapp.js` are included (in that order) in various HTML files via `<script>` elements.
+
+--
 
 We've found it best to run a separate typecheck pass in parallel with the `core.js`/`webapp.js` build.  This allows one CPU to be dedicated to typechecking while the other performs transpiling.  The typecheck pass uses the following options:
 
 * All `.js` and `.oj` files (From steps #1 and #3) are passed as `INPUT_FILES`.
 * Several `.d.ts` definitions (for jQuery, underscore, etc.) are specified with the `--prepend` option.
 * `--output-language` is set to `none`.
-* `--check-types` is enabled
+* `--check-types` is enabled 
+
+---
+
+
+
+
+`Compiler` provides a `uses` method, which allows
+
+    var ojc = require("ojc");
+    var coreCompiler = new ojc.Compiler();
+    var uiCompiler   = new ojc.Compiler();
+
+    var coreOptions = { … };
+    var uiOptions   = { … };
+
+    // Call doCoreCompile() each time one of the core files changes
+    function doCoreCompile(callback) {
+        coreCompiler.compile(options, function(err, results) {
+            callback(err, results);
+        });
+    }
+    
+    // Call doUICompile() each time one of the core files changes
+
+
+
+
 
 ---
 ## <a name="license"></a>License
