@@ -15,6 +15,7 @@ constructor(name, annotation)
 {
     this.name = name;
     this.annotation = annotation || null;
+    this.bridged = false;
 
     // Is this global in the current compilation unit?  *not archived*
     this.local = true;
@@ -23,8 +24,9 @@ constructor(name, annotation)
 
 loadState(state)
 {
-    this.name = state.name;
-    this.annotation = state.annotation || null;
+    this.name       =   state.name;
+    this.annotation =   state.annotation || null;
+    this.bridged    = !!state.bridged;
 }
 
 
@@ -32,6 +34,7 @@ saveState()
 {
     return {
         name: this.name,
+        bridged: this.bridged,
         annotation: this.annotation
     }
 }

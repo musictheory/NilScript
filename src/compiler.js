@@ -24,6 +24,63 @@ const OJModel         = require("./model").OJModel;
 const OJFile          = require("./model").OJFile;
 
 
+const sPublicOptions = [
+
+    // Input options
+    "files",                     // String or Object, files to compile
+    "prepend",                   // String or Array<String>, content/lines to prepend, not compiled
+    "append",                    // String or Array<String>, content/lines to append, not compiled
+    "state",                     // Object, state from previous compile
+
+    // Output options
+    "output-language",           // Output language ('none' or 'es5' public, 'typechecker' for debugging only)
+    "source-map-file",           // Output source map file name, includes 'map' in results object
+    "source-map-root",           // Output source map root URL
+    "include-state",             // Boolean, include 'state' key in results object
+    "include-symbols",           // Boolean, 'symbols' key in results object
+
+    "on-compile",                // Function, callback to call per-file compile
+    "inline-const",              // Boolean, inline @const identifiers
+    "inline-enum",               // Boolean, inline @enum identifiers
+
+    // Squeezer options
+    "squeeze",                   // Boolean, enable squeezer
+    "squeeze-start-index",       // Number, start index for squeezer
+    "squeeze-end-index",         // Number, end index for squeezer"
+
+    // Typechecker options
+    "check-types",               // Boolean, enable type checker
+    "defs",                      // String or Object, additional typechecker defs
+    "typescript-lib",            // String, specify alternate lib.d.ts file
+    "no-implicit-any",           // Boolean, disallow implicit any
+    "strict-functions",          // Boolean, enforce TypeScript-style functions
+    "strict-object-literals",    // Boolean, enforce TypeScript object literals
+
+    // Warnings
+    "warn-debugger",             // Boolean, warn about use of 'debugger' statement
+    "warn-empty-array-element",  // Boolean, warn about empty array element
+    "warn-global-no-type",       // Boolean, warn about missing type annotations on @globals
+    "warn-this-in-methods",      // Boolean, warn about usage of 'this' in oj methods
+    "warn-unknown-ivars",        // Boolean, warn about unknown ivars
+    "warn-unknown-selectors",    // Boolean, warn about usage of unknown selectors
+    "warn-unused-ivars",         // Boolean, warn about unused ivars
+
+    // Private / Development
+    "development",               // Boolean, dump debug info to /tmp
+    "allow-private-options",     // Boolean, allow use of sPrivateOptions (see below)
+];
+let sPublicOptionsMap = null;
+
+
+// Please file a GitHub issue if you wish to use these
+const sPrivateOptions = [
+    "additional-inlines",
+    "include-bridged",
+    "identity-function-names"
+];
+let sPrivateOptionsMap = null;
+
+
 module.exports = class Compiler {
 
 
@@ -35,6 +92,29 @@ constructor()
     this._model   = null;   
     this._parent  = null;
     this._checker = null;
+}
+
+
+_checkOptions(options)
+{
+    if (!sPublicOptionsMap) {
+        sPublicOptionsMap = { };
+        _.each(sPublicOptions, option => { sPublicOptionsMap[option] = true; });
+    }
+
+    if (!sPrivateOptionsMap) {
+        sPrivateOptionsMap = { };
+        _.each(sPrivateOptions, option => { sPrivateOptionsMap[option] = true; });
+    }
+
+    let allowPrivate = options["allow-private-options"];
+
+    _.each(options, (value, key) => {
+        if (                sPublicOptionsMap[ key]) return;
+        if (allowPrivate && sPrivateOptionsMap[key]) return;
+
+        throw new Error("Unknown oj option: " + key);
+    });
 }
 
 
@@ -93,7 +173,7 @@ _parseFiles(files, callback)
                 ojFile.needsTypecheck();
 
             } catch (inError) {
-                let message = inError.description;
+                let message = inError.description || inError.toString();
                 message = message.replace(/$.*Line:/, "");
 
                 let outError = new Error(message);
@@ -205,7 +285,6 @@ _generateJavaScript(files, model, options, onCompileCallback, callback)
     async.each(files, (ojFile, callback) => {
         if (!ojFile.generatorLines) {
             try {
-                console.log("Generating ", ojFile.path);
                 let generator = new Generator(ojFile, model, false, options);
                 let result    = generator.generate();
 
@@ -283,6 +362,9 @@ compile(options, callback)
     let previousDefs    = this._defs;
     let previousOptions = this._options;
     let previousModel   = this._model;
+
+    // Check options
+    this._checkOptions(options);
 
     // Extract options which don't affect parse/build/compile stages
     //
@@ -473,6 +555,14 @@ compile(options, callback)
 
         if (options["include-state"]) {
             result.state = model.saveState();
+        }
+
+        if (options["include-symbols"]) {
+            result.symbols = model.saveSymbols();
+        }
+
+        if (options["include-bridged"]) {
+            result.bridged = model.saveBridged();
         }
 
         callback(err, result);

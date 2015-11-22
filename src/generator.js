@@ -1060,6 +1060,9 @@ generate()
             modifier.select(node).remove();
             return Traverser.SkipNode;
 
+        } else if (type === Syntax.OJBridgedDeclaration) {
+            modifier.from(node).to(node.declaration).remove();
+
         } else if (type === Syntax.OJClassImplementation) {
             currentClass = model.classes[node.id.name];
 

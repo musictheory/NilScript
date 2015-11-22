@@ -201,7 +201,8 @@
         OJTypeAnnotation: 'OJTypeAnnotation',
         OJTypedefDeclaration: 'OJTypedefDeclaration',
         OJEachStatement: 'OJEachStatement',
-        OJGlobalDeclaration: 'OJGlobalDeclaration'
+        OJGlobalDeclaration: 'OJGlobalDeclaration',
+        OJBridgedDeclaration: 'OJBridgedDeclaration'
 //!oj: end changes
     };
 
@@ -414,7 +415,8 @@
                    (id === '@typedef')        ||
                    (id === '@each')           ||
                    (id === '@global')         ||
-                   (id === '@struct');
+                   (id === '@struct')         ||
+                   (id === '@bridged');
         }
         //!oj: end changes
 
@@ -2699,6 +2701,13 @@
             this.type = Syntax.OJGlobalDeclaration;
             this.declaration = declaration;
             this.declarators = declarators;
+            this.finish();
+            return this;
+        },
+
+        oj_finishBridgedDeclaration: function (declaration) {
+            this.type = Syntax.OJBridgedDeclaration;
+            this.declaration = declaration;
             this.finish();
             return this;
         },
@@ -5145,8 +5154,10 @@
                 return oj_parseClassDirective(node);
             case '@squeeze':
                 return oj_parseSqueezeDirective(node);
+            case '@bridged':
+                return oj_parseBridgedDeclaration(node);
             case '@const':
-                return oj_parseConstStatement(node);
+                return oj_parseConstDeclaration(node);
             case '@enum':
                 return oj_parseEnumStatement(node);
             case '@options':
@@ -6842,7 +6853,7 @@
         return node.oj_finishMessageSelector(name, arg, args);
     }
 
-    function oj_parseConstStatement(node) {
+    function oj_parseConstDeclaration(node) {
         var declarations;
 
         expectKeyword("@const");
@@ -7001,6 +7012,23 @@
 
         return node.oj_finishGlobalDeclaration(declaration, declarators);
     }
+
+    function oj_parseBridgedDeclaration(node) {
+        var node = new Node(), declaration;
+
+        expectKeyword('@bridged');
+
+        if (matchKeyword("@const")) {
+            declaration = oj_parseConstDeclaration(new Node());
+        } else if (matchKeyword("@enum")) {
+            declaration = oj_parseEnumStatement(new Node());
+        } else {
+            throwUnexpectedToken();
+        }
+
+        return node.oj_finishBridgedDeclaration(declaration);
+    }
+
 //!oj: end changes
 
     // Sync with *.json manifests.
