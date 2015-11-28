@@ -367,7 +367,8 @@ generate()
 
             if (receiver.name == "super") {
                 if (language === LanguageEcmascript5) {
-                    doCommonReplacement(currentClass.name + "." + OJSuperVariable + "." + (useProto ? "prototype." : "") + methodName + ".call(this" + (hasArguments ? "," : ""), ")");
+                    let classSymbol = symbolTyper.getSymbolForClassName(currentClass.name );
+                    doCommonReplacement(classSymbol + "." + OJSuperVariable + "." + (useProto ? "prototype." : "") + methodName + ".call(this" + (hasArguments ? "," : ""), ")");
 
                 } else if (language === LanguageTypechecker) {
                     let method = getCurrentMethodInModel();
@@ -474,18 +475,19 @@ generate()
 
     function handleOJClassImplementation(node)
     {
-        let superClass = (node.superClass && node.superClass.name);
-
-        let superSelector = "{ " + symbolTyper.getSymbolForClassName(superClass)   + ":1 }";
-        let clsSelector   = "{ " + symbolTyper.getSymbolForClassName(node.id.name) + ":1 }";
-
+        let superName     = (node.superClass && node.superClass.name);
+        let classSymbol   = symbolTyper.getSymbolForClassName(node.id.name);
+        let classSelector = "{" + classSymbol + ":1}";
+ 
         makeScope(node);
 
         let constructorCallSuper = "";
-        if (superClass) {
-            constructorCallSuper = getClassAsRuntimeVariable(superClass) + ".call(this);";
-        }
+        let superSelector = null;
 
+        if (superName) {
+            constructorCallSuper = getClassAsRuntimeVariable(superName) + ".call(this);";
+            superSelector        = "{" + symbolTyper.getSymbolForClassName(superName) + ":1}";
+        }
 
         let constructorSetIvars = generateIvarAssignments(currentClass);
 
@@ -494,28 +496,28 @@ generate()
 
         if (language === LanguageEcmascript5) {
             if (node.category) {
-                let categorySelector = "{ " + symbolTyper.getSymbolForClassName(node.category) + ":1 }";
+                let categorySelector = "{" + symbolTyper.getSymbolForClassName(node.category) + ":1}";
 
                 startText = OJRootVariable + "._registerCategory(" +
-                    clsSelector + ", ";
+                    classSelector + ", ";
 
             } else {
                 startText = OJRootVariable + "._registerClass(" +
-                    clsSelector + ", " +
-                    (superClass ? superSelector : "null") + ", ";
+                    classSelector + ", " +
+                    (superSelector || "null") + ", ";
             }
 
             startText = startText +
                
                 "function(" + OJClassMethodsVariable + ", " + OJInstanceMethodsVariable + ") { " +
-                "function " + node.id.name + "() { " +
+                "function " + classSymbol + "() { " +
                 constructorCallSuper +
                 constructorSetIvars  +
-                "this.constructor = " + node.id.name + ";" +
+                "this.constructor = " + classSymbol + ";" +
                 "this.$oj_id = ++" + OJRootVariable + "._id;" +
                 "}";
 
-            endText = "return " + node.id.name + ";});";
+            endText = "return " + classSymbol + ";});";
         
         } else if (language === LanguageTypechecker) {
             startText = "var $oj_unused = (function(" + OJClassMethodsVariable + " : any, " + OJInstanceMethodsVariable + " : any) { ";

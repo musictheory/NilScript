@@ -1,0 +1,16 @@
+var assert = require("assert");
+
+@implementation Issue82Class
+- (Class) shouldThrow { "use strict"; return Issue82Class; }
+@end
+
+var instance = [[Issue82Class alloc] init];
+var didThrow = false;
+
+try {
+    [instance shouldThrow];
+} catch (e) {
+    didThrow = (e instanceof ReferenceError);
+}
+
+didThrow;
