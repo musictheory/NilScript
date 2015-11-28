@@ -15,6 +15,7 @@ const esprima         = require("../ext/esprima");
 
 const Builder         = require("./builder");
 const Generator       = require("./generator");
+const Mapper          = require("./mapper");
 const Typechecker     = require("./typechecker/Typechecker");
 const Utils           = require("./utils");
 
@@ -34,10 +35,11 @@ const sPublicOptions = [
 
     // Output options
     "output-language",           // Output language ('none' or 'es5' public, 'typechecker' for debugging only)
-    "source-map-file",           // Output source map file name, includes 'map' in results object
-    "source-map-root",           // Output source map root URL
+    "include-map",               // Boolean, include 'map' key in results object
     "include-state",             // Boolean, include 'state' key in results object
     "include-symbols",           // Boolean, 'symbols' key in results object
+    "source-map-file",           // Output source map file name
+    "source-map-root",           // Output source map root URL
 
     "on-compile",                // Function, callback to call per-file compile
     "inline-const",              // Boolean, inline @const identifiers
@@ -360,6 +362,65 @@ _runTypechecker(typechecker, defs, files, model, options, callback)
 }
 
 
+_finish(files, options, callback)
+{
+    function getLines(arrayOrString) {
+        if (_.isArray(arrayOrString)) {
+            return _.flattenDeep(arrayOrString).join("\n").split("\n");
+        } else if (_.isString(arrayOrString)) {
+            return arrayOrString.split("\n");
+        } else {
+            return [ ];
+        }
+    }
+
+    try {
+        let start = process.hrtime();
+
+        let prependLines = getLines( options["prepend"] );
+        let appendLines  = getLines( options["append"] );
+
+        console.error("extract", Math.round(process.hrtime(start)[1] / (1000 * 1000)) + "ms");
+
+        let outputMap = null;
+        if (options["include-map"]) {
+            let mapper = new Mapper(options["source-map-file"], options["source-map-root"]);
+
+            mapper.add(null, prependLines);
+
+            _.each(files, ojFile => {
+                mapper.add(ojFile.path, ojFile.generatorLines);
+            });
+            
+            mapper.add(null, appendLines);
+
+            outputMap = mapper.getSourceMap();
+        }
+
+        let outputCode = null;
+        {
+            let linesArray = [ ];   // Array<Array<String>>
+
+            linesArray.push(prependLines);
+            _.each(files, ojFile => {
+                linesArray.push(ojFile.generatorLines);
+            });
+            linesArray.push(appendLines);
+
+            outputCode = Array.prototype.concat.apply([ ], linesArray).join("\n");
+        }
+
+        callback(null, {
+            code: outputCode,
+            map:  outputMap
+        });
+
+    } catch (err) {
+        callback(err);
+    }
+}
+
+
 parent(compiler)
 {
     this._parent = compiler;
@@ -384,18 +445,31 @@ compile(options, callback)
         return result;
     }
 
+    function extractOptions(keys) {
+        let extracted = { };
+        _.each(keys, key => { extracted[key] = extractOption(key); });
+        return extracted;
+    }
+
     function extractFunction(key) {
         let result = extractOption(key);
         return _.isFunction(result) ? result : null;
     }
 
-    let optionsFiles         = extractOption("files");
-    let optionsDefs          = extractOption("defs");
-    let optionsPrepend       = extractOption("prepend");
-    let optionsAppend        = extractOption("append");
-    let optionsSourceMapFile = extractOption("source-map-file");
-    let optionsSourceMapRoot = extractOption("source-map-root");
-    let optionsState         = extractOption("state");
+    let optionsFiles          = extractOption("files");
+    let optionsDefs           = extractOption("defs");
+    let optionsState          = extractOption("state");
+    let optionsIncludeState   = extractOption("include-state");
+    let optionsIncludeSymbols = extractOption("include-symbols");
+    let optionsIncludeBridged = extractOption("include-bridged");
+
+    let finishOptions = extractOptions([
+        "include-map",
+        "prepend",
+        "append",
+        "source-map-file",
+        "source-map-root"
+    ]);
 
     // Extract functions
     let onCompileCallback    = extractFunction("on-compile");
@@ -463,7 +537,7 @@ compile(options, callback)
 
         // Perform model diff
         callback => {
-            if (previousModel.hasGlobalChanges(model)) {
+            if (!previousModel || previousModel.hasGlobalChanges(model)) {
                 _.each(files, ojFile => {
                     ojFile.needsGenerate();
                     ojFile.needsTypecheck();
@@ -518,23 +592,21 @@ compile(options, callback)
             }
         },
 
-        // Concatenate output
+        // Concatenate and map output
         callback => {
-            let linesArray = [ ];
+            if (optionsOutputLanguage != "none") {
+                this._finish(files, finishOptions, (err, results) => {
+                    if (results) {
+                        outputCode = results.code;
+                        outputMap  = results.map;
+                    }
 
-            let prependLines = _.isArray(optionsPrepend) ? optionsPrepend : (optionsPrepend || "").split("\n");
-            let appendLines  = _.isArray(optionsAppend)  ? optionsAppend  : (optionsAppend  || "").split("\n");
-
-            linesArray.push(prependLines);
-            _.each(files, ojFile => {
-                linesArray.push(ojFile.generatorLines);
-            });
-            linesArray.push(appendLines);
-
-            outputCode = Array.prototype.concat.apply([ ], linesArray).join("\n");
-
-            callback();
-        }
+                    callback(err);
+                });
+            } else {
+                callback();
+            }
+        },
 
     ], err => {
         let errors = _.compact(_.map(files, ojFile => ojFile.error));
@@ -565,15 +637,15 @@ compile(options, callback)
             warnings: _.compact(_.flattenDeep(warnings))
         };
 
-        if (options["include-state"]) {
+        if (optionsIncludeState) {
             result.state = model.saveState();
         }
 
-        if (options["include-symbols"]) {
+        if (optionsIncludeSymbols) {
             result.symbols = model.saveSymbols();
         }
 
-        if (options["include-bridged"]) {
+        if (optionsIncludeBridged) {
             result.bridged = model.saveBridged();
         }
 
