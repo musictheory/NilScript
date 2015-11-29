@@ -915,11 +915,11 @@ In previous versions of oj, this was accomplished via the `--output-state` and `
 
 oj 2 introduces a new `Compiler` API with `Compiler#uses` and `Compiler#compile`.  This allows both incremental compiles, and allows for more efficient state sharing:
 
-    var ojc = require("ojc");
-    var coreCompiler   = new ojc.Compiler();
-    var webAppCompiler = new ojc.Compiler();
-    
 ```javascript
+var ojc = require("ojc");
+var coreCompiler   = new ojc.Compiler();
+var webAppCompiler = new ojc.Compiler();
+    
 var coreOptions   = { … };
 var webAppOptions = { … };
 
