@@ -794,6 +794,40 @@ state   | Private | Output compiler state (if `include-state` is true).  See Com
 map     | String  | Source map (if `include-map` is true)
 symbols | Object  | Symbol-to-readable-name map (if `include-symbols` is true).  For symbolicating stack traces.
 
+
+The `on-compile` key specifies a callback which is called each time the compiler generates JavaScript code for a file.  This allows you to run the generated JavaScript through a linter (such as [JSHint](http://jshint.com) or [ESLint](http://eslint.org)), or allows further transformations via [Babel](https://babeljs.io).
+
+    // ESLint example
+    ojOptions["on-compile"] = function(file, callback) {
+        if (!linter) linter = require("eslint").linter;
+    
+        // file.getContents() returns the generated source as a String
+        _.each(linter.verify(file.getContents(), linterOptions), function(warning) {
+            // file.addWarning(line, message) adds a warning at a specific line
+            file.addWarning(warning.line, warning.message);
+        });
+        
+        // linter#verify() is synchronous and doesn't produce errors, so just call callback()
+        callback();
+    };
+    
+    // Babel example
+    ojOptions["on-compile"] = function(file, callback) {
+        if (!babel) babel = require("babel-core");
+        
+        // retainLines must be true or oj's output source map will be useless
+        babelOptions.retainLines = true;
+        
+        var result = babel.transform(file.getContents(), babelOptions);
+        
+        // file.setContents() updates the generated source code with a string.
+        // This string must have a 1:1 line mapping to the original string
+        file.setContents(result.code);
+        
+        // Babel's transform API is synchronous
+        callback();
+    };
+
 Note: `options.state` and `result.state` are private objects and the format/contents will change between releases.  Users are encouraged to use the new `Compiler#uses` API rather than `state`. (See below).
 
 ---
