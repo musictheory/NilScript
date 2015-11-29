@@ -417,7 +417,7 @@ _finish(files, options, callback)
 }
 
 
-parent(compiler)
+uses(compiler)
 {
     this._parent = compiler;
 }
