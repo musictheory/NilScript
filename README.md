@@ -91,7 +91,7 @@ Additional [instance variables](#ivar) can be added by using a block after class
 
 ### <a name="class-compiler"></a>Behind the scenes (Class)
 
-Behind the scenes, the oj compiler changes the `@implementation`/`@end` block into a JavaScript function block.  Hence, private functions and variables may be declared inside of an `@implementation` without polluting the global namespace.
+Behind the scenes, the oj compiler changes the `@implementation`/`@end` block into a JavaScript function block which is invoked at runtime.  Private functions and variables may be declared inside of an `@implementation` without polluting the global namespace.
 
 ```
 @implementation TheClass
@@ -108,6 +108,10 @@ oj_private_function(…, function() {
     function sPrivate() { }
 });
 ```
+
+To prevent undefined behavior, variable declarations must be initialized to a literal or function expression (or left uninitialized).  
+
+Note: Only `@property`, `@synthesize`, `@dynamic`, instance variable declarations, method declarations, variable declarations, or function declarations may be used inside of an `@implementation` block.
 
 ### <a name="at-class"></a>Forward Declarations
 
