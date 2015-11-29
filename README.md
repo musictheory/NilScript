@@ -63,57 +63,69 @@ While Objective-C uses `@interface` to define a class interface and `@implementa
 
 The syntax to create an empty oj class looks like this:
 
-    @implementation TheClass
-    @end
+```
+@implementation TheClass
+@end
+```
 
 To inherit from a superclass, use a colon followed by the superclass name:
 
-    @implementation TheSubClass : TheSuperClass 
-    @end
+```
+@implementation TheSubClass : TheSuperClass 
+@end
+```
 
 Additional [instance variables](#ivar) can be added by using a block after class name (or superclass name):
 
-    @implementation TheClass {
-        String _myStringInstanceVariable;    
-    }
-    @end
+```
+@implementation TheClass {
+    String _myStringInstanceVariable;    
+}
+@end
 
-    @implementation TheSubClass : TheSuperClass {
-        String _myStringInstanceVariable;    
-    }
-    @end
+@implementation TheSubClass : TheSuperClass {
+    String _myStringInstanceVariable;    
+}
+@end
+```
 
 ### <a name="class-compiler"></a>Behind the scenes (Class)
 
 Behind the scenes, the oj compiler changes the `@implementation`/`@end` block into a JavaScript function block.  Hence, private functions and variables may be declared inside of an `@implementation` without polluting the global namespace.
 
-    @implementation TheClass
-    var sPrivateStaticVariable = "Private";
-    function sPrivate() { }
-    @end
+```
+@implementation TheClass
+var sPrivateStaticVariable = "Private";
+function sPrivate() { }
+@end
+```
 
 becomes equivalent to:
 
-    oj_private_function(…, function() {
-        var sPrivateStaticVariable = "Private";
-        function sPrivate() { }
-    });
+```
+oj_private_function(…, function() {
+    var sPrivateStaticVariable = "Private";
+    function sPrivate() { }
+});
+```
 
 ### <a name="at-class"></a>Forward Declarations
 
 In older versions of oj (0.x), the compiler would compile each file separately.  This led to situations where a [forward declaration](http://en.wikipedia.org/wiki/Forward_declaration) of a class was needed:
 
-    @class TheFirstClass;
+```
+@class TheFirstClass;
 
-    @implementation TheSecondClass
+@implementation TheSecondClass
     
-    - (void) foo {
-        // Without the forward declaration, oj 0.x didn't know if TheFirstClass
-        // was a JS identifier or an oj class.
-        [TheFirstClass doSomething];
-    }
+- (void) foo {
+    // Without the forward declaration, oj 0.x didn't know if TheFirstClass
+    // was a JS identifier or an oj class.
+    [TheFirstClass doSomething];
+}
 
-    @end
+@end
+```
 
 oj 1.x+ uses a multi-pass compiler which eliminates the need for forward declarations.  In general, the need to use `@class` indicates an underlying issue with the dependency tree, which will cause issues if you need to use `@const`/`@enum` inlining or the [squeezer](#squeeze).  For more information, read [Compiling Projects](#compiling-projects).  
 
@@ -125,31 +137,33 @@ Unlike Objective-C, all oj classes inherit from a private root base class.  Ther
 
 The root base class provides the following methods:
 
-    + (id) alloc
-    + (Class) class
-    + (Class) superclass
-    + (String) className
-    + (BOOL) isSubclassOfClass:(Class)cls
+```
++ (id) alloc
++ (Class) class
++ (Class) superclass
++ (String) className
++ (BOOL) isSubclassOfClass:(Class)cls
 
-    + (BOOL) instancesRespondToSelector:(SEL)aSelector
++ (BOOL) instancesRespondToSelector:(SEL)aSelector
 
-    - (id) init
-    - (id) copy
+- (id) init
+- (id) copy
 
-    - (Class) class
-    - (Class) superclass
-    - (String) className 
-    - (BOOL) isKindOfClass:(Class)cls
-    - (BOOL) isMemberOfClass:(Class)cls
+- (Class) class
+- (Class) superclass
+- (String) className 
+- (BOOL) isKindOfClass:(Class)cls
+- (BOOL) isMemberOfClass:(Class)cls
 
-    - (String) description 
+- (String) description 
 
-    - (BOOL) respondsToSelector:(SEL)aSelector
-    - (id) performSelector:(SEL)aSelector
-    - (id) performSelector:(SEL)aSelector withObject:(id)object
-    - (id) performSelector:(SEL)aSelector withObject:(id)object withObject:(id)object2
+- (BOOL) respondsToSelector:(SEL)aSelector
+- (id) performSelector:(SEL)aSelector
+- (id) performSelector:(SEL)aSelector withObject:(id)object
+- (id) performSelector:(SEL)aSelector withObject:(id)object withObject:(id)object2
 
-    - (BOOL) isEqual:(id)anotherObject
+- (BOOL) isEqual:(id)anotherObject
+```
 
 While oj 0.x supported `+load` and `+initialize`, this feature was removed in oj 1.x to optimize runtime performance.  Note: `+className` and `-className` are intended for debugging purposes only.  When `--squeeze` is passed into the compiler, class names will be obfuscated/shortened.
 
@@ -158,32 +172,35 @@ While oj 0.x supported `+load` and `+initialize`, this feature was removed in oj
 
 Methods are defined in an `@implementation` block and use standard Objective-C syntax:
 
-    @implementation TheClass
+```
+@implementation TheClass
     
-    - (String) doSomethingWithString:(String)string andNumber:(Number)number
-    {
-        return string + "-" + number;    
-    }
+- (String) doSomethingWithString:(String)string andNumber:(Number)number
+{
+    return string + "-" + number;    
+}
 
-    // Returns "Foo-5"
-    - (String) anotherMethod
-    {
-        return [self doSomethingWithString:"Foo" andNumber:5];
-    }
+// Returns "Foo-5"
+- (String) anotherMethod
+{
+    return [self doSomethingWithString:"Foo" andNumber:5];
+}
     
-    @end
+@end
+```
 
 Old-school bare method declarations may also be used:
 
-    @implementation TheClass
+```
+@implementation TheClass
     
-    - doSomethingWithString:string andNumber:number
-    {
-        return string + "-" + number;    
-    }
+- doSomethingWithString:string andNumber:number
+{
+    return string + "-" + number;    
+}
     
-    @end
-
+@end
+```
 
 ### <a name="method-falsy"></a>Falsy Messaging
 
@@ -191,9 +208,10 @@ Just as Objective-C supports messaging `nil`, oj supports the concept of "Falsy 
 
 Any message to a falsy JavaScript value (false / undefined / null / 0 / "" / NaN ) will return that value.  
 
-    var foo = null;
-    var result = [foo doSomething];  // result is null
-
+```
+var foo = null;
+var result = [foo doSomething];  // result is null
+```
 
 ### <a name="method-compiler"></a>Behind the Scenes (Methods)
 
@@ -201,17 +219,21 @@ Behind the scenes, oj methods are simply renamed JavaScript functions.  Each col
 
 Hence:
 
-    - (String) doSomethingWithString:(String)string andNumber:(Number)number
-    {
-        return string + "-" + number;    
-    }
+```
+- (String) doSomethingWithString:(String)string andNumber:(Number)number
+{
+    return string + "-" + number;    
+}
+```
 
 becomes the equivalent of:
 
-    TheClass.prototype.$oj_f_doSomethingWithString_andNumber_ = function(string, number)
-    {
-        return string + "-" + number;    
-    }
+```
+TheClass.prototype.$oj_f_doSomethingWithString_andNumber_ = function(string, number)
+{
+    return string + "-" + number;    
+}
+```
 
 Messages to an object are simply JavaScript function calls wrapped in a falsey check.  Hence:
 
@@ -240,71 +262,81 @@ In addition, oj allows storage for additional instance variables (ivars) to be d
 
 A class that uses a property, private ivar, and accesses them in a method may look like this:
 
-    @implementation TheClass {
-        Number _privateNumberIvar;
-    }
+```
+@implementation TheClass {
+    Number _privateNumberIvar;
+}
     
-    @property Number publicNumberProperty; // Generates publicNumberProperty ivar
-    
-    - (Number) addPublicAndPrivateNumbers
-    {
-        return _privateNumberIvar + _publicNumberIvar;
-    }
-    
-    @end
+@property Number publicNumberProperty; // Generates publicNumberProperty ivar
 
+- (Number) addPublicAndPrivateNumbers
+{
+    return _privateNumberIvar + _publicNumberIvar;
+}
+    
+@end
+```
 
 ### <a name="property-synthesis"></a>Synthesis 
 
 Properties are defined using the `@property` keyword in an `@implementation` block:
 
-    @implementation TheClass
-    @property String myStringProperty;
-    @end
+```
+@implementation TheClass
+@property String myStringProperty;
+@end
+```
 
 In the above example, the compiler will automatically synthesize a backing instance variable `_myStringProperty` for `myStringProperty`.  It will also create an accessor method pair: `-setMyStringProperty:` and `-myStringProperty`.
 
 If a different backing instance variable is desired, the `@synthesize` directive is used:
 
-    @implementation TheClass
-    @property String myStringProperty;
+```
+@implementation TheClass
+@property String myStringProperty;
     
-    // Maps myStringProperty property to m_myStringProperty instance variable
-    @synthesize myStringProperty=m_MyStringProperty;
-    @end
+// Maps myStringProperty property to m_myStringProperty instance variable
+@synthesize myStringProperty=m_MyStringProperty;
+@end
+```
 
 As in Objective-C, `@synthesize` without an `=` results in the same name being used for the backing instance variable:
 
-    @implementation TheClass
-    @property String myStringProperty;
+```
+@implementation TheClass
+@property String myStringProperty;
     
-    // Maps myStringProperty property to myStringProperty instance variable
-    @synthesize myStringProperty;
-    @end
+// Maps myStringProperty property to myStringProperty instance variable
+@synthesize myStringProperty;
+@end
+```
 
 The `@dynamic` directive suppresses the generation of both the backing instance variable and the setter/getter pair.
 
-    @implementation TheClass
-    @property String myStringProperty;
-    @dynamic myStringProperty; // No instance variable, getter, nor setter is synthesized
-    @end
-
+```
+@implementation TheClass
+@property String myStringProperty;
+@dynamic myStringProperty; // No instance variable, getter, nor setter is synthesized
+@end
+```
 
 In addition, multiple properties may be specified in `@synthesize` and `@dynamic`:
 
-    @synthesize prop1, prop2, prop3=m_prop3;
-    @dynamic dynamic1,dynamic2;
-
+```
+@synthesize prop1, prop2, prop3=m_prop3;
+@dynamic dynamic1,dynamic2;
+```
 
 ### <a name="property-using"></a>Using
 
 To access any instance variable, simply use its name.  No `this.` or `self.` prefix is needed:
 
-    - (void) logSheepCount
-    {
-        console.log(_numberOfSheep);
-    }
-
+```
+- (void) logSheepCount
+{
+    console.log(_numberOfSheep);
+}
+```
 
 ### <a name="property-attributes"></a>Property Attributes
 
@@ -345,50 +377,58 @@ The compiler currently uses a JavaScript property on the instance with the follo
 
 Hence, the following oj code:
 
-    @interface TheClass
+```
+@interface TheClass
 
-    @property (Number) counter;
+@property (Number) counter;
 
-    - (void) incrementCounter
-    {
-        _counter++;
-    }
+- (void) incrementCounter
+{
+    _counter++;
+}
     
-    @end
-    
+@end
+```
+
 would compile into:
-    
-    oj.makeClass(…, function(…) {
-    
-    … // Compiler generates -setCounter: and -counter here
 
-    ….incrementCounter = function() {
-        this.$oj_i_TheClass__counter++;
-    }
+```
+oj.makeClass(…, function(…) {
+    
+… // Compiler generates -setCounter: and -counter here
 
-    });
+….incrementCounter = function() {
+    this.$oj_i_TheClass__counter++;
+}
+
+});
+```
 
 ---
 ## <a name="callbacks"></a>Callbacks
 
 Javascript frequently requires `.bind(this)` on callbacks.  For example:
 
-    Counter.prototype.incrementAfterDelay = function(delay) {
-        setTimeout(function() {
-            this.count++;
-            this.updateDisplay();
-        }.bind(this), delay);       // Bind needed for 'this' to work
-    }
+```
+Counter.prototype.incrementAfterDelay = function(delay) {
+    setTimeout(function() {
+        this.count++;
+        this.updateDisplay();
+    }.bind(this), delay);       // Bind needed for 'this' to work
+}
+```
 
 oj handles the binding for you.  No additional code is needed to access ivars or `self`:
 
-    - (void) incrementAfterDelay:(Number)delay
-    {
-        setTimeout(function() {
-            _count++;
-            [self updateDisplay];
-        }, delay);
-    }
+```
+- (void) incrementAfterDelay:(Number)delay
+{
+    setTimeout(function() {
+        _count++;
+        [self updateDisplay];
+    }, delay);
+}
+```
 
 ---
 ## <a name="selector"></a>Selectors
@@ -437,29 +477,33 @@ becomes:
 
 oj supports C-style enumerations via the `@enum` keyword and constants via the `@const` keyword:
 
-    @enum OptionalEnumName {
-        zero = 0,
-        one,
-        two,
-        three = 3,
-        four
-    }
+```
+@enum OptionalEnumName {
+    zero = 0,
+    one,
+    two,
+    three = 3,
+    four
+}
 
-    @const TheConstant = "Hello World";
+@const TheConstant = "Hello World";
 
-    someFunction(zero, one, two, three, four, TheConstant);
+someFunction(zero, one, two, three, four, TheConstant);
+```
 
 By default, oj compiles the above to:
 
-    var zero  = 0;
-    var one   = 1;
-    var two   = 2;
-    var three = 3;
-    var four  = 4;
+```
+var zero  = 0;
+var one   = 1;
+var two   = 2;
+var three = 3;
+var four  = 4;
 
-    var TheConstant = "Hello World";
+var TheConstant = "Hello World";
 
-    someFunction(zero, one, two, three, four, TheConstant);
+someFunction(zero, one, two, three, four, TheConstant);
+```
 
 However, when the `--inline-enum` option is passed into the oj compiler, oj inlines enum values:
 
@@ -476,22 +520,26 @@ Note: Inlining causes the enum or const to be lifted to the global scope.  Inlin
 
 To mimic C APIs such as CoreGraphics, oj has the ability to declare global functions and variables with `@global`.
 
-    @global function CGRectMake(x : Number, y : Number, width : Number, height : Number) {
-        return { origin: { x, y }, size: { width, height } };
-    }
+```
+@global function CGRectMake(x : Number, y : Number, width : Number, height : Number) {
+    return { origin: { x, y }, size: { width, height } };
+}
     
-    @global CGRectZero = CGRectMake(0, 0, 0, 0);
-    @global CGRectNull = CGRectMake(Infinity, Infinity, 0, 0);
-    
+@global CGRectZero = CGRectMake(0, 0, 0, 0);
+@global CGRectNull = CGRectMake(Infinity, Infinity, 0, 0);
+```
+
 Which transforms into the equivalent of:
 
-    $oj_oj._g.CGRectMake = function(x, y, width, height) {
-        return { origin: { x, y }, size: { width, height } };
-    }
+```
+$oj_oj._g.CGRectMake = function(x, y, width, height) {
+    return { origin: { x, y }, size: { width, height } };
+}
     
-    $oj_oj._g.CGRectZero = $oj_oj._g.CGRectMake(0, 0, 0, 0);
-    $oj_oj._g.CGRectNull = $oj_oj._g.CGRectMake(Infinity, Infinity, 0, 0);
-    
+$oj_oj._g.CGRectZero = $oj_oj._g.CGRectMake(0, 0, 0, 0);
+$oj_oj._g.CGRectNull = $oj_oj._g.CGRectMake(Infinity, Infinity, 0, 0);
+```
+
 Unlike inlined enums and consts, globals are assigned at runtime.  Hence, in the above code example, care must be given that `CGRectMake()` isn't used for initializing `CGRectZero` until after the `@global function CGRectMake` line.  This limitation should not affect globals used from within oj methods (as the global will already be declared by that time).
 
 ---
@@ -499,22 +547,24 @@ Unlike inlined enums and consts, globals are assigned at runtime.  Hence, in the
 
 Like Objective-C, oj includes support for protocols.  Both `@required` and `@optional` methods may be specified:
 
-    @protocol ControllerDelegate
-    @required
-    - (void) controller:(Controller)controller didPerformAction:(String)action;
-    @optional
-    - (BOOL) controller:(Controller)controller shouldPerformAction:(String)action;
-    @end
+```
+@protocol ControllerDelegate
+@required
+- (void) controller:(Controller)controller didPerformAction:(String)action;
+@optional
+- (BOOL) controller:(Controller)controller shouldPerformAction:(String)action;
+@end
 
-    @implementation Controller
-    @property id<ControllerDelegate> delegate
-    …
-    @end
+@implementation Controller
+@property id<ControllerDelegate> delegate
+…
+@end
 
-    @implementation TheClass <ControllerDelegate, TabBarDelegate>
-    - (void) controller:(Controller)controller didPerformAction:(String)action { … }
-    …
-    @end
+@implementation TheClass <ControllerDelegate, TabBarDelegate>
+- (void) controller:(Controller)controller didPerformAction:(String)action { … }
+…
+@end
+```
 
 Unlike Objective-C, there is no `NSObject` protocol.  Instead, all protocols extend a built-in base protocol, which has identical methods to the [built-in base class](#base-class).
     
@@ -578,24 +628,28 @@ When the `--warn-unknown-selectors` option is specified, oj warns about usage of
 
 When the `--warn-unknown-ivars` option is specified, oj checks all JavaScript identifiers prefixed with an underscore.  A warning is produced when such an identifier is used in a method declaration and the current class lacks a corresponding `@property` or instance variable declaration.
 
-    @implementation TheClass
+```
+@implementation TheClass
     
-    @property String foo;
+@property String foo;
     
-    - (void) checkFoo {
-        if (_foi) {  // Warns, likely typo
-        }    
-    }
+- (void) checkFoo {
+    if (_foi) {  // Warns, likely typo
+    }    
+}
     
-    @end
+@end
+```
 
 When the `--warn-unused-ivars` option is specified, oj warns about ivar declarations that are unused within an implementation.
 
-    @implementation TheClass {
-        id _unused; // Warns
-    }
-    @end
-    
+```
+@implementation TheClass {
+    id _unused; // Warns
+}
+@end
+```
+
 When the `--warn-unknown-selectors` option is used, oj checks each selector against all known selectors.
 
 ---
@@ -631,27 +685,32 @@ oj uses an Objective-C inspired syntax for types, which is automatically transla
 
 Most oj method declarations will have type information and should behave exactly as their Objective-C counterparts.  However, JavaScript functions need to be annotated via type annotations, similar to ActionScript and TypeScript:
 
-    function getStringWithNumber(a : String, b : Number) : String {
-        return a + "-" + b;
-    }
+```
+function getStringWithNumber(a : String, b : Number) : String {
+    return a + "-" + b;
+}
+```
 
 TypeScript infers variables automatically; however, sometimes an explicit annotation is required.  This annotation is similar to TypeScript syntax:
 
-    function getNumber() { … }
+```
+function getNumber() { … }
 
-    function doSometingWithNumber() : void {
-        var num : Number = getNumber(); // Annotation needed since getNumber() is not annotated
-        …
-    }
-    
+function doSometingWithNumber() : void {
+    var num : Number = getNumber(); // Annotation needed since getNumber() is not annotated
+    …
+}
+```    
     
 oj also provides syntax for basic structures, similar to the syntax for instance variable declaration.  `@struct` does not affect generated code and only provides hints to the typechecker:
 
-    @struct CGPoint { Number x;        Number y;      }
-    @struct CGSize  { Number width;    Number height; }
-    @struct CGRect  { CGPoint origin;  CGSize size;   }
+```
+@struct CGPoint { Number x;        Number y;      }
+@struct CGSize  { Number width;    Number height; }
+@struct CGRect  { CGPoint origin;  CGSize size;   }
     
-    function makeSquare(length : Number) : CGRect  { … }
+function makeSquare(length : Number) : CGRect  { … }
+```
 
 Casting is performed via the `@cast` operator.  It may be used similar in syntax to C++'s `static_cast`:
 
@@ -667,23 +726,27 @@ Sometimes you may wish to disable type checking for a specific variable or expre
 
 For some projects and coding styles, the default TypeScript rules may be too strict.  For example, the following is an error in typescript:
 
-    function example() {
-        var o = { };
-        // This is an error in TypeScript, as 'foo' isn't a property on the '{}' type
-        o.foo = "Foo";
-    }
+```
+function example() {
+    var o = { };
+    // This is an error in TypeScript, as 'foo' isn't a property on the '{}' type
+    o.foo = "Foo";
+}
+```
 
 By default, oj mitigates this by casting all objects literals to the `any` type.  However, this may cause issues with function overloading when using [external type definitions](http://definitelytyped.org).  Hence, you can revert to the original TypeScript behavior via the `--strict-object-literals` option.
 
 TypeScript also requires function calls to strictly match the parameters of the definition.  The following is allowed in JavaScript but not in TypeScript:
 
-    function foo(a, b) {
-        …
-    }
+```
+function foo(a, b) {
+    …
+}
     
-    foo(1); // Error in TS: parameter b is required
-    foo(1, 2, 3); // Error in TS
-    
+foo(1); // Error in TS: parameter b is required
+foo(1, 2, 3); // Error in TS
+```
+
 By default, oj mitigates this by rewriting function definitions so that all parameters are optional.  You can revert to the original TypeScript behavior via the `--strict-functions` option.
 
 ---
@@ -718,28 +781,32 @@ In order to support compiler optimizations, the following method names are reser
 
 Traditionally, oj's API consisted of a single `compile` method:
 
-    var ojc = require("ojc");
-    var options = { … };
+```javascript
+var ojc = require("ojc");
+var options = { … };
     
-    ojc.compile(options, function(err, results) {
+ojc.compile(options, function(err, results) {
     
-    });
+});
+```
 
 To allow for fast incremental compiles, oj 2.x adds a `Compiler` constructor:
 
-    var ojc = require("ojc");
-    
-    // Important: create one compiler per output file.
-    var compiler = new ojc.Compiler();
-    
-    var options = { … };
-    
-    // Call doCompile() each time one of the files specified by options.files changes
-    function doCompile(callback) {
-        compiler.compile(options, function(err, results) {
-            callback(err, results);
-        });
-    }
+```javascript
+var ojc = require("ojc");
+
+// Important: create one compiler per output file.
+var compiler = new ojc.Compiler();
+
+var options = { … };
+
+// Call doCompile() each time one of the files specified by options.files changes
+function doCompile(callback) {
+    compiler.compile(options, function(err, results) {
+        callback(err, results);
+    });
+}
+```
 
 Below is a list of supported properties for `options` and `results`.  While other properties are available (see `bin/ojc`), they are not official API.
 
@@ -797,36 +864,39 @@ symbols | Object  | Symbol-to-readable-name map (if `include-symbols` is true). 
 
 The `on-compile` key specifies a callback which is called each time the compiler generates JavaScript code for a file.  This allows you to run the generated JavaScript through a linter (such as [JSHint](http://jshint.com) or [ESLint](http://eslint.org)), or allows further transformations via [Babel](https://babeljs.io).
 
-    // ESLint example
-    ojOptions["on-compile"] = function(file, callback) {
-        if (!linter) linter = require("eslint").linter;
+```javascript
+// ESLint example
+ojOptions["on-compile"] = function(file, callback) {
+    if (!linter) linter = require("eslint").linter;
+
+    // file.getContents() returns the generated source as a String
+    _.each(linter.verify(file.getContents(), linterOptions), function(warning) {
+        // file.addWarning(line, message) adds a warning at a specific line
+        file.addWarning(warning.line, warning.message);
+    });
     
-        // file.getContents() returns the generated source as a String
-        _.each(linter.verify(file.getContents(), linterOptions), function(warning) {
-            // file.addWarning(line, message) adds a warning at a specific line
-            file.addWarning(warning.line, warning.message);
-        });
-        
-        // linter#verify() is synchronous and doesn't produce errors, so just call callback()
-        callback();
-    };
+    // linter#verify() is synchronous and doesn't produce errors, so just call callback()
+    callback();
+};
+
+// Babel example
+ojOptions["on-compile"] = function(file, callback) {
+    if (!babel) babel = require("babel-core");
     
-    // Babel example
-    ojOptions["on-compile"] = function(file, callback) {
-        if (!babel) babel = require("babel-core");
-        
-        // retainLines must be true or oj's output source map will be useless
-        babelOptions.retainLines = true;
-        
-        var result = babel.transform(file.getContents(), babelOptions);
-        
-        // file.setContents() updates the generated source code with a string.
-        // This string must have a 1:1 line mapping to the original string
-        file.setContents(result.code);
-        
-        // Babel's transform API is synchronous
-        callback();
-    };
+    // retainLines must be true or oj's output source map will be useless
+    babelOptions.retainLines = true;
+    
+    var result = babel.transform(file.getContents(), babelOptions);
+    
+    // file.setContents() updates the generated source code with a string.
+    // This string must have a 1:1 line mapping to the original string
+    file.setContents(result.code);
+    
+    // Babel's transform API is synchronous
+    callback();
+};
+```
+
 
 Note: `options.state` and `result.state` are private objects and the format/contents will change between releases.  Users are encouraged to use the new `Compiler#uses` API rather than `state`. (See below).
 
@@ -849,31 +919,33 @@ oj 2 introduces a new `Compiler` API with `Compiler#uses` and `Compiler#compile`
     var coreCompiler   = new ojc.Compiler();
     var webAppCompiler = new ojc.Compiler();
     
-    var coreOptions   = { … };
-    var webAppOptions = { … };
+```javascript
+var coreOptions   = { … };
+var webAppOptions = { … };
 
-    // This tells webAppCompiler to always pull the last state from coreCompiler 
-    //
-    // It's your responsibility to watch files for changes and kick off the correct
-    // doXCompile() functions.
-    //
-    // If core.js includes the compiled result of foo.oj, a change to foo.oj 
-    // needs to call *both* doCoreCompile() and doWebAppCompile()
-    //
-    webAppCompiler.uses(coreCompiler);
+// This tells webAppCompiler to always pull the last state from coreCompiler 
+//
+// It's your responsibility to watch files for changes and kick off the correct
+// doXCompile() functions.
+//
+// If core.js includes the compiled result of foo.oj, a change to foo.oj 
+// needs to call *both* doCoreCompile() and doWebAppCompile()
+//
+webAppCompiler.uses(coreCompiler);
     
-    // These functions are called due to file modification events (fs.watch)
-    function doCoreCompile(callback) {
-        coreCompiler.compile(coreOptions, function(err, results) {
-            callback(err, results);
-        });
-    }
+// These functions are called due to file modification events (fs.watch)
+function doCoreCompile(callback) {
+    coreCompiler.compile(coreOptions, function(err, results) {
+        callback(err, results);
+    });
+}
         
-    function doWebAppCompile(callback) {
-        webAppCompiler.compile(webAppOptions, function(err, results) {
-            callback(err, results);
-        });
-    }    
+function doWebAppCompile(callback) {
+    webAppCompiler.compile(webAppOptions, function(err, results) {
+        callback(err, results);
+    });
+}    
+```
 
 1. All lower-level `.js` and `.oj` files are passed into `coreCompiler` via `coreOptions`.
 2. The compiler products a `result` object. `result.code` is saved as `core.js`.
