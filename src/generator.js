@@ -25,7 +25,6 @@ const OJRootVariable            = "$oj_oj";
 const OJClassMethodsVariable    = "$oj_s";
 const OJInstanceMethodsVariable = "$oj_m";
 const OJTemporaryVariablePrefix = "$oj_t_";
-const OJTemporaryReturnVariable = "$oj_r";
 const OJSuperVariable           = "$oj_super";
 
 const OJRootWithGlobalPrefix = OJRootVariable + "._g."
@@ -122,8 +121,7 @@ generate()
     let currentClass;
     let currentMethodNode;
 
-    let methodUsesSelfVar        = false;
-    let methodUsesTemporaryVar   = false;
+    let methodUsesSelfVar = false;
 
     let optionWarnDebugger           = options["warn-debugger"];
     let optionWarnEmptyArrayElement  = options["warn-empty-array-element"];
@@ -152,6 +150,15 @@ generate()
     function makeScope(node)
     {
         scope = { node: node, declarations: [ ], count: 0, previous: scope };
+    }
+
+    function canDeclareTemporaryVariable()
+    {
+        return scope && scope.node && (
+            scope.node.type === Syntax.FunctionDeclaration ||
+            scope.node.type === Syntax.FunctionExpression  ||
+            scope.node.type === Syntax.OJMethodDefinition
+        );
     }
 
     function makeTemporaryVariable(needsDeclaration)
@@ -429,9 +436,7 @@ generate()
                 return;
             }
 
-        } else if (currentMethodNode) {
-            methodUsesTemporaryVar   = true;
-
+        } else if (canDeclareTemporaryVariable()) {
             replaceMessageSelectors();
 
             if (language === LanguageTypechecker) {
@@ -445,13 +450,15 @@ generate()
                 modifier.from(lastSelector).to(node).replace("))");
 
             } else {
-                modifier.from(node).to(receiver).replace("((" + OJTemporaryReturnVariable + " = (");
+                let temporaryVariable = makeTemporaryVariable(true);
+
+                modifier.from(node).to(receiver).replace("((" + temporaryVariable + " = (");
 
                 if (receiver.type == Syntax.Identifier && model.classes[receiver.name]) {
                     modifier.select(receiver).replace(getClassAsRuntimeVariable(receiver.name));
                 }
 
-                modifier.from(receiver).to(firstSelector).replace(")) && " + OJTemporaryReturnVariable + "." + methodName + "(");
+                modifier.from(receiver).to(firstSelector).replace(")) && " + temporaryVariable + "." + methodName + "(");
                 modifier.from(lastSelector).to(node).replace("))");
             }
 
@@ -479,6 +486,34 @@ generate()
         let classSymbol   = symbolTyper.getSymbolForClassName(node.id.name);
         let classSelector = "{" + classSymbol + ":1}";
  
+        // Only allow whitelisted children inside of an @implementation
+        _.each(node.body.body, child => {
+            let type = child.type;
+            
+            if (type !== Syntax.EmptyStatement        &&
+                type !== Syntax.FunctionDeclaration   &&
+                type !== Syntax.VariableDeclaration   &&
+                type !== Syntax.OJMethodDefinition    &&
+                type !== Syntax.OJPropertyDirective   &&
+                type !== Syntax.OJDynamicDirective    &&
+                type !== Syntax.OJSynthesizeDirective)
+            {
+                Utils.throwError(OJError.ParseError, 'Unexpected @implementation child.', child);
+            }
+
+            if (type === Syntax.VariableDeclaration) {
+                _.each(child.declarations, declarator => {
+                    if (declarator.init) {
+                        if (declarator.init.type !== Syntax.Literal &&
+                            declarator.init.type !== Syntax.FunctionExpression)
+                        {
+                            Utils.throwError(OJError.ParseError, 'Variable declaration must be initialized to a constant.', declarator.init);
+                        }
+                    }
+                });
+            }
+        });
+
         makeScope(node);
 
         let constructorCallSuper = "";
@@ -572,30 +607,6 @@ generate()
         }
 
         modifier.from(node).to(node.body).replace(definition);
-
-        if (methodUsesSelfVar || methodUsesTemporaryVar) {
-            let toInsert = "";
-
-            let varParts = [ ];
-
-            if (methodUsesSelfVar && (language !== LanguageTypechecker)) varParts.push("self = this");
-            if (methodUsesTemporaryVar) {
-                if (language === LanguageEcmascript5) {
-                    varParts.push(OJTemporaryReturnVariable);
-                } else if (language === LanguageTypechecker) {
-                    varParts.push(OJTemporaryReturnVariable + " : " + symbolTyper.toTypecheckerType(node.returnType.value));
-                }
-            }
-
-            if (varParts.length) {
-                toInsert += "var " + varParts.join(",") + ";";
-            }
-
-            if (toInsert.length && node.body.body.length) {
-                modifier.before(node.body.body[0]).insert(toInsert);
-            }
-        }
-
         modifier.from(node.body).to(node).remove();
     }
 
@@ -1020,6 +1031,27 @@ generate()
         }
     }
 
+    function finishScope(scope, needsSelf)
+    {
+        let node = scope.node;
+        let varParts = [ ];
+        let toInsert = "";
+
+        if (needsSelf && (language !== LanguageTypechecker)) varParts.push("self = this");
+
+        _.each(scope.declarations, declaration => {
+            varParts.push(declaration);
+        });
+
+        if (varParts.length) {
+            toInsert += "var " + varParts.join(",") + ";";
+        }
+
+        if (toInsert.length && scope.node.body.body.length) {
+            modifier.before(scope.node.body.body[0]).insert(toInsert);
+        }
+    }
+
     function checkThis(thisNode, path)
     {
         let inFunction = false;
@@ -1075,9 +1107,10 @@ generate()
             handleOJClassImplementation(node);
 
         } else if (type === Syntax.OJMethodDefinition) {
-            currentMethodNode        = node;
-            methodUsesSelfVar        = false;
-            methodUsesTemporaryVar   = false;
+            currentMethodNode = node;
+            methodUsesSelfVar = false;
+
+            handleMethodDefinition(node);
 
         } else if (type === Syntax.OJMessageExpression) {
             handleOJMessageExpression(node);
@@ -1176,8 +1209,11 @@ generate()
             }
 
         } else if (type === Syntax.OJMethodDefinition) {
-            handleMethodDefinition(node);
+            finishScope(scope, methodUsesSelfVar);
             currentMethodNode = null;
+
+        } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression) {
+            finishScope(scope);
         }
 
         if (scope.node === node) {
