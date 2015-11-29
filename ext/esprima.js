@@ -186,7 +186,7 @@
         OJPropertyAttribute: 'OJPropertyAttribute',
         OJSynthesizeDirective: 'OJSynthesizeDirective',
         OJClassDirective: 'OJClassDirective',
-        OJSqueezeDirective    : 'OJSqueezeDirective',
+        OJSqueezeDirective: 'OJSqueezeDirective',
         OJSynthesizePair: 'OJSynthesizePair',
         OJDynamicDirective: 'OJDynamicDirective',
         OJSelectorDirective: 'OJSelectorDirective',

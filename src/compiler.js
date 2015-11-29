@@ -375,12 +375,8 @@ _finish(files, options, callback)
     }
 
     try {
-        let start = process.hrtime();
-
         let prependLines = getLines( options["prepend"] );
         let appendLines  = getLines( options["append"] );
-
-        console.error("extract", Math.round(process.hrtime(start)[1] / (1000 * 1000)) + "ms");
 
         let outputMap = null;
         if (options["include-map"]) {

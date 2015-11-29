@@ -40,7 +40,8 @@ updateWithContentsAndTime(contents, time)
     if (time > this.time) {
         if (contents != this.contents) {
             this.contents = contents;
-            this.time = time;
+            this.time  = time;
+            this.error = null;
 
             // A change in contents invalidates everything
             this.needsAll();
