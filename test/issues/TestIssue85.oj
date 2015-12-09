@@ -1,0 +1,4 @@
+@implementation Foo 
+@end
+
+true;

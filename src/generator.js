@@ -557,10 +557,15 @@ generate()
         } else if (language === LanguageTypechecker) {
             startText = "var $oj_unused = (function(" + OJClassMethodsVariable + " : any, " + OJInstanceMethodsVariable + " : any) { ";
             endText = "});";
-        } 
+        }
 
-        modifier.from(node).to(node.ivarDeclarations || node.body).replace(startText);
-        modifier.from(node.body).to(node).replace(endText);
+        if (!node.ivarDeclarations && !node.body.body.length) {
+            modifier.select(node).replace(startText + endText);
+
+        } else {
+            modifier.from(node).to(node.ivarDeclarations || node.body).replace(startText);
+            modifier.from(node.body).to(node).replace(endText);
+        }
     }
 
     function handleMethodDefinition(node)
