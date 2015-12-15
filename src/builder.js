@@ -236,7 +236,11 @@ build()
         }
 
         let property = new Model.OJProperty(name, type, writable, getter, setter, null);
-        currentClass.addProperty(property);
+        if (currentClass) {
+            currentClass.addProperty(property);
+        } else if (currentProtocol) {
+            currentProtocol.addProperty(property);
+        }
     }        
 
     function handleOJSynthesizeDirective(node) {
