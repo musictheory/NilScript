@@ -6603,30 +6603,33 @@
 
         while (index < length) {
             token = lookahead;
-
-            if (matchKeyword('@required')) {
-                lex();
-                optional = false;
-            }
-
-            if (matchKeyword('@optional')) {
-                lex();
-                optional = true;
-            }
+            sourceElement = null;
 
             if (matchKeyword('@end')) {
-                break; 
+                break;
+
+            } else if (matchKeyword('@required')) {
+                lex();
+                optional = false;
+
+            } else if (matchKeyword('@optional')) {
+                lex();
+                optional = true;
+
+            } else if (matchKeyword('@property')) {
+                sourceElement = oj_parsePropertyDirective();
+
             } else if (match('-') || match('+')) {
                 sourceElement = oj_parseMethodDeclaration();
+
+            } else {
+                throwUnexpectedToken(token);
             }
 
-            if (typeof sourceElement === 'undefined') {
-                break;
+            if (sourceElement) {
+                if (optional) sourceElement.optional = optional;
+                sourceElements.push(sourceElement);
             }
-
-            if (optional) sourceElement.optional = optional;
-
-            sourceElements.push(sourceElement);
         }
 
         return node.finishBlockStatement(sourceElements);

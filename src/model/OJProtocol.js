@@ -7,9 +7,11 @@
 
 "use strict";
 
-const OJError     = require("../errors").OJError;
-const Utils       = require("../utils");
-const _           = require("lodash");
+const _          = require("lodash");
+const OJError    = require("../errors").OJError;
+const Utils      = require("../utils");
+const OJProperty = require("./OJProperty");
+const OJMethod   = require("./OJMethod");
 
 
 module.exports = class OJProtocol {
@@ -22,6 +24,7 @@ constructor(name, protocolNames)
 
     this._classMethodMap    = { };
     this._instanceMethodMap = { };
+    this._propertyMap       = { };
 
     // Clone of the AST node's loc property.  *not archived*
     this.location = null;
@@ -33,8 +36,9 @@ constructor(name, protocolNames)
 
 loadState(state)
 {
-    var classMethodMap    =  this._classMethodMap;
-    var instanceMethodMap =  this._instanceMethodMap;
+    var classMethodMap    = this._classMethodMap;
+    var instanceMethodMap = this._instanceMethodMap;
+    var propertyMap       = this._propertyMap;
 
     this.name = state.name;
     this.protocolNames = state.protocolNames || [ ];
@@ -46,37 +50,73 @@ loadState(state)
     _.each(state.instanceMethods, function(m) {
         instanceMethodMap[m.name] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.optional);
     });
+
+    _.each(state.properties, function(p) {
+        propertyMap[p.name] = new OJProperty(p.name, p.type, p.writable, p.getter, p.setter, p.ivar, p.optional);
+    });
 }
 
 
-addMethod(method)
+addMethod(ojMethod)
 {
-    var selectorName = method.selectorName;
-    var map = (method.selectorType == "+") ? this._classMethodMap : this._instanceMethodMap;
+    var selectorName = ojMethod.selectorName;
+    var map = (ojMethod.selectorType == "+") ? this._classMethodMap : this._instanceMethodMap;
 
     if (map[selectorName]) {
         Utils.throwError(OJError.DuplicateMethodDefinition, "Duplicate declaration of method '" + selectorName + "'");
     }
 
-    map[selectorName] = method;
+    map[selectorName] = ojMethod;
+}
+
+
+addProperty(ojProperty)
+{
+    var name = ojProperty.name;
+
+    if (this._propertyMap[name]) {
+        Utils.throwError(OJError.DuplicatePropertyDefinition, "Property " + name + " has previous declaration");
+    }
+
+    this._propertyMap[name] = ojProperty;
 }
 
 
 saveState()
 {
     return {
-        name:                    this.name,
-        optionalClassMethods:    _.values(this._optionalClassMethodMap),
-        optionalInstanceMethods: _.values(this._optionalInstanceMethodMap),
-        requiredClassMethods:    _.values(this._requiredClassMethodMap),
-        requiredInstanceMethods: _.values(this._requiredInstanceMethodMap)
+        name: this.name,
+        classMethods:    _.values(this._classMethodMap),
+        instanceMethods: _.values(this._instanceMethodMap),
+        properties:      _.values(this._properties)
     }
 }
 
 
 getAllMethods()
 {
-    return _.values(this._classMethodMap).concat(_.values(this._instanceMethodMap));
+    var results = _.values(this._classMethodMap).concat(_.values(this._instanceMethodMap));
+
+    _.each(this._propertyMap, ojProperty => {
+        let getter   = ojProperty.getter;
+        let setter   = ojProperty.setter;
+        let type     = ojProperty.type;
+        let optional = ojProperty.optional;
+
+        if (ojProperty.writable && setter) {
+            if (!this._instanceMethodMap[setter]) {
+                results.push(new OJMethod(setter, "-", "void", [ type ], optional));
+            }
+        }
+
+        if (getter) {
+            if (!this._instanceMethodMap[getter]) {
+                results.push(new OJMethod(getter, "-", type, [ ], optional));
+            }
+        }
+    });
+
+    return results;
 }
 
 

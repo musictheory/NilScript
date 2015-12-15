@@ -1,0 +1,5 @@
+@protocol Foo
+- (void) method;
+@property id foo;
+@end
+

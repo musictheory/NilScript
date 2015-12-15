@@ -65,7 +65,7 @@ loadState(state)
     });
 
     _.each(state.properties, function(p) {
-        propertyMap[p.name] = new OJProperty(p.name, p.type, p.writable, p.getter, p.setter, p.ivar);
+        propertyMap[p.name] = new OJProperty(p.name, p.type, p.writable, p.getter, p.setter, p.ivar, false);
     });
 
     _.each(state.classMethods, function(m) {
