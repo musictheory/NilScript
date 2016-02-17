@@ -67,13 +67,19 @@
 @end
 
 
+@implementation TestIssue96
++ (void) foo:(id)x { }
++ (void) classMethod { [self foo:self]; }
+- (void) instanceMethod { [[self class] foo:self]; }
+@end
+
 
 (function() {
 @global function TakesNumber(x : Number) : void { }
+@global function TakesId(x : id) : void { }
 @global GlobalString : String = "";
 }());
 
 TakesNumber(GlobalString); //@typecheck 2345,String,Number
-
 
 true;
