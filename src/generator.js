@@ -910,7 +910,7 @@ generate()
 
         initRight += i + " = 0, " + length + " = (" + array + " ? " + array + ".length : 0)";
 
-        let test      = "(" + i + " < " + length + ") && (" + object + " = " + array + "[" + i + "])";
+        let test      = i + " < " + length;
         let increment = i + "++";
 
         if (language === LanguageTypechecker) {

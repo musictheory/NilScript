@@ -1,0 +1,13 @@
+require("assert");
+
+var sum = 0;
+@each (var i in [ 1, 2, 3, 0, 4, 5, 6 ]) {
+    sum += i;
+}
+
+@each (var i in [ ]) { }
+
+
+assert.equal(sum, 21);
+
+true;
