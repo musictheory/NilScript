@@ -781,7 +781,7 @@ generate()
         let name = symbolTyper.getSymbolForSelectorName(node.name);
 
         if (knownSelectors && !knownSelectors[node.name]) {
-            warnings.push(Utils.makeError(OJWarning.UnknownSelector, "Use of unknown selector '" + node.selectorName + "'", node));
+            warnings.push(Utils.makeError(OJWarning.UnknownSelector, "Use of unknown selector '" + node.name + "'", node));
         }
 
         modifier.select(node).replace("{ " + name + ": 1 }");
@@ -840,13 +840,15 @@ generate()
     function handleOJCastExpression(node)
     {
         let before = "(";
+        let after  = ")";
 
         if (language == LanguageTypechecker) {
-            before = "<" + symbolTyper.toTypecheckerType(node.id.name) + ">(";
+            before = "<" + symbolTyper.toTypecheckerType(node.id.name) + ">(<any>(";
+            after  = "))";
         }
 
         modifier.from(node).to(node.argument).replace(before);
-        modifier.from(node.argument).to(node).replace(")");
+        modifier.from(node.argument).to(node).replace(after);
     }
 
     function handleOJAnyExpression(node)
@@ -922,6 +924,10 @@ generate()
             modifier.from(node.right).to(node.body).replace(initRight + "; " + test + "; " + increment + ") ");
         } else {
             modifier.from(node).to(node.body).replace("for (" + initLeft + initRight + "; " + test + "; " + increment + ") ");
+        }
+
+        if (node.body.body.length) {
+            modifier.from(node.body).to(node.body.body[0]).insert("{" + object + " = " + array + "[" + i + "];");
         }
     }
 

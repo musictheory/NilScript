@@ -3,3 +3,4 @@
 @property id foo;
 @end
 
+true;
