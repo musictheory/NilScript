@@ -309,8 +309,8 @@ getGlobalDefinitions()
     classSymbols .unshift(TypecheckerSymbols.Combined);
     staticSymbols.unshift(TypecheckerSymbols.StaticCombined)
 
-    lines.push("declare type " + TypecheckerSymbols.IdIntersection + " = " + classSymbols.join("&") + ";");
-    lines.push("declare type " + TypecheckerSymbols.IdUnion        + " = " + classSymbols.join("|") + ";");
+    lines.push("declare type " + TypecheckerSymbols.IdIntersection + " = " + classSymbols.join("&") + staticSymbols.join("&") + ";");
+    lines.push("declare type " + TypecheckerSymbols.IdUnion        + " = " + classSymbols.join("|") + staticSymbols.join("|") + ";");
 
     return lines.join("\n");
 }

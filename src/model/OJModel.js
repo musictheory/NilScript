@@ -353,6 +353,7 @@ getAggregateClass()
 
     _.each(this.classes, function(ojClass) {
         extractMethodsIntoMap(ojClass.getClassMethods(),    classMap);
+        extractMethodsIntoMap(ojClass.getClassMethods(),    instanceMap);   // 'id' should also cover 'Class'
         extractMethodsIntoMap(ojClass.getInstanceMethods(), instanceMap);
     });
 
