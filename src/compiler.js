@@ -92,7 +92,7 @@ constructor()
     this._options = null;
     this._defs    = null;
     this._model   = null;   
-    this._parent  = null;
+    this._parents = null;
     this._checker = null;
 }
 
@@ -419,7 +419,8 @@ _finish(files, options, callback)
 
 uses(compiler)
 {
-    this._parent = compiler;
+    if (!this._parents) this._parents = [ ];
+    this._parents.push(compiler);
 }
 
 
@@ -495,8 +496,13 @@ compile(options, callback)
     }
 
     let model = new OJModel();
-    if (this._parent && this._parent._model) {
-        model.loadState(this._parent._model.saveState());
+    if (this._parents) {
+        _.each(this._parents, parent => {
+            if (parent._model) {
+                model.loadState(parent._model.saveState());
+            }
+        });
+
     } else if (optionsState) {
         model.loadState(optionsState);
     } 

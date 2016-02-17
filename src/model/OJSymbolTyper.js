@@ -408,7 +408,7 @@ getSymbolicatedString(inString)
 {
     var fromSqueezedMap = this._fromSqueezedMap;
 
-    return inString.replace(/\$oj[_$][A-Za-z_$]+/g, function(symbol) {
+    return inString.replace(/\$oj[_$][A-Za-z0-9_$]+/g, function(symbol) {
         if (symbol.indexOf("$oj$") === 0) {
             return fromSqueezedMap[symbol];
 
