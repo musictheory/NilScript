@@ -6513,7 +6513,7 @@
         var id, body, previousStrict, ivarDeclarations = null, superClass = null, category = null, extension = false, protocolList = null, oldLabelSet;
 
         if (state.oj_inImplementation) {
-            throwError(lookahead, Messages.OJCannotNestImplementations);
+            throwError(Messages.OJCannotNestImplementations);
         }
 
         state.oj_inImplementation = true;
@@ -6639,7 +6639,7 @@
         var id, body, previousStrict, oldLabelSet, protocolList = null, node = new Node();
 
         if (state.oj_inImplementation) {
-            throwError(lookahead, Messages.OJCannotNestImplementations);
+            throwError(Messages.OJCannotNestImplementations);
         }
 
         state.oj_inImplementation = true;
