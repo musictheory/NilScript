@@ -399,3 +399,18 @@ function foo() {
 
 var arr = [,,,,];  //@warning OJUseOfEmptyArrayElementWarning
 
+
+// --------------------------------------------------------------------
+// @name Missing Method Name (Protocol)
+
+@protocol MissingMethodName
+- (String); //@error OJParseError
+@end
+
+// --------------------------------------------------------------------
+// @name Missing Method Name (Implementation)
+
+@implementation MissingMethodName
+- (String) { return ""; } //@error OJParseError
+@end
+

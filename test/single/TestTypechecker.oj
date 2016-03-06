@@ -33,7 +33,7 @@
 - (Foo) returnsBarInsteadOfFoo3   { return [[[[[Bar alloc] init] class] alloc] init]; }  //@typecheck 2322,Bar,Foo
 - (Foo) returnsBarInsteadOfFoo4   { return [[Bar alloc] initWithString:""];           }  //@typecheck 2322,Bar,Foo
 
-- (Object<Foo>) {
+- (Object<Foo>) returnsFooMap {
     var a = [ ];
     return a;       //@typecheck 2322,Array,Object<Foo>
 }
