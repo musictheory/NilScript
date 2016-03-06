@@ -6392,6 +6392,10 @@
             methodSelectors.push(methodSelector);
         }
 
+        if (!selectorName) {
+            throwUnexpectedToken(lookahead);
+        }
+
         var previousStrict, body;
         previousStrict = strict;
         body = parseFunctionSourceElements();
@@ -6423,6 +6427,10 @@
             }
 
             methodSelectors.push(methodSelector);
+        }
+
+        if (!selectorName) {
+            throwUnexpectedToken(lookahead);
         }
 
         if (match(';')) {
