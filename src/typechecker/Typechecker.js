@@ -76,7 +76,9 @@ check(model, defs, files, callback)
     let toCheck       = [ ];
 
     let tsOptions = {
-        noImplicitAny: !!options["no-implicit-any"]
+        noImplicitAny:        !!options["no-implicit-any"],
+        noImplicitReturns:    !!options["no-implicit-returns"],
+        allowUnreachableCode:  !options["no-unreachable-code"]
     };
 
     const defsSuffix      = "defs.d.ts";

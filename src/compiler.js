@@ -55,6 +55,9 @@ const sPublicOptions = [
     "defs",                      // String or Object, additional typechecker defs
     "typescript-lib",            // String, specify alternate lib.d.ts file
     "no-implicit-any",           // Boolean, disallow implicit any
+    "no-implicit-returns",       // Boolean, disallow implicit returns
+    "no-unreachable-code",       // Boolean, inverts tsc's "--allowUnreachableCode" option
+    
     "strict-functions",          // Boolean, enforce TypeScript-style functions
     "strict-object-literals",    // Boolean, enforce TypeScript object literals
 
