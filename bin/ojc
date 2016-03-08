@@ -37,6 +37,8 @@ let opt = getopt.create([
     [ "",  "typescript-lib=FILE",       "type checker: specify alternate lib.d.ts file"    ],
     [ "",  "def=FILE+",                 "type checker: specify additional definition file" ],
     [ "",  "no-implicit-any",           "type checker: disallow implicit any"              ],
+    [ "",  "no-implicit-returns",       "type checker: warn about implicit returns"        ],
+    [ "",  "no-unreachable-code",       "type checker: warn about unreachable code"        ],
     [ "",  "strict-functions",          "type checker: enforce TypeScript-style functions" ],
     [ "",  "strict-object-literals",    "type checker: enforce TypeScript object literals" ],
 
