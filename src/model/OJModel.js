@@ -416,6 +416,11 @@ addEnum(ojEnum)
 
     if (name) {
         this.aliasType("Number", ojEnum.name);
+
+        if (this.enums[name]) {
+            Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of enum '" + name + "'");
+        }
+
     } else {
         name = "$OJAnonymousEnum" + _.size(this.enums);
 

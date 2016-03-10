@@ -289,6 +289,14 @@ function test() {
 
 @end
 
+
+
+// --------------------------------------------------------------------
+// @name Duplicate Enum
+
+@enum Foo { Foo1, Foo2 }
+@enum Foo { Bar1, Bar2 } //@error OJDuplicateDeclarationError
+
 // --------------------------------------------------------------------
 // @name Circular Class 1
 // @error-no-line OJCircularClassHierarchyError
