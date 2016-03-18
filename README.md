@@ -95,7 +95,7 @@ Behind the scenes, the oj compiler changes the `@implementation`/`@end` block in
 
 ```
 @implementation TheClass
-var sPrivateStaticVariable = "Private";
+let sPrivateStaticVariable = "Private";
 function sPrivate() { }
 @end
 ```
@@ -104,7 +104,7 @@ becomes equivalent to:
 
 ```
 oj_private_function(…, function() {
-    var sPrivateStaticVariable = "Private";
+    let sPrivateStaticVariable = "Private";
     function sPrivate() { }
 });
 ```
@@ -213,8 +213,8 @@ Just as Objective-C supports messaging `nil`, oj supports the concept of "Falsy 
 Any message to a falsy JavaScript value (false / undefined / null / 0 / "" / NaN ) will return that value.  
 
 ```
-var foo = null;
-var result = [foo doSomething];  // result is null
+let foo = null;
+let result = [foo doSomething];  // result is null
 ```
 
 ### <a name="method-compiler"></a>Behind the Scenes (Methods)
@@ -241,11 +241,11 @@ TheClass.prototype.$oj_f_doSomethingWithString_andNumber_ = function(string, num
 
 Messages to an object are simply JavaScript function calls wrapped in a falsey check.  Hence:
 
-     var result = [anObject doSomethingWithString:"Hello" andNumber:0];
+     let result = [anObject doSomethingWithString:"Hello" andNumber:0];
      
 becomes the equivalent of:
 
-     var result = anObject && anObject.doSomethingWithString_andNumber_("Hello", 0);
+     let result = anObject && anObject.doSomethingWithString_andNumber_("Hello", 0);
      
 The compiler will produce slightly different output depending on:
 
@@ -466,15 +466,15 @@ The oj compiler adds the following keywords for Boolean/null values and replaces
    
 Hence:
 
-    var nope = NO;
-    var yep  = YES;
-    var anObject = nil;
+    let nope = NO;
+    let yep  = YES;
+    let anObject = nil;
     
 becomes:
 
-    var nope = false;
-    var yep  = true;
-    var anObject = null;
+    let nope = false;
+    let yep  = true;
+    let anObject = null;
       
 ---
 ## <a name="enum"></a>@enum and @const
@@ -525,7 +525,7 @@ Note: Inlining causes the enum or const to be lifted to the global scope.  Inlin
 To mimic C APIs such as CoreGraphics, oj has the ability to declare global functions and variables with `@global`.
 
 ```
-@global function CGRectMake(x : Number, y : Number, width : Number, height : Number) {
+@global function CGRectMake(x: Number, y: Number, width: Number, height: Number): void {
     return { origin: { x, y }, size: { width, height } };
 }
     
@@ -628,7 +628,7 @@ oj provides basic code hinting to catch common errors.
 
 When the `--warn-unknown-selectors` option is specified, oj warns about usage of undefined selectors/methods.  This can help catch typos at compile time:
 
-    var c = [[TheClass allc] init]; // Warns if no +allc or -allc method exists on any class
+    let c = [[TheClass allc] init]; // Warns if no +allc or -allc method exists on any class
 
 When the `--warn-unknown-ivars` option is specified, oj checks all JavaScript identifiers prefixed with an underscore.  A warning is produced when such an identifier is used in a method declaration and the current class lacks a corresponding `@property` or instance variable declaration.
 
@@ -675,13 +675,15 @@ oj uses an Objective-C inspired syntax for types, which is automatically transla
 
 | oj Type            | TypeScript type / Description                                                      
 |--------------------|------------------------------------------------------------------
-| Numeric type       | `number`
-| Boolean type       | `boolean`
+| `Number`           | `number`
+| `Boolean`, `BOOL`  | `boolean`
 | `String`           | `string`
 | `Array<Number>`    | An array of numbers, corresponds to the `number[]` TypeScript type.
 | `Object<Number>`   | A JavaScript object used as a string-to-number map. corresponds to the `{ [i:string]: number }` TypeScript type
 | `Object`, `any`    | The `any` type (which effectively turns off typechecking)
 | `TheType`          | The JavaScript type (as defined by the `lib.d.ts` TypeScript file) or an instance of an oj class
+| `Array<TheType>`   | A typed array, corresponds to the `TheType[]` TypeScript type.
+| `Object<TheType>`  | A JavaScript object used as a string-to-TheType map. corresponds to the `{ [i:string]: TheType }` TypeScript type
 | `id<ProtocolName>` | An object which conforms to the specified protocol name(s)
 | `id`               | A special aggregate type containing all known instance methods definitions.
 | `Class`            | A special aggregate type containing all known class methods definitions.
@@ -701,38 +703,36 @@ TypeScript infers variables automatically; however, sometimes an explicit annota
 function getNumber() { … }
 
 function doSometingWithNumber() : void {
-    var num : Number = getNumber(); // Annotation needed since getNumber() is not annotated
+    let num : Number = getNumber(); // Annotation needed since getNumber() is not annotated
     …
 }
 ```    
     
-oj also provides syntax for basic structures, similar to the syntax for instance variable declaration.  `@struct` does not affect generated code and only provides hints to the typechecker:
+oj also provides `@type` to declare basic types.  `@type` does not affect generated code and only provides hints to the typechecker:
 
 ```
-@struct CGPoint { Number x;        Number y;      }
-@struct CGSize  { Number width;    Number height; }
-@struct CGRect  { CGPoint origin;  CGSize size;   }
-    
-function makeSquare(length : Number) : CGRect  { … }
+@type MyNumericType = Number;
+@type MyRect = { x: Number, y: Number, width: Number, height: Number };
+@type MyDoneCallback = function(completed: BOOL): void;
+@type MyTypedTuple = [ Number, Number, String ];
+
+function makeSquare(length: Number): MyRect { … }
+function loadWithCallback(callback: MyDoneCallback): void { … }
 ```
 
-Casting is performed via the `@cast` operator.  It may be used similar in syntax to C++'s `static_cast`:
+Casting is performed via the `@cast` operator:
 
-    var a : String = @cast<String>( 3 + 4 + 6 );
-
-or via function syntax:
-
-    var a : String = @cast(String, 3 + 4 + 6);
+    let a : String = @cast(String, 3 + 4 + 6);
 
 Sometimes you may wish to disable type checking for a specific variable or expression.  While `@cast(any, …)` accomplishes this, you can also use the `@any` convinience operator:
 
-    var o = @any({ });
+    let o = @any({ });
 
 For some projects and coding styles, the default TypeScript rules may be too strict.  For example, the following is an error in typescript:
 
 ```
 function example() {
-    var o = { };
+    let o = { };
     // This is an error in TypeScript, as 'foo' isn't a property on the '{}' type
     o.foo = "Foo";
 }
@@ -786,8 +786,8 @@ In order to support compiler optimizations, the following method names are reser
 Traditionally, oj's API consisted of a single `compile` method:
 
 ```javascript
-var ojc = require("ojc");
-var options = { … };
+let ojc = require("ojc");
+let options = { … };
     
 ojc.compile(options, function(err, results) {
     
@@ -797,12 +797,12 @@ ojc.compile(options, function(err, results) {
 To allow for fast incremental compiles, oj 2.x adds a `Compiler` constructor:
 
 ```javascript
-var ojc = require("ojc");
+let ojc = require("ojc");
 
 // Important: create one compiler per output file.
-var compiler = new ojc.Compiler();
+let compiler = new ojc.Compiler();
 
-var options = { … };
+let options = { … };
 
 // Call doCompile() each time one of the files specified by options.files changes
 function doCompile(callback) {
@@ -903,7 +903,7 @@ ojOptions["after-compile"] = function(file, callback) {
     // retainLines must be true or oj's output source map will be useless
     babelOptions.retainLines = true;
     
-    var result = babel.transform(file.getContents(), babelOptions);
+    let result = babel.transform(file.getContents(), babelOptions);
     
     // file.setContents() updates the generated source code with a string.
     // This string must have a 1:1 line mapping to the original string
@@ -933,12 +933,12 @@ In previous versions of oj, this was accomplished via the `--output-state` and `
 oj 2 introduces a new `Compiler` API with `Compiler#uses` and `Compiler#compile`.  This allows both incremental compiles, and allows for more efficient state sharing:
 
 ```javascript
-var ojc = require("ojc");
-var coreCompiler   = new ojc.Compiler();
-var webAppCompiler = new ojc.Compiler();
+let ojc = require("ojc");
+let coreCompiler   = new ojc.Compiler();
+let webAppCompiler = new ojc.Compiler();
     
-var coreOptions   = { … };
-var webAppOptions = { … };
+let coreOptions   = { … };
+let webAppOptions = { … };
 
 // This tells webAppCompiler to always pull the last state from coreCompiler 
 //
