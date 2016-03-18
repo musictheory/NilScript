@@ -1,7 +1,7 @@
 /*
     Typechecker.js
     Main implementation of type checking, wraps the TypeScript compiler
-    (c) 2013-2015 musictheory.net, LLC
+    (c) 2013-2016 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
