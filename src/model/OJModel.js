@@ -60,7 +60,7 @@ loadState(state)
 {
     function load(fromStateMap, toModelMap, cons) {
         _.each(fromStateMap, jsObject => {
-            var ojObject = new cons();
+            let ojObject = new cons();
 
             ojObject.loadState(jsObject);
             ojObject.local = false;
@@ -137,7 +137,7 @@ saveSymbols()
 
 saveBridged()
 {
-    var consts = _.compact(_.map(this.consts, ojConst => {
+    let consts = _.compact(_.map(this.consts, ojConst => {
         if (ojConst.bridged) {
             return { name: ojConst.name, value: ojConst.value };
         } else {
@@ -145,7 +145,7 @@ saveBridged()
         }
     }));
 
-    var enums  = _.compact(_.map(this.enums, ojEnum => {
+    let enums  = _.compact(_.map(this.enums, ojEnum => {
         if (ojEnum.bridged) {
             return {
                 name: ojEnum.anonymous ? null : ojEnum.name,
@@ -310,7 +310,7 @@ hasGlobalChanges(other)
 
 getChangedSelectorMap(other)
 {
-    var result = null;
+    let result = null;
 
     _.each(_.keys(this.selectorMap), selectorName => {
         if (!other.selectorMap[selectorName]) {
@@ -332,21 +332,21 @@ getChangedSelectorMap(other)
 
 getAggregateClass()
 {
-    var result = new OJClass(null, null, null);
+    let result = new OJClass(null, null, null);
 
     function extractMethodsIntoMap(methods, map) {
         _.each(methods, function(m) {
-            var selectorName = m.selectorName;
-            var selectorType = m.selectorType;
+            let selectorName = m.selectorName;
+            let selectorType = m.selectorType;
 
-            var types = _.clone(m.parameterTypes);
+            let types = _.clone(m.parameterTypes);
             types.unshift(m.returnType);
 
-            var existing = map[selectorName];
+            let existing = map[selectorName];
             if (!existing) {
                 map[selectorName] = types;
             } else {
-                for (var i = 0, length = existing.length; i < length; i++) {
+                for (let i = 0, length = existing.length; i < length; i++) {
                     if (existing[i] != types[i]) {
                         existing[i] = "any";
                     }
@@ -357,19 +357,19 @@ getAggregateClass()
 
     function addMethodsWithMap(map, selectorType) {
         _.each(map, function(value, key) {
-            var returnType = value.shift();
+            let returnType = value.shift();
 
-            var variableNames = [ ];
-            var index = 0;
+            let variableNames = [ ];
+            let index = 0;
             _.each(value, function(v) { variableNames.push("a" + index++);  });
 
-            var m = new OJMethod(key, selectorType, returnType, value, variableNames);  
+            let m = new OJMethod(key, selectorType, returnType, value, variableNames);  
             result.addMethod(m);
         });
     }
 
-    var instanceMap = { };
-    var classMap    = { };
+    let instanceMap = { };
+    let classMap    = { };
 
     _.each(this.classes, function(ojClass) {
         extractMethodsIntoMap(ojClass.getClassMethods(),    classMap);
@@ -397,7 +397,7 @@ _registerDeclaration(name)
 
 addConst(ojConst)
 {
-    var name = ojConst.name;
+    let name = ojConst.name;
 
     this.consts[name] = ojConst;
     this._registerDeclaration(name);
@@ -406,7 +406,7 @@ addConst(ojConst)
 
 addEnum(ojEnum)
 {
-    var name = ojEnum.name;
+    let name = ojEnum.name;
 
     if (name) {
         if (this.enums[name]) {

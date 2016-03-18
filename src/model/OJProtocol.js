@@ -36,9 +36,9 @@ constructor(name, protocolNames)
 
 loadState(state)
 {
-    var classMethodMap    = this._classMethodMap;
-    var instanceMethodMap = this._instanceMethodMap;
-    var propertyMap       = this._propertyMap;
+    let classMethodMap    = this._classMethodMap;
+    let instanceMethodMap = this._instanceMethodMap;
+    let propertyMap       = this._propertyMap;
 
     this.name = state.name;
     this.protocolNames = state.protocolNames || [ ];
@@ -59,8 +59,8 @@ loadState(state)
 
 addMethod(ojMethod)
 {
-    var selectorName = ojMethod.selectorName;
-    var map = (ojMethod.selectorType == "+") ? this._classMethodMap : this._instanceMethodMap;
+    let selectorName = ojMethod.selectorName;
+    let map = (ojMethod.selectorType == "+") ? this._classMethodMap : this._instanceMethodMap;
 
     if (map[selectorName]) {
         Utils.throwError(OJError.DuplicateMethodDefinition, "Duplicate declaration of method '" + selectorName + "'");
@@ -72,7 +72,7 @@ addMethod(ojMethod)
 
 addProperty(ojProperty)
 {
-    var name = ojProperty.name;
+    let name = ojProperty.name;
 
     if (this._propertyMap[name]) {
         Utils.throwError(OJError.DuplicatePropertyDefinition, "Property " + name + " has previous declaration");
@@ -95,7 +95,7 @@ saveState()
 
 getAllMethods()
 {
-    var results = _.values(this._classMethodMap).concat(_.values(this._instanceMethodMap));
+    let results = _.values(this._classMethodMap).concat(_.values(this._instanceMethodMap));
 
     _.each(this._propertyMap, ojProperty => {
         let getter   = ojProperty.getter;

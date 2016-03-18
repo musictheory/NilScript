@@ -27,9 +27,9 @@ constructor(path)
 
 updateFromDisk()
 {
-    var contents = fs.readFileSync(this.path).toString();
-    var stats    = fs.statSync(this.path);
-    var time     = stats.mtime.getTime();
+    let contents = fs.readFileSync(this.path).toString();
+    let stats    = fs.statSync(this.path);
+    let time     = stats.mtime.getTime();
 
     this.updateWithContentsAndTime(contents, time);
 }

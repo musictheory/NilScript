@@ -43,12 +43,12 @@ let sReasonTemplateMap = null;
 
 
 function sGetReasonTemplate(code, nextCode, sawClass, sawProtocol, sawMethod, sawStatic) {
-    var types = [ ];
+    let types = [ ];
 
     if (sawMethod)   types.push(sawStatic ? "+" : "-");
     if (sawClass)    types.push("c");
     if (sawProtocol) types.push("p");
-    var type = sawMethod ? (sawStatic ? "+" : "-") : "";
+    let type = sawMethod ? (sawStatic ? "+" : "-") : "";
 
     types.push(null);
 
@@ -60,8 +60,8 @@ function sGetReasonTemplate(code, nextCode, sawClass, sawProtocol, sawMethod, sa
         });
     }
 
-    for (var i = 0, length = types.length; i < length; i++) {
-        var reason = sReasonTemplateMap["" + code + "." + nextCode + (types[i] || "")];
+    for (let i = 0, length = types.length; i < length; i++) {
+        let reason = sReasonTemplateMap["" + code + "." + nextCode + (types[i] || "")];
         if (reason) return reason;
     }
 
@@ -83,30 +83,29 @@ getWarnings(symbolTyper, diagnostics, fileCallback)
         fileName = fileCallback(fileName);
         if (!fileName) return null;
 
-        var lineColumn  = diagnostic.file ? diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start) : { line: 0, column: 0 };
+        let lineColumn  = diagnostic.file ? diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start) : { line: 0, column: 0 };
 
-        var code        = diagnostic.code;
-        var next;
-        var quotedMap   = { };
-        var sawStatic   = false;
-        var sawMethod   = false;
-        var sawClass    = false;
-        var sawProtocol = false;
+        let code        = diagnostic.code;
+        let next;
+        let quotedMap   = { };
+        let sawStatic   = false;
+        let sawMethod   = false;
+        let sawClass    = false;
+        let sawProtocol = false;
 
         if (_.include(sBlacklistCodes, code)) {
             return null;
         }
 
-        var reason = ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
+        let reason = ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
         reason = reason.split("\n")[0];
 
         // messageText is a linked list of { messageText: , next: } objects
         // Traverse through it and set up quotedMap / saw*
         //
-        (function() {
+        {
             function parseMessageText(object) {
-                var code = object.code || code;
-                var i    = 0;
+                let i = 0;
 
                 (object.messageText || object).replace(/'(.*?)'/g, function(a0, a1) {
                     if (a1.match(/^\$oj_C_/)) {
@@ -133,7 +132,7 @@ getWarnings(symbolTyper, diagnostics, fileCallback)
 
                     a1 = symbolTyper.fromTypecheckerType(a1);
 
-                    var key = "" + code + ":" + i;
+                    let key = "" + (object.code || code) + ":" + i;
 
                     if (!quotedMap[i])   quotedMap[i]   = a1;
                     if (!quotedMap[key]) quotedMap[key] = a1;
@@ -144,26 +143,26 @@ getWarnings(symbolTyper, diagnostics, fileCallback)
                 });
             }
 
-            var messageText = diagnostic.messageText;
+            let messageText = diagnostic.messageText;
             while (messageText) {
                 parseMessageText(messageText);
                 messageText = messageText.next;
                 if (!next) next = messageText ? messageText.code : 0;
             }
-        }());
+        }
 
         // Now look up the friendlier reason string from the map
         //
-        (function() {
-            var template = sGetReasonTemplate(code, next, sawClass, sawProtocol, sawMethod, sawStatic);
+        {
+            let template = sGetReasonTemplate(code, next, sawClass, sawProtocol, sawMethod, sawStatic);
 
-            var valid  = true;
-            var result = null;
+            let valid  = true;
+            let result = null;
             if (!result) result = sReasonTemplateMap["" + code];
 
             if (template) {
                 result = template.text.replace(/\{(.*?)\}/g, function(a0, a1) {
-                    var replacement = quotedMap[a1];
+                    let replacement = quotedMap[a1];
                     if (!replacement) valid = false;
                     return replacement;
                 });
@@ -172,11 +171,11 @@ getWarnings(symbolTyper, diagnostics, fileCallback)
             if (valid && result) {
                 reason = result;
             }
-        }());
+        }
 
         // Fixup reason string - convert TypeScript types to oj types and reformat
         //
-        (function() {
+        {
             reason = reason.replace(/'(.*?)'/g, function(a0, a1) {
                 return "'" + symbolTyper.fromTypecheckerType(a1) + "'";
             });
@@ -184,11 +183,9 @@ getWarnings(symbolTyper, diagnostics, fileCallback)
             reason = symbolTyper.getSymbolicatedString(reason);
 
             reason = reason.replace(/[\:\.]$/, "");
-        }());
+        }
 
-
-
-        var result = {
+        let result = {
             code:   code,
             column: lineColumn.column,
             name:   OJWarning.Typechecker,
@@ -198,7 +195,7 @@ getWarnings(symbolTyper, diagnostics, fileCallback)
         };
 
         // Only return if this error message is unique (defs can spam duplicate messages)
-        var key = result.file + ":" + result.line + ":" + result.reason;
+        let key = result.file + ":" + result.line + ":" + result.reason;
         if (!duplicateMap[key]) {
             duplicateMap[key] = true;
             return result;

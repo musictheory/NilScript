@@ -12,7 +12,7 @@ const path   = require("path");
 const fs     = require("fs");
 
 
-var sBaseObjectSelectors = {
+const sBaseObjectSelectors = {
     "alloc": 1,
     "class": 1,
     "className": 1,
@@ -35,7 +35,7 @@ var sBaseObjectSelectors = {
 };
 
 
-var sRuntimeReservedSelectors = {
+const sRuntimeReservedSelectors = {
     "alloc": 1,
     "class": 1,
     "className": 1,

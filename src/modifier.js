@@ -8,17 +8,17 @@
 
 "use strict";
 
-var SourceMapGenerator = require && require("source-map").SourceMapGenerator;
+const SourceMapGenerator = require && require("source-map").SourceMapGenerator;
 
 
-var sTimestampCounter = 0;
+let sTimestampCounter = 0;
 
 function _colorString(string, from, to, color)
 {
-    var gray   = "\u001b[37m";
-    var reset  = "\u001b[1;0m";
+    let gray   = "\u001b[37m";
+    let reset  = "\u001b[1;0m";
 
-    var result = color + "\"" + string + "\"";
+    let result = color + "\"" + string + "\"";
 
     if (from !== undefined && to !== undefined) {
         result += reset + " " + gray + "(" + from + "," + to + ")";
@@ -72,7 +72,7 @@ Modifier.prototype._addReplacement = function(line, fromColumn, toColumn, text)
         return;
     }
 
-    var replacement = { line: line, fromColumn: fromColumn, toColumn: toColumn, timestamp: sTimestampCounter++ };
+    let replacement = { line: line, fromColumn: fromColumn, toColumn: toColumn, timestamp: sTimestampCounter++ };
     if (text) replacement.text = text;
     this._replacements.push(replacement);
 }
@@ -81,9 +81,9 @@ Modifier.prototype._addReplacement = function(line, fromColumn, toColumn, text)
 
 Modifier.prototype._flush = function()
 {
-    var c = this._current;
-    var text = c.text;
-    var start, end, replaceAtStart;
+    let c = this._current;
+    let text = c.text;
+    let start, end, replaceAtStart;
 
     if (c.from && c.to) {
         if (_isDescendantOf(c.to, c.from)) {
@@ -115,7 +115,7 @@ Modifier.prototype._flush = function()
         this._addReplacement(start.line, start.column, this._getLine(start.line).length, replaceAtStart ? text : "");
 
         // Remove intermediate lines completely
-        for (var line = start.line + 1; line < end.line; line++) {
+        for (let line = start.line + 1; line < end.line; line++) {
             this._addReplacement(line, 0, this._getLine(line).length, "");
         }
 
@@ -179,16 +179,16 @@ Modifier.prototype.finish = function()
 
 
 
-    for (var i = 0, length = this._replacements.length; i < length; i++) {
-        var r      = this._replacements[i];
-        var line1  = r.line;
-        var line   = this._getLine(line1);
+    for (let i = 0, length = this._replacements.length; i < length; i++) {
+        let r      = this._replacements[i];
+        let line1  = r.line;
+        let line   = this._getLine(line1);
 
-        var before = line.substring(0, r.fromColumn);
-        var after  = line.substring(r.toColumn);
+        let before = line.substring(0, r.fromColumn);
+        let after  = line.substring(r.toColumn);
 
         if (this._debug) {
-            var toRemove = line.substring(r.fromColumn, r.toColumn);
+            let toRemove = line.substring(r.fromColumn, r.toColumn);
 
             if (r.text && toRemove) {
                 console.log("" + r.line + ": replacing " + _red(toRemove, r.fromColumn, r.toColumn) + " with " + _green(r.text));
