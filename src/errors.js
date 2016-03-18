@@ -27,8 +27,7 @@ OJError.SelfIsReserved                 = "OJSelfIsReservedError";
 OJError.DollarOJIsReserved             = "OJDollarOJIsReservedError";
 OJError.ReservedMethodName             = "OJReservedMethodNameError";
 OJError.SqueezerReachedEndIndex        = "OJSqueezerReachedEndIndexError";
-OJError.TypeAlreadyExists              = "OJTypeAlreadyExistsError";
-OJError.CircularTypedefHierarchy       = "OJCircularTypedefHierarchyError";
+OJError.CircularTypeHierarchy          = "OJCircularTypeHierarchyError";
 OJError.CircularClassHierarchy         = "OJCircularClassHierarchyError";
 OJError.VariableAlreadyDeclared        = "OJVariableAlreadyDeclaredError";
 OJError.VariableNotYetDeclared         = "OJVariableNotYetDeclaredError";
@@ -46,7 +45,6 @@ OJWarning.UndeclaredInstanceVariable   = "OJUndeclaredInstanceVariableWarning";
 OJWarning.MissingTypeAnnotation        = "OJMissingTypeAnnotationWarning";
 OJWarning.OnCompileFunction            = "OJOnCompileFunctionWarning";
 OJWarning.Typechecker                  = "OJTypecheckerWarning";
-
 
 module.exports = {
     OJError:   OJError,

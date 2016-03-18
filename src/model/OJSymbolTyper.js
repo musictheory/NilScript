@@ -222,6 +222,8 @@ enrollForSqueezing(name)
 }
 
 
+
+
 toTypecheckerType(rawInType, location, currentClass)
 {
     if (!rawInType) return "any";
@@ -337,13 +339,14 @@ toTypecheckerType(rawInType, location, currentClass)
             addToForwardMap = false;
             addToReverseMap = false;
 
-        } else if ((tmp = model.types[part])) {
-            if (tmp == part) {
-                result = tmp;
-            } else {
-                result = this.toTypecheckerType(tmp, location);
-                addToReverseMap = false;
-            }
+        // } else if ((tmp = model.types[part])) {
+        //     console.log("HERE FOR " + part);
+        //     if (tmp == part) {
+        //         result = tmp;
+        //     } else {
+        //         result = this.toTypecheckerType(tmp, location);
+        //         addToReverseMap = false;
+        //     }
 
         } else {
             result = part;

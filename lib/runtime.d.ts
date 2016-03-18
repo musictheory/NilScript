@@ -72,7 +72,7 @@ declare class $oj_$Base {
     toString() : string;
     isKindOfClass_(cls : $oj_$StaticBase) : boolean;
     isMemberOfClass_(cls : $oj_$StaticBase) : boolean;
-    isEqual_(other : $oj_$Base) : boolean;
+    isEqual_(other : any) : boolean;
 }
 
 declare class $oj_$StaticBase extends $oj_$Constructor {
@@ -91,4 +91,6 @@ declare class $oj_$StaticBase extends $oj_$Constructor {
 declare var $oj_oj : $oj_$Runtime;
 declare var oj     : $oj_$Runtime;
 
-declare function $oj_$EnsureArray(arg : any[]) : void;
+declare function $oj_$AtEachGetMember<T>(arg : T[]) : T;
+declare function $oj_$AtEachTest() : boolean;
+

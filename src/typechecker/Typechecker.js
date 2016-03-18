@@ -73,6 +73,7 @@ check(model, defs, files, callback)
     let options       = this._options;
     let development   = options["development"];
     let sourceFileMap = { };
+    let ignoreFileMap = { }; // Warnings from these files will be ignored.
     let toCheck       = [ ];
 
     let tsOptions = {
@@ -98,6 +99,7 @@ check(model, defs, files, callback)
 
         sourceFileMap[codeKey] = this._getSourceFile(codeKey, ojFile.typecheckerCode);
         sourceFileMap[defsKey] = this._getSourceFile(defsKey, ojFile.typecheckerDefs);
+        ignoreFileMap[defsKey] = true;
     });
 
     _.each(defs, ojFile => {
@@ -155,13 +157,12 @@ check(model, defs, files, callback)
             return debugTmp + path.sep + filePath;
 
         } else {
-            let components = filePath.split(path.sep);
-            let last = components.pop();
-
-            if (last == codeSuffix) {
-                return components.join(path.sep);
-            } else {
+            if (ignoreFileMap[filePath]) {
                 return null;
+            } else {
+                let components = filePath.split(path.sep);
+                let last = components.pop();
+                return components.join(path.sep);
             }
         }
     });
@@ -169,11 +170,33 @@ check(model, defs, files, callback)
     if (development) {
         Utils.rmrf(debugTmp);
 
-        console.log(_.keys(this._contentCache));
+        let allContents = [ ];
 
         _.each(this._contentCache, (value, key) => {
             Utils.mkdirAndWriteFile(debugTmp + path.sep + key, this._contentCache[key]);
+            allContents.push(this._contentCache[key]);
         });
+ 
+        if (diagnostics.length) {
+            let content = _.map(diagnostics, diagnostic => {
+                let fileName = diagnostic && diagnostic.file && diagnostic.file.fileName;
+                if (!fileName) return "";
+
+                var lineColumn  = diagnostic.file ? diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start) : { line: 0, column: 0 };
+
+                return fileName + ":" + lineColumn.line + ":" + ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
+            }).join("\n");
+
+            fs.writeFileSync(debugTmp + "/diagnostics", content);
+        }
+
+        if (allContents.length) {
+
+            allContents.unshift(this._runtimeDefsSourceFile.text);
+
+            fs.writeFileSync(debugTmp + "/all.ts", allContents.join("\n;\n"));
+
+        }
     }
 
     this._program = program;

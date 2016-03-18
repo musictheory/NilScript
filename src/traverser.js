@@ -23,9 +23,9 @@ const ojVisitorKeys = {
     [ Syntax.OJMethodSelector               ]: [ "name", "variableName" ],
     [ Syntax.OJSelector                     ]: [ ],
     [ Syntax.OJParameterType                ]: [ ],
-    [ Syntax.OJBracketVariableBlock         ]: [ "declarations" ],
-    [ Syntax.OJBracketVariableDeclaration   ]: [ "parameterType", "ids" ],
-    [ Syntax.OJPropertyDirective            ]: [ "attributes", "parameterType", "id" ],
+    [ Syntax.OJInstanceVariableDeclarations ]: [ "declarations" ],
+    [ Syntax.OJInstanceVariableDeclaration  ]: [ "parameterType", "ivars" ],
+    [ Syntax.OJPropertyDirective            ]: [ "attributes", "id" ],
     [ Syntax.OJPropertyAttribute            ]: [ ],
     [ Syntax.OJSynthesizeDirective          ]: [ "pairs" ],
     [ Syntax.OJClassDirective               ]: [ "ids" ],
@@ -39,12 +39,12 @@ const ojVisitorKeys = {
     [ Syntax.OJMethodDeclaration            ]: [ "returnType", "methodSelectors" ],
     [ Syntax.OJCastExpression               ]: [ "id", "argument" ],
     [ Syntax.OJAnyExpression                ]: [ "argument" ],
-    [ Syntax.OJTypedefDeclaration           ]: [ "from", "to" ],
     [ Syntax.OJEachStatement                ]: [ "left", "right", "body" ],
     [ Syntax.OJTypeAnnotation               ]: [ ],
     [ Syntax.OJGlobalDeclaration            ]: [ "declaration", "declarators" ],
     [ Syntax.OJStructDefinition             ]: [ "id", "variables" ],
-    [ Syntax.OJBridgedDeclaration           ]: [ "declaration" ]
+    [ Syntax.OJBridgedDeclaration           ]: [ "declaration" ],
+    [ Syntax.OJTypeDefinition               ]: [ ],
 };
 
 

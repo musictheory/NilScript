@@ -828,7 +828,8 @@ include-state            | Boolean  | If true, include `state` key in results ob
 include-symbols          | Boolean  | If true, include `symbols` key in results object
 source-map-file          | String   | Output source map file name
 source-map-root          | String   | Output source map root URL
-on-compile               | Function | Post-compile callback (see below)
+before-compile           | Function | Before-compile callback (see below)
+after-compile            | Function | After-compile callback (see below)
 inline-const             | Boolean  | inline @const identifiers
 inline-enum              | Boolean  | inline @enum identifiers
 squeeze                  | Boolean  | If true, enable squeezer
@@ -866,11 +867,23 @@ map     | String  | Source map (if `include-map` is true)
 symbols | Object  | Symbol-to-readable-name map (if `include-symbols` is true).  For symbolicating stack traces.
 
 
-The `on-compile` key specifies a callback which is called each time the compiler generates JavaScript code for a file.  This allows you to run the generated JavaScript through a linter (such as [JSHint](http://jshint.com) or [ESLint](http://eslint.org)), or allows further transformations via [Babel](https://babeljs.io).
+The `before-compile` key specifies a callback which is called prior to the compiler's oj->js stage.  This allows you to preprocess files.  After this callback is invoked, a file's content must be valid oj or JavaScript.
+
+The `on-compile` key specifies a callback which is called each time the compiler generates JavaScript code for a file.  This allows you to run the generated JavaScript through a linter (such as [JSHint](http://jshint.com) or [ESLint](http://eslint.org)), or allows further transformations via [Babel](https://babeljs.io).  When this callback is invoked, a file's content will be valid JavaScript.
 
 ```javascript
+
+// JSX example
+ojOptions["before-compile"] = function(file, callback) {
+    if (file.getName().match(/\.jsx$/)) {
+    }
+
+    // Babel's transform API is synchronous
+    callback();
+};
+
 // ESLint example
-ojOptions["on-compile"] = function(file, callback) {
+ojOptions["after-compile"] = function(file, callback) {
     if (!linter) linter = require("eslint").linter;
 
     // file.getContents() returns the generated source as a String
@@ -884,7 +897,7 @@ ojOptions["on-compile"] = function(file, callback) {
 };
 
 // Babel example
-ojOptions["on-compile"] = function(file, callback) {
+ojOptions["after-compile"] = function(file, callback) {
     if (!babel) babel = require("babel-core");
     
     // retainLines must be true or oj's output source map will be useless

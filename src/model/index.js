@@ -18,5 +18,5 @@ module.exports = {
     OJConst:    require("./OJConst"),
     OJEnum:     require("./OJEnum"),
     OJGlobal:   require("./OJGlobal"),
-    OJStruct:   require("./OJStruct")
+    OJType:     require("./OJType")
 };

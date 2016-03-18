@@ -13,16 +13,18 @@ with modern web browsers and environments.
 Added:
   - New 'Compiler' API (#73)
   - API to get symbol list (for crash log symbolication) (#75)
-  - "on-compile" hook to add custom linters/transformers (#79)
+  - "before-compile" and "after-compile" hooks for preprocessors/linters/transformers (#79, #97)
 
 Breaking:
   - node 4.2+ is now required to run ojc (#76)
   - 'include-state' compiler option is needed to include the 'state' key (#74)
   - 'runtime.js' is now located in the 'lib' directory (#72)
   - Removed 'cache', 'jshint', 'jshint-config', 'jshint-ignore', and development `ojc` options
-  - Removed JSHint integration (#78) in favor of a generic "on-compile" hook (#79)
+  - Removed JSHint integration (#78) in favor of a generic "after-compile" hook (#79)
   - Removed support for legacy browsers (pre-ES5) (#77)
   - Code generation differences (#80)
+  - Removed '@struct' and '@typedef' with '@type' (#105, #106)
+  - Removed 'var _ivar' declaration syntax (#108)
 
 ---
 
