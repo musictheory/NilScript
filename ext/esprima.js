@@ -6095,53 +6095,6 @@
         exports.version += "-oj";
     }
 
-    // Handles the following cases:
-    //     String foo
-    //     foo : String
-    //     String foo, bar            (when allowMultiple is true)
-    //     foo : String, bar : String (when allowMultiple is true)
-    //
-    function oj_parseVariableIdentifierListWithRequiredTypeAnnotation(allowMultiple) {
-        var nodes = [ ], node, first, type, name;
-
-        function pushIdentifier(name, type) {
-            var node = new Node();
-            node.oj_finishIdentifierWithAnnotation(name, type);
-            nodes.push(node);
-        }
-
-        first = lex();
-
-        if (match(':')) {
-            expect(':');
-
-            name = first.value;
-            pushIdentifier(name, oj_parseType());
-
-            while (allowMultiple && match(',')) {
-                expect(',');
-                name = lex().value;
-                expect(":");
-                pushIdentifier(name, oj_parseType());
-            }
-
-        } else {
-            type = first.value;
-            if (match('<')) type += oj_parseTypeAngleSuffix();
-
-            name = lex().value;
-            pushIdentifier(name, type);
-
-            while (allowMultiple && match(',')) {
-                expect(',');
-                name = lex().value;
-                pushIdentifier(name, type);
-            }
-        }
-
-        return nodes;
-    }
-
     function oj_parseMethodNameSegment() {
         var token, value, keyword, node = new Node();
 
@@ -6219,7 +6172,7 @@
     }
 
     function oj_parsePropertyDirective() {
-        var attributes = [ ], id, node = new Node();
+        var attributes = [ ], id, name, annotation, node = new Node();
 
         expectKeyword('@property');
 
@@ -6236,7 +6189,12 @@
             expect(')');
         }
 
-        id = oj_parseVariableIdentifierListWithRequiredTypeAnnotation(false)[0];
+        annotation = oj_parseType();
+        name = parseVariableIdentifier().name;
+
+        id = new Node();
+        id.oj_finishIdentifierWithAnnotation(name, annotation);
+
         consumeSemicolon();
 
         return node.oj_finishPropertyDirective(id, attributes);
@@ -6947,14 +6905,22 @@
         expect("=");
 
         if (match('{')) {
-            kind  = 'object';
+            kind = 'object';
 
             expect('{');
 
-            params = [ ];
             while (!match('}')) {
-                params = params.concat(oj_parseVariableIdentifierListWithRequiredTypeAnnotation(true));
-                consumeSemicolon();
+                paramName = parseVariableIdentifier().name;
+                expect(":");
+                paramType = oj_parseType();
+
+                param = new Node();
+                param.oj_finishIdentifierWithAnnotation(paramName, paramType);
+                params.push(param);
+
+                if (!match('}')) {
+                    expect(",")
+                }
             }
 
             expect('}');
