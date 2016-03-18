@@ -182,7 +182,7 @@ check(model, defs, files, callback)
                 let fileName = diagnostic && diagnostic.file && diagnostic.file.fileName;
                 if (!fileName) return "";
 
-                var lineColumn  = diagnostic.file ? diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start) : { line: 0, column: 0 };
+                let lineColumn  = diagnostic.file ? diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start) : { line: 0, column: 0 };
 
                 return fileName + ":" + lineColumn.line + ":" + ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
             }).join("\n");

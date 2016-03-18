@@ -55,10 +55,10 @@ loadState(state)
     this.placeholder    = state.placeholder;
     this.didSynthesis   = state.didSynthesis;
 
-    var ivarMap           =  this._ivarMap;
-    var propertyMap       =  this._propertyMap;
-    var classMethodMap    =  this._classMethodMap;
-    var instanceMethodMap =  this._instanceMethodMap;
+    let ivarMap           =  this._ivarMap;
+    let propertyMap       =  this._propertyMap;
+    let classMethodMap    =  this._classMethodMap;
+    let instanceMethodMap =  this._instanceMethodMap;
 
     _.each(state.ivars, function(i) {
         ivarMap[i.name] = new OJIvar(i.name, i.className, i.type);
@@ -102,31 +102,31 @@ doAutomaticSynthesis()
         return;
     }
 
-    var properties = _.values(this._propertyMap);
-    var backingIvarToPropertyNameMap = { };
+    let properties = _.values(this._propertyMap);
+    let backingIvarToPropertyNameMap = { };
 
-    for (var i = 0, length = properties.length; i < length; i++) {
-        var property = properties[i];
+    for (let i = 0, length = properties.length; i < length; i++) {
+        let property = properties[i];
 
-        var name     = property.name;
-        var ivarName = property.ivar;
-        var getter   = property.getter;
-        var setter   = property.setter;
+        let name     = property.name;
+        let ivarName = property.ivar;
+        let getter   = property.getter;
+        let setter   = property.setter;
 
         if (ivarName == OJDynamicProperty) continue;
 
-        var hadExplicitlySynthesizedIvarName = !!ivarName;
+        let hadExplicitlySynthesizedIvarName = !!ivarName;
 
         if (!ivarName) {
             ivarName = "_" + name;
             property.ivar = ivarName;
         }
 
-        var ivar         = ivarName ? this._ivarMap[ivarName]         : null;
-        var getterMethod = getter   ? this._instanceMethodMap[getter] : null;
-        var setterMethod = setter   ? this._instanceMethodMap[setter] : null;
+        let ivar         = ivarName ? this._ivarMap[ivarName]         : null;
+        let getterMethod = getter   ? this._instanceMethodMap[getter] : null;
+        let setterMethod = setter   ? this._instanceMethodMap[setter] : null;
 
-        var generateBackingIvar = !ivar;
+        let generateBackingIvar = !ivar;
 
         // If backing is nil, there was no explicit @synthesize, and we should only make the
         // backing ivar unless: 
@@ -181,7 +181,7 @@ isIvar(ivarName)
 
 getIvarNameForPropertyName(propertyName)
 {
-    var property = this._propertyMap[propertyName];
+    let property = this._propertyMap[propertyName];
     if (!propertyName) return null;
 
     if (property.ivar == OJDynamicProperty) {
@@ -194,13 +194,13 @@ getIvarNameForPropertyName(propertyName)
 
 shouldSynthesizeIvarForPropertyName(propertyName)
 {
-    var property = this._propertyMap[propertyName];
+    let property = this._propertyMap[propertyName];
     if (!property) return false;
 
     if (property.ivar == OJDynamicProperty) return false;
 
-    var hasGetter = property.getter ? this.hasInstanceMethod(property.getter) : false;
-    var hasSetter = property.setter ? this.hasInstanceMethod(property.setter) : false;
+    let hasGetter = property.getter ? this.hasInstanceMethod(property.getter) : false;
+    let hasSetter = property.setter ? this.hasInstanceMethod(property.setter) : false;
 
     // If property is readwrite and both a getter and setter are manually defined
     if (property.writable && hasGetter && hasSetter) {
@@ -218,13 +218,13 @@ shouldSynthesizeIvarForPropertyName(propertyName)
 
 shouldGenerateGetterImplementationForPropertyName(propertyName)
 {
-    var property = this._propertyMap[propertyName];
+    let property = this._propertyMap[propertyName];
     if (!property) return false;
 
     if (property.ivar == OJDynamicProperty) return false;
 
     if (property.getter) {
-        var method = this._instanceMethodMap[property.getter];
+        let method = this._instanceMethodMap[property.getter];
         return method && method.synthesized;
     }
 
@@ -234,13 +234,13 @@ shouldGenerateGetterImplementationForPropertyName(propertyName)
 
 shouldGenerateSetterImplementationForPropertyName(propertyName)
 {
-    var property = this._propertyMap[propertyName];
+    let property = this._propertyMap[propertyName];
     if (!property) return false;
 
     if (property.ivar == OJDynamicProperty) return false;
 
     if (property.setter) {
-        var method = this._instanceMethodMap[property.setter];
+        let method = this._instanceMethodMap[property.setter];
         return method && method.synthesized;
     }
 
@@ -250,7 +250,7 @@ shouldGenerateSetterImplementationForPropertyName(propertyName)
 
 addIvar(ivar)
 {
-    var name = ivar.name;
+    let name = ivar.name;
 
     if (this._ivarMap[name]) {
         Utils.throwError(OJError.DuplicateIvarDefinition, "Instance variable " + name + " has previous declaration");
@@ -262,7 +262,7 @@ addIvar(ivar)
 
 addProperty(ojProperty)
 {
-    var name = ojProperty.name;
+    let name = ojProperty.name;
 
     if (this._propertyMap[name]) {
         Utils.throwError(OJError.DuplicatePropertyDefinition, "Property " + name + " has previous declaration");
@@ -274,7 +274,7 @@ addProperty(ojProperty)
 
 makePropertySynthesized(name, backing)
 {
-    var property = this._propertyMap[name];
+    let property = this._propertyMap[name];
     if (!property) {
         Utils.throwError(OJError.UnknownProperty, "Unknown property: " + name);
     } else if (property.ivar == OJDynamicProperty) {
@@ -289,7 +289,7 @@ makePropertySynthesized(name, backing)
 
 makePropertyDynamic(name)
 {
-    var property = this._propertyMap[name];
+    let property = this._propertyMap[name];
     if (!property) {
         Utils.throwError(OJError.UnknownProperty, "Unknown property: " + name);
     } else if (property.ivar == OJDynamicProperty) {
@@ -306,11 +306,11 @@ makePropertyDynamic(name)
 
 addMethod(method)
 {
-    var selectorName = method.selectorName;
-    var selectorType = method.selectorType;
-    var isClass      = method.selectorType == "+";
+    let selectorName = method.selectorName;
+    let selectorType = method.selectorType;
+    let isClass      = method.selectorType == "+";
 
-    var map = isClass ? this._classMethodMap : this._instanceMethodMap;
+    let map = isClass ? this._classMethodMap : this._instanceMethodMap;
 
     // +alloc, +new, -init, and -self are promoted to returnType "instancetype"
     // See http://clang.llvm.org/docs/LanguageExtensions.html
@@ -340,11 +340,11 @@ getAllIvars()
 
 getAllIvarNamesWithoutProperties()
 {
-    var names = _.map(this.getAllIvars(), function(ivar) {
+    let names = _.map(this.getAllIvars(), function(ivar) {
         return ivar.name;
     });
 
-    var toRemove = _.map(_.values(this._propertyMap), function(property) {
+    let toRemove = _.map(_.values(this._propertyMap), function(property) {
         return property.ivar;
     });
 

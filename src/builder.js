@@ -180,10 +180,10 @@ build()
 
     function handleInstanceVariableDeclaration(node)
     {
-        var type = node.parameterType ? node.parameterType.value : null;
+        let type = node.parameterType ? node.parameterType.value : null;
 
         for (let i = 0, length = node.ivars.length; i < length; i++) {
-            var name = node.ivars[i].name;
+            let name = node.ivars[i].name;
             currentClass.addIvar(new Model.OJIvar(name, currentClass.name, type));
         }
     }

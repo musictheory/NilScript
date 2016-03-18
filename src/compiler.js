@@ -277,7 +277,7 @@ _runOnCompileCallback(onCompileCallback, ojFile, doneCallback)
         },
 
         addWarning: (line, message) => {
-            var warning = Utils.makeError(OJWarning.OnCompileFunction, message, line);
+            let warning = Utils.makeError(OJWarning.OnCompileFunction, message, line);
             Utils.addFilePathToError(ojFile.path, warning);
             warnings.push(warning);
         },

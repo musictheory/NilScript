@@ -8,27 +8,27 @@
 
 "use strict";
 
-var _           = require("lodash");
-var OJError     = require("../errors").OJError;
-var Utils       = require("../utils");
-var OJClass     = require("./OJClass");
-var OJProtocol  = require("./OJProtocol");
-var OJMethod    = require("./OJMethod");
-var OJEnum      = require("./OJEnum");
+const _           = require("lodash");
+const OJError     = require("../errors").OJError;
+const Utils       = require("../utils");
+const OJClass     = require("./OJClass");
+const OJProtocol  = require("./OJProtocol");
+const OJMethod    = require("./OJMethod");
+const OJEnum      = require("./OJEnum");
 
-var OJClassPrefix             = "$oj_c_";
-var OJProtocolPrefix          = "$oj_p_";
-var OJMethodPrefix            = "$oj_f_";
-var OJIvarPrefix              = "$oj_i_";
+const OJClassPrefix             = "$oj_c_";
+const OJProtocolPrefix          = "$oj_p_";
+const OJMethodPrefix            = "$oj_f_";
+const OJIvarPrefix              = "$oj_i_";
 
-var OJKindofClassPrefix       = "$oj_k_";   // Typechecker only
-var OJStaticClassPrefix       = "$oj_C_";   // Typechecker only
-var OJStaticProtocolPrefix    = "$oj_P_";   // Typechecker only
-var OJStructPrefix            = "$oj_s_";   // Typechecker only
-var OJEnumPrefix              = "$oj_e_";   // Typechecker only
+const OJKindofClassPrefix       = "$oj_k_";   // Typechecker only
+const OJStaticClassPrefix       = "$oj_C_";   // Typechecker only
+const OJStaticProtocolPrefix    = "$oj_P_";   // Typechecker only
+const OJStructPrefix            = "$oj_s_";   // Typechecker only
+const OJEnumPrefix              = "$oj_e_";   // Typechecker only
 
 
-var TypecheckerSymbols = {
+const TypecheckerSymbols = {
     Combined:       "$oj_$Combined",
     StaticCombined: "$oj_$StaticCombined",
 
@@ -41,7 +41,7 @@ var TypecheckerSymbols = {
     GlobalType:     "$oj_$Globals"
 };
 
-var Location = {
+const Location = {
     DeclarationReturn:    "DeclarationReturn",
     DeclarationParameter: "DeclarationParameter",
 
@@ -50,12 +50,12 @@ var Location = {
 };
 
 
-var sBase52Digits = "etnrisouaflchpdvmgybwESxTNCkLAOMDPHBjFIqRUzWXVJKQGYZ0516372984";
+const sBase52Digits = "etnrisouaflchpdvmgybwESxTNCkLAOMDPHBjFIqRUzWXVJKQGYZ0516372984";
 
 function sToBase52(index)
 {
-    var result = "";
-    var base = 52;
+    let result = "";
+    let base = 52;
 
     do {
         result += sBase52Digits.charAt(index % base);
@@ -119,15 +119,15 @@ saveState()
 
 _getSqueezedSymbol(readableName, add)
 {
-    var fromMap = this._fromSqueezedMap;
-    var toMap   = this._toSqueezedMap;
+    let fromMap = this._fromSqueezedMap;
+    let toMap   = this._toSqueezedMap;
 
-    var squeezedName = toMap[readableName];
-    var hasName = toMap.hasOwnProperty(readableName);
+    let squeezedName = toMap[readableName];
+    let hasName = toMap.hasOwnProperty(readableName);
 
     if (!hasName && add) {
         while (!squeezedName) {
-            var nameToTry = "$oj$" + sToBase52(this._squeezerId);
+            let nameToTry = "$oj$" + sToBase52(this._squeezerId);
             if (!fromMap[nameToTry]) {
                 squeezedName = nameToTry;
             }
@@ -232,25 +232,25 @@ toTypecheckerType(rawInType, location, currentClass)
         this._setupTypecheckerMaps();
     }
 
-    var self  = this;
-    var model = this._model;
-    var toTypecheckerMap = this._toTypecheckerMap;
+    let self  = this;
+    let model = this._model;
+    let toTypecheckerMap = this._toTypecheckerMap;
 
-    var inType  = rawInType.replace(/kindof\s+/, "kindof-").replace(/\s+/g, ""); // Remove whitespace
-    var outType = toTypecheckerMap[inType];
+    let inType  = rawInType.replace(/kindof\s+/, "kindof-").replace(/\s+/g, ""); // Remove whitespace
+    let outType = toTypecheckerMap[inType];
 
     if (outType) return outType;
 
     // "Array<Array<String>>"" becomes [ "Array", "Array", "String" ]
-    var inParts  = inType.replace(/\>/g, "").split("<");
-    var addToForwardMap = true;
-    var addToReverseMap = true;
+    let inParts  = inType.replace(/\>/g, "").split("<");
+    let addToForwardMap = true;
+    let addToReverseMap = true;
 
     let _handleParts = (parts) => {
-        var part = parts[0];
-        var rest = parts.slice(1);
-        var result;
-        var tmp;
+        let part = parts[0];
+        let rest = parts.slice(1);
+        let result;
+        let tmp;
 
         if (rest.length > 0) {
             if (part == "Array") {
@@ -260,7 +260,7 @@ toTypecheckerType(rawInType, location, currentClass)
                 result = "{[i:string ]:" + _handleParts(rest) + "}";
 
             } else if (part == "id" && (rest.length > 0)) {
-                var protocolSymbols = [ TypecheckerSymbols.Base ];
+                let protocolSymbols = [ TypecheckerSymbols.Base ];
 
                 _.each(rest[0].split(","), function(protocol) {
                     protocolSymbols.push(self.getSymbolForProtocolName(protocol));
@@ -363,7 +363,7 @@ toTypecheckerType(rawInType, location, currentClass)
     }
 
     if (addToReverseMap && outType) {
-        var outTypeNoParenthesis = outType.replace(/[()]/g, ""); // Remove parenthesis
+        let outTypeNoParenthesis = outType.replace(/[()]/g, ""); // Remove parenthesis
 
         if (!this._fromTypecheckerMap[outTypeNoParenthesis]) {
             this._fromTypecheckerMap[outTypeNoParenthesis] = inType;
@@ -381,9 +381,9 @@ fromTypecheckerType(rawInType)
     }
 
 
-    var inType  = rawInType.replace(/[\s;]+/g, ""); // Remove whitespace and semicolon
-    var outType = this._fromTypecheckerMap[inType];
-    var m;
+    let inType  = rawInType.replace(/[\s;]+/g, ""); // Remove whitespace and semicolon
+    let outType = this._fromTypecheckerMap[inType];
+    let m;
 
     if (!outType) {
         if (inType.indexOf(TypecheckerSymbols.Combined) >= 0 || inType.indexOf(TypecheckerSymbols.StaticCombined) >= 0) {
@@ -409,7 +409,7 @@ fromTypecheckerType(rawInType)
 
 getSymbolicatedString(inString)
 {
-    var fromSqueezedMap = this._fromSqueezedMap;
+    let fromSqueezedMap = this._fromSqueezedMap;
 
     return inString.replace(/\$oj[_$][A-Za-z0-9_$]+/g, function(symbol) {
         if (symbol.indexOf("$oj$") === 0) {
@@ -436,7 +436,7 @@ getSymbolicatedString(inString)
 
 getSymbolForClassName(className, isTypecheckerStatic)
 {
-    var prefix = isTypecheckerStatic ? OJStaticClassPrefix : OJClassPrefix;
+    let prefix = isTypecheckerStatic ? OJStaticClassPrefix : OJClassPrefix;
 
     if (!className) return;
 
@@ -466,14 +466,14 @@ getSymbolForEnumName(enumName)
 
 getSymbolForProtocolName(protocolName, isTypecheckerStatic)
 {
-    var prefix = isTypecheckerStatic ? OJStaticProtocolPrefix : OJProtocolPrefix;
+    let prefix = isTypecheckerStatic ? OJStaticProtocolPrefix : OJProtocolPrefix;
     return prefix + protocolName;
 }
 
 
 getSymbolForSelectorName(selectorName)
 {
-    var replacedName = selectorName;
+    let replacedName = selectorName;
     replacedName = replacedName.replace(/_/g,   "__");
     replacedName = replacedName.replace(/^__/g, "_");
     replacedName = replacedName.replace(/\:/g,  "_");
@@ -502,7 +502,7 @@ getSymbolForIdentifierName(name)
 
 getSymbolForClassNameAndIvarName(className, ivarName)
 {
-    var result = OJIvarPrefix + className + "$" + ivarName;
+    let result = OJIvarPrefix + className + "$" + ivarName;
     if (this._squeeze) result = this._getSqueezedSymbol(result, true);
     return result;
 }

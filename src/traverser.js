@@ -52,8 +52,8 @@ const ojVisitorKeys = {
 //
 (function() {
     function addAnnotationBeforeBody(key) {
-        var children    = _.clone(estraverse.VisitorKeys[key]) || [ ];
-        var indexOfBody = children.indexOf(children, "body");
+        let children    = _.clone(estraverse.VisitorKeys[key]) || [ ];
+        let indexOfBody = children.indexOf(children, "body");
 
         children.splice(indexOfBody, 0, "annotation");
 
@@ -61,7 +61,7 @@ const ojVisitorKeys = {
     }
 
     function addAnnotationAtEnd(key) {
-        var children = _.clone(estraverse.VisitorKeys[key]);
+        let children = _.clone(estraverse.VisitorKeys[key]);
 
         children.push("annotation");
 
