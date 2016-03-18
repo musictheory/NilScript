@@ -241,11 +241,11 @@ TheClass.prototype.$oj_f_doSomethingWithString_andNumber_ = function(string, num
 
 Messages to an object are simply JavaScript function calls wrapped in a falsey check.  Hence:
 
-     var result = [anObject doSomethingWithString:"Hello" andNumber:0];
+     let result = [anObject doSomethingWithString:"Hello" andNumber:0];
      
 becomes the equivalent of:
 
-     var result = anObject && anObject.doSomethingWithString_andNumber_("Hello", 0);
+     let result = anObject && anObject.doSomethingWithString_andNumber_("Hello", 0);
      
 The compiler will produce slightly different output depending on:
 
@@ -525,7 +525,7 @@ Note: Inlining causes the enum or const to be lifted to the global scope.  Inlin
 To mimic C APIs such as CoreGraphics, oj has the ability to declare global functions and variables with `@global`.
 
 ```
-@global function CGRectMake(x : Number, y : Number, width : Number, height : Number) {
+@global function CGRectMake(x: Number, y: Number, width: Number, height: Number): void {
     return { origin: { x, y }, size: { width, height } };
 }
     
@@ -675,13 +675,15 @@ oj uses an Objective-C inspired syntax for types, which is automatically transla
 
 | oj Type            | TypeScript type / Description                                                      
 |--------------------|------------------------------------------------------------------
-| Numeric type       | `number`
-| Boolean type       | `boolean`
+| `Number`           | `number`
+| `Boolean`, `BOOL`  | `boolean`
 | `String`           | `string`
 | `Array<Number>`    | An array of numbers, corresponds to the `number[]` TypeScript type.
 | `Object<Number>`   | A JavaScript object used as a string-to-number map. corresponds to the `{ [i:string]: number }` TypeScript type
 | `Object`, `any`    | The `any` type (which effectively turns off typechecking)
 | `TheType`          | The JavaScript type (as defined by the `lib.d.ts` TypeScript file) or an instance of an oj class
+| `Array<TheType>`   | A typed array, corresponds to the `TheType[]` TypeScript type.
+| `Object<TheType>`  | A JavaScript object used as a string-to-TheType map. corresponds to the `{ [i:string]: TheType }` TypeScript type
 | `id<ProtocolName>` | An object which conforms to the specified protocol name(s)
 | `id`               | A special aggregate type containing all known instance methods definitions.
 | `Class`            | A special aggregate type containing all known class methods definitions.
@@ -701,26 +703,24 @@ TypeScript infers variables automatically; however, sometimes an explicit annota
 function getNumber() { … }
 
 function doSometingWithNumber() : void {
-    var num : Number = getNumber(); // Annotation needed since getNumber() is not annotated
+    let num : Number = getNumber(); // Annotation needed since getNumber() is not annotated
     …
 }
 ```    
     
-oj also provides syntax for basic structures, similar to the syntax for instance variable declaration.  `@struct` does not affect generated code and only provides hints to the typechecker:
+oj also provides `@type` to declare basic types.  `@type` does not affect generated code and only provides hints to the typechecker:
 
 ```
-@struct CGPoint { Number x;        Number y;      }
-@struct CGSize  { Number width;    Number height; }
-@struct CGRect  { CGPoint origin;  CGSize size;   }
-    
-function makeSquare(length : Number) : CGRect  { … }
+@type MyNumericType = Number;
+@type MyRect = { x: Number, y: Number, width: Number, height: Number };
+@type MyDoneCallback = function(completed: BOOL): void;
+@type MyTypedTuple = [ Number, Number, String ];
+
+function makeSquare(length: Number): MyRect { … }
+function loadWithCallback(callback: MyDoneCallback): void { … }
 ```
 
-Casting is performed via the `@cast` operator.  It may be used similar in syntax to C++'s `static_cast`:
-
-    var a : String = @cast<String>( 3 + 4 + 6 );
-
-or via function syntax:
+Casting is performed via the `@cast` operator:
 
     var a : String = @cast(String, 3 + 4 + 6);
 
@@ -732,7 +732,7 @@ For some projects and coding styles, the default TypeScript rules may be too str
 
 ```
 function example() {
-    var o = { };
+    let o = { };
     // This is an error in TypeScript, as 'foo' isn't a property on the '{}' type
     o.foo = "Foo";
 }
@@ -786,8 +786,8 @@ In order to support compiler optimizations, the following method names are reser
 Traditionally, oj's API consisted of a single `compile` method:
 
 ```javascript
-var ojc = require("ojc");
-var options = { … };
+let ojc = require("ojc");
+let options = { … };
     
 ojc.compile(options, function(err, results) {
     
@@ -797,12 +797,12 @@ ojc.compile(options, function(err, results) {
 To allow for fast incremental compiles, oj 2.x adds a `Compiler` constructor:
 
 ```javascript
-var ojc = require("ojc");
+let ojc = require("ojc");
 
 // Important: create one compiler per output file.
-var compiler = new ojc.Compiler();
+let compiler = new ojc.Compiler();
 
-var options = { … };
+let options = { … };
 
 // Call doCompile() each time one of the files specified by options.files changes
 function doCompile(callback) {
