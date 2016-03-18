@@ -449,40 +449,30 @@ oj supports C-style enumerations via the `@enum` keyword and constants via the `
 
     someFunction(zero, one, two, three, four, TheConstant);
 
-By default, oj compiles the above to:
+As of oj 2.x, both `@enum` and `@const` are always lifted to the global scope and inlined by the compiler.  Hence, the above compiles into:
 
-    var zero  = 0;
-    var one   = 1;
-    var two   = 2;
-    var three = 3;
-    var four  = 4;
-
-    var TheConstant = "Hello World";
-
-    someFunction(zero, one, two, three, four, TheConstant);
-
-However, when the `--inline-enum` option is passed into the oj compiler, oj inlines enum values:
-
-    someFunction(0, 1, 2, 3, 4, TheConstant);
-
-The `--inline-const` option inlines `TheConstant` as well:
-    
     someFunction(0, 1, 2, 3, 4, "Hello World");
 
-Note: Inlining causes the enum or const to be lifted to the global scope.  Inlining affects all occurrences of that identifier in all files for the current compilation.  Inlined enums/consts are persisted via `--output-state` and `--input-state`.
+Inlining affects all occurrences of that identifier in all files for the current compilation.  Inlined enums/consts are persisted via `--output-state` and `--input-state`.
 
 ---
 ## <a name="global"></a>@global
 
 To mimic C APIs such as CoreGraphics, oj has the ability to declare global functions and variables with `@global`.
 
-    @global function CGRectMake(x : Number, y : Number, width : Number, height : Number) {
-        return { origin: { x, y }, size: { width, height } };
-    }
+```
+@type CGPoint = { x: Number, y: Number };
+@type CGSize  = { width: Number, height: Number };
+@type CGRect  = { origin: CGPoint, size: CGSize };
+
+@global function CGRectMake(x: Number, y: Number, width: Number, height: Number): CGRect {
+    return { origin: { x, y }, size: { width, height } };
+}
     
-    @global CGRectZero = CGRectMake(0, 0, 0, 0);
-    @global CGRectNull = CGRectMake(Infinity, Infinity, 0, 0);
-    
+@global CGRectZero: CGRect = CGRectMake(0, 0, 0, 0);
+@global CGRectNull: CGRect = CGRectMake(Infinity, Infinity, 0, 0);
+```
+
 Which transforms into the equivalent of:
 
     $oj_oj._g.CGRectMake = function(x, y, width, height) {
@@ -491,7 +481,7 @@ Which transforms into the equivalent of:
     
     $oj_oj._g.CGRectZero = $oj_oj._g.CGRectMake(0, 0, 0, 0);
     $oj_oj._g.CGRectNull = $oj_oj._g.CGRectMake(Infinity, Infinity, 0, 0);
-    
+
 Unlike inlined enums and consts, globals are assigned at runtime.  Hence, in the above code example, care must be given that `CGRectMake()` isn't used for initializing `CGRectZero` until after the `@global function CGRectMake` line.  This limitation should not affect globals used from within oj methods (as the global will already be declared by that time).
 
 ---
