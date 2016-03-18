@@ -30,9 +30,6 @@ let opt = getopt.create([
 
     [ "",  "output-language=LANG",      "output language" ],
 
-    [ "",  "inline-const",              "inline @const identifiers" ],
-    [ "",  "inline-enum",               "inline @enum identifiers"  ],
-
     [ "",  "check-types",               "use type checker (experimental)" ],
     [ "",  "typescript-lib=FILE",       "type checker: specify alternate lib.d.ts file"    ],
     [ "",  "def=FILE+",                 "type checker: specify additional definition file" ],

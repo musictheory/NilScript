@@ -1,5 +1,3 @@
-//@opts { "inline-const": true }
-
 @const Hundred = "100";
 
 @implementation Issue69Class {

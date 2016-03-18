@@ -1,6 +1,4 @@
 //@opts { }
-//@opts { "inline-enum":  true }
-//@opts { "inline-const": true }
 
 var assert = require("assert");
 
