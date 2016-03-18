@@ -95,7 +95,7 @@ Behind the scenes, the oj compiler changes the `@implementation`/`@end` block in
 
 ```
 @implementation TheClass
-var sPrivateStaticVariable = "Private";
+let sPrivateStaticVariable = "Private";
 function sPrivate() { }
 @end
 ```
@@ -104,7 +104,7 @@ becomes equivalent to:
 
 ```
 oj_private_function(…, function() {
-    var sPrivateStaticVariable = "Private";
+    let sPrivateStaticVariable = "Private";
     function sPrivate() { }
 });
 ```
@@ -213,8 +213,8 @@ Just as Objective-C supports messaging `nil`, oj supports the concept of "Falsy 
 Any message to a falsy JavaScript value (false / undefined / null / 0 / "" / NaN ) will return that value.  
 
 ```
-var foo = null;
-var result = [foo doSomething];  // result is null
+let foo = null;
+let result = [foo doSomething];  // result is null
 ```
 
 ### <a name="method-compiler"></a>Behind the Scenes (Methods)
@@ -466,15 +466,15 @@ The oj compiler adds the following keywords for Boolean/null values and replaces
    
 Hence:
 
-    var nope = NO;
-    var yep  = YES;
-    var anObject = nil;
+    let nope = NO;
+    let yep  = YES;
+    let anObject = nil;
     
 becomes:
 
-    var nope = false;
-    var yep  = true;
-    var anObject = null;
+    let nope = false;
+    let yep  = true;
+    let anObject = null;
       
 ---
 ## <a name="enum"></a>@enum and @const
@@ -628,7 +628,7 @@ oj provides basic code hinting to catch common errors.
 
 When the `--warn-unknown-selectors` option is specified, oj warns about usage of undefined selectors/methods.  This can help catch typos at compile time:
 
-    var c = [[TheClass allc] init]; // Warns if no +allc or -allc method exists on any class
+    let c = [[TheClass allc] init]; // Warns if no +allc or -allc method exists on any class
 
 When the `--warn-unknown-ivars` option is specified, oj checks all JavaScript identifiers prefixed with an underscore.  A warning is produced when such an identifier is used in a method declaration and the current class lacks a corresponding `@property` or instance variable declaration.
 
@@ -722,11 +722,11 @@ function loadWithCallback(callback: MyDoneCallback): void { … }
 
 Casting is performed via the `@cast` operator:
 
-    var a : String = @cast(String, 3 + 4 + 6);
+    let a : String = @cast(String, 3 + 4 + 6);
 
 Sometimes you may wish to disable type checking for a specific variable or expression.  While `@cast(any, …)` accomplishes this, you can also use the `@any` convinience operator:
 
-    var o = @any({ });
+    let o = @any({ });
 
 For some projects and coding styles, the default TypeScript rules may be too strict.  For example, the following is an error in typescript:
 
@@ -903,7 +903,7 @@ ojOptions["after-compile"] = function(file, callback) {
     // retainLines must be true or oj's output source map will be useless
     babelOptions.retainLines = true;
     
-    var result = babel.transform(file.getContents(), babelOptions);
+    let result = babel.transform(file.getContents(), babelOptions);
     
     // file.setContents() updates the generated source code with a string.
     // This string must have a 1:1 line mapping to the original string
@@ -933,12 +933,12 @@ In previous versions of oj, this was accomplished via the `--output-state` and `
 oj 2 introduces a new `Compiler` API with `Compiler#uses` and `Compiler#compile`.  This allows both incremental compiles, and allows for more efficient state sharing:
 
 ```javascript
-var ojc = require("ojc");
-var coreCompiler   = new ojc.Compiler();
-var webAppCompiler = new ojc.Compiler();
+let ojc = require("ojc");
+let coreCompiler   = new ojc.Compiler();
+let webAppCompiler = new ojc.Compiler();
     
-var coreOptions   = { … };
-var webAppOptions = { … };
+let coreOptions   = { … };
+let webAppOptions = { … };
 
 // This tells webAppCompiler to always pull the last state from coreCompiler 
 //
