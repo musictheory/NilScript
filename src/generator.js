@@ -568,6 +568,31 @@ generate()
         }
     }
 
+    function handleOJInstanceVariableDeclarations_typeCheckerOnly(node)
+    {
+        if (!node.declarations.length) {
+            modifier.select(node).remove();
+            return;
+        }
+
+        modifier.from(node).to(node.declarations[0]).replace("");
+
+        _.each(node.declarations, declaration => {
+            let replacement = "";
+
+            let parameterType = declaration.parameterType;
+            let value = parameterType && parameterType.value;
+
+            if (value) {
+                replacement = "<" + symbolTyper.toTypecheckerType(value) + "> null;"
+            }
+
+            modifier.select(declaration).replace(replacement);
+        });
+
+        modifier.from(_.last(node.declarations)).to(node).replace("");
+    }
+
     function handleMethodDefinition(node)
     {
         let methodName = symbolTyper.getSymbolForSelectorName(node.selectorName);
@@ -663,6 +688,27 @@ generate()
 
         } else {
             Utils.throwError(OJError.DollarOJIsReserved, 'Unknown identifier: "' + name + '"');
+        }
+    }
+
+    function handleOJTypeDefinition(node)
+    {
+        if (language === LanguageTypechecker) {
+            let typesToCheck = [ ];
+
+            _.each(node.params, param => {
+                typesToCheck.push( symbolTyper.toTypecheckerType(param.annotation) );
+            });
+
+            if (node.annotation) {
+                typesToCheck.push( symbolTyper.toTypecheckerType(node.annotation) );
+            }
+
+            // Lay down a cast operation with all needed types.  This will generate a warning due to an unknown type.  
+            modifier.select(node).replace("<[ " + typesToCheck.join(", ") + "]> null;");
+
+        } else {
+            modifier.select(node).remove();
         }
     }
 
@@ -767,6 +813,10 @@ generate()
                 result += generateMethodDeclaration(false, property.getter);
                 result += " = function() { return " + generateThisIvar(currentClass.name, property.ivar, false) + "; } ; ";
             }
+        }
+
+        if (language === LanguageTypechecker) {
+            result += "<" + symbolTyper.toTypecheckerType(property.type) + "> null;";
         }
 
         if (!result) {
@@ -876,58 +926,68 @@ generate()
 
     function handleOJEachStatement(node)
     {
-        let i      = makeTemporaryVariable(false);
-        let length = makeTemporaryVariable(false);
+        if (language === LanguageTypechecker) {
+            let object = "";
 
-        let object, array;
-        let initLeft = "var ";
-        let initRight = "";
-        let expr = false;
-
-        // The left side is "var foo", "let foo", etc
-        if (node.left.type == Syntax.VariableDeclaration) {
-            object = node.left.declarations[0].id.name;
-            initLeft  += object + ", ";
-
-        // The left side is just an identifier
-        } else if (node.left.type == Syntax.Identifier) {
-            if (currentClass && currentClass.isIvar(node.left.name)) {
-                Utils.throwError(OJError.RestrictedUsage, "Cannot use ivar \"" + node.left.name + "\" on left-hand side of @each", node);
+            if (node.left.type == Syntax.VariableDeclaration) {
+                object = node.left.kind + " " +  node.left.declarations[0].id.name;
+            } else {
+                object = node.left.name;
             }
 
-            object = node.left.name;
-        }
+            modifier.from(node).to(node.right).replace("for (" + object + " = $oj_$AtEachGetMember(");
+            modifier.from(node.right).to(node.body).replace(") ; $oj_$AtEachTest() ; ) ");
 
-        // The right side is a simple identifier
-        if (language !== LanguageTypechecker && node.right.type == Syntax.Identifier && currentClass && !currentClass.isIvar(node.right.name)) {
-            array = node.right.name;
-
-        // The right side is an expression, we need an additional variable
         } else {
-            array = makeTemporaryVariable(false);
-            initLeft  += array + " = (";
-            initRight = initRight + "), ";
-            expr = true;
-        }
+            let i      = makeTemporaryVariable(false);
+            let length = makeTemporaryVariable(false);
 
-        initRight += i + " = 0, " + length + " = (" + array + " ? " + array + ".length : 0)";
+            let object, array;
+            let initLeft = "var ";
+            let initRight = "";
+            let expr = false;
 
-        let test      = i + " < " + length;
-        let increment = i + "++";
+            // The left side is "var foo", "let foo", etc
+            if (node.left.type == Syntax.VariableDeclaration) {
+                object = node.left.declarations[0].id.name;
+                initLeft = node.left.kind + " " + object + ", ";
 
-        if (language === LanguageTypechecker) {
-            increment = increment + ", $oj_$EnsureArray(" + array + ")"
-        }
+            // The left side is just an identifier
+            } else if (node.left.type == Syntax.Identifier) {
+                if (currentClass && currentClass.isIvar(node.left.name)) {
+                    Utils.throwError(OJError.RestrictedUsage, "Cannot use ivar \"" + node.left.name + "\" on left-hand side of @each", node);
+                }
 
-        if (expr) {
-            modifier.from(node).to(node.right).replace("for (" + initLeft);
-            modifier.from(node.right).to(node.body).replace(initRight + "; " + test + "; " + increment + ") ");
-        } else {
-            modifier.from(node).to(node.body).replace("for (" + initLeft + initRight + "; " + test + "; " + increment + ") ");
-        }
+                object = node.left.name;
+            }
 
-        if (node.body.body.length) {
-            modifier.from(node.body).to(node.body.body[0]).insert("{" + object + " = " + array + "[" + i + "];");
+            // The right side is a simple identifier
+            if (node.right.type == Syntax.Identifier && currentClass && !currentClass.isIvar(node.right.name)) {
+                array = node.right.name;
+
+            // The right side is an expression, we need an additional variable
+            } else {
+                array = makeTemporaryVariable(false);
+                initLeft  += array + " = (";
+                initRight = initRight + "), ";
+                expr = true;
+            }
+
+            initRight += i + " = 0, " + length + " = (" + array + " ? " + array + ".length : 0)";
+
+            let test      = i + " < " + length;
+            let increment = i + "++";
+
+            if (expr) {
+                modifier.from(node).to(node.right).replace("for (" + initLeft);
+                modifier.from(node.right).to(node.body).replace(initRight + "; " + test + "; " + increment + ") ");
+            } else {
+                modifier.from(node).to(node.body).replace("for (" + initLeft + initRight + "; " + test + "; " + increment + ") ");
+            }
+
+            if (node.body.body.length) {
+                modifier.from(node.body).to(node.body.body[0]).insert("{" + object + " = " + array + "[" + i + "];");
+            }
         }
     }
 
@@ -1095,10 +1155,8 @@ generate()
             type === Syntax.OJProtocolDefinition                 ||
             type === Syntax.OJClassDirective                     ||
             type === Syntax.OJSqueezeDirective                   ||
-            type === Syntax.OJBracketVariableBlock               ||
             type === Syntax.OJSynthesizeDirective                ||
             type === Syntax.OJDynamicDirective                   ||
-            type === Syntax.OJTypedefDeclaration                 ||
           ((type === Syntax.OJEnumDeclaration)  && removeEnums)  ||
           ((type === Syntax.OJConstDeclaration) && removeConsts)
         ) {
@@ -1116,6 +1174,15 @@ generate()
             }
 
             handleOJClassImplementation(node);
+
+        } else if (type === Syntax.OJInstanceVariableDeclarations) {
+            if (language === LanguageTypechecker) {
+                handleOJInstanceVariableDeclarations_typeCheckerOnly(node);
+            } else {
+                modifier.select(node).remove();
+            }
+
+            return Traverser.SkipNode;
 
         } else if (type === Syntax.OJMethodDefinition) {
             currentMethodNode = node;
@@ -1156,6 +1223,9 @@ generate()
 
         } else if (type === Syntax.OJPredefinedMacro) {
             handleOJPredefinedMacro(node);
+
+        } else if (type === Syntax.OJTypeDefinition) {
+            handleOJTypeDefinition(node);
 
         } else if (type === Syntax.Literal) {
             handleLiteral(node);

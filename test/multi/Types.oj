@@ -1,51 +1,48 @@
 
-// @name Basic Typedef
+// @name Basic Type
 
-@typedef Array Rect;
-@typedef Number MyNumber
-
-true;
-
-
-// @name Duplicate Typedef - OK
-
-@typedef Array Rect;
-@typedef Array Rect;    // This is ok, same existing value
+@type Rect = Array;
+@type MyNumber = Number;
 
 true;
-
 
 // --------------------------------------------------------------------
-// @name Typedef Exists
+// @name Duplicate Type - OK
+
+@type Rect = Array;
+@type Rect = Array;    //@error OJDuplicateDeclarationError
+
+true;
+
+// --------------------------------------------------------------------
+// @name Type Exists
 
 @implementation Foo
 @end
 
-@typedef Number Foo;   //@error OJTypeAlreadyExistsError
-
+@type Foo = Number;   //@error OJDuplicateDeclarationError
 
 // --------------------------------------------------------------------
-// @name Typedef Exists
+// @name Type Exists
 
-@typedef Number Foo;
+@type Foo = Number;
 
-@implementation Foo  //@error OJTypeAlreadyExistsError
+@implementation Foo  //@error OJDuplicateDeclarationError
 @end
 
 // --------------------------------------------------------------------
-// @name Circular Typedef 1
-// @error-no-line OJCircularTypedefHierarchyError
+// @name Circular Type 1
+// @error-no-line OJCircularTypeHierarchyError
 
-@typedef Foo Foo2;
-@typedef Foo2 Foo3;
-@typedef Foo3 Foo;
-
+@type Foo  = Foo2;
+@type Foo2 = Foo3;
+@type Foo3 = Foo;
 
 // --------------------------------------------------------------------
-// @name Circular Typedef 2
-// @error-no-line OJCircularTypedefHierarchyError
+// @name Circular Type 2
+// @error-no-line OJCircularTypeHierarchyError
 
-@typedef Foo Foo2;
-@typedef Foo2 Foo;
+@type Foo  = Foo2;
+@type Foo2 = Foo;
 
 

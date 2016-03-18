@@ -112,7 +112,7 @@ _checkResults(err, result)
         }
     });
 
-    assert.deepEqual(this.expectedNoLineErrors.sort(), actualNoLineErrors.sort());
+    assert.deepEqual(actualNoLineErrors.sort(), this.expectedNoLineErrors.sort());
 
     checkMaps(this.expectedErrorMap,     actualErrorMap,     "error");
     checkMaps(this.expectedWarningMap,   actualWarningMap,   "warning");

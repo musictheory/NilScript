@@ -41,7 +41,8 @@ const sPublicOptions = [
     "source-map-file",           // Output source map file name
     "source-map-root",           // Output source map root URL
 
-    "on-compile",                // Function, callback to call per-file compile
+    "before-compile",            // Function, callback to call per-file before the oj->js compile
+    "after-compile",             // Function, callback to call per-file after the oj->js compile
     "inline-const",              // Boolean, inline @const identifiers
     "inline-enum",               // Boolean, inline @enum identifiers
 
@@ -271,6 +272,10 @@ _runOnCompileCallback(onCompileCallback, ojFile, doneCallback)
             return lines.join("\n");
         },
 
+        getPath: () => {
+            return ojFile.path;
+        },
+
         addWarning: (line, message) => {
             var warning = Utils.makeError(OJWarning.OnCompileFunction, message, line);
             Utils.addFilePathToError(ojFile.path, warning);
@@ -293,33 +298,52 @@ _runOnCompileCallback(onCompileCallback, ojFile, doneCallback)
 }
 
 
-_generateJavaScript(files, model, options, onCompileCallback, callback)
+_generateJavaScript(files, model, options, beforeCompileCallback, afterCompileCallback, callback)
 {
     let err = null;
 
     async.each(files, (ojFile, callback) => {
         if (!ojFile.generatorLines) {
-            try {
-                let generator = new Generator(ojFile, model, false, options);
-                let result    = generator.generate();
+            async.series([
+                callback => {
+                    if (beforeCompileCallback) {
+                        this._runOnCompileCallback(beforeCompileCallback, ojFile, callback);
+                    } else {
+                        callback();
+                    }
+                },
 
-                ojFile.generatorLines    = result.lines;
-                ojFile.generatorWarnings = result.warnings || [ ];
+                callback => {
+                    try {
+                        let generator = new Generator(ojFile, model, false, options);
+                        let result    = generator.generate();
 
-                if (onCompileCallback) {
-                    this._runOnCompileCallback(onCompileCallback, ojFile, callback);
-                    return;                    
+                        ojFile.generatorLines    = result.lines;
+                        ojFile.generatorWarnings = result.warnings || [ ];
+
+                    } catch (e) {
+                        Utils.addFilePathToError(ojFile.path, e);
+                        ojFile.needsGenerate();
+                        ojFile.error = e;
+                        if (!err) err = e;
+                    }
+
+                    callback();
+                },
+
+                callback => {
+                    if (afterCompileCallback) {
+                        this._runOnCompileCallback(afterCompileCallback, ojFile, callback);
+                    } else {
+                        callback();
+                    }
                 }
 
-            } catch (e) {
-                Utils.addFilePathToError(ojFile.path, e);
-                ojFile.needsGenerate();
-                ojFile.error = e;
-                if (!err) err = e;
-            }
-        }
+            ], callback);
 
-        callback();
+        } else {
+            callback();
+        }
 
     }, () => {
         callback(err);
@@ -472,7 +496,8 @@ compile(options, callback)
     ]);
 
     // Extract functions
-    let onCompileCallback    = extractFunction("on-compile");
+    let beforeCompileCallback = extractFunction("before-compile");
+    let afterCompileCallback  = extractFunction("after-compile");
 
     // Extract options.files and convert to a map of path->OJFiles
     let files = this._extractFilesFromOptions(optionsFiles, previousFiles);
@@ -578,7 +603,7 @@ compile(options, callback)
         // Run generator
         callback => {
             if (optionsOutputLanguage != "none") {
-                this._generateJavaScript(files, model, options, onCompileCallback, callback);
+                this._generateJavaScript(files, model, options, beforeCompileCallback, afterCompileCallback, callback);
             } else {
                 callback();
             }

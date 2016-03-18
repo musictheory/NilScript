@@ -180,8 +180,8 @@
         OJMethodSelector: 'OJMethodSelector',
         OJSelector: 'OJSelector',
         OJParameterType: 'OJParameterType',
-        OJBracketVariableBlock: 'OJBracketVariableBlock',
-        OJBracketVariableDeclaration: 'OJBracketVariableDeclaration',
+        OJInstanceVariableDeclarations: 'OJInstanceVariableDeclarations',
+        OJInstanceVariableDeclaration: 'OJInstanceVariableDeclaration',
         OJPropertyDirective: 'OJPropertyDirective',
         OJPropertyAttribute: 'OJPropertyAttribute',
         OJSynthesizeDirective: 'OJSynthesizeDirective',
@@ -199,10 +199,10 @@
         OJAnyExpression: 'OJAnyExpression',
         OJCastExpression: 'OJCastExpression',
         OJTypeAnnotation: 'OJTypeAnnotation',
-        OJTypedefDeclaration: 'OJTypedefDeclaration',
         OJEachStatement: 'OJEachStatement',
         OJGlobalDeclaration: 'OJGlobalDeclaration',
-        OJBridgedDeclaration: 'OJBridgedDeclaration'
+        OJBridgedDeclaration: 'OJBridgedDeclaration',
+        OJTypeDefinition: 'OJTypeDefinition'
 //!oj: end changes
     };
 
@@ -407,15 +407,13 @@
                    (id === '@selector')       ||
                    (id === '@dynamic')        ||
                    (id === '@enum')           ||
-                   (id === '@options')        ||
                    (id === '@const')          ||
                    (id === '@squeeze')        ||
                    (id === '@cast')           ||
                    (id === '@any')            ||
-                   (id === '@typedef')        ||
                    (id === '@each')           ||
                    (id === '@global')         ||
-                   (id === '@struct')         ||
+                   (id === '@type')           ||
                    (id === '@bridged');
         }
         //!oj: end changes
@@ -2532,26 +2530,25 @@
             return this;
         },
 
-        oj_finishBracketVariableBlock: function (declarations) {
-            this.type = Syntax.OJBracketVariableBlock;
+        oj_finishInstanceVariableDeclarations: function (declarations) {
+            this.type = Syntax.OJInstanceVariableDeclarations;
             this.declarations = declarations;
             this.finish();
             return this;
         },
 
-        oj_finishBracketVariableDeclaration: function (parameterType, ids) {
-            this.type = Syntax.OJBracketVariableDeclaration;
+        oj_finishInstanceVariableDeclaration: function (parameterType, ivars) {
+            this.type = Syntax.OJInstanceVariableDeclaration;
             this.parameterType = parameterType;
-            this.ids = ids;
+            this.ivars = ivars;
             this.finish();
             return this;
         },
 
-        oj_finishPropertyDirective: function (id, attributes, parameterType) {
+        oj_finishPropertyDirective: function (id, attributes) {
             this.type = Syntax.OJPropertyDirective;
             this.id = id;
             this.attributes = attributes;
-            this.parameterType = parameterType;
             this.finish();
             return this;
         },
@@ -2614,10 +2611,9 @@
             return this;
         },
 
-        oj_finishEnumDeclaration: function (id, unsigned, declarations) {
+        oj_finishEnumDeclaration: function (id, declarations) {
             this.type = Syntax.OJEnumDeclaration;
             this.id = id;
-            this.unsigned = unsigned;
             this.declarations = declarations;
             this.finish();
             return this;
@@ -2680,10 +2676,12 @@
             return this;
         },
  
-        oj_finishTypedefDeclaration: function (fromName, toName) {
-            this.type = Syntax.OJTypedefDeclaration;
-            this.from = fromName;
-            this.to = toName;
+        oj_finishTypeDefinition: function (name, kind, params, annotation) {
+            this.type = Syntax.OJTypeDefinition;
+            this.name = name;
+            this.kind = kind;
+            this.params = params;
+            this.annotation = annotation;
             this.finish();
             return this;
         },
@@ -5146,8 +5144,6 @@
 //!oj: Start changes
             case '@implementation':
                 return oj_parseClassImplementationDefinition(node);
-            case '@struct':
-                return oj_parseStructDefinition(node);
             case '@protocol':
                 return oj_parseProtocolDefinition(node);
             case '@class':
@@ -5160,14 +5156,12 @@
                 return oj_parseConstDeclaration(node);
             case '@enum':
                 return oj_parseEnumStatement(node);
-            case '@options':
-                return oj_parseEnumStatement(node);
-            case '@typedef':
-                return oj_parseTypedefDefinition(node);
             case '@each':
                 return oj_parseEachStatement(node);
             case '@global':
                 return oj_parseGlobalDeclaration(node);
+            case '@type':
+                return oj_parseTypeDefinition(node);
 //!oj: End changes
             default:
                 break;
@@ -6101,6 +6095,53 @@
         exports.version += "-oj";
     }
 
+    // Handles the following cases:
+    //     String foo
+    //     foo : String
+    //     String foo, bar            (when allowMultiple is true)
+    //     foo : String, bar : String (when allowMultiple is true)
+    //
+    function oj_parseVariableIdentifierListWithRequiredTypeAnnotation(allowMultiple) {
+        var nodes = [ ], node, first, type, name;
+
+        function pushIdentifier(name, type) {
+            var node = new Node();
+            node.oj_finishIdentifierWithAnnotation(name, type);
+            nodes.push(node);
+        }
+
+        first = lex();
+
+        if (match(':')) {
+            expect(':');
+
+            name = first.value;
+            pushIdentifier(name, oj_parseType());
+
+            while (allowMultiple && match(',')) {
+                expect(',');
+                name = lex().value;
+                expect(":");
+                pushIdentifier(name, oj_parseType());
+            }
+
+        } else {
+            type = first.value;
+            if (match('<')) type += oj_parseTypeAngleSuffix();
+
+            name = lex().value;
+            pushIdentifier(name, type);
+
+            while (allowMultiple && match(',')) {
+                expect(',');
+                name = lex().value;
+                pushIdentifier(name, type);
+            }
+        }
+
+        return nodes;
+    }
+
     function oj_parseMethodNameSegment() {
         var token, value, keyword, node = new Node();
 
@@ -6178,7 +6219,7 @@
     }
 
     function oj_parsePropertyDirective() {
-        var attributes = [ ], parameterType, id, node = new Node();
+        var attributes = [ ], id, node = new Node();
 
         expectKeyword('@property');
 
@@ -6195,12 +6236,10 @@
             expect(')');
         }
 
-        parameterType = oj_parseParameterType();
-        id = parseVariableIdentifier();
-
+        id = oj_parseVariableIdentifierListWithRequiredTypeAnnotation(false)[0];
         consumeSemicolon();
 
-        return node.oj_finishPropertyDirective(id, attributes, parameterType);
+        return node.oj_finishPropertyDirective(id, attributes);
     }
 
     function oj_parseSynthesizePair() {
@@ -6250,28 +6289,12 @@
         return node.oj_finishDynamicDirective(ids);
     }
 
-    function oj_parseType(allowVoid) {
-        var name, angles, parts;
-
-        function getName(allowVoid) {
-            var name;
-
-            if (allowVoid && matchKeyword("void")) {
-                lex();
-                name = "void";
-            } else {
-                name = parseVariableIdentifier().name;
-
-                if (name == "kindof") {
-                    name += " " + parseVariableIdentifier().name;
-                }
-            }
-            
-            return name;
-        }
+    // This should be called when lookahead is a '<' token.
+    function oj_parseTypeAngleSuffix() {
+        var parts = [ ], angles = 0;
 
         function appendNameAngle() {
-            parts.push( getName() );
+            parts.push( parseVariableIdentifier().name );
 
             if (match('<')) {
                 appendAngle();
@@ -6318,15 +6341,27 @@
             }
         }
 
-        name = getName(allowVoid);
-        if (!match('<')) return name;
-
-        // Handle id<Foo>, id<Foo, Bar>, id<Foo<Bar, Foo<Baz>>, etc
-        parts = [ name ];
-        angles = 0;
+        if (!match('<')) return "";
         appendAngle();
 
         return parts.join("");
+    }
+
+    function oj_parseType(allowVoid) {
+        var name;
+
+        if (allowVoid && matchKeyword("void")) {
+            lex();
+            name = "void";
+        } else {
+            name = parseVariableIdentifier().name;
+        }
+
+        if (match('<')) {
+            name += oj_parseTypeAngleSuffix();
+        }
+
+        return name;
     }
 
     function oj_parseParameterType(identifierOnly) {
@@ -6482,15 +6517,10 @@
         return node.finishBlockStatement(sourceElements);
     }
 
-    function oj_parseBracketVariableDeclaration() {
+    function oj_parseInstanceVariableDeclaration() {
         var parameterType = new Node(), ivars = [], node = new Node();
 
-        if (matchKeyword('var')) {
-            lex();
-            parameterType.oj_finishParameterType("var");
-        } else {
-            parameterType.oj_finishParameterType(oj_parseType(false));
-        }
+        parameterType.oj_finishParameterType(oj_parseType(false));
 
         ivars.push(parseVariableIdentifier());
 
@@ -6499,22 +6529,22 @@
             ivars.push(parseVariableIdentifier());
         }
 
-        return node.oj_finishBracketVariableDeclaration(parameterType, ivars);
+        return node.oj_finishInstanceVariableDeclaration(parameterType, ivars);
     }
 
-    function oj_parseBracketVariableBlock() {
+    function oj_parseInstanceVariableDeclarations() {
         var declarations = [], node = new Node();
 
         expect('{');
 
         while (!match('}')) {
-            declarations.push(oj_parseBracketVariableDeclaration());
+            declarations.push(oj_parseInstanceVariableDeclaration());
             consumeSemicolon();
         }
 
         expect('}');
 
-        return node.oj_finishBracketVariableBlock(declarations);
+        return node.oj_finishInstanceVariableDeclarations(declarations);
     }
 
     function oj_parseClassImplementationDefinition(node) {
@@ -6559,7 +6589,7 @@
         // Has ivar declarations
         if (match('{')) {
             if (category) throwUnexpectedToken();
-            ivarDeclarations = oj_parseBracketVariableBlock();
+            ivarDeclarations = oj_parseInstanceVariableDeclarations();
         }
 
         body = oj_parseClassImplementationBody();
@@ -6571,16 +6601,6 @@
         state.labelSet = oldLabelSet;
 
         return node.oj_finishClassImplementation(id, superClass, category, extension, protocolList, ivarDeclarations, body);
-    }
-
-    function oj_parseStructDefinition() {
-        var id, variables, node = new Node();
-
-        expectKeyword('@struct');
-        id = parseVariableIdentifier();
-        variables = oj_parseBracketVariableBlock();
-
-        return node.oj_finishStructDefinition(id, variables);
     }
 
     function oj_parseProtocolReferenceList() {
@@ -6895,18 +6915,9 @@
     }
 
     function oj_parseEnumStatement(node) {
-        var declarations = [ ],
-            id, unsigned;
+        var declarations = [ ], id;
 
-        if (matchKeyword('@options')) {
-            expectKeyword('@options');
-            unsigned = true;
-
-        } else {
-            expectKeyword('@enum');
-            unsigned = false;
-        }
-
+        expectKeyword('@enum');
 
         if (!match('{')) {
             // Name of enum
@@ -6924,20 +6935,84 @@
 
         consumeSemicolon();
 
-        return node.oj_finishEnumDeclaration(id, unsigned, declarations);
+        return node.oj_finishEnumDeclaration(id, declarations);
     }
 
-    function oj_parseTypedefDefinition(node) {
-        var fromName, toName;
+    function oj_parseTypeDefinition(node) {
+        var params = [ ], annotation = null, name, kind, param, paramName, paramType;
 
-        expectKeyword('@typedef');
+        expectKeyword('@type');
 
-        fromName = oj_parseType(true);
-        toName   = parseVariableIdentifier().name;
+        name = parseVariableIdentifier().name;
+        expect("=");
+
+        if (match('{')) {
+            kind  = 'object';
+
+            expect('{');
+
+            params = [ ];
+            while (!match('}')) {
+                params = params.concat(oj_parseVariableIdentifierListWithRequiredTypeAnnotation(true));
+                consumeSemicolon();
+            }
+
+            expect('}');
+
+        } else if (match('[')) {
+            kind = 'tuple';
+            expect('[')
+
+            while (!match(']')) {
+                paramName = "" + params.length;
+                paramType = oj_parseType();
+
+                param = new Node();
+                param.oj_finishIdentifierWithAnnotation(paramName, paramType);
+                params.push(param);
+
+                if (!match(']')) {
+                    expect(',');
+                }
+            }
+
+            expect(']');
+
+        } else if (matchKeyword('function')) {
+            kind = 'function';
+            expectKeyword('function');
+
+            expect('(')
+
+            while (!match(')')) {
+                paramName = parseVariableIdentifier().name;
+                expect(':');
+                paramType = oj_parseType();
+
+                param = new Node();
+                param.oj_finishIdentifierWithAnnotation(paramName, paramType);
+                params.push(param);
+
+                if (!match(')')) {
+                    expect(',');
+                }
+            }
+
+            expect(')');
+            expect(':');
+            annotation = oj_parseType(true);
+
+        } else if (lookahead.type === Token.Identifier) {
+            kind = 'alias';
+            annotation = oj_parseType();
+
+        } else {
+            throwUnexpectedToken();
+        }
 
         consumeSemicolon();
 
-        return node.oj_finishTypedefDeclaration(fromName, toName);
+        return node.oj_finishTypeDefinition(name, kind, params, annotation);
     }
 
     function oj_parseTypeAnnotation(allowVoid) {
@@ -6977,7 +7052,7 @@
     }
 
     function oj_parseEachStatement(node) {
-        var left, right, body, oldInIteration;
+        var kind, left, right, body, oldInIteration;
 
         expectKeyword('@each');
 
@@ -6985,10 +7060,10 @@
 
         if (matchKeyword('var') || matchKeyword('let')) {
             left = new Node();
-            lex();
+            kind = lex().value;
 
             state.allowIn = false;
-            left = left.finishVariableDeclaration(parseVariableDeclarationList({ inFor: false }));
+            left = left.finishLexicalDeclaration(parseVariableDeclarationList({ inFor: false }), kind);
             state.allowIn = true;
 
         } else {

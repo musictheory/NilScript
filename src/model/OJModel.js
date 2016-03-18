@@ -15,7 +15,7 @@ const OJProtocol    = require("./OJProtocol");
 const OJMethod      = require("./OJMethod");
 const OJConst       = require("./OJConst");
 const OJEnum        = require("./OJEnum");
-const OJStruct      = require("./OJStruct");
+const OJType        = require("./OJType");
 const OJSymbolTyper = require("./OJSymbolTyper")
 
 
@@ -24,28 +24,35 @@ class OJModel {
 
 constructor()
 {
+    this._symbolTyper = new OJSymbolTyper(this);
+    this._declarationMap = { };
+
     this.enums     = { };
     this.globals   = { };
     this.consts    = { };
     this.classes   = { };
-    this.structs   = { };
     this.protocols = { };
-    this.selectors = { };
+    this.types     = { };
 
-    this._symbolTyper = new OJSymbolTyper(this);
+    // These are filled in at prepare() time
+    this.numericMap  = { };
+    this.booleanMap  = { };
+    this.selectorMap = { };
 
-    this.types = { };
-    this.registerType( [
-        "Array",
-        "Boolean",
-        "Number",
-        "Object",
-        "String",
-        "Symbol"
-    ]);
+    _.each([ "Array", "Boolean", "Number", "Object", "String", "Symbol" ], name => {
+        this.types[name] = new OJType.makePrimitive(name);
+        this._declarationMap[name] = true;
+    });
 
-    this.aliasType( "Boolean", [ "boolean", "BOOL", "Bool", "bool" ] );
-    this.aliasType( "Number",  [ "number", "double", "float", "int", "char", "short", "long" ] );
+    _.each([ "boolean", "BOOL", "Bool", "bool" ], name => {
+        this.types[name] = new OJType.makeAlias(name, "Boolean");
+        this._declarationMap[name] = true;
+    });
+
+    _.each([ "number", "double", "float", "int", "char", "short", "long" ], name => {
+        this.types[name] = new OJType.makeAlias(name, "Number");
+        this._declarationMap[name] = true;
+    });
 }
 
 
@@ -67,10 +74,12 @@ loadState(state)
     load( state.globals,    this.globals,    OJGlobal   );
     load( state.classes,    this.classes,    OJClass    );
     load( state.protocols,  this.protocols,  OJProtocol );
-    load( state.structs,    this.structs,    OJStruct   );
+    load( state.types,      this.types,      OJType     );
 
-    _.extend(this.types,     state.types);
-    _.extend(this.selectors, state.selectors);
+    _.extend(this.numericMap,      state.numericMap);
+    _.extend(this.booleanMap,      state.booleanMap);
+    _.extend(this.selectorMap,     state.selectorMap);
+    _.extend(this._declarationMap, state.declarationMap);
 
     // OJSymbolTyper state is at same level for backwards compatibility
     this._symbolTyper.loadState(state);
@@ -83,16 +92,19 @@ saveState()
         return _.map(objects, o => o.saveState() );
     }
 
-    var state = {
+    let state = {
         consts:    getState( this.consts    ),
         enums:     getState( this.enums     ),
         globals:   getState( this.globals   ),
         classes:   getState( this.classes   ),
         protocols: getState( this.protocols ),
-        structs:   getState( this.structs   ),
+        types:     getState( this.types     ),
 
-        types:     this.types,
-        selectors: this.selectors
+        declarationMap: this._declarationMap,
+
+        numericMap:  this.numericMap,
+        booleanMap:  this.booleanMap,
+        selectorMap: this.selectorMap
     };
 
     // OJSymbolTyper state is at same level for backwards compatibility
@@ -152,13 +164,14 @@ saveBridged()
 
 prepare()
 {
-    var selectors = { };
+    let selectorMap = { };
+    let booleanMap  = { };
+    let numericMap  = { };
 
-    var classes = this.classes;
-    _.each(classes, function(ojClass, name) {
+    _.each(this.classes, (ojClass, name) => {
         // Check for circular hierarchy
-        var visited = [ name ];
-        var superclass = ojClass.superclassName ? classes[ojClass.superclassName] : null;
+        let visited = [ name ];
+        let superclass = ojClass.superclassName ? this.classes[ojClass.superclassName] : null;
 
         while (superclass) {
             if (visited.indexOf(superclass.name) >= 0) {
@@ -167,60 +180,76 @@ prepare()
 
             visited.push(superclass.name);
 
-            superclass = classes[superclass.superclassName];
+            superclass = this.classes[superclass.superclassName];
         }
 
         ojClass.doAutomaticSynthesis();
 
-        var methods = ojClass.getAllMethods();
-        for (var i = 0, length = methods.length; i < length; i++) {
-            selectors[methods[i].selectorName] = true;
+        let methods = ojClass.getAllMethods();
+        for (let i = 0, length = methods.length; i < length; i++) {
+            selectorMap[methods[i].selectorName] = true;
         }
     });
 
-    _.each(this.protocols, function(ojProtocol, name) {
-        var methods = ojProtocol.getAllMethods();
+    _.each(this.protocols, ojProtocol => {
+        let methods = ojProtocol.getAllMethods();
 
-        for (var i = 0, length = methods.length; i < length; i++) {
-            selectors[methods[i].selectorName] = true;
+        for (let i = 0, length = methods.length; i < length; i++) {
+            selectorMap[methods[i].selectorName] = true;
         }
     });
 
-    var baseObjectSelectors = Utils.getBaseObjectSelectorNames();
-    for (var i = 0, length = baseObjectSelectors.length; i < length; i++) {
-        selectors[baseObjectSelectors[i]] = true;
+    let baseObjectSelectors = Utils.getBaseObjectSelectorNames();
+    for (let i = 0, length = baseObjectSelectors.length; i < length; i++) {
+        selectorMap[baseObjectSelectors[i]] = true;
     }
 
-    var newTypes = { }
-    var types = this.types;
-    _.each(types, function(value, key) {
-        if (!value || (key == value)) {
-            newTypes[key] = value;
-            return;
-        }
-
-        var visited = [ key ];
-        var result  = key;
-
-        while (1) {
-            var newResult = types[result];
-            if (newResult == result) break;
-
-            if (!newResult) break;
-            result = newResult;
-
-            if (visited.indexOf(result) >= 0) {
-                Utils.throwError(OJError.CircularTypedefHierarchy, "Circular typedef hierarchy detected: '" + visited.join(",") + "'");
-            }
-
-            visited.push(result);
-        }
-
-        newTypes[key] = result;
+    _.each(this.enums, ojEnum => {
+        numericMap[ojEnum.name] = true;
     });
-    this.types = newTypes;
 
-    this.selectors = selectors;
+    _.each(this.types, ojType => {
+        let currentType  = ojType;
+        let currentName  = currentType.name;
+        let originalName = currentName;
+        let visitedNames = [ currentName ];
+
+        while (currentType) {
+            if (currentType.kind == OJType.KindAlias) {
+                currentName = currentType.returnType;
+                currentType = this.types[currentName];
+
+                // Handle alias to enum
+                if (!currentType && this.enums[currentName]) {
+                    numericMap[originalName] = true;
+                }
+
+                if (visitedNames.indexOf(currentName) >= 0) {
+                    Utils.throwError(OJError.CircularTypeHierarchy, "Circular @type hierarchy detected: '" + visitedNames.join("' -> '") + "'");
+                }
+
+                visitedNames.push(currentName);
+
+            } else if (currentType.kind == OJType.KindPrimitive) {
+                let name = currentType.name;
+
+                if (name == "Boolean") {
+                    booleanMap[originalName] = true; 
+                } else if (name == "Number") {
+                    numericMap[originalName] = true; 
+                }
+
+                currentType = null;
+
+            } else {
+                currentType = null;
+            }
+        }
+    });
+
+    this.numericMap  = numericMap;
+    this.booleanMap  = booleanMap;
+    this.selectorMap = selectorMap;
 }
 
 
@@ -256,7 +285,7 @@ hasGlobalChanges(other)
 
     if (existanceChanged(this.classes,   other.classes   ) ||
         existanceChanged(this.protocols, other.protocols ) ||
-        existanceChanged(this.structs,   other.structs   ) ||
+        existanceChanged(this.types,     other.types     ) ||
         existanceChanged(this.globals,   other.globals   ) ||
         existanceChanged(this.enums,     other.enums     ) ||
         existanceChanged(this.consts,    other.consts    ))
@@ -275,15 +304,6 @@ hasGlobalChanges(other)
         return true;
     }
 
-
-    // Types duplicate existance information from classes (covered above),
-    // but they also include @typedefs, so they need to be checked.
-    //
-    if (!_.isEqual(this.types, other.types)) {
-        return true;
-    }
-
-
     return false;
 }
 
@@ -292,15 +312,15 @@ getChangedSelectorMap(other)
 {
     var result = null;
 
-    _.each(_.keys(this.selectors), selectorName => {
-        if (!other.selectors[selectorName]) {
+    _.each(_.keys(this.selectorMap), selectorName => {
+        if (!other.selectorMap[selectorName]) {
             if (!result) result = { };
             result[selectorName] = true;
         }
     });
 
-    _.each(_.keys(other.selectors), selectorName => {
-        if (!this.selectors[selectorName]) {
+    _.each(_.keys(other.selectorMap), selectorName => {
+        if (!this.selectorMap[selectorName]) {
             if (!result) result = { };
             result[selectorName] = true;
         }
@@ -363,42 +383,15 @@ getAggregateClass()
     return result;
 }
 
-
-registerType(typesToRegister)
+_registerDeclaration(name)
 {
-    if (!_.isArray(typesToRegister)) {
-        typesToRegister = [ typesToRegister ];
+    let existing = this._declarationMap[name];
+
+    if (existing) {
+        Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of '" + name + "'.")
     }
 
-    for (var i = 0, length = typesToRegister.length; i < length; i++) {
-        var type = typesToRegister[i];
-
-        var currentValue = this.types[type];
-        if (currentValue && (currentValue != type)) {
-            Utils.throwError(OJError.TypeAlreadyExists, "Cannot register type '" + type + "', already declared as type '" + currentValue +  "'");
-        }
-
-        this.types[type] = type;
-    }
-}
-
-
-aliasType(existing, newTypes)
-{
-    if (!_.isArray(newTypes)) {
-        newTypes = [ newTypes ];
-    }
-
-    for (var i = 0, length = newTypes.length; i < length; i++) {
-        var type = newTypes[i];
-
-        var currentValue = this.types[type];
-        if (currentValue && (currentValue != existing)) {
-            Utils.throwError(OJError.TypeAlreadyExists, "Cannot alias type '" + type + "' to '" + existing + "', already registered as type '" + currentValue + "'");
-        }
-
-        this.types[type] = existing;
-    }
+    this._declarationMap[name] = true;
 }
 
 
@@ -407,6 +400,7 @@ addConst(ojConst)
     var name = ojConst.name;
 
     this.consts[name] = ojConst;
+    this._registerDeclaration(name);
 }
 
 
@@ -415,8 +409,6 @@ addEnum(ojEnum)
     var name = ojEnum.name;
 
     if (name) {
-        this.aliasType("Number", ojEnum.name);
-
         if (this.enums[name]) {
             Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of enum '" + name + "'");
         }
@@ -429,22 +421,21 @@ addEnum(ojEnum)
     }
 
     this.enums[name] = ojEnum;
+    this._registerDeclaration(name);
 }
 
 
 addClass(ojClass)
 {
-    var name     = ojClass.name;
-    var existing = this.classes[name];
+    let name     = ojClass.name;
+    let existing = this.classes[name];
 
     if (existing) {
         if (existing.forward && !ojClass.forward) {
             this.classes[name] = ojClass;
-            this.registerType(name);
 
         } else if (existing.placeholder && !ojClass.forward) {
             this.classes[name] = ojClass;
-            this.registerType(name);
 
             // This was a category placeholder and is being replaced by the real class, move over methods
             _.each(existing.getAllMethods(), function(m) {
@@ -457,14 +448,14 @@ addClass(ojClass)
 
     } else {
         this.classes[name] = ojClass;
-        this.registerType(name);
+        this._registerDeclaration(name);
     }
 }
 
 
 addProtocol(ojProtocol)
 {
-    var name = ojProtocol.name;
+    let name = ojProtocol.name;
 
     if (this.protocols[name]) {
         Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of protocol '" + name + "'");
@@ -474,39 +465,37 @@ addProtocol(ojProtocol)
 }
 
 
-addStruct(ojStruct)
+addType(ojType)
 {
-    var name = ojStruct.name;
+    let name = ojType.name;
 
-    if (this.structs[name]) {
-        Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of struct '" + name + "'");
+    if (this.types[name]) {
+        Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of type '" + name + "'");
     }
 
-    this.structs[name] = ojStruct;
+    this.types[name] = ojType;
+    this._registerDeclaration(name);
 }
 
 
 addGlobal(ojGlobal)
 {
-    var name = ojGlobal.name;
-
-    if (this.globals[name]) {
-        Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of global '" + name + "'");
-    }
+    let name = ojGlobal.name;
 
     this.globals[name] = ojGlobal;
+    this._registerDeclaration(name);
 }
 
 
 isNumericType(type)
 {
-    return this.types[type] == "Number";
+    return !!this.numericMap[type];
 }         
 
 
 isBooleanType(type)
 {
-    return this.types[type] == "Boolean";
+    return !!this.booleanMap[type];
 }
 
 

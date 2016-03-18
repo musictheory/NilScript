@@ -114,12 +114,34 @@ var assert = require("assert");
         assert.equal(output, "ABCDEFGHIABCDEFGHI");
     }
 
+
+    // Same as test6 but with 'let'
+    function test7() {
+        let grid = [self testArray];
+        let output = "";
+
+        @each (let row in grid) {
+            @each (let col in row) {
+                output += col;
+            }
+        }
+
+        @each (let row in grid) {
+            @each (let col in row) {
+                output += col;
+            }
+        }
+
+        assert.equal(output, "ABCDEFGHIABCDEFGHI");
+    }
+
     runTest(test1);
     runTest(test2);
     runTest(test3);
     runTest(test4);
     runTest(test5);
     runTest(test6);
+    runTest(test7);
 
     return true;
 }

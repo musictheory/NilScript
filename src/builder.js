@@ -69,14 +69,14 @@ build()
     let traverser = new Traverser(ojFile.ast);
 
     let currentClass, currentMethod, currentCategoryName;
-    let currentStruct, currentProtocol;
+    let currentProtocol;
 
     let usedSelectorMap   = { };
 
     let declaredClasses   = [ ];
     let declaredGlobals   = [ ];
     let declaredProtocols = [ ];
-    let declaredStructs   = [ ];
+    let declaredTypes     = [ ];
     let declaredEnums     = [ ];
 
 
@@ -125,16 +125,6 @@ build()
         currentCategoryName = categoryName;
 
         declaredClasses.push(ojClass.name)
-    }
-
-    function handleOJStructDefinition(node)
-    {
-        let ojStruct = new Model.OJStruct(node.id.name);
-        model.addStruct(ojStruct);
-
-        currentStruct = ojStruct;
-
-        declaredStructs.push(ojStruct.name);
     }
 
     function handleOJProtocolDefinition(node)
@@ -188,18 +178,13 @@ build()
         currentProtocol.addMethod(method);
     }
 
-    function handleOJBracketVariableDeclaration(node)
+    function handleInstanceVariableDeclaration(node)
     {
-        let type = node.parameterType ? node.parameterType.value : null;
+        var type = node.parameterType ? node.parameterType.value : null;
 
-        for (let i = 0, length = node.ids.length; i < length; i++) {
-            let name = node.ids[i].name;
-
-            if (currentClass) {
-                currentClass.addIvar(new Model.OJIvar(name, currentClass.name, type));
-            } else if (currentStruct) {
-                currentStruct.addVariable(name, type);
-            }
+        for (let i = 0, length = node.ivars.length; i < length; i++) {
+            var name = node.ivars[i].name;
+            currentClass.addIvar(new Model.OJIvar(name, currentClass.name, type));
         }
     }
 
@@ -207,7 +192,7 @@ build()
     {
         let name = node.id.name;
 
-        let type     = node.parameterType ? node.parameterType.value : "id";
+        let type     = node.id.annotation;
         let writable = true;
         let getter   = name;
         let setter   = "set" + name.substr(0,1).toUpperCase() + name.substr(1, name.length) + ":";
@@ -272,9 +257,24 @@ build()
         }
     }
 
-    function handleOJTypedefDeclaration(node)
+    function handleOJTypeDefinition(node)
     {
-        model.aliasType(node.from, node.to);
+        let name = node.name;
+        let kind = node.kind;
+
+        let parameterNames = [ ];
+        let parameterTypes = [ ];
+        let returnType = node.annotation;
+
+        _.each(node.params, param => {
+            parameterNames.push(param.name);
+            parameterTypes.push(param.annotation);
+        });
+
+        let type = new Model.OJType(name, kind, parameterNames, parameterTypes, returnType);
+        model.addType(type);
+
+        declaredTypes.push(name);
     }
 
     function handleOJEnumDeclaration(node, parent)
@@ -443,9 +443,6 @@ build()
             if (type === Syntax.OJClassImplementation) {
                 handleOJClassImplementation(node);
 
-            } else if (type === Syntax.OJStructDefinition) {
-                handleOJStructDefinition(node);
-
             } else if (type === Syntax.OJProtocolDefinition) {
                 handleOJProtocolDefinition(node);
 
@@ -455,8 +452,8 @@ build()
             } else if (type === Syntax.OJSqueezeDirective) {
                 handleOJSqueezeDirective(node);
 
-            } else if (type === Syntax.OJBracketVariableDeclaration) {
-                handleOJBracketVariableDeclaration(node);
+            } else if (type === Syntax.OJInstanceVariableDeclaration) {
+                handleInstanceVariableDeclaration(node);
 
             } else if (type === Syntax.OJPropertyDirective) {
                 handleOJPropertyDirective(node);
@@ -467,8 +464,8 @@ build()
             } else if (type === Syntax.OJDynamicDirective) {
                 handleOJDynamicDirective(node);
 
-            } else if (type === Syntax.OJTypedefDeclaration) {
-                handleOJTypedefDeclaration(node);
+            } else if (type === Syntax.OJTypeDefinition) {
+                handleOJTypeDefinition(node);
 
             } else if (type === Syntax.OJMethodDefinition) {
                 handleOJMethodDefinition(node);
@@ -521,9 +518,6 @@ build()
             currentMethod = null;
             currentCategoryName = null;
 
-        } else if (type === Syntax.OJStructDefinition) {
-            currentStruct = null;
-
         } else if (type === Syntax.OJProtocolDefinition) {
             currentProtocol = null;
 
@@ -540,7 +534,7 @@ build()
         classes:   declaredClasses.sort(),
         globals:   declaredGlobals.sort(),
         protocols: declaredProtocols.sort(),
-        structs:   declaredStructs.sort(),
+        types:     declaredTypes.sort(),
         enums:     declaredEnums.sort()
     };
 }

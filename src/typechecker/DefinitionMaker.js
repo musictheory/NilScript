@@ -11,6 +11,7 @@ const _ = require("lodash");
 
 const TypecheckerSymbols = require("../model/OJSymbolTyper").TypecheckerSymbols;
 const Location           = require("../model/OJSymbolTyper").Location;
+const OJType             = require("../model/OJType");
 
 
 module.exports = class DefinitionMaker {
@@ -184,18 +185,46 @@ _appendOJProtocol(lines, ojProtocol)
 }
 
 
-_appendOJStruct(lines, ojStruct)
+_appendOJType(lines, ojType)
 {
     let symbolTyper = this._symbolTyper;
-    let structSymbol = symbolTyper.getSymbolForStructName(ojStruct.name);
 
-    lines.push("declare interface " + structSymbol + "{");
+    let name = ojType.name;
+    let kind = ojType.kind;
 
-    _.each(ojStruct.variables, variable => {
-        lines.push(variable.name + " : " + symbolTyper.toTypecheckerType(variable.annotation));
-    });
+    if (kind == OJType.KindAlias) {
+        let returnType = symbolTyper.toTypecheckerType(ojType.returnType);
 
-    lines.push("}");
+        lines.push(`declare type ${name} = ${returnType};`);
+
+    } else if (kind == OJType.KindFunction) {
+        let params = [ ];
+        let returnType = symbolTyper.toTypecheckerType(ojType.returnType);
+
+        for (let i = 0; i < ojType.parameterTypes.length; i++) {
+            params.push(ojType.parameterNames[i] + ": " + symbolTyper.toTypecheckerType(ojType.parameterTypes[i]));
+        }
+
+        lines.push(`declare type ${name} = ( ${params.join(", ")} ) => ${returnType}`);
+
+    } else if (kind == OJType.KindTuple) {
+        let params = [ ];
+
+        for (let i = 0; i < ojType.parameterTypes.length; i++) {
+            params.push(symbolTyper.toTypecheckerType(ojType.parameterTypes[i]));
+        }
+
+        lines.push(`declare type ${name} = [ ${params.join(", ")} ]`);
+
+    } else if (kind == OJType.KindObject) {
+        let params = [ ];
+
+        for (let i = 0; i < ojType.parameterTypes.length; i++) {
+            params.push(ojType.parameterNames[i] + ": " + symbolTyper.toTypecheckerType(ojType.parameterTypes[i]));
+        }
+
+        lines.push(`interface ${name} { ${params.join(", ")} }`);
+    }
 }
 
 
@@ -267,6 +296,10 @@ getFileDefinitions(ojFile)
         this._appendOJEnum(lines, model.enums[name]);
     });
 
+    _.each(ojFile.declares.types, name => {
+        this._appendOJType(lines, model.types[name]);
+    });
+
     return lines.join("\n");
 }
 
@@ -309,8 +342,10 @@ getGlobalDefinitions()
     classSymbols .unshift(TypecheckerSymbols.Combined);
     staticSymbols.unshift(TypecheckerSymbols.StaticCombined)
 
-    lines.push("declare type " + TypecheckerSymbols.IdIntersection + " = " + classSymbols.join("&") + staticSymbols.join("&") + ";");
-    lines.push("declare type " + TypecheckerSymbols.IdUnion        + " = " + classSymbols.join("|") + staticSymbols.join("|") + ";");
+    let allSymbols = classSymbols.concat(staticSymbols);
+
+    lines.push("declare type " + TypecheckerSymbols.IdIntersection + " = " + allSymbols.join("&") + ";");
+    lines.push("declare type " + TypecheckerSymbols.IdUnion        + " = " + allSymbols.join("|") + ";");
 
     return lines.join("\n");
 }
