@@ -64,32 +64,26 @@ constructor(ojFile, model, forTypechecker, options)
         this._strictFunctions = options["strict-functions"];
     }
 
-    // Typechecker inlines anonymous enums
-    if (options["inline-enum"] || forTypechecker) {
-        _.each(model.enums, ojEnum => {
-            let enumNameSymbol = (ojEnum.name && !ojEnum.anonymous) ? symbolTyper.getSymbolForEnumName(ojEnum.name) : null;
+    _.each(model.enums, ojEnum => {
+        let enumNameSymbol = (ojEnum.name && !ojEnum.anonymous) ? symbolTyper.getSymbolForEnumName(ojEnum.name) : null;
 
-            _.each(ojEnum.values, (value, name) => {
-                if (enumNameSymbol && forTypechecker) {
-                    inlines[name] = enumNameSymbol + "." + name;
-                } else {
-                    inlines[name] = value;
-                }
-            });
-        });
-    }
-
-    // Typechecker forces 'inline-const'
-    if (options["inline-const"] || forTypechecker) {
-        _.each(model.consts, ojConst => {
-            let name  = ojConst.name;
-            let value = ojConst.value;
-
-            if (inlines[name] === undefined) {
+        _.each(ojEnum.values, (value, name) => {
+            if (enumNameSymbol && forTypechecker) {
+                inlines[name] = enumNameSymbol + "." + name;
+            } else {
                 inlines[name] = value;
             }
         });
-    }
+    });
+
+    _.each(model.consts, ojConst => {
+        let name  = ojConst.name;
+        let value = ojConst.value;
+
+        if (inlines[name] === undefined) {
+            inlines[name] = value;
+        }
+    });
 
     let additionalInlines = options["additional-inlines"];
     if (additionalInlines) {
@@ -137,8 +131,6 @@ generate()
     let optionSqueeze = this._squeeze;
     let symbolTyper   = model.getSymbolTyper();
 
-    let removeEnums    = options["inline-enum"]  || (language === LanguageTypechecker);
-    let removeConsts   = options["inline-const"] || (language === LanguageTypechecker);
     let knownSelectors = optionWarnUnknownSelectors ? model.selectors : null;
 
     let rewriteFunctionParameters = (language === LanguageTypechecker) && !optionStrictFunctions;
@@ -1157,8 +1149,8 @@ generate()
             type === Syntax.OJSqueezeDirective                   ||
             type === Syntax.OJSynthesizeDirective                ||
             type === Syntax.OJDynamicDirective                   ||
-          ((type === Syntax.OJEnumDeclaration)  && removeEnums)  ||
-          ((type === Syntax.OJConstDeclaration) && removeConsts)
+            type === Syntax.OJEnumDeclaration                    ||
+            type === Syntax.OJConstDeclaration
         ) {
             modifier.select(node).remove();
             return Traverser.SkipNode;

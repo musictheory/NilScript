@@ -134,9 +134,7 @@ run()
     options.files = [ { path: "test.oj", contents: this.lines.join("\n") } ];
 
     let name = this.name;
-    if (options.squeeze)         name += " +squeeze";
-    if (options["inline-const"]) name += " +const";
-    if (options["inline-enum"])  name += " +enum";
+    if (options.squeeze) name += " +squeeze";
 
     test(name, done => {
         try {
