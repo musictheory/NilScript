@@ -362,12 +362,12 @@ generate()
         if (receiver.type == Syntax.Identifier && currentMethodNode) {
             let usesSelf   = methodUsesSelfVar || (language === LanguageTypechecker);
             let selfOrThis = usesSelf ? "self" : "this";
-            let useProto   = (currentMethodNode.selectorType != "+");
+            let isInstance = (currentMethodNode.selectorType != "+");
 
             if (receiver.name == "super") {
                 if (language === LanguageEcmascript5) {
                     let classSymbol = symbolTyper.getSymbolForClassName(currentClass.name );
-                    doCommonReplacement(classSymbol + "." + OJSuperVariable + "." + (useProto ? "prototype." : "") + methodName + ".call(this" + (hasArguments ? "," : ""), ")");
+                    doCommonReplacement(classSymbol + "." + OJSuperVariable + "." + (isInstance ? "prototype." : "") + methodName + ".call(this" + (hasArguments ? "," : ""), ")");
 
                 } else if (language === LanguageTypechecker) {
                     let method = getCurrentMethodInModel();
@@ -385,9 +385,14 @@ generate()
                 if (model.classes[receiver.name]) {
                     doCommonReplacement(getClassAsRuntimeVariable(receiver.name));
                 } else if (receiver.name == "self") {
-                    doCommonReplacement(selfOrThis + ".constructor");
+                    if (isInstance) {
+                        doCommonReplacement(selfOrThis + ".constructor");
+                    } else {
+                        doCommonReplacement(selfOrThis);
+                    }
+
                 } else {
-                    doCommonReplacement("(" + receiver.name + " && " + receiver.name + ".constructor)");
+                    doCommonReplacement("(" + receiver.name + " ? " + receiver.name + "['class'](", ") : null)");
                 }
                 return;
 
