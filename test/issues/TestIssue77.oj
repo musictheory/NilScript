@@ -3,6 +3,7 @@
 
 + (void) runTests
 {
+    var class1    = [Issue77Class class];
     var instance1 = [[Issue77Class alloc] init];
     var instance2 = [[Issue77Class alloc] init];
 
@@ -15,6 +16,12 @@
 
     assert.equal([instance1 returnClass],  [Issue77Class class]);
     assert.equal([instance2 returnClass2], [Issue77Class class]);
+
+    assert.equal([self class], [Issue77Class class]);
+
+    assert.equal([[[instance1 class] class] class], [[class1 class] class]);
+
+    assert.equal([[[[instance1 class] class] class] return42], [[[class1 class] class] return42]);
 
     return true;
 }

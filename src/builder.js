@@ -111,7 +111,12 @@ build()
         } else {
             ojClass = new Model.OJClass(className, superclassName, protocolNames);
             ojClass.forward = false;
-            ojClass.location = _.clone(node.loc);
+
+            ojClass.pathLine = {
+                path: ojFile.path,
+                line: node.loc.start.line
+            };
+
             model.addClass(ojClass);
         }
 
@@ -140,7 +145,12 @@ build()
 
         let ojProtocol = new Model.OJProtocol(name, parentProtocolNames);
         model.addProtocol(ojProtocol);
-        ojProtocol.location = _.clone(node.loc);
+
+        ojProtocol.pathLine = {
+            path: ojFile.path,
+            line: node.loc.start.line
+        };
+
         currentProtocol = ojProtocol;
 
         declaredProtocols.push(ojProtocol.name);

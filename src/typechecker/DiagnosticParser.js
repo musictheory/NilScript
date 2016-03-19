@@ -27,15 +27,15 @@ const sReasonTemplates = [
 
     // 2415: Class '{0}' incorrectly extends base class '{1}'.
     // 2326: Types of property 'buildElements' are incompatible.
-    { code: 2415, text: "'{2415:0}' and '{2415:1}' have incompatible method '{2326:0}'" },
+    { code: 2415, next: 2326, text: "'{2415:0}' and '{2415:1}' have incompatible method '{2326:0}'", retarget: [ "class" , "2415:0" ] },
 
     // 2420: Class '{0}' incorrectly implements interface '{1}'.
     // 2324: Property '{0}' is missing in type '{1}'.
-    { code: 2420, next: 2324, text: "Method '{2324:0}' in protocol '{2420:1}' not implemented" },
+    { code: 2420, next: 2324, text: "Method '{2324:0}' in protocol '{2420:1}' not implemented", retarget: [ "class", "2420:0" ] },
 
     // 2420: Class '{0}' incorrectly implements interface '{1}'.
     // 2326: Types of property 'buildElements' are incompatible.
-    { code: 2420, next: 2326, text: "'{2420:0}' and protocol '{2420:1}' have incompatible method '{2326:0}'" }
+    { code: 2420, next: 2326, text: "'{2420:0}' and protocol '{2420:1}' have incompatible method '{2326:0}'", retarget: [ "class", "2420:0" ] }
 ];
 
 
@@ -72,18 +72,24 @@ function sGetReasonTemplate(code, nextCode, sawClass, sawProtocol, sawMethod, sa
 module.exports = class DiagnosticParser {
 
 
-getWarnings(symbolTyper, diagnostics, fileCallback)
+constructor(model)
 {
+    this._model = model;
+}
+
+
+getWarnings(diagnostics, fileCallback)
+{
+    let model        = this._model;
+    let symbolTyper  = model.getSymbolTyper();
     let duplicateMap = { };
 
     function makeHintsWithDiagnostic(diagnostic) {
         let fileName = diagnostic && diagnostic.file && diagnostic.file.fileName;
         if (!fileName) return null;
 
-        fileName = fileCallback(fileName);
-        if (!fileName) return null;
-
         let lineColumn  = diagnostic.file ? diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start) : { line: 0, column: 0 };
+        let lineNumber  = lineColumn.line + 1;
 
         let code        = diagnostic.code;
         let next;
@@ -161,6 +167,31 @@ getWarnings(symbolTyper, diagnostics, fileCallback)
             if (!result) result = sReasonTemplateMap["" + code];
 
             if (template) {
+                if (template.retarget) {
+                    let retargetType = template.retarget[0];
+                    let retargetArg  = template.retarget[1];
+
+                    let resolvedArg = quotedMap[retargetArg];
+                    if (resolvedArg) resolvedArg = symbolTyper.fromTypecheckerType(resolvedArg);
+
+                    console.log(retargetType, retargetArg, resolvedArg);
+
+                    if (resolvedArg) {
+                        if (retargetType == "class") {
+                            let ojClass = model.classes[resolvedArg];
+
+                            fileName   = ojClass ? ojClass.pathLine.path : fileName;
+                            lineNumber = ojClass ? ojClass.pathLine.line : lineNumber;
+
+                        } else if (retargetType == "protocol") {
+                            let ojProtocol = model.protocols[resolvedArg];
+
+                            fileName   = ojProtocol ? ojProtocol.pathLine.path : fileName;
+                            lineNumber = ojProtocol ? ojProtocol.pathLine.line : lineNumber;
+                        }
+                    }
+                }
+
                 result = template.text.replace(/\{(.*?)\}/g, function(a0, a1) {
                     let replacement = quotedMap[a1];
                     if (!replacement) valid = false;
@@ -185,12 +216,15 @@ getWarnings(symbolTyper, diagnostics, fileCallback)
             reason = reason.replace(/[\:\.]$/, "");
         }
 
+        fileName = fileCallback(fileName);
+        if (!fileName) return null;
+
         let result = {
             code:   code,
             column: lineColumn.column,
             name:   OJWarning.Typechecker,
             file:   fileName,
-            line:   lineColumn.line + 1,
+            line:   lineNumber,
             reason: reason 
         };
 

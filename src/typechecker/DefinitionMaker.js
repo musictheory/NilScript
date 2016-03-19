@@ -107,19 +107,11 @@ _appendOJClass(lines, ojClass, classSymbol, staticSymbol)
     let superSymbol       = ojClass.superclassName ? symbolTyper.getSymbolForClassName(ojClass.superclassName, false) : TypecheckerSymbols.Base;
     let superStaticSymbol = ojClass.superclassName ? symbolTyper.getSymbolForClassName(ojClass.superclassName, true)  : TypecheckerSymbols.StaticBase;
 
-    let declareClass = "declare class " + classSymbol +
-                       " extends " + superSymbol +
-                       this._getProtocolList("implements", false, ojClass.protocolNames) +
-                       " {";
-
     lines.push(
-        declareClass,
-        "static alloc() : " + classSymbol + ";",
-        "class() : " + staticSymbol + ";",
-        "static class() : " + staticSymbol + ";",
-        "init()  : " + classSymbol + ";",
-        "$oj_super() : " + superSymbol + ";",
-        "static $oj_super() : " + superStaticSymbol + ";"
+        "declare class " + classSymbol +
+            " extends " + superSymbol +
+            this._getProtocolList("implements", false, ojClass.protocolNames) +
+            " {"
     );
 
     let methods = [ ].concat(ojClass.getAllMethods(), this._getInstancetypeMethods(ojClass));
@@ -135,23 +127,32 @@ _appendOJClass(lines, ojClass, classSymbol, staticSymbol)
         lines.push(symbolTyper.getSymbolForIvar(ojIvar) + " : " +  symbolTyper.toTypecheckerType(ojIvar.type) + ";");
     });
 
-    lines.push("}");
-
-    let declareStatic = "declare class " + staticSymbol +
-                        " extends " + superStaticSymbol +
-                        this._getProtocolList("implements", true, ojClass.protocolNames) +
-                        " {";
+    lines.push(
+        "static alloc() : " + classSymbol + ";",
+        "class() : " + staticSymbol + ";",
+        "static class() : " + staticSymbol + ";",
+        "init()  : " + classSymbol + ";",
+        "$oj_super() : " + superSymbol + ";",
+        "static $oj_super() : " + superStaticSymbol + ";",
+        "}"
+    );
 
     lines.push(
-        declareStatic,
-        "alloc() : " + classSymbol  + ";",
-        "class() : " + staticSymbol + ";",
-        "$oj_super() : " + superStaticSymbol + ";"
+        "declare class " + staticSymbol +
+            " extends " + superStaticSymbol +
+            this._getProtocolList("implements", true, ojClass.protocolNames) +
+            " {"
     );
 
     _.each(classMethodDeclarations, decl => lines.push(decl) );
 
-    lines.push("}");
+    lines.push(
+        "alloc() : " + classSymbol  + ";",
+        "class() : " + staticSymbol + ";",
+        "$oj_super() : " + superStaticSymbol + ";",
+        "}"
+    );
+
 }
 
 
