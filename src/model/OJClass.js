@@ -33,8 +33,8 @@ constructor(name, superclassName, protocolNames)
     // For category definitions that appear before @implementation
     this.placeholder = false;
 
-    // Clone of the AST node's loc property.  *not archived*
-    this.location = null;
+    // { path: ..., line: ...} pair for error messages, *not archived*
+    this.pathLine = null;
 
     // Is this class in the current compilation unit?  *not archived*
     this.local = true;

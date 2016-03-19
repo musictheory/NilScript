@@ -92,5 +92,6 @@ declare var $oj_oj : $oj_$Runtime;
 declare var oj     : $oj_$Runtime;
 
 declare function $oj_$AtEachGetMember<T>(arg : T[]) : T;
+declare function $oj_$AtEachGetMember(arg : any) : any;
 declare function $oj_$AtEachTest() : boolean;
 

@@ -70,11 +70,11 @@ getGlobalDefs()
 
 check(model, defs, files, callback)
 {
-    let options       = this._options;
-    let development   = options["development"];
-    let sourceFileMap = { };
-    let ignoreFileMap = { }; // Warnings from these files will be ignored.
-    let toCheck       = [ ];
+    let options         = this._options;
+    let development     = options["development"];
+    let sourceFileMap   = { };
+    let originalFileMap = { };
+    let toCheck         = [ ];
 
     let tsOptions = {
         noImplicitAny:        !!options["no-implicit-any"],
@@ -99,7 +99,9 @@ check(model, defs, files, callback)
 
         sourceFileMap[codeKey] = this._getSourceFile(codeKey, ojFile.typecheckerCode);
         sourceFileMap[defsKey] = this._getSourceFile(defsKey, ojFile.typecheckerDefs);
-        ignoreFileMap[defsKey] = true;
+        
+        originalFileMap[codeKey] = ojFile.path;
+        originalFileMap[defsKey] = null;
     });
 
     _.each(defs, ojFile => {
@@ -152,18 +154,15 @@ check(model, defs, files, callback)
     let debugTmp = "/tmp/ojc.typechecker";
     let debugFilesToWrite = { };
 
-    let warnings = (new DiagnosticParser()).getWarnings(model.getSymbolTyper(), diagnostics, filePath => {
+    let warnings = (new DiagnosticParser(model)).getWarnings(diagnostics, filePath => {
         if (development) {
             return debugTmp + path.sep + filePath;
-
         } else {
-            if (ignoreFileMap[filePath]) {
-                return null;
-            } else {
-                let components = filePath.split(path.sep);
-                let last = components.pop();
-                return components.join(path.sep);
+            if (filePath in originalFileMap) {
+                return originalFileMap[filePath];
             }
+
+            return filePath;
         }
     });
 
