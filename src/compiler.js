@@ -67,6 +67,7 @@ const sPublicOptions = [
     "warn-empty-array-element",  // Boolean, warn about empty array element
     "warn-global-no-type",       // Boolean, warn about missing type annotations on @globals
     "warn-this-in-methods",      // Boolean, warn about usage of 'this' in oj methods
+    "warn-self-in-non-methods",  // Boolean, warn about usage of 'self' in non-methods
     "warn-unknown-ivars",        // Boolean, warn about unknown ivars
     "warn-unknown-selectors",    // Boolean, warn about usage of unknown selectors
     "warn-unused-ivars",         // Boolean, warn about unused ivars
