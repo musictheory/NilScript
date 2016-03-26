@@ -43,6 +43,8 @@ let opt = getopt.create([
     [ "",  "warn-empty-array-element",  "warn about empty array element"           ],
     [ "",  "warn-global-no-type",       "warn about missing type annotations on @globals" ],
     [ "",  "warn-this-in-methods",      "warn about usage of 'this' in oj methods" ],
+    [ "",  "warn-self-in-non-methods",  "warn about usage of 'self' in non-methods" ],
+
     [ "",  "warn-unknown-ivars",        "warn about unknown ivars"                 ],
     [ "",  "warn-unknown-selectors",    "warn about usage of unknown selectors"    ],
     [ "",  "warn-unused-ivars",         "warn about unused ivars"                  ],

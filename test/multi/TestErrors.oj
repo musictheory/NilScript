@@ -41,11 +41,12 @@
 
 // --------------------------------------------------------------------
 // @name self-in-non-method
+// @opts { "warn-self-in-non-methods": true  }
 
 @implementation UseOfThisInMethod
 
 function usesSelf() {
-    self; //@error OJUseOfSelfInNonMethodError
+    self; //@warning OJUseOfSelfInNonMethodWarning
 }
 
 @end

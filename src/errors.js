@@ -33,12 +33,12 @@ OJError.VariableAlreadyDeclared        = "OJVariableAlreadyDeclaredError";
 OJError.VariableNotYetDeclared         = "OJVariableNotYetDeclaredError";
 OJError.RestrictedUsage                = "OJRestrictedUsageError";
 OJError.APIMisuse                      = "OJAPIMisuseError";
-OJError.UseOfSelfInNonMethod           = "OJUseOfSelfInNonMethodError";
 
 const OJWarning = { };
 
 OJWarning.UnknownSelector              = "OJUnknownSelectorWarning";
 OJWarning.UseOfThisInMethod            = "OJUseOfThisInMethodWarning";
+OJWarning.UseOfSelfInNonMethod         = "OJUseOfSelfInNonMethodWarning";
 OJWarning.UseOfDebugger                = "OJUseOfDebuggerWarning";
 OJWarning.UseOfEmptyArrayElement       = "OJUseOfEmptyArrayElementWarning";
 OJWarning.UnusedInstanceVariable       = "OJUnusedInstanceVariableWarning";

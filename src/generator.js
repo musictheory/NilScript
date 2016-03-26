@@ -121,6 +121,7 @@ generate()
     let optionWarnEmptyArrayElement  = options["warn-empty-array-element"];
     let optionWarnGlobalNoType       = options["warn-global-no-type"];
     let optionWarnThisInMethods      = options["warn-this-in-methods"];
+    let optionWarnSelfInNonMethod    = options["warn-self-in-non-methods"];
     let optionWarnUnknownIvars       = options["warn-unknown-ivars"];
     let optionWarnUnknownSelectors   = options["warn-unknown-selectors"];
     let optionWarnUnusedIvars        = options["warn-unused-ivars"];
@@ -763,8 +764,8 @@ generate()
                 }
             } 
 
-        } else if (isSelf && !currentMethodNode) {
-            Utils.throwError(OJError.UseOfSelfInNonMethod, "Use of self in non-method", node);
+        } else if (isSelf && optionWarnSelfInNonMethod && !currentMethodNode) {
+            warnings.push(Utils.makeError(OJWarning.UseOfSelfInNonMethod, "Use of 'self' in non-method", node));
         }
 
         if (inlines) {
