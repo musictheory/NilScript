@@ -40,6 +40,18 @@
 
 
 // --------------------------------------------------------------------
+// @name self-in-non-method
+
+@implementation UseOfThisInMethod
+
+function usesSelf() {
+    self; //@error OJUseOfSelfInNonMethodError
+}
+
+@end
+
+
+// --------------------------------------------------------------------
 // @name this-in-method
 // @opts { "warn-this-in-methods": true  }
 
