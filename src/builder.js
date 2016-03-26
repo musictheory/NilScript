@@ -342,6 +342,7 @@ build()
                 }
 
                 e.addValue(declaration.id.name, currentValue);
+                model.registerDeclaration(declaration.id.name, declaration);
 
                 declaration.enumValue = currentValue;
 
