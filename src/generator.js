@@ -711,7 +711,8 @@ generate()
 
     function handleIdentifier(node)
     {
-        let name = node.name;
+        let name   = node.name;
+        let isSelf = (name == "self");
 
         if (name[0] === "$") {
             if (name.indexOf("$oj") == 0) {
@@ -740,7 +741,7 @@ generate()
             if (currentClass.isIvar(name) || name == "self") {
                 let usesSelf = currentMethodNode && (methodUsesSelfVar || (language === LanguageTypechecker));
 
-                if (name == "self") {
+                if (isSelf) {
                     replacement = usesSelf ? "self" : "this";
                 } else {
                     replacement = generateThisIvar(currentClass.name, name, usesSelf);
@@ -761,6 +762,9 @@ generate()
                     warnings.push(Utils.makeError(OJWarning.UndeclaredInstanceVariable, "Use of undeclared instance variable " + node.name, node));
                 }
             } 
+
+        } else if (isSelf && !currentMethodNode) {
+            Utils.throwError(OJError.UseOfSelfInNonMethod, "Use of self in non-method", node);
         }
 
         if (inlines) {

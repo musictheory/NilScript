@@ -33,6 +33,7 @@ OJError.VariableAlreadyDeclared        = "OJVariableAlreadyDeclaredError";
 OJError.VariableNotYetDeclared         = "OJVariableNotYetDeclaredError";
 OJError.RestrictedUsage                = "OJRestrictedUsageError";
 OJError.APIMisuse                      = "OJAPIMisuseError";
+OJError.UseOfSelfInNonMethod           = "OJUseOfSelfInNonMethodError";
 
 const OJWarning = { };
 
