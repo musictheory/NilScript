@@ -108,6 +108,7 @@ check(model, defs, files, callback)
         let defsKey = ojFile.path + path.sep + defsSuffix;
 
         sourceFileMap[defsKey] = this._getSourceFile(defsKey, ojFile.contents);
+        originalFileMap[defsKey] = ojFile.path;
     });
 
     if (!this._globalDefsSourceFile) {

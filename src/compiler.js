@@ -269,7 +269,7 @@ _runOnCompileCallback(onCompileCallback, ojFile, doneCallback)
         },
 
         getContents: () => {
-            return lines.join("\n");
+            return lines ? lines.join("\n") : ""
         },
 
         getPath: () => {

@@ -383,12 +383,13 @@ getAggregateClass()
     return result;
 }
 
-_registerDeclaration(name)
+
+registerDeclaration(name, node)
 {
     let existing = this._declarationMap[name];
 
     if (existing) {
-        Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of '" + name + "'.")
+        Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of '" + name + "'.", node)
     }
 
     this._declarationMap[name] = true;
@@ -400,7 +401,7 @@ addConst(ojConst)
     let name = ojConst.name;
 
     this.consts[name] = ojConst;
-    this._registerDeclaration(name);
+    this.registerDeclaration(name);
 }
 
 
@@ -421,7 +422,8 @@ addEnum(ojEnum)
     }
 
     this.enums[name] = ojEnum;
-    this._registerDeclaration(name);
+
+    this.registerDeclaration(name);
 }
 
 
@@ -448,7 +450,7 @@ addClass(ojClass)
 
     } else {
         this.classes[name] = ojClass;
-        this._registerDeclaration(name);
+        this.registerDeclaration(name);
     }
 }
 
@@ -474,7 +476,7 @@ addType(ojType)
     }
 
     this.types[name] = ojType;
-    this._registerDeclaration(name);
+    this.registerDeclaration(name);
 }
 
 
@@ -483,7 +485,7 @@ addGlobal(ojGlobal)
     let name = ojGlobal.name;
 
     this.globals[name] = ojGlobal;
-    this._registerDeclaration(name);
+    this.registerDeclaration(name);
 }
 
 

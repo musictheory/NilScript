@@ -15,7 +15,7 @@
 
 function runTests()
 {
-    return [Foo runTest] == 5
+    return [TestIssue112 runTest] == 5
 }
 
 runTests();
