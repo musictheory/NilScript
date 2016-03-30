@@ -356,33 +356,31 @@ build()
     function handleOJConstDeclaration(node, parent)
     {
         let length  = node.declarations ? node.declarations.length : 0;
-        let values  = [ ];
         let bridged = (parent.type === Syntax.OJBridgedDeclaration);
 
         for (let i = 0; i < length; i++) {
             let declaration = node.declarations[i];
+            let raw;
+            let value;
 
             if (declaration.init.type === Syntax.Literal) {
-                let raw = declaration.init.raw;
+                value = declaration.init.value;
+                raw   = declaration.init.raw;
 
                 if      (raw == "YES")   raw = "true";
                 else if (raw == "NO")    raw = "false";
                 else if (raw == "NULL")  raw = "null";
                 else if (raw == "nil")   raw = "null";
 
-                values.push(raw);
-
-            } else if (declaration.init.type === Syntax.UnaryExpression) {
-                values.push(-declaration.init.argument.raw);
+            } else if (declaration.init.type === Syntax.UnaryExpression && _.isNumber(declaration.init.argument.value)) {
+                value = -declaration.init.argument.value;
+                raw   = JSON.stringify(value);
 
             } else {
                 Utils.throwError(OJError.NonLiteralConst, "Use of non-literal value with @const", node);
             }
-        }
 
-        for (let i = 0; i < length; i++) {
-            let declaration = node.declarations[i];
-            let ojConst = new Model.OJConst(declaration.id.name, values[i], bridged);
+            let ojConst = new Model.OJConst(declaration.id.name, value, raw, bridged);
             model.addConst(ojConst);
         }
     }

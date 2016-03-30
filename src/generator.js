@@ -77,11 +77,10 @@ constructor(ojFile, model, forTypechecker, options)
     });
 
     _.each(model.consts, ojConst => {
-        let name  = ojConst.name;
-        let value = ojConst.value;
+        let name = ojConst.name;
 
         if (inlines[name] === undefined) {
-            inlines[name] = value;
+            inlines[name] = ojConst.raw;
         }
     });
 
@@ -1104,6 +1103,21 @@ generate()
         }
     }
 
+    function handleProperty(node) 
+    {
+        let key = node.key;
+
+        if (node.computed && (key.type === Syntax.Identifier)) {
+            let ojConst = model.consts[key.name];
+
+            if (ojConst && _.isString(ojConst.value)) {
+                modifier.from(node).to(node.value).replace(ojConst.raw + ":");
+                modifier.from(node.value).to(node).replace("");
+                key.oj_skip = true;
+            }
+        }
+    }
+
     function finishScope(scope, needsSelf)
     {
         let node = scope.node;
@@ -1260,6 +1274,9 @@ generate()
         } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression) {
             handleFunctionDeclarationOrExpression(node);
             methodUsesSelfVar = true;
+
+        } else if (type === Syntax.Property) {
+            handleProperty(node);
 
         // Additional warnings
         } else if (type === Syntax.ArrayExpression) {
