@@ -123,6 +123,22 @@ function addFilePathToError(file, error)
 }
 
 
+
+let sShouldLog = false;
+
+function enableLog()
+{
+    sShouldLog = true;
+}
+
+
+function log()
+{
+    if (!sShouldLog) return;
+    console.log.apply(this, _.toArray(arguments));
+}
+
+
 function rmrf(dir)
 {
     try {
@@ -156,6 +172,9 @@ module.exports = {
     throwError:                 throwError,
     addNodeToError:             addNodeToError,
     addFilePathToError:         addFilePathToError,
+
+    enableLog: enableLog,
+    log: log,
 
     rmrf:                       rmrf,
     mkdirAndWriteFile:          mkdirAndWriteFile

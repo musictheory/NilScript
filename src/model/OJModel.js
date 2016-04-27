@@ -18,6 +18,8 @@ const OJEnum        = require("./OJEnum");
 const OJType        = require("./OJType");
 const OJSymbolTyper = require("./OJSymbolTyper")
 
+const Log           = Utils.log;
+
 
 class OJModel {
 
@@ -256,10 +258,10 @@ prepare()
 hasGlobalChanges(other)
 {
     function existanceChanged(a, b) {
-        return !_.isEqual(
-            _.keys(a).sort(),
-            _.keys(b).sort()
-        );
+        let keysA = _.keys(a).sort();
+        let keysB = _.keys(b).sort();
+
+        return !_.isEqual(keysA, keysB);
     }
 
     function buildConstValueMap(model) {
@@ -290,6 +292,7 @@ hasGlobalChanges(other)
         existanceChanged(this.enums,     other.enums     ) ||
         existanceChanged(this.consts,    other.consts    ))
     {
+        Log("hasGlobalChanges due to existance change");
         return true;
     }
 
@@ -297,10 +300,12 @@ hasGlobalChanges(other)
     // Inlined @const and inlined @enum values also count as a global change
     //
     if (!_.isEqual(buildConstValueMap(this), buildConstValueMap(other))) {
+        Log("hasGlobalChanges due to @const");
         return true;
     }
 
     if (!_.isEqual(buildEnumValueMap(this), buildEnumValueMap(other))) {
+        Log("hasGlobalChanges due to @enum");
         return true;
     }
 
