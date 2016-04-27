@@ -55,23 +55,10 @@ _getSourceFile(key, contents)
 }
 
 
-invalidateGlobalState()
-{
-    this._globalDefs = null;
-    this._globalDefsSourceFile = null;
-}
-
-
-getGlobalDefs()
-{
-    return this._globalDefs;
-}
-
-
 check(model, defs, files, callback)
 {
     let options         = this._options;
-    let development     = options["development"];
+    let development     = options["dev-dump-tmp"];
     let sourceFileMap   = { };
     let originalFileMap = { };
     let toCheck         = [ ];
@@ -111,8 +98,10 @@ check(model, defs, files, callback)
         originalFileMap[defsKey] = ojFile.path;
     });
 
-    if (!this._globalDefsSourceFile) {
-        this._globalDefs = (new DefinitionMaker(model)).getGlobalDefinitions();
+    let globalDefs = (new DefinitionMaker(model)).getGlobalDefinitions();
+
+    if (!this._globalDefsSourceFile || (globalDefs != this._globalDefs)) {
+        this._globalDefs           = globalDefs;
         this._globalDefsSourceFile = this._getSourceFile(globalFileName, this._globalDefs);
     }
 

@@ -41,7 +41,6 @@ updateWithContentsAndTime(contents, time)
         if (contents != this.contents) {
             this.contents = contents;
             this.time  = time;
-            this.error = null;
 
             // A change in contents invalidates everything
             this.needsAll();
@@ -58,15 +57,18 @@ needsAll()
 
 needsParse()
 {
-    this.ast = null;
+    this.ast        = null;
+    this.parseError = null;
+
     this.needsBuild();
 }
 
 
 needsBuild()
 {
-    this.usage = null;
+    this.usage        = null;
     this.declarations = null;
+    this.buildError   = null;
 
     this.needsGenerate();
     this.needsTypecheck();
@@ -77,13 +79,24 @@ needsGenerate()
 {
     this.generatorLines    = null;
     this.generatorWarnings = null;
+    this.generatorError    = null;
 }
 
 
 needsTypecheck()
 {
-    this.typecheckerCode = null;
-    this.typecheckerDefs = null;  
+    this.typecheckerCode  = null;
+    this.typecheckerDefs  = null;
+    this.typecheckerError = null;
+}
+
+
+getError()
+{
+    return this.parseError     ||
+           this.buildError     ||
+           this.generatorError ||
+           this.typecheckerError;
 }
 
 

@@ -18,6 +18,7 @@ const Generator       = require("./generator");
 const Mapper          = require("./mapper");
 const Typechecker     = require("./typechecker/Typechecker");
 const Utils           = require("./utils");
+const Log             = Utils.log;
 
 const OJError         = require("./errors").OJError;
 const OJWarning       = require("./errors").OJWarning;
@@ -73,7 +74,8 @@ const sPublicOptions = [
     "warn-unused-ivars",         // Boolean, warn about unused ivars
 
     // Private / Development
-    "development",               // Boolean, dump debug info to /tmp
+    "dev-dump-tmp",              // Boolean, dump debug info to /tmp
+    "dev-print-log",             // Boolean, print log to stdout 
     "allow-private-options",     // Boolean, allow use of sPrivateOptions (see below)
 ];
 let sPublicOptionsMap = null;
@@ -83,7 +85,7 @@ let sPublicOptionsMap = null;
 const sPrivateOptions = [
     "additional-inlines",
     "include-bridged",
-    "identity-function-names"
+    "tagged-template-hook"
 ];
 let sPrivateOptionsMap = null;
 
@@ -184,8 +186,12 @@ _parseFiles(files, callback)
 
     async.each(files, (ojFile, callback) => {
         if (!ojFile.ast) {
+            Log(`Parsing ${ojFile.path}`);
+
             try { 
                 ojFile.ast = esprima.parse(ojFile.contents, { loc: true });
+
+                ojFile.parseError = null;
                 ojFile.needsGenerate();
                 ojFile.needsTypecheck();
 
@@ -202,7 +208,7 @@ _parseFiles(files, callback)
                 outError.reason = message;
 
                 ojFile.needsParse();
-                ojFile.error = outError;
+                ojFile.parseError = outError;
                 if (!err) err = outError;
             }
         }
@@ -223,10 +229,12 @@ _buildFiles(files, model, options, callback)
         try { 
             let builder = new Builder(ojFile, model, options);
             builder.build();
+            ojFile.buildError = null;
 
         } catch (e) {
             Utils.addFilePathToError(ojFile.path, e);
-            ojFile.error = e;
+            ojFile.needsParse();
+            ojFile.buildError = e;
             if (!err) err = e;
         }
 
@@ -286,10 +294,13 @@ _runOnCompileCallback(onCompileCallback, ojFile, doneCallback)
     }, (error) => {
         if (error) {
             Utils.addFilePathToError(ojFile.path, error);
+
+            Log(`${ojFile.path} needsGenerate due to error: '${error}'`);
             ojFile.needsGenerate();
-            ojFile.error = error;
+            ojFile.generatorError = error;
 
         } else {
+            ojFile.generatorError    = null;
             ojFile.generatorLines    = lines;
             ojFile.generatorWarnings = warnings;
         }
@@ -299,9 +310,12 @@ _runOnCompileCallback(onCompileCallback, ojFile, doneCallback)
 }
 
 
-_generateJavaScript(files, model, options, beforeCompileCallback, afterCompileCallback, callback)
+_generateJavaScript(files, model, options, callback)
 {
     let err = null;
+
+    let beforeCompileCallback = options["before-compile"];
+    let afterCompileCallback  = options["after-compile"];
 
     async.each(files, (ojFile, callback) => {
         if (!ojFile.generatorLines) {
@@ -319,13 +333,17 @@ _generateJavaScript(files, model, options, beforeCompileCallback, afterCompileCa
                         let generator = new Generator(ojFile, model, false, options);
                         let result    = generator.generate();
 
+                        ojFile.generatorError    = null;
                         ojFile.generatorLines    = result.lines;
                         ojFile.generatorWarnings = result.warnings || [ ];
 
                     } catch (e) {
                         Utils.addFilePathToError(ojFile.path, e);
+
+                        Log(`${ojFile.path} needsGenerate due to error: '${error}'`);
                         ojFile.needsGenerate();
-                        ojFile.error = e;
+                        ojFile.generatorError = e;
+
                         if (!err) err = e;
                     }
 
@@ -361,12 +379,14 @@ _runTypechecker(typechecker, defs, files, model, options, callback)
             try {
                 let generator = new Generator(ojFile, model, true, options);
                 let result = generator.generate();
-                ojFile.typecheckerCode = result.lines.join("\n");
+
+                ojFile.typecheckerError = null;
+                ojFile.typecheckerCode  = result.lines.join("\n");
 
             } catch (e) {
                 Utils.addFilePathToError(ojFile.path, e);
                 ojFile.needsTypecheck();
-                ojFile.error = e;
+                ojFile.typecheckerError = e;
                 if (!err) err = e;
             }
         }
@@ -476,17 +496,16 @@ compile(options, callback)
         return extracted;
     }
 
-    function extractFunction(key) {
-        let result = extractOption(key);
-        return _.isFunction(result) ? result : null;
-    }
-
     let optionsFiles          = extractOption("files");
     let optionsDefs           = extractOption("defs");
     let optionsState          = extractOption("state");
     let optionsIncludeState   = extractOption("include-state");
     let optionsIncludeSymbols = extractOption("include-symbols");
     let optionsIncludeBridged = extractOption("include-bridged");
+
+    if (extractOption("dev-print-log")) {
+        Utils.enableLog();
+    }
 
     let finishOptions = extractOptions([
         "include-map",
@@ -495,10 +514,6 @@ compile(options, callback)
         "source-map-file",
         "source-map-root"
     ]);
-
-    // Extract functions
-    let beforeCompileCallback = extractFunction("before-compile");
-    let afterCompileCallback  = extractFunction("after-compile");
 
     // Extract options.files and convert to a map of path->OJFiles
     let files = this._extractFilesFromOptions(optionsFiles, previousFiles);
@@ -513,9 +528,14 @@ compile(options, callback)
 
     // If remaining options changed, invalidate everything
     //
-    if (!_.isEqual(options, previousOptions)) {
+    if (!_.isEqual(
+        _.filter(options,         value => !_.isFunction(value) ),
+        _.filter(previousOptions, value => !_.isFunction(value) )
+    )) {
         previousOptions = options;
         previousModel   = new OJModel();
+
+        Log("Calling needsAll() on all files");
 
         _.each(files, ojFile => {
             ojFile.needsAll();
@@ -569,14 +589,16 @@ compile(options, callback)
         // Perform model diff
         callback => {
             if (!previousModel || previousModel.hasGlobalChanges(model)) {
+                if (!previousModel) {
+                    Log("No previous model, all files need generate");
+                } else {
+                    Log("Model has global changes, all files need generate");
+                }
+
                 _.each(files, ojFile => {
                     ojFile.needsGenerate();
                     ojFile.needsTypecheck();
                 });
-
-                if (this._checker) {
-                    this._checker.invalidateGlobalState();
-                }
 
             } else {
                 if (options["warn-unknown-selectors"]) {
@@ -584,8 +606,9 @@ compile(options, callback)
 
                     if (changedSelectors) {
                         _.each(files, ojFile => {
-                            _.each(ojFile.uses.selectors, function(selectorName) {
+                            _.each(ojFile.uses.selectors, selectorName => {
                                 if (changedSelectors[selectorName]) {
+                                    Log(`${ojFile.path} needsGenerate due to selector: '${selectorName}'`);
                                     ojFile.needsGenerate();
                                 }
                             });
@@ -604,7 +627,7 @@ compile(options, callback)
         // Run generator
         callback => {
             if (optionsOutputLanguage != "none") {
-                this._generateJavaScript(files, model, options, beforeCompileCallback, afterCompileCallback, callback);
+                this._generateJavaScript(files, model, options, callback);
             } else {
                 callback();
             }
@@ -640,7 +663,7 @@ compile(options, callback)
         },
 
     ], err => {
-        let errors = _.compact(_.map(files, ojFile => ojFile.error));
+        let errors = _.compact(_.map(files, ojFile => ojFile.getError()));
 
         // If we have an internal error, throw it now
         {

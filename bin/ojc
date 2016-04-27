@@ -49,7 +49,8 @@ let opt = getopt.create([
     [ "",  "warn-unknown-selectors",    "warn about usage of unknown selectors"    ],
     [ "",  "warn-unused-ivars",         "warn about unused ivars"                  ],
 
-    [ "",  "development",               "(for development)" ],
+    [ "",  "dev-dump-tmp",              "(for development)" ],
+    [ "",  "dev-print-log",             "(for development)" ],
 
     [ "h", "help",                      "display this help" ],
     [ "v", "version",                   "show version"      ]
