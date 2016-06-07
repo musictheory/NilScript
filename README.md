@@ -902,13 +902,18 @@ ojOptions["after-compile"] = function(file, callback) {
     
     // retainLines must be true or oj's output source map will be useless
     babelOptions.retainLines = true;
-    
-    let result = babel.transform(file.getContents(), babelOptions);
-    
-    // file.setContents() updates the generated source code with a string.
-    // This string must have a 1:1 line mapping to the original string
-    file.setContents(result.code);
-    
+
+    try {
+        let result = babel.transform(file.getContents(), babelOptions);
+
+        // file.setContents() updates the generated source code with a string.
+        // This string must have a 1:1 line mapping to the original string
+        file.setContents(result.code);
+
+    } catch (e) {
+        file.addWarning(e.loc.line, e.message);
+    }
+
     // Babel's transform API is synchronous
     callback();
 };
