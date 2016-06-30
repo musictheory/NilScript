@@ -340,7 +340,7 @@ _generateJavaScript(files, model, options, callback)
                     } catch (e) {
                         Utils.addFilePathToError(ojFile.path, e);
 
-                        Log(`${ojFile.path} needsGenerate due to error: '${error}'`);
+                        Log(`${ojFile.path} needsGenerate due to error: '${e}'`);
                         ojFile.needsGenerate();
                         ojFile.generatorError = e;
 
