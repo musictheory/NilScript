@@ -202,10 +202,12 @@ build()
     {
         let name = node.id.name;
 
-        let type     = node.id.annotation;
-        let writable = true;
-        let getter   = name;
-        let setter   = "set" + name.substr(0,1).toUpperCase() + name.substr(1, name.length) + ":";
+        let type        = node.id.annotation;
+        let writable    = true;
+        let getter      = name;
+        let setter      = "set" + name.substr(0,1).toUpperCase() + name.substr(1, name.length) + ":";
+        let copyOnRead  = false;
+        let copyOnWrite = false;
 
         if (currentCategoryName) {
             Utils.throwError(OJError.NotYetSupported, "@property is not yet supported in a category's implementation", node);
@@ -223,6 +225,13 @@ build()
                 getter = attribute.selector.selectorName;
             } else if (attributeName == "setter") {
                 setter = attribute.selector.selectorName;
+            } else if (attributeName == "copy") {
+                copyOnWrite = true;
+            } else if (attributeName == "struct") {
+                copyOnWrite = true;
+                copyOnRead  = true;
+            } else if (attributeName == "class") {
+                Utils.throwError(OJError.NotYetSupported, "@property 'class' attribute is not supported", node);
             }
         }
 
@@ -230,7 +239,7 @@ build()
             setter = null;
         }
 
-        let property = new Model.OJProperty(name, type, writable, getter, setter, null);
+        let property = new Model.OJProperty(name, type, writable, copyOnRead, copyOnWrite, getter, setter, null);
         if (currentClass) {
             currentClass.addProperty(property);
         } else if (currentProtocol) {

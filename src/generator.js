@@ -634,7 +634,7 @@ generate()
         }
 
         modifier.from(node).to(node.body).replace(definition);
-        modifier.from(node.body).to(node).remove();
+        modifier.from(node.body).to(node).replace(";");
     }
 
     function handleLiteral(node)
@@ -805,14 +805,24 @@ generate()
         if (makeSetter) {
             if (language === LanguageEcmascript5) {
                 result += generateMethodDeclaration(false, property.setter);
-                result += " = function(arg) { " + generateThisIvar(currentClass.name, property.ivar, false) + " = arg; } ; ";
+
+                if (property.copyOnWrite) {
+                    result += " = function(arg) { " + generateThisIvar(currentClass.name, property.ivar, false) + " = " + OJRootVariable + ".makeCopy(arg); } ; ";
+                } else {
+                    result += " = function(arg) { " + generateThisIvar(currentClass.name, property.ivar, false) + " = arg; } ; ";
+                }
             }
         }
 
         if (makeGetter) {
             if (language === LanguageEcmascript5) {
                 result += generateMethodDeclaration(false, property.getter);
-                result += " = function() { return " + generateThisIvar(currentClass.name, property.ivar, false) + "; } ; ";
+
+                if (property.copyOnRead) {
+                    result += " = function() { return " + OJRootVariable + ".makeCopy(" + generateThisIvar(currentClass.name, property.ivar, false) + "); } ; ";
+                } else {
+                    result += " = function() { return " + generateThisIvar(currentClass.name, property.ivar, false) + "; } ; ";
+                }
             }
         }
 

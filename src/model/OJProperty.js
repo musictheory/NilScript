@@ -11,15 +11,17 @@
 module.exports = class OJProperty {
 
 
-constructor(name, type, writable, getter, setter, ivar, optional)
+constructor(name, type, writable, copyOnRead, copyOnWrite, getter, setter, ivar, optional)
 {
-    this.name     = name;
-    this.type     = type;
-    this.writable = writable;
-    this.getter   = getter;
-    this.setter   = setter;
-    this.ivar     = ivar;
-    this.optional = optional;
+    this.name        = name;
+    this.type        = type;
+    this.writable    = writable;
+    this.copyOnRead  = copyOnRead;
+    this.copyOnWrite = copyOnWrite;
+    this.getter      = getter;
+    this.setter      = setter;
+    this.ivar        = ivar;
+    this.optional    = optional;
 }
 
 
