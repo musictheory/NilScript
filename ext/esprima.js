@@ -6157,8 +6157,27 @@
         var names, name, allowedNames, token, selector = null, node = new Node();
 
         token = lookahead;
-        allowedNames = [ 'atomic', 'nonatomic', 'readwrite', 'readonly', 'strong', 'weak', 'copy', 'assign', 'retain' ];
         name = parseVariableIdentifier().name;
+
+        // See ParseObjc.cpp in LLVM clang
+        allowedNames = [
+            'assign',
+            'atomic',
+            'class',
+            'copy',
+            'nonatomic',
+            'nonnull',
+            'null_resettable',
+            'null_unspecified',
+            'nullable',
+            'readonly',
+            'readwrite',
+            'retain',
+            'strong',
+            'struct',
+            'unsafe_unretained',
+            'weak'
+        ];
 
         if (name == 'getter' || name == 'setter') {
             expect('=');
