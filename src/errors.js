@@ -42,6 +42,7 @@ OJWarning.UseOfSelfInNonMethod         = "OJUseOfSelfInNonMethodWarning";
 OJWarning.UseOfDebugger                = "OJUseOfDebuggerWarning";
 OJWarning.UseOfEmptyArrayElement       = "OJUseOfEmptyArrayElementWarning";
 OJWarning.UnusedInstanceVariable       = "OJUnusedInstanceVariableWarning";
+OJWarning.UnassignedInstanceVariable   = "OJUnassignedInstanceVariableWarning";
 OJWarning.UndeclaredInstanceVariable   = "OJUndeclaredInstanceVariableWarning";
 OJWarning.MissingTypeAnnotation        = "OJMissingTypeAnnotationWarning";
 OJWarning.OnCompileFunction            = "OJOnCompileFunctionWarning";

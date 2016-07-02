@@ -25,6 +25,8 @@ const OJWarning       = require("./errors").OJWarning;
 const OJModel         = require("./model").OJModel;
 const OJFile          = require("./model").OJFile;
 
+const OJCompileCallbackFile = require("./model").OJCompileCallbackFile;
+
 
 const sPublicOptions = [
 
@@ -84,8 +86,7 @@ let sPublicOptionsMap = null;
 // Please file a GitHub issue if you wish to use these
 const sPrivateOptions = [
     "additional-inlines",
-    "include-bridged",
-    "tagged-template-hook"
+    "include-bridged"
 ];
 let sPrivateOptionsMap = null;
 
@@ -180,7 +181,61 @@ _extractFilesFromOptions(optionsFiles, previousFiles)
 }
 
 
-_parseFiles(files, callback)
+_runBeforeCompileCallback(beforeCompileCallback, ojFile, doneCallback)
+{
+    let lines    = ojFile.contents.split("\n");
+    let warnings = [ ];
+
+    let callbackFile = new OJCompileCallbackFile(ojFile.path, lines, warnings)
+
+    beforeCompileCallback(callbackFile, (error) => {
+        if (error) {
+            Utils.addFilePathToError(ojFile.path, error);
+
+            Log(`${ojFile.path} needsPreprocess due to error: '${error}'`);
+            ojFile.needsPreprocess();
+
+        } else {
+            ojFile.contents = callbackFile._lines.join("\n");
+            ojFile.needsPreprocess = false;
+        }
+
+        doneCallback(error);
+    });
+}
+
+
+_preprocessFiles(files, options, callback)
+{
+    let err = null;
+    let beforeCompileCallback = options["before-compile"];
+
+    async.each(files, (ojFile, callback) => {
+        if (ojFile.needsPreprocess) {
+            if (beforeCompileCallback) {
+                try { 
+                    this._runBeforeCompileCallback(beforeCompileCallback, ojFile, callback);
+                } catch (e) {
+                    if (!err) err = e;
+                    callback();
+                }
+
+            } else {
+                ojFile.needsPreprocess = false;
+                callback();
+            }
+
+        } else {
+            callback();
+        }
+
+    }, () => {
+        callback(err);
+    });
+}
+
+
+_parseFiles(files, options, callback)
 {
     let err = null;
 
@@ -256,42 +311,11 @@ _buildFiles(files, model, options, callback)
 }
 
 
-_runOnCompileCallback(onCompileCallback, ojFile, doneCallback)
+_runAfterCompileCallback(afterCompileCallback, ojFile, doneCallback)
 {
-    let lines    = ojFile.generatorLines;
-    let warnings = ojFile.generatorWarnings;
+    let callbackFile = new OJCompileCallbackFile(ojFile.path, ojFile.generatorLines, ojFile.generatorWarnings);
 
-    onCompileCallback({
-        setContents: (contents) => {
-            let newLines = contents.split("\n");
-
-            if (newLines.length > lines.length) {
-                throw new Error("Line count mismatch: " + newLines.length + " vs. " + lines.length);
-            }
-
-            // Insert newlines, as babel likes to trim the end
-            while (newLines.length < lines.length) {
-                newLines.push("");
-            }
-
-            lines = newLines;
-        },
-
-        getContents: () => {
-            return lines ? lines.join("\n") : ""
-        },
-
-        getPath: () => {
-            return ojFile.path;
-        },
-
-        addWarning: (line, message) => {
-            let warning = Utils.makeError(OJWarning.OnCompileFunction, message, line);
-            Utils.addFilePathToError(ojFile.path, warning);
-            warnings.push(warning);
-        },
-
-    }, (error) => {
+    afterCompileCallback(callbackFile, (error) => {
         if (error) {
             Utils.addFilePathToError(ojFile.path, error);
 
@@ -301,8 +325,8 @@ _runOnCompileCallback(onCompileCallback, ojFile, doneCallback)
 
         } else {
             ojFile.generatorError    = null;
-            ojFile.generatorLines    = lines;
-            ojFile.generatorWarnings = warnings;
+            ojFile.generatorLines    = callbackFile._lines;
+            ojFile.generatorWarnings = callbackFile._warnings;
         }
 
         doneCallback(error);
@@ -314,20 +338,11 @@ _generateJavaScript(files, model, options, callback)
 {
     let err = null;
 
-    let beforeCompileCallback = options["before-compile"];
     let afterCompileCallback  = options["after-compile"];
 
     async.each(files, (ojFile, callback) => {
         if (!ojFile.generatorLines) {
             async.series([
-                callback => {
-                    if (beforeCompileCallback) {
-                        this._runOnCompileCallback(beforeCompileCallback, ojFile, callback);
-                    } else {
-                        callback();
-                    }
-                },
-
                 callback => {
                     try {
                         let generator = new Generator(ojFile, model, false, options);
@@ -352,7 +367,13 @@ _generateJavaScript(files, model, options, callback)
 
                 callback => {
                     if (afterCompileCallback) {
-                        this._runOnCompileCallback(afterCompileCallback, ojFile, callback);
+                        try {
+                            this._runAfterCompileCallback(afterCompileCallback, ojFile, callback);
+                        } catch (e) {
+                            if (!err) err = e;
+                            callback();
+                        }
+
                     } else {
                         callback();
                     }
@@ -576,9 +597,14 @@ compile(options, callback)
     let typecheckerWarnings = null;
 
     async.waterfall([
+        // Preprocess files
+        callback => {
+            this._preprocessFiles(files, options, callback);
+        },
+
         // Parse files
         callback => {
-            this._parseFiles(files, callback);
+            this._parseFiles(files, options, callback);
         },
 
         // Build model

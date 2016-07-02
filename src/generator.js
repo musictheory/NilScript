@@ -126,7 +126,6 @@ generate()
     let optionWarnUnusedIvars        = options["warn-unused-ivars"];
     let optionStrictFunctions        = options["strict-functions"];
     let optionStrictObjectLiterals   = options["strict-object-literals"];
-    let optionTaggedTemplateHook     = options["tagged-template-hook"];
 
     let optionSqueeze = this._squeeze;
     let symbolTyper   = model.getSymbolTyper();
@@ -135,7 +134,8 @@ generate()
 
     let rewriteFunctionParameters = (language === LanguageTypechecker) && !optionStrictFunctions;
 
-    let unusedIvars = null;
+    let usedIvarMap = null;
+    let assignedIvarMap = null;
 
     let warnings = [ ];
 
@@ -420,6 +420,8 @@ generate()
                 } else {
                     doCommonReplacement("(" + ivar + " && " + ivar + "." + methodName + "(", "))");
                 }
+
+                usedIvarMap[receiver.name] = true;
 
                 return;
 
@@ -709,7 +711,7 @@ generate()
         }
     }
 
-    function handleIdentifier(node)
+    function handleIdentifier(node, parent)
     {
         let name   = node.name;
         let isSelf = (name == "self");
@@ -745,12 +747,12 @@ generate()
                     replacement = usesSelf ? "self" : "this";
                 } else {
                     replacement = generateThisIvar(currentClass.name, name, usesSelf);
+                    usedIvarMap[name] = true;
 
-                    // remove ivar from unusedIvars
-                    if (optionWarnUnusedIvars) {
-                        if (unusedIvars && unusedIvars.indexOf(name) >= 0) {
-                            unusedIvars = _.without(unusedIvars, name);
-                        }
+                    if (parent.type === Syntax.AssignmentExpression && 
+                        parent.left.name == name)
+                    {
+                        assignedIvarMap[name] = true;
                     }
                 }
 
@@ -1128,25 +1130,6 @@ generate()
         }
     }
 
-    function handleTaggedTemplateExpression(node) {
-        let tag = node.tag;
-        let quasi = node.quasi;
-
-        if (!tag || !quasi) return;
-
-        if (tag.type === Syntax.Identifier &&
-            quasi.type === Syntax.TemplateLiteral &&
-            quasi.quasis.length == 1)
-        {
-            let result = optionTaggedTemplateHook(tag.name, quasi.quasis[0].value.raw);
-
-            if (result) {
-                modifier.select(node).replace(JSON.stringify(result));
-                node.oj_skip = true;
-            }
-        }
-    }
-
     function finishScope(scope, needsSelf)
     {
         let node = scope.node;
@@ -1214,9 +1197,8 @@ generate()
         } else if (type === Syntax.OJClassImplementation) {
             currentClass = model.classes[node.id.name];
 
-            if (optionWarnUnusedIvars) {
-                unusedIvars = currentClass.getAllIvarNamesWithoutProperties();
-            }
+            usedIvarMap = { };
+            assignedIvarMap = { }
 
             handleOJClassImplementation(node);
 
@@ -1276,7 +1258,7 @@ generate()
             handleLiteral(node);
 
         } else if (type === Syntax.Identifier) {
-            handleIdentifier(node);
+            handleIdentifier(node, parent);
 
         } else if (type === Syntax.VariableDeclaration) {
             handleVariableDeclaration(node);
@@ -1321,26 +1303,24 @@ generate()
             if (optionWarnDebugger) {
                 warnings.push(Utils.makeError(OJWarning.UseOfDebugger, "Use of debugger statement", node));
             }
-
-        } else if (type == Syntax.TaggedTemplateExpression) {
-            if (optionTaggedTemplateHook) {
-                handleTaggedTemplateExpression(node);
-            }
         }
 
     }, function(node, parent) {
         let type = node.type;
 
         if (type === Syntax.OJClassImplementation) {
-            currentClass = null;
+            if (optionWarnUnusedIvars) {
+                _.each(currentClass.getAllIvarNamesWithoutProperties(), ivarName => {
+                    if (!usedIvarMap[ivarName]) {
+                        warnings.push(Utils.makeError(OJWarning.UnusedInstanceVariable, "Unused instance variable '" + ivarName + "'", node));
 
-            if (optionWarnUnusedIvars && unusedIvars && unusedIvars.length) {
-                _.each(unusedIvars, function(unusedIvar) {
-                    warnings.push(Utils.makeError(OJWarning.UnusedInstanceVariable, "Unused instance variable " + unusedIvar, node));
+                    } else if (!assignedIvarMap[ivarName]) {
+                        warnings.push(Utils.makeError(OJWarning.UnassignedInstanceVariable, "Instance variable '" + ivarName + "' used but never assigned", node));
+                    }
                 });
-
-                unusedIvars = null;
             }
+
+            currentClass = null;
 
         } else if (type === Syntax.OJMethodDefinition) {
             finishScope(scope, methodUsesSelfVar);

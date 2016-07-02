@@ -18,5 +18,8 @@ module.exports = {
     OJConst:    require("./OJConst"),
     OJEnum:     require("./OJEnum"),
     OJGlobal:   require("./OJGlobal"),
-    OJType:     require("./OJType")
+    OJType:     require("./OJType"),
+
+    // For public APIs
+    OJCompileCallbackFile: require("./OJCompileCallbackFile")
 };
