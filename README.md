@@ -637,6 +637,9 @@ If `receiver` is non-falsy, invokes `aSelector` on it.
 **-[BaseObject className]**  
 Returns a human-readable string of a class or selector.  Note that this is for debug purposes only!  When `--squeeze` is passed into the compiler, the resulting class/selector names will be obfuscated/shortened.
 
+**oj.makeCopy(object)**  
+If `object` is an oj instance, invokes `-copy`.  If `object` is a JavaScript array, returns a shallow clone (via `slice(0)`).  If `object` is a JavaScript primitive, returns `object`.  Else, returns a clone of each key/value pair (via `Object.keys`) on `object`.
+
 ---
 ## <a name="squeeze"></a>Squeezing oj!
 
