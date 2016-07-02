@@ -907,6 +907,10 @@ ojOptions["before-compile"] = function(file, callback) {
     inLines.forEach(line => {
         if (line.indexOf("#pragma") == 0) {
             console.log("Pragma found in: " + file.getPath());
+
+            // Push an empty line to maintain the same # of lines
+            outLines.push("");
+
         } else {
             outLines.push(line);
         }
