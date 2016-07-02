@@ -348,15 +348,38 @@ All valid Objective-C attributes may be used on a declared property:
 
     @property (nontomic,copy,getter=myStringGetter) String myString;
 
-However, some are ignored due to differences between JavaScript and Objective-C:
+However, some are ignored due to differences between JavaScript and Objective-C.
 
-    nonatomic, atomic    -> Ignored
-    unsafe_unretained,
-    weak, strong, retain -> Ignored (all JavaScript objects are garbage collected)
-    copy                 -> A copy of the object is made (using -copy) before assigning to ivar
-    getter=              -> Changes the name of the getter/accessor
-    setter=              -> Changes the name of the setter/mutator
-    readonly, readwrite  -> Default is readwrite, readonly suppresses the generation of a setter
+| Attribute          | Description                                                      
+|--------------------|------------------------------------------------------------------
+| `nonatomic`, `atomic` | Ignored since JavaScript is single-threaded
+| `unsafe_unretained`, `weak`, `strong`, `retain` | Ignored since Javascript objects are garbage collected
+| `nonnull`, `nullable`, `null_resettable`, `null_unspecified` | Currently ignored
+| `getter=` | Changes the name of the getter/accessor
+| `setter=` | Changes the name of the setter/mutator
+| `copy`, `struct`  | Creates a copy (See below)
+| `readonly`, `readwrite` | Default is readwrite, readonly suppresses the generation of a setter
+
+`copy` uses `oj.makeCopy` in the setter.
+
+`struct` uses `oj.makeCopy` in both the setter and the getter.  It is intended to assist the porting of C `struct`s, which are pass-by-value rather than pass-by-reference.
+
+```
+@property (copy) Foo foo;
+@property (struct) Bar bar;
+@property Baz baz;
+
+// Synthesized methods:
+
+- (void) setFoo:(Foo)foo { _foo = oj.makeCopy(foo); }
+- (Foo) foo { return _foo; }
+
+- (void) setBar:(Bar)bar { _bar = oj.makeCopy(bar); }
+- (Bar) bar { return oj.makeCopy(_bar); }
+
+- (void) setBaz:(Bar)bar { _baz = baz; }
+- (Baz) baz { return _baz; }
+```
 
 
 ### <a name="property-init"></a>Initialization
