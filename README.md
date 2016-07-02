@@ -348,15 +348,38 @@ All valid Objective-C attributes may be used on a declared property:
 
     @property (nontomic,copy,getter=myStringGetter) String myString;
 
-However, some are ignored due to differences between JavaScript and Objective-C:
+However, some are ignored due to differences between JavaScript and Objective-C.
 
-    nonatomic, atomic    -> Ignored
-    unsafe_unretained,
-    weak, strong, retain -> Ignored (all JavaScript objects are garbage collected)
-    copy                 -> A copy of the object is made (using -copy) before assigning to ivar
-    getter=              -> Changes the name of the getter/accessor
-    setter=              -> Changes the name of the setter/mutator
-    readonly, readwrite  -> Default is readwrite, readonly suppresses the generation of a setter
+| Attribute          | Description                                                      
+|--------------------|------------------------------------------------------------------
+| `nonatomic`, `atomic` | Ignored since JavaScript is single-threaded
+| `unsafe_unretained`, `weak`, `strong`, `retain` | Ignored since Javascript objects are garbage collected
+| `nonnull`, `nullable`, `null_resettable`, `null_unspecified` | Currently ignored
+| `getter=` | Changes the name of the getter/accessor
+| `setter=` | Changes the name of the setter/mutator
+| `copy`, `struct`  | Creates a copy (See below)
+| `readonly`, `readwrite` | Default is readwrite, readonly suppresses the generation of a setter
+
+`copy` uses `oj.makeCopy` in the setter.
+
+`struct` uses `oj.makeCopy` in both the setter and the getter.  It is intended to assist the porting of C `struct`s, which are pass-by-value rather than pass-by-reference.
+
+```
+@property (copy) Foo foo;
+@property (struct) Bar bar;
+@property Baz baz;
+
+// Synthesized methods:
+
+- (void) setFoo:(Foo)foo { _foo = oj.makeCopy(foo); }
+- (Foo) foo { return _foo; }
+
+- (void) setBar:(Bar)bar { _bar = oj.makeCopy(bar); }
+- (Bar) bar { return oj.makeCopy(_bar); }
+
+- (void) setBaz:(Bar)bar { _baz = baz; }
+- (Baz) baz { return _baz; }
+```
 
 
 ### <a name="property-init"></a>Initialization
@@ -613,6 +636,9 @@ If `receiver` is non-falsy, invokes `aSelector` on it.
 **oj.class_getName(cls)**  
 **-[BaseObject className]**  
 Returns a human-readable string of a class or selector.  Note that this is for debug purposes only!  When `--squeeze` is passed into the compiler, the resulting class/selector names will be obfuscated/shortened.
+
+**oj.makeCopy(object)**  
+If `object` is an oj instance, invokes `-copy`.  If `object` is a JavaScript array, returns a shallow clone (via `slice(0)`).  If `object` is a JavaScript primitive, returns `object`.  Else, returns a clone of each key/value pair (via `Object.keys`) on `object`.
 
 ---
 ## <a name="squeeze"></a>Squeezing oj!
@@ -902,13 +928,18 @@ ojOptions["after-compile"] = function(file, callback) {
     
     // retainLines must be true or oj's output source map will be useless
     babelOptions.retainLines = true;
-    
-    let result = babel.transform(file.getContents(), babelOptions);
-    
-    // file.setContents() updates the generated source code with a string.
-    // This string must have a 1:1 line mapping to the original string
-    file.setContents(result.code);
-    
+
+    try {
+        let result = babel.transform(file.getContents(), babelOptions);
+
+        // file.setContents() updates the generated source code with a string.
+        // This string must have a 1:1 line mapping to the original string
+        file.setContents(result.code);
+
+    } catch (e) {
+        file.addWarning(e.loc.line, e.message);
+    }
+
     // Babel's transform API is synchronous
     callback();
 };
