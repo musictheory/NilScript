@@ -1,0 +1,21 @@
+@implementation TestIssue112
+
++ (Number) runTest
+{
+    return [[self class] returnFive];
+}
+
++ (Number) returnFive
+{
+    return 5;
+}
+
+@end
+
+
+function runTests()
+{
+    return [TestIssue112 runTest] == 5
+}
+
+runTests();

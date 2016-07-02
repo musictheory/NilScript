@@ -440,6 +440,33 @@ var arr = [,,,,];  //@warning OJUseOfEmptyArrayElementWarning
 
 
 // --------------------------------------------------------------------
+// @name Warn Unused Ivars
+// @opts { "warn-unused-ivars": true  }
+
+@implementation Foo { //@warning OJUnusedInstanceVariableWarning
+    id _bar;
+}
+
+@end
+
+
+
+// --------------------------------------------------------------------
+// @name Warn Unused Ivars 2
+// @opts { "warn-unused-ivars": true  }
+
+@implementation Foo { //@warning OJUnassignedInstanceVariableWarning
+    id _bar;
+}
+
+- (void) doSomethingWithBar
+{
+    [_bar doSomething];
+}
+
+@end
+
+// --------------------------------------------------------------------
 // @name Missing Method Name (Protocol)
 
 @protocol MissingMethodName

@@ -19,8 +19,6 @@ constructor(path)
     this.contents = null;
     this.time     = 0;
 
-    this.calls    = null;
-
     this.needsAll();
 }
 
@@ -38,7 +36,7 @@ updateFromDisk()
 updateWithContentsAndTime(contents, time)
 {
     if (time > this.time) {
-        if (contents != this.contents) {
+        if (this.contents != contents) {
             this.contents = contents;
             this.time  = time;
 
@@ -51,6 +49,7 @@ updateWithContentsAndTime(contents, time)
 
 needsAll()
 {
+    this.needsPreprocess = true;
     this.needsParse();
 }
 
