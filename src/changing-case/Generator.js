@@ -1308,7 +1308,7 @@ generate()
     }, function(node, parent) {
         let type = node.type;
 
-        if (type === Syntax.OJClassImplementation) {
+        if (type === Syntax.OJClassImplementation && !node.category) {
             if (optionWarnUnusedIvars) {
                 _.each(currentClass.getAllIvarNamesWithoutProperties(), ivarName => {
                     if (!usedIvarMap[ivarName]) {

@@ -7,6 +7,10 @@
 
 "use strict";
 
+const Utils     = require("../utils");
+const OJWarning = require("../errors").OJWarning;
+
+
 module.exports = class OJCompileCallbackFile {
 
 
@@ -41,10 +45,16 @@ getContents()
 }
 
 
+getPath()
+{
+    return this._path;
+}
+
+
 addWarning(line, message)
 {
     let warning = Utils.makeError(OJWarning.OnCompileFunction, message, line);
-    Utils.addFilePathToError(path, warning);
+    Utils.addFilePathToError(this._path, warning);
     this._warnings.push(warning);
 }
 

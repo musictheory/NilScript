@@ -15,7 +15,7 @@ const esprima         = require("../ext/esprima");
 
 const Builder         = require("./builder");
 const Generator       = require("./generator");
-const Mapper          = require("./mapper");
+const SourceMapper    = require("./mapper");
 const Typechecker     = require("./typechecker/Typechecker");
 const Utils           = require("./utils");
 const Log             = Utils.log;
@@ -40,7 +40,7 @@ const sPublicOptions = [
     "output-language",           // Output language ('none' or 'es5' public, 'typechecker' for debugging only)
     "include-map",               // Boolean, include 'map' key in results object
     "include-state",             // Boolean, include 'state' key in results object
-    "include-symbols",           // Boolean, 'symbols' key in results object
+    "include-symbols",           // Boolean, include 'symbols' key in results object
     "source-map-file",           // Output source map file name
     "source-map-root",           // Output source map root URL
 
@@ -86,7 +86,8 @@ let sPublicOptionsMap = null;
 // Please file a GitHub issue if you wish to use these
 const sPrivateOptions = [
     "additional-inlines",
-    "include-bridged"
+    "include-bridged",
+    "include-function-map"
 ];
 let sPrivateOptionsMap = null;
 
@@ -193,7 +194,7 @@ _runBeforeCompileCallback(beforeCompileCallback, ojFile, doneCallback)
             Utils.addFilePathToError(ojFile.path, error);
 
             Log(`${ojFile.path} needsPreprocess due to error: '${error}'`);
-            ojFile.needsPreprocess();
+            ojFile.needsPreprocess = true;
 
         } else {
             ojFile.contents = callbackFile._lines.join("\n");
@@ -229,8 +230,8 @@ _preprocessFiles(files, options, callback)
             callback();
         }
 
-    }, () => {
-        callback(err);
+    }, (e) => {
+        callback(err || e);
     });
 }
 
@@ -447,9 +448,11 @@ _finish(files, options, callback)
         let prependLines = getLines( options["prepend"] );
         let appendLines  = getLines( options["append"] );
 
-        let outputMap = null;
+        let outputSourceMap   = null;
+        let outputFunctionMap = null;
+
         if (options["include-map"]) {
-            let mapper = new Mapper(options["source-map-file"], options["source-map-root"]);
+            let mapper = new SourceMapper(options["source-map-file"], options["source-map-root"]);
 
             mapper.add(null, prependLines);
 
@@ -459,7 +462,11 @@ _finish(files, options, callback)
             
             mapper.add(null, appendLines);
 
-            outputMap = mapper.getSourceMap();
+            outputSourceMap = mapper.getSourceMap();
+        }
+
+        if (optionsIncludeFunctionMap) {
+
         }
 
         let outputCode = null;
@@ -477,7 +484,8 @@ _finish(files, options, callback)
 
         callback(null, {
             code: outputCode,
-            map:  outputMap
+            map:  outputSourceMap,
+            functionMap: outputFunctionMap
         });
 
     } catch (err) {
@@ -517,12 +525,13 @@ compile(options, callback)
         return extracted;
     }
 
-    let optionsFiles          = extractOption("files");
-    let optionsDefs           = extractOption("defs");
-    let optionsState          = extractOption("state");
-    let optionsIncludeState   = extractOption("include-state");
-    let optionsIncludeSymbols = extractOption("include-symbols");
-    let optionsIncludeBridged = extractOption("include-bridged");
+    let optionsFiles              = extractOption("files");
+    let optionsDefs               = extractOption("defs");
+    let optionsState              = extractOption("state");
+    let optionsIncludeState       = extractOption("include-state");
+    let optionsIncludeSymbols     = extractOption("include-symbols");
+    let optionsIncludeBridged     = extractOption("include-bridged");
+    let optionsIncludeFunctionMap = extractOption("include-function-map");
 
     if (extractOption("dev-print-log")) {
         Utils.enableLog();
@@ -727,6 +736,10 @@ compile(options, callback)
 
         if (optionsIncludeBridged) {
             result.bridged = model.saveBridged();
+        }
+
+        if (optionsIncludeFunctionMap) {
+            result.functionMap = model.saveFunctionMap();
         }
 
         callback(err, result);
