@@ -121,17 +121,9 @@ saveSymbols()
     let symbolTyper = this._symbolTyper;
     let result = { };
 
-    _.each(this.classes, ojClass => {
-        result[ symbolTyper.getSymbolForClassName(ojClass.name) ] = ojClass.name;
-
-        _.each(ojClass.getAllIvars(), function(ojIvar) {
-            result[ symbolTyper.getSymbolForIvar(ojIvar) ] = ojIvar.name;
-        });
-    });
-
-    _.each(_.keys(this.selectors), name => {
-        result[ symbolTyper.getSymbolForSelectorName(name) ] = name;
-    });
+    if (symbolTyper) {
+        _.extend(result, symbolTyper.getAllSymbolsMap());
+    }
 
     return result;
 }

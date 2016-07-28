@@ -10,7 +10,7 @@
 const SourceMapGenerator = require && require("source-map").SourceMapGenerator;
 
 
-module.exports = class Mapper {
+module.exports = class SourceMapper {
 
 constructor(files, sourceRoot)
 {

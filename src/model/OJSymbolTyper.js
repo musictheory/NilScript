@@ -514,6 +514,12 @@ getSymbolForIvar(ivar)
 }
 
 
+getAllSymbolsMap()
+{
+    return this._fromSqueezedMap;
+}
+
+
 }
 
 
