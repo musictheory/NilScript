@@ -1,5 +1,5 @@
 /*
-    builder.js
+    Builder.js
     Scans AST and builds internal model
     (c) 2013-2016 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
@@ -11,9 +11,9 @@ const _          = require("lodash");
 const esprima    = require("../ext/esprima");
 const Syntax     = esprima.Syntax;
 
-const OJError    = require("./errors").OJError;
-const Traverser  = require("./traverser");
-const Utils      = require("./utils");
+const OJError    = require("./Errors").OJError;
+const Traverser  = require("./Traverser");
+const Utils      = require("./Utils");
 const Model      = require("./model");
 
 

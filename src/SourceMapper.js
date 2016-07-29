@@ -1,5 +1,5 @@
 /*
-    mapper.js
+    SourceMapper.js
     Wraps SourceMapGenerator to generate source maps
     (c) 2013-2016 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
