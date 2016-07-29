@@ -1,5 +1,5 @@
 /*
-    compiler.js
+    Compiler.js
     (c) 2013-2016 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
@@ -13,15 +13,16 @@ const async           = require("async");
 
 const esprima         = require("../ext/esprima");
 
-const Builder         = require("./builder");
-const Generator       = require("./generator");
-const SourceMapper    = require("./mapper");
+const Builder         = require("./Builder");
+const Generator       = require("./Generator");
+const SourceMapper    = require("./SourceMapper");
+const FunctionMapper  = require("./FunctionMapper");
 const Typechecker     = require("./typechecker/Typechecker");
-const Utils           = require("./utils");
+const Utils           = require("./Utils");
 const Log             = Utils.log;
 
-const OJError         = require("./errors").OJError;
-const OJWarning       = require("./errors").OJWarning;
+const OJError         = require("./Errors").OJError;
+const OJWarning       = require("./Errors").OJWarning;
 const OJModel         = require("./model").OJModel;
 const OJFile          = require("./model").OJFile;
 
@@ -465,8 +466,15 @@ _finish(files, options, callback)
             outputSourceMap = mapper.getSourceMap();
         }
 
-        if (optionsIncludeFunctionMap) {
+        if (options["include-function-map"]) {
+            let functionMaps = { };
 
+            _.each(files, ojFile => {
+                let mapper = new FunctionMapper(ojFile);
+                functionMaps[ojFile.path] = mapper.map();
+            });
+
+            outputFunctionMap = functionMaps;
         }
 
         let outputCode = null;
@@ -531,7 +539,6 @@ compile(options, callback)
     let optionsIncludeState       = extractOption("include-state");
     let optionsIncludeSymbols     = extractOption("include-symbols");
     let optionsIncludeBridged     = extractOption("include-bridged");
-    let optionsIncludeFunctionMap = extractOption("include-function-map");
 
     if (extractOption("dev-print-log")) {
         Utils.enableLog();
@@ -539,6 +546,7 @@ compile(options, callback)
 
     let finishOptions = extractOptions([
         "include-map",
+        "include-function-map",
         "prepend",
         "append",
         "source-map-file",
@@ -736,10 +744,6 @@ compile(options, callback)
 
         if (optionsIncludeBridged) {
             result.bridged = model.saveBridged();
-        }
-
-        if (optionsIncludeFunctionMap) {
-            result.functionMap = model.saveFunctionMap();
         }
 
         callback(err, result);

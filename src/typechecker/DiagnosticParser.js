@@ -1,6 +1,6 @@
 /*
-    typechecker.js
-    Generates TypeScript definition file and wraps TypeScript compiler 
+    DiagnosticParser.js
+    Translates TypeScript compiler warnings/errors into oj-like ones
     (c) 2013-2016 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */

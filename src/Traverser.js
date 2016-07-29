@@ -1,5 +1,5 @@
 /*
-    traverser.js
+    Traverser.js
     Extends estraverse with ability to traverse oj nodes
     (c) 2013-2016 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php

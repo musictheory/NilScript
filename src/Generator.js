@@ -1,5 +1,5 @@
 /*
-    generator.js
+    Generator.js
     Generates JavaScript or TypeScript from input code/AST/model
     (c) 2013-2016 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
@@ -11,13 +11,13 @@ const _          = require("lodash");
 const esprima     = require("../ext/esprima");
 const Syntax     = esprima.Syntax;
 
-const Modifier   = require("./modifier");
-const Traverser  = require("./traverser");
-const Utils      = require("./utils");
+const Modifier   = require("./Modifier");
+const Traverser  = require("./Traverser");
+const Utils      = require("./Utils");
 
 const OJModel    = require("./model").OJModel;
-const OJError    = require("./errors").OJError;
-const OJWarning  = require("./errors").OJWarning;
+const OJError    = require("./Errors").OJError;
+const OJWarning  = require("./Errors").OJWarning;
 
 const Location = require("./model/OJSymbolTyper").Location;
 
