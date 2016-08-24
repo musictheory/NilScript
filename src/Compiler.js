@@ -609,8 +609,9 @@ compile(options, callback)
         this._checker = new Typechecker(options);
     }
 
-    let outputCode = null;
-    let outputMap  = null;
+    let outputCode          = null;
+    let outputSourceMap     = null;
+    let outputFunctionMap   = null;
     let typecheckerWarnings = null;
 
     async.waterfall([
@@ -694,8 +695,9 @@ compile(options, callback)
             if (optionsOutputLanguage != "none") {
                 this._finish(files, finishOptions, (err, results) => {
                     if (results) {
-                        outputCode = results.code;
-                        outputMap  = results.map;
+                        outputCode        = results.code;
+                        outputSourceMap   = results.map;
+                        outputFunctionMap = results.functionMap;
                     }
 
                     callback(err);
@@ -728,10 +730,11 @@ compile(options, callback)
         warnings.push(typecheckerWarnings);
 
         let result = {
-            code:     outputCode,
-            map:      outputMap,
-            errors:   errors,
-            warnings: _.compact(_.flattenDeep(warnings))
+            code:        outputCode,
+            map:         outputSourceMap,
+            functionMap: outputFunctionMap,
+            errors:      errors,
+            warnings:    _.compact(_.flattenDeep(warnings))
         };
 
         if (optionsIncludeState) {
