@@ -147,8 +147,9 @@ generate()
     function canDeclareTemporaryVariable()
     {
         return scope && scope.node && (
-            scope.node.type === Syntax.FunctionDeclaration ||
-            scope.node.type === Syntax.FunctionExpression  ||
+            scope.node.type === Syntax.FunctionDeclaration     ||
+            scope.node.type === Syntax.FunctionExpression      ||
+            scope.node.type === Syntax.ArrowFunctionExpression ||
             scope.node.type === Syntax.OJMethodDefinition
         );
     }
@@ -1166,7 +1167,8 @@ generate()
                 warnings.push(Utils.makeError(OJWarning.UseOfThisInMethod, "Use of 'this' keyword in oj method definition", thisNode));
 
             } else if (node.type == Syntax.FunctionDeclaration ||
-                       node.type == Syntax.FunctionExpression) {
+                       node.type == Syntax.FunctionExpression  ||
+                       node.type == Syntax.ArrowFunctionExpression) {
                 break;
             }
         }
@@ -1282,7 +1284,7 @@ generate()
                 handleObjectExpression_typeCheckerOnly(node);
             }
 
-        } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression) {
+        } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression || type === Syntax.ArrowFunctionExpression) {
             handleFunctionDeclarationOrExpression(node);
             methodUsesSelfVar = true;
 
@@ -1326,7 +1328,7 @@ generate()
             finishScope(scope, methodUsesSelfVar);
             currentMethodNode = null;
 
-        } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression) {
+        } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression || type == Syntax.ArrowFunctionExpression) {
             finishScope(scope);
         }
 

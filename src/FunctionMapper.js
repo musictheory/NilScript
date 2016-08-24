@@ -30,18 +30,20 @@ map()
     let ojFile = this._file;
 
     let traverser  = new Traverser(ojFile.ast);
-    let entryStack = [ ];
     let currentClassName = null;
 
+    let entryStack = [ ];
     let entryList = [ ];
+    let currentEntryName = null;
 
     function _pushEntry(node, name)
     {
         let lineNumber = (node.loc && node.loc.start && node.loc.start.line) || 0;
         entryStack.push({ line: lineNumber, name: name });
 
-        if (name) {
+        if (name && (name != currentEntryName)) {
             entryList.push( [ lineNumber, name ] );
+            currentEntryName = name;
         }
     }
 
@@ -52,7 +54,12 @@ map()
         entryStack.pop();
 
         let last = _.last(entryStack);
-        entryList.push([ lineNumber + 1, last ? last.name : null ]);
+        let name = last ? last.name : null;
+
+        if (name != currentEntryName) {
+            entryList.push([ lineNumber + 1, name ]);
+            currentEntryName = name;
+        }
     }
 
     function handleOJClassImplementation(node)
