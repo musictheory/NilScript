@@ -895,18 +895,31 @@ symbols | Object  | Symbol-to-readable-name map (if `include-symbols` is true). 
 
 The `before-compile` key specifies a callback which is called prior to the compiler's oj->js stage.  This allows you to preprocess files.  After this callback is invoked, a file's content must be valid oj or JavaScript.
 
-The `on-compile` key specifies a callback which is called each time the compiler generates JavaScript code for a file.  This allows you to run the generated JavaScript through a linter (such as [JSHint](http://jshint.com) or [ESLint](http://eslint.org)), or allows further transformations via [Babel](https://babeljs.io).  When this callback is invoked, a file's content will be valid JavaScript.
+The `after-compile` key specifies a callback which is called each time the compiler generates JavaScript code for a file.  This allows you to run the generated JavaScript through a linter (such as [JSHint](http://jshint.com) or [ESLint](http://eslint.org)), or allows further transformations via [Babel](https://babeljs.io).  When this callback is invoked, a file's content will be valid JavaScript.
+
 
 ```javascript
-
-// JSX example
+// Simple preprocessor example.  Strips out #pragma lines and logs to console
 ojOptions["before-compile"] = function(file, callback) {
-    if (file.getName().match(/\.jsx$/)) {
-    }
+    let inLines = file.getContents().split("\n");
+    let outLines = [ ];
 
-    // Babel's transform API is synchronous
+    inLines.forEach(line => {
+        if (line.indexOf("#pragma") == 0) {
+            console.log("Pragma found in: " + file.getPath());
+
+            // Push an empty line to maintain the same # of lines
+            outLines.push("");
+
+        } else {
+            outLines.push(line);
+        }
+    });
+    
+    file.setContents(outLines.join("\n"));
+    
     callback();
-};
+}
 
 // ESLint example
 ojOptions["after-compile"] = function(file, callback) {
