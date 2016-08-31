@@ -22,6 +22,7 @@ let opt = getopt.create([
     [ "",  "output-symbols=FILE",       "output file for compiler symbols JSON" ],
     [ "",  "prepend=FILE+",             "prepend file to output (without compiling)"],
     [ "",  "append=FILE+",              "append file to output (without compiling)"],
+    [ "",  "parser-source-type=TYPE",   "Passed to Esprima as sourceType.  'script' or 'module'"],
     [ "",  "source-map-file=FILE",      "output source map file" ],
     [ "",  "source-map-root=URL",       "URL to use for 'sourceRoot' in source map" ],    
     [ "s", "squeeze",                   "enable squeezer" ],
