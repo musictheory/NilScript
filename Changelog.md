@@ -19,6 +19,7 @@ Language Changes:
   - '@enum' and '@const' are always global and inlined (#103)
   - Removed '@struct' and '@typedef' in favor of '@type' (#105, #106)
   - Removed 'var _ivar' declaration syntax (#108)
+  - Added 'struct' property attribute, fixed 'copy' property attribute (#94)
 
 Breaking Changes:
   - node 4.2+ is now required to run ojc (#76)
@@ -28,6 +29,7 @@ Breaking Changes:
   - Removed 'cache', 'jshint', 'jshint-config', 'jshint-ignore', and development `ojc` options
   - Removed support for legacy browsers (pre-ES5) (#77)
   - Code generation differences (#80)
+  - 'typescript-lib' option changes (#109)
 
 ---
 
