@@ -37,6 +37,8 @@ const sPublicOptions = [
     "append",                    // String or Array<String>, content/lines to append, not compiled
     "state",                     // Object, state from previous compile
 
+    "parser-source-type",        // Passed to Esprima as sourceType.  'script' or 'module'
+
     // Output options
     "output-language",           // Output language ('none' or 'es5' public, 'typechecker' for debugging only)
     "include-map",               // Boolean, include 'map' key in results object
@@ -246,7 +248,8 @@ _parseFiles(files, options, callback)
             Log(`Parsing ${ojFile.path}`);
 
             try { 
-                ojFile.ast = esprima.parse(ojFile.contents, { loc: true });
+                let sourceType = options["parser-source-type"] || "script";
+                ojFile.ast = esprima.parse(ojFile.contents, { loc: true, sourceType: sourceType });
 
                 ojFile.parseError = null;
                 ojFile.needsGenerate();
