@@ -30,7 +30,6 @@ constructor(options)
     this._globalDefs = null;
     this._globalDefsSourceFile  = null;
     this._runtimeDefsSourceFile = null;
-    this._libDefsSourceFile     = null;
 
     this._contentCache    = { };
     this._sourceFileCache = { };
@@ -55,6 +54,49 @@ _getSourceFile(key, contents)
 }
 
 
+_getSourceFileWithPath(path)
+{
+    let result = this._sourceFileCache[path];
+
+    if (result === undefined) {
+        try {
+            let contents = fs.readFileSync(path).toString();
+            result = ts.createSourceFile(path, contents);
+        } catch (e) {
+            result = null;
+        }
+
+        this._sourceFileCache[path] = result;
+    }
+
+    return result || undefined;
+}
+
+
+_getLibraryFilePaths(libString)
+{
+    let defaultPath   = ts.getDefaultLibFilePath({ });
+    let defaultResult = [ defaultPath ];
+    if (!libString) return defaultResult;
+
+    let libs = libString.split(",");
+    if (!libs.length) return defaultResult;
+
+    let convertedOptions = ts.convertCompilerOptionsFromJson({ lib: libs });
+    if (!convertedOptions) return defaultResult;
+
+    let basePath = path.dirname(defaultPath);
+
+    let result = [ ];
+    _.each(convertedOptions.options.lib, libName => {
+        if (!libName) return;
+        result.push(path.join(basePath, libName));
+    });
+
+    return result;
+}
+
+
 check(model, defs, files, callback)
 {
     let options         = this._options;
@@ -69,12 +111,15 @@ check(model, defs, files, callback)
         allowUnreachableCode:  !options["no-unreachable-code"]
     };
 
+    if (options["typescript-lib"]) {
+        tsOptions.lib = this._getLibraryFilePaths(options["typescript-lib"])
+    }
+
     const defsSuffix      = "defs.d.ts";
     const codeSuffix      = "code.ts";
 
     const runtimeFileName = "$oj-runtime" + path.sep + defsSuffix;
     const globalFileName  = "$oj-global"  + path.sep + defsSuffix;
-    const libFileName     = "$oj-lib"     + path.sep + defsSuffix;
 
     _.each(files, ojFile => {
         let codeKey = path.normalize(ojFile.path) + path.sep + codeSuffix;
@@ -110,25 +155,18 @@ check(model, defs, files, callback)
         this._runtimeDefsSourceFile = ts.createSourceFile(runtimeFileName, runtimeDefs || "", tsOptions.target);
     }
 
-    if (!this._libDefsSourceFile) {
-        let libFileName = options["typescript-lib"] || "lib.d.ts";
-        let libDefs = "";
-
-        try {
-            libDefs = fs.readFileSync(path.join(path.dirname(require.resolve("typescript")), libFileName)).toString();
-        } catch (e) { }
-
-        this._libDefsSourceFile = ts.createSourceFile(libFileName, libDefs, tsOptions.target);   
-    }
-
     sourceFileMap[runtimeFileName] = this._runtimeDefsSourceFile;
     sourceFileMap[globalFileName]  = this._globalDefsSourceFile;
-    sourceFileMap[libFileName]     = this._libDefsSourceFile;
 
     let compilerHost = {
-        getSourceFile:             (n, v) => sourceFileMap[n],
+        getSourceFile: (n) => {
+            let sourceFile = sourceFileMap[n];
+            if (!sourceFile) sourceFile = this._getSourceFileWithPath(n);
+            return sourceFile;
+        },
+
         writeFile:                 () => { },
-        getDefaultLibFileName:     () => libFileName,
+        getDefaultLibFileName:     options => ts.getDefaultLibFilePath(options),
         useCaseSensitiveFileNames: () => false,
         getCanonicalFileName:      n  => n,
         getCurrentDirectory:       () => process.cwd(),

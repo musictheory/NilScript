@@ -31,7 +31,7 @@ let opt = getopt.create([
     [ "",  "output-language=LANG",      "output language" ],
 
     [ "",  "check-types",               "use type checker (experimental)" ],
-    [ "",  "typescript-lib=FILE",       "type checker: specify alternate lib.d.ts file"    ],
+    [ "",  "typescript-lib=GROUPS",     "type checker: specify built-in type declarations" ],
     [ "",  "def=FILE+",                 "type checker: specify additional definition file" ],
     [ "",  "no-implicit-any",           "type checker: disallow implicit any"              ],
     [ "",  "no-implicit-returns",       "type checker: warn about implicit returns"        ],

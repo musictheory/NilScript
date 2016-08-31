@@ -7,7 +7,7 @@
         "ojc": "./bin/ojc"
     },
     "version": "2.0.0",
-    "engines": { "node": ">=4.2" },
+    "engines": { "node": ">=6.0" },
     "maintainers": [{
         "name": "Ricci Adams",
         "email": "npm@ricciadams.com",
@@ -32,7 +32,7 @@
         "node-getopt": "0.2.x",
         "mkdirp":      "0.5",
         "temp":        "0.8",
-        "typescript":  "1.8.x"
+        "typescript":  "2.0.x"
     },
     "scripts": {
         "test": "mocha"
