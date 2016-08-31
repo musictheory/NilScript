@@ -36,6 +36,8 @@ declare class $oj_$Constructor implements Function {
     length: number;
     arguments: any;
     caller: Function;
+    [Symbol.hasInstance](value: any): boolean;
+    readonly name: string;
 }
 
 

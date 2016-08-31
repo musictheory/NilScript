@@ -863,7 +863,7 @@ squeeze-start-index      | Number   | Start index for squeezer
 squeeze-end-index        | Number   | End index for squeezer
 check-types              | Boolean  | Enable type checker
 defs                     | Array    | Additional typechecker definition files (same format as `files`)
-typescript-lib           | String   | Alternate lib.d.ts file
+typescript-lib           | String   | Built-in type declarations (`tsc --lib`)
 no-implicit-any          | Boolean  | If true, disallow implicit any
 strict-functions         | Boolean  | If true, enforce TypeScript-style functions
 strict-object-literals   | Boolean  | If true, enforce TypeScript object literals
