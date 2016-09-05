@@ -26,6 +26,7 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
   - [Property Attributes](#property-attributes) 
   - [Initialization](#property-init) 
   - [Behind the Scenes](#property-compiler)
+- [Property Observers](#observers)
 - [Callbacks](#callbacks)
 - [Selectors](#selector)
 - [Protocols](#protocols)
@@ -429,6 +430,90 @@ oj.makeClass(…, function(…) {
 }
 
 });
+```
+
+
+
+---
+## <a name="observers"></a>Property Observers
+
+In our internal UI frameworks, it's very common to call `-setNeedsDisplay` or `-setNeedsLayout` in response to a
+property change.  For example, our Button class has a custom corner radius property:
+
+```
+@implementation Button : ClickableControl
+
+…
+
+@property Number cornerRadius;
+
+…
+
+- (void) setCornerRadius:(Number)cornerRadius
+{
+    if (_cornerRadius != cornerRadius) {
+        _cornerRadius = cornerRadius;
+        [self setNeedsDisplay];
+    }
+}
+
+@end
+```
+
+Often, every property in these classes needs a custom setter, resulting in a lot of boilerplate code.
+Property observers simplify this:
+
+```
+@property String backgroundColor;
+@property Number cornerRadius;
+@property String title;
+
+@observe (change, after=setNeedsDisplay) backgroundColor, cornerRadius, title;
+```
+
+This example will call `[self setNeedsDisplay]` after the backgroundColor, colorRadius, or title changes.
+`change` is a default attribute and may be omitted.
+
+| Attribute          | Description                                                      
+|--------------------|------------------------------------------------------------------
+| `change`  | Default. Call the before/after methods in response to a property change (determined via `!==`)
+| `set`     | Call the before/after methods whenever the setter is called.
+| `before=` | The selector to invoke before a change or set.
+| `after=`  | The selector to invoke after a change or set.
+
+`before=` observer methods are passed the new value as an optional parameter.  `after=` observer methods
+are passed the old value as an optional parameter.
+
+For example:
+
+```
+@property Number foo;
+@observe (change, before=_handleFooWillChange:, after=_handleFooDidChange:) foo;
+@observe (set,    before=_handleFooWillSet:,    after=_handleFooDidSet:)    foo;
+
+- (void) _handleFooWillChange:(Number)newFoo { … }
+- (void) _handleFooDidChange:(Number)oldFoo  { … }
+- (void) _handleFooWillSet:(Number)newFoo { … }
+- (void) _handleFooDidSet:(Number)oldFoo  { … }
+```
+
+Will generate the following setter:
+
+```
+- (void) setFoo:(Number)newFoo
+{
+    var oldFoo = _foo;
+
+    [self _handleFooWillSet:newFoo];
+
+    if (oldFoo !== newFoo) {
+        [self _handleFooWillChange:newFoo];
+        _foo = newFoo;
+        [self _handleFooDidChange:oldFoo];
+    }
+
+    [self _handleFooDidSet:oldFoo];
+}
 ```
 
 ---
