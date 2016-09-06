@@ -11,8 +11,9 @@
 module.exports = class OJGlobal {
 
 
-constructor(name, annotation)
+constructor(location, name, annotation)
 {
+    this.location = location;
     this.name = name;
     this.annotation = annotation || null;
     this.bridged = false;
@@ -24,6 +25,7 @@ constructor(name, annotation)
 
 loadState(state)
 {
+    this.location   =   state.location;
     this.name       =   state.name;
     this.annotation =   state.annotation || null;
     this.bridged    = !!state.bridged;
@@ -33,6 +35,7 @@ loadState(state)
 saveState()
 {
     return {
+        location: this.location,
         name: this.name,
         bridged: this.bridged,
         annotation: this.annotation

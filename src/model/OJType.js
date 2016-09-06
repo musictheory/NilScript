@@ -29,22 +29,22 @@ constructor(name, kind, parameterNames, parameterTypes, returnType)
 
 loadState(state)
 {
-    this.name = state.name;
-    this.kind = state.kind;
+    this.name           = state.name;
+    this.kind           = state.kind;
     this.parameterNames = state.parameterNames;
     this.parameterTypes = state.parameterTypes;
-    this.returnType = state.returnType;
+    this.returnType     = state.returnType;
 }
 
 
 saveState()
 {
     return {
-        name: this.name,
-        kind: this.kind,
+        name:           this.name,
+        kind:           this.kind,
         parameterNames: this.parameterNames,
         parameterTypes: this.parameterTypes,
-        returnType: this.returnType
+        returnType:     this.returnType
     };
 }
 

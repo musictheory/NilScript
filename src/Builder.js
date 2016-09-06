@@ -17,40 +17,6 @@ const Utils      = require("./Utils");
 const Model      = require("./model");
 
 
-function sMakeOJMethodForNode(node)
-{
-    let selectorName    = node.selectorName;
-    let selectorType    = node.selectorType;
-    let methodSelectors = node.methodSelectors;
-    let optional        = node.optional;
-
-    let variableNames  = [ ];
-    let parameterTypes = [ ];
-
-    let methodType, variableName;
-    for (let i = 0, length = (methodSelectors.length || 0); i < length; i++) {
-        methodType   = methodSelectors[i].methodType;
-        variableName = methodSelectors[i].variableName;
-
-        if (methodType) {
-            parameterTypes.push(methodType.value);
-        } else if (variableName) {
-            parameterTypes.push("id");
-        }
-
-        if (variableName) {
-            variableNames.push(variableName.name);
-        }
-    }
-
-    let returnType;
-    if (node.returnType) returnType = node.returnType.value;
-    if (!returnType) returnType = "id";
-
-    return new Model.OJMethod(selectorName, selectorType, returnType, parameterTypes, variableNames, optional);
-}
-
-
 module.exports = class Builder {
 
 constructor(file, model, options)
@@ -77,7 +43,53 @@ build()
     let declaredGlobals   = [ ];
     let declaredProtocols = [ ];
     let declaredTypes     = [ ];
+
     let declaredEnums     = [ ];
+
+    function makeLocation(node) {
+        if (node && node.loc && node.loc.start) {
+            return {
+                path:   ojFile.path,
+                line:   node.loc.start.line,
+                column: node.loc.start.col
+            }
+        }
+
+        return null;
+    }
+
+    function makeOJMethodNode(node)
+    {
+        let selectorName    = node.selectorName;
+        let selectorType    = node.selectorType;
+        let methodSelectors = node.methodSelectors;
+        let optional        = node.optional;
+
+        let variableNames  = [ ];
+        let parameterTypes = [ ];
+
+        let methodType, variableName;
+        for (let i = 0, length = (methodSelectors.length || 0); i < length; i++) {
+            methodType   = methodSelectors[i].methodType;
+            variableName = methodSelectors[i].variableName;
+
+            if (methodType) {
+                parameterTypes.push(methodType.value);
+            } else if (variableName) {
+                parameterTypes.push("id");
+            }
+
+            if (variableName) {
+                variableNames.push(variableName.name);
+            }
+        }
+
+        let returnType;
+        if (node.returnType) returnType = node.returnType.value;
+        if (!returnType) returnType = "id";
+
+        return new Model.OJMethod(makeLocation(node), selectorName, selectorType, returnType, parameterTypes, variableNames, optional);
+    }
 
 
     function handleOJClassImplementation(node)
@@ -103,25 +115,19 @@ build()
             ojClass = model.classes[className];
 
             if (!ojClass) {
-                ojClass = new Model.OJClass(className);
+                ojClass = new Model.OJClass(null, className);
                 ojClass.placeholder = true;
                 model.addClass(ojClass);
             }
 
         } else {
-            ojClass = new Model.OJClass(className, superclassName, protocolNames);
+            ojClass = new Model.OJClass(makeLocation(node), className, superclassName, protocolNames);
             ojClass.forward = false;
-
-            ojClass.pathLine = {
-                path: ojFile.path,
-                line: node.loc.start.line
-            };
-
             model.addClass(ojClass);
         }
 
         if (superclassName) {
-            let superclass = new Model.OJClass(superclassName);
+            let superclass = new Model.OJClass(null, superclassName);
             superclass.forward = true;
             model.addClass(superclass);
         }
@@ -143,13 +149,8 @@ build()
             });
         }
 
-        let ojProtocol = new Model.OJProtocol(name, parentProtocolNames);
+        let ojProtocol = new Model.OJProtocol(makeLocation(node), name, parentProtocolNames);
         model.addProtocol(ojProtocol);
-
-        ojProtocol.pathLine = {
-            path: ojFile.path,
-            line: node.loc.start.line
-        };
 
         currentProtocol = ojProtocol;
 
@@ -161,7 +162,7 @@ build()
         let ids = node.ids;
 
         for (let i = 0, length = ids.length; i < length; i++) {
-            let cls = new Model.OJClass(ids[i].name);
+            let cls = new Model.OJClass(makeLocation(node), ids[i].name);
             cls.forward = true;
 
             model.addClass(cls);
@@ -177,14 +178,14 @@ build()
 
     function handleOJMethodDefinition(node)
     {
-        let method = sMakeOJMethodForNode(node, null);
+        let method = makeOJMethodNode(node);
         currentClass.addMethod(method);
         currentMethod = method;
     }
 
     function handleOJMethodDeclaration(node)
     {
-        let method = sMakeOJMethodForNode(node);
+        let method = makeOJMethodNode(node);
         currentProtocol.addMethod(method);
     }
 
@@ -194,7 +195,7 @@ build()
 
         for (let i = 0, length = node.ivars.length; i < length; i++) {
             let name = node.ivars[i].name;
-            currentClass.addIvar(new Model.OJIvar(name, currentClass.name, type));
+            currentClass.addIvar(new Model.OJIvar(makeLocation(node), name, currentClass.name, type));
         }
     }
 
@@ -239,13 +240,47 @@ build()
             setter = null;
         }
 
-        let property = new Model.OJProperty(name, type, writable, copyOnRead, copyOnWrite, getter, setter, null);
+        let property = new Model.OJProperty(makeLocation(node), name, type, writable, copyOnRead, copyOnWrite, getter, setter, null);
         if (currentClass) {
             currentClass.addProperty(property);
         } else if (currentProtocol) {
             currentProtocol.addProperty(property);
         }
     }        
+
+    function handleOJObserveDirective(node)
+    {
+        let hasSet    = false;
+        let hasChange = false;
+        let before    = null;
+        let after     = null;
+
+        for (let i = 0, length = node.attributes.length; i < length; i++) {
+            let attribute = node.attributes[i];
+            let attributeName = attribute.name;
+
+            if (attributeName == "before") {
+                before = attribute.selector.selectorName;
+            } else if (attributeName == "after") {
+                after = attribute.selector.selectorName;
+            } else if (attributeName == "change") {
+                hasChange = true;
+            } else if (attributeName == "set") {
+                hasSet = true;
+            }
+        }
+
+        if (hasSet && hasChange) {
+            Utils.throwError(OJError.NotYetSupported, "@observe 'change' and 'set' attributes are mutually exclusive", node);
+        }
+
+        for (let i = 0, length = node.ids.length; i < length; i++) {
+            let name = node.ids[i].name;
+
+            let observer = new Model.OJObserver(makeLocation(node), name, !hasSet, before, after);
+            if (currentClass) currentClass.addObserver(observer);
+        }
+    }           
 
     function handleOJSynthesizeDirective(node) {
         let pairs = node.pairs;
@@ -331,7 +366,7 @@ build()
         }
 
         let name = node.id ? node.id.name : null;
-        let e = new Model.OJEnum(name, node.unsigned, bridged);
+        let e = new Model.OJEnum(makeLocation(node), name, node.unsigned, bridged);
 
         if (name) {
             declaredEnums.push(name);
@@ -389,7 +424,7 @@ build()
                 Utils.throwError(OJError.NonLiteralConst, "Use of non-literal value with @const", node);
             }
 
-            let ojConst = new Model.OJConst(declaration.id.name, value, raw, bridged);
+            let ojConst = new Model.OJConst(makeLocation(node), declaration.id.name, value, raw, bridged);
             model.addConst(ojConst);
         }
     }
@@ -414,7 +449,7 @@ build()
                 annotation = node.id.annotation ? node.id.annotation.value : null;
             }
 
-            model.addGlobal(new Model.OJGlobal(name, annotation));
+            model.addGlobal(new Model.OJGlobal(node, name, annotation));
             model.getSymbolTyper().enrollForSqueezing(name);
 
             declaredGlobals.push(name);
@@ -475,6 +510,9 @@ build()
 
             } else if (type === Syntax.OJPropertyDirective) {
                 handleOJPropertyDirective(node);
+
+            } else if (type === Syntax.OJObserveDirective) {
+                handleOJObserveDirective(node);
 
             } else if (type === Syntax.OJSynthesizeDirective) {
                 handleOJSynthesizeDirective(node);

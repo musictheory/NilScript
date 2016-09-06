@@ -17,17 +17,15 @@ const OJMethod   = require("./OJMethod");
 module.exports = class OJProtocol {
 
 
-constructor(name, protocolNames)
+constructor(location, name, protocolNames)
 {
+    this.location = location;
     this.name = name;
     this.protocolNames = protocolNames || [ ];
 
     this._classMethodMap    = { };
     this._instanceMethodMap = { };
     this._propertyMap       = { };
-
-    // { path: ..., line: ...} pair for error messages, *not archived*
-    this.pathLine = null;
 
     // Is this class in the current compilation unit?
     this.local = true;
@@ -40,19 +38,20 @@ loadState(state)
     let instanceMethodMap = this._instanceMethodMap;
     let propertyMap       = this._propertyMap;
 
+    this.location = state.location;
     this.name = state.name;
     this.protocolNames = state.protocolNames || [ ];
 
     _.each(state.classMethods, function(m) {
-        classMethodMap[m.name] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.optional);
+        classMethodMap[m.name] = new OJMethod(m.location, m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.optional);
     });
 
     _.each(state.instanceMethods, function(m) {
-        instanceMethodMap[m.name] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.optional);
+        instanceMethodMap[m.name] = new OJMethod(m.location, m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.optional);
     });
 
     _.each(state.properties, function(p) {
-        propertyMap[p.name] = new OJProperty(p.name, p.type, p.writable, p.copyOnRead, p.copyOnWrite, p.getter, p.setter, p.ivar, p.optional);
+        propertyMap[p.name] = new OJProperty(p.location, p.name, p.type, p.writable, p.copyOnRead, p.copyOnWrite, p.getter, p.setter, p.ivar, p.optional);
     });
 }
 
@@ -85,7 +84,8 @@ addProperty(ojProperty)
 saveState()
 {
     return {
-        name: this.name,
+        location:        this.location,
+        name:            this.name,
         classMethods:    _.values(this._classMethodMap),
         instanceMethods: _.values(this._instanceMethodMap),
         properties:      _.values(this._properties)
@@ -105,13 +105,13 @@ getAllMethods()
 
         if (ojProperty.writable && setter) {
             if (!this._instanceMethodMap[setter]) {
-                results.push(new OJMethod(setter, "-", "void", [ type ], optional));
+                results.push(new OJMethod(null, setter, "-", "void", [ type ], optional));
             }
         }
 
         if (getter) {
             if (!this._instanceMethodMap[getter]) {
-                results.push(new OJMethod(getter, "-", type, [ ], optional));
+                results.push(new OJMethod(null, getter, "-", type, [ ], optional));
             }
         }
     });
@@ -120,13 +120,13 @@ getAllMethods()
 }
 
 
-getClassMethods()
+getImplementedClassMethods()
 {
     return _.values(this._classMethodMap);
 }
 
 
-getInstanceMethods()
+getImplementedInstanceMethods()
 {
     return _.values(this._instanceMethodMap);
 }

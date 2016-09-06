@@ -11,8 +11,9 @@
 module.exports = class OJMethod {
 
 
-constructor(selectorName, selectorType, returnType, parameterTypes, variableNames, optional)
+constructor(location, selectorName, selectorType, returnType, parameterTypes, variableNames, optional)
 {
+    this.location       = location;
     this.selectorName   = selectorName;
     this.selectorType   = selectorType;
     this.returnType     = returnType;

@@ -177,9 +177,9 @@ generate()
         let selectorName = currentMethodNode.selectorName;
 
         if (selectorType == "+") {
-            return currentClass.getClassMethodWithName(selectorName);
+            return currentClass.getImplementedClassMethodWithName(selectorName);
         } else {
-            return currentClass.getInstanceMethodWithName(selectorName);
+            return currentClass.getImplementedInstanceMethodWithName(selectorName);
         }
     }
 
@@ -495,6 +495,7 @@ generate()
                 type !== Syntax.VariableDeclaration   &&
                 type !== Syntax.OJMethodDefinition    &&
                 type !== Syntax.OJPropertyDirective   &&
+                type !== Syntax.OJObserveDirective    &&
                 type !== Syntax.OJDynamicDirective    &&
                 type !== Syntax.OJSynthesizeDirective)
             {
@@ -807,13 +808,61 @@ generate()
         let result = "";
         if (makeSetter) {
             if (language === LanguageEcmascript5) {
-                result += generateMethodDeclaration(false, property.setter);
+                let observers = currentClass.getObserversWithName(name) || [ ];
+                let s = [ ];
+                let ivar = generateThisIvar(currentClass.name, property.ivar, false);
+
+                let hasObservers    = observers.length > 0;
+                let changeObservers = [ ];
+                let setObservers    = [ ];
+
+                if (hasObservers) {
+                    _.each(observers, observer => {
+                        if (observer.change) {
+                            changeObservers.push(observer);
+                        } else {
+                            setObservers.push(observer);
+                        }
+                    });
+
+                    s.push( "var old = " + ivar + ";" );
+
+                    _.each(setObservers, observer => {
+                        let before = observer.before && symbolTyper.getSymbolForSelectorName(observer.before);
+                        if (before) s.push( "this." + before + "(arg);" );
+                    });
+
+                    s.push("if (old !== arg) {");
+
+                    _.each(changeObservers, observer => {
+                        let before = observer.before && symbolTyper.getSymbolForSelectorName(observer.before);
+                        if (before) s.push( "this." + before + "(arg);" );
+                    });
+                }
 
                 if (property.copyOnWrite) {
-                    result += " = function(arg) { " + generateThisIvar(currentClass.name, property.ivar, false) + " = " + OJRootVariable + ".makeCopy(arg); } ; ";
+                    s.push(ivar + " = " + OJRootVariable + ".makeCopy(arg);");
                 } else {
-                    result += " = function(arg) { " + generateThisIvar(currentClass.name, property.ivar, false) + " = arg; } ; ";
+                    s.push(ivar + " = arg;");
                 }
+
+                if (hasObservers) {
+                    _.each(changeObservers, observer => {
+                        let after = observer.after && symbolTyper.getSymbolForSelectorName(observer.after);
+                        if (after) s.push( "this." + after + "(old);" );
+                    });
+
+                    if (observers.length) {
+                        s.push("}");
+                    }
+
+                    _.each(setObservers, observer => {
+                        let after = observer.after && symbolTyper.getSymbolForSelectorName(observer.after);
+                        if (after) s.push( "this." + after + "(old);" );
+                    });
+                }
+
+                result += generateMethodDeclaration(false, property.setter) + " = function(arg) { " + s.join(" ")  + "} ;"; 
             }
         }
 
@@ -1184,6 +1233,7 @@ generate()
         if (type === Syntax.OJStructDefinition                   || 
             type === Syntax.OJProtocolDefinition                 ||
             type === Syntax.OJClassDirective                     ||
+            type === Syntax.OJObserveDirective                   ||
             type === Syntax.OJSqueezeDirective                   ||
             type === Syntax.OJSynthesizeDirective                ||
             type === Syntax.OJDynamicDirective                   ||

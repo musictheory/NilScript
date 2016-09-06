@@ -13,6 +13,7 @@ module.exports = {
     OJClass:    require("./OJClass"),
     OJProtocol: require("./OJProtocol"),
     OJProperty: require("./OJProperty"),
+    OJObserver: require("./OJObserver"),
     OJMethod:   require("./OJMethod"),
     OJIvar:     require("./OJIvar"),
     OJConst:    require("./OJConst"),

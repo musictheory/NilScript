@@ -202,7 +202,9 @@
         OJEachStatement: 'OJEachStatement',
         OJGlobalDeclaration: 'OJGlobalDeclaration',
         OJBridgedDeclaration: 'OJBridgedDeclaration',
-        OJTypeDefinition: 'OJTypeDefinition'
+        OJTypeDefinition: 'OJTypeDefinition',
+        OJObserveDirective: 'OJObserveDirective',
+        OJObserveAttribute:  'OJObserveAttribute'
 //!oj: end changes
     };
 
@@ -414,7 +416,8 @@
                    (id === '@each')           ||
                    (id === '@global')         ||
                    (id === '@type')           ||
-                   (id === '@bridged');
+                   (id === '@bridged')        ||
+                   (id === '@observe');
         }
         //!oj: end changes
 
@@ -2555,6 +2558,22 @@
 
         oj_finishPropertyAttribute: function (name, selector) {
             this.type = Syntax.OJPropertyAttribute;
+            this.name = name;
+            this.selector = selector;
+            this.finish();
+            return this;
+        },
+
+        oj_finishObserveDirective: function (ids, attributes) {
+            this.type = Syntax.OJObserveDirective;
+            this.ids = ids;
+            this.attributes = attributes;
+            this.finish();
+            return this;
+        },
+
+        oj_finishObserveAttribute: function (name, selector) {
+            this.type = Syntax.OJObserveAttribute;
             this.name = name;
             this.selector = selector;
             this.finish();
@@ -6219,6 +6238,56 @@
         return node.oj_finishPropertyDirective(id, attributes);
     }
 
+    function oj_parseObserveAttribute() {
+        var names, name, allowedNames, token, selector = null, node = new Node();
+
+        token = lookahead;
+        name = parseVariableIdentifier().name;
+
+        allowedNames = [
+            'change',
+            'set'
+        ];
+
+        if (name == 'before' || name == 'after') {
+            expect('=');
+            selector = oj_parseSelector(true);
+
+        } else if (allowedNames.indexOf(name) < 0) {
+            throwUnexpectedToken(token);
+        }
+
+        return node.oj_finishObserveAttribute(name, selector);
+    }
+
+    function oj_parseObserveDirective() {
+        var attributes = [ ], ids = [ ], node = new Node();
+
+        expectKeyword('@observe');
+
+        expect('(');
+
+        attributes.push(oj_parseObserveAttribute());
+
+        while (match(',')) {
+            expect(',');
+            attributes.push(oj_parseObserveAttribute());
+        }
+
+        expect(')');
+
+        ids.push(parseVariableIdentifier());
+
+        while (match(',')) {
+            expect(',');
+            ids.push(parseVariableIdentifier());
+        }
+
+        consumeSemicolon();
+
+        return node.oj_finishObserveDirective(ids, attributes);
+    }
+
     function oj_parseSynthesizePair() {
         var name, ivar = null, node = new Node();
 
@@ -6466,6 +6535,9 @@
                 switch (token.value) {
                 case '@property':
                     sourceElement = oj_parsePropertyDirective();
+                    break;
+                case '@observe':
+                    sourceElement = oj_parseObserveDirective();
                     break;
                 case '@synthesize':
                     sourceElement = oj_parseSynthesizeDirective();

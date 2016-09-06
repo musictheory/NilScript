@@ -11,32 +11,35 @@
 module.exports = class OJConst {
 
 
-constructor(name, value, raw, bridged)
+constructor(location, name, value, raw, bridged)
 {
-    this.name    = name;
-    this.value   = value;
-    this.raw     = raw;
-    this.bridged = bridged;
-    this.local   = true;
+    this.location = location;
+    this.name     = name;
+    this.value    = value;
+    this.raw      = raw;
+    this.bridged  = bridged;
+    this.local    = true;
 }
 
 
 loadState(state)
 {
-    this.name    = state.name;
-    this.value   = state.value;
-    this.raw     = state.raw;
-    this.bridged = state.bridged;
+    this.location = state.location;
+    this.name     = state.name;
+    this.value    = state.value;
+    this.raw      = state.raw;
+    this.bridged  = state.bridged;
 }
 
 
 saveState()
 {
     return {
-        name:    this.name,
-        value:   this.value,
-        raw:     this.raw,
-        bridged: this.bridged
+        location: this.location,
+        name:     this.name,
+        value:    this.value,
+        raw:      this.raw,
+        bridged:  this.bridged
     };
 }
 

@@ -21,26 +21,31 @@ const OJDynamicProperty = " OJDynamicProperty ";
 module.exports = class OJClass {
 
 
-constructor(name, superclassName, protocolNames)
+constructor(location, name, superclassName, protocolNames)
 {
+    this.location       = location;
     this.name           = name;
     this.superclassName = superclassName;
     this.protocolNames  = protocolNames || [ ];
-    
+
     // For @class
     this.forward = false;
 
     // For category definitions that appear before @implementation
     this.placeholder = false;
-
-    // { path: ..., line: ...} pair for error messages, *not archived*
-    this.pathLine = null;
-
+ 
     // Is this class in the current compilation unit?  *not archived*
     this.local = true;
 
+    // Warnings during the prepare() phase
+    this.prepareWarnings = [ ];
+
+    // All selectors the class responds to (inherited + synthesized). *not archived*
+    this._knownSelectors = null;
+
     this._ivarMap           = { };
     this._propertyMap       = { };
+    this._observerMap       = { };
     this._classMethodMap    = { };
     this._instanceMethodMap = { };
 }
@@ -48,32 +53,28 @@ constructor(name, superclassName, protocolNames)
 
 loadState(state)
 {
-    this.name           = state.name;
-    this.superclassName = state.superclassName;
-    this.protocolNames  = state.protocolNames || [ ];
+    this.location        = state.location;
+    this.name            = state.name;
+    this.superclassName  = state.superclassName;
+    this.protocolNames   = state.protocolNames || [ ];
     this.forward        = state.forward; 
     this.placeholder    = state.placeholder;
-    this.didSynthesis   = state.didSynthesis;
+    this.didSynthesis    = state.didSynthesis;
 
-    let ivarMap           =  this._ivarMap;
-    let propertyMap       =  this._propertyMap;
-    let classMethodMap    =  this._classMethodMap;
-    let instanceMethodMap =  this._instanceMethodMap;
-
-    _.each(state.ivars, function(i) {
-        ivarMap[i.name] = new OJIvar(i.name, i.className, i.type);
+    _.each(state.ivars, i => {
+        this.addIvar(new OJIvar(i.location, i.name, i.className, i.type));
     });
 
-    _.each(state.properties, function(p) {
-        propertyMap[p.name] = new OJProperty(p.name, p.type, p.writable, p.copyOnRead, p.copyOnWrite, p.getter, p.setter, p.ivar, false);
+    _.each(state.properties, p => {
+        this.addProperty(new OJProperty(p.location, p.name, p.type, p.writable, p.copyOnRead, p.copyOnWrite, p.getter, p.setter, p.ivar, false));
     });
 
-    _.each(state.classMethods, function(m) {
-        classMethodMap[m.selectorName] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, false);
+    _.each(state.observers, o => {
+        this.addObserver(new OJObserver(o.location, o.name, o.change, o.before, o.after));
     });
 
-    _.each(state.instanceMethods, function(m) {
-        instanceMethodMap[m.selectorName] = new OJMethod(m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, false);
+    _.each(state.methods, m => {
+        this.addMethod(new OJMethod(m.location, m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, false));
     });
 }
 
@@ -81,6 +82,7 @@ loadState(state)
 saveState()
 {
     return {
+        location:        this.location,
         name:            this.name,
         superclassName:  this.superclassName,
         protocolNames:   this.protocolNames,
@@ -88,10 +90,17 @@ saveState()
         forward:         this.forward,
         placeholder:     this.placeholder,
 
-        ivars:           _.values(this._ivarMap),
-        properties:      _.values(this._propertyMap),
-        classMethods:    _.values(this._classMethodMap),
-        instanceMethods: _.values(this._instanceMethodMap)
+        ivars:      _.values(this._ivarMap),
+        properties: _.values(this._propertyMap),
+
+        observers: _.flatten(
+            _.values(this._observerMap)
+        ),
+
+        methods: _.flatten([
+            _.values(this._classMethodMap),
+            _.values(this._instanceMethodMap)
+        ])
     }
 }
 
@@ -108,6 +117,7 @@ doAutomaticSynthesis()
     for (let i = 0, length = properties.length; i < length; i++) {
         let property = properties[i];
 
+        let location = property.location;
         let name     = property.name;
         let ivarName = property.ivar;
         let getter   = property.getter;
@@ -151,25 +161,46 @@ doAutomaticSynthesis()
 
         // Generate backing ivar
         if (generateBackingIvar) {
-            ivar = new OJIvar(ivarName, this.name, property.type);
+            ivar = new OJIvar(_.clone(location), ivarName, this.name, property.type);
             ivar.synthesized = true;
             this._ivarMap[ivarName] = ivar;
         }
 
         if (getter && !getterMethod) {
-            getterMethod = new OJMethod(getter, "-", property.type, [ ]);
+            getterMethod = new OJMethod(_.clone(location), getter, "-", property.type, [ ]);
             getterMethod.synthesized = true;
             this._instanceMethodMap[getter] = getterMethod;
         }
 
         if (setter && !setterMethod) {
-            setterMethod = new OJMethod(setter, "-", "void", [ property.type ]);
+            setterMethod = new OJMethod(_.clone(location), setter, "-", "void", [ property.type ]);
             setterMethod.synthesized = true;
             this._instanceMethodMap[setter] = setterMethod;
         }
     }
 
     this.didSynthesis = true;
+}
+
+
+prepare(model)
+{
+    this.prepareWarnings = [ ];
+    this.doAutomaticSynthesis();
+}
+
+
+checkObservers()
+{
+    _.each(_.values(this._observerMap), observers => {
+        _.each(observers, observer => {
+            let before = observer.before;
+            let after  = observer.after;
+
+            console.log("Check observer: ", before);
+            console.log("Check observer: ", after);
+        });
+    });
 }
 
 
@@ -272,6 +303,20 @@ addProperty(ojProperty)
 }
 
 
+addObserver(ojObserver)
+{
+    let name = ojObserver.name;
+
+    let existing = this._observerMap[name];
+
+    if (!existing) {
+        this._observerMap[name] = existing = [ ];
+    }
+
+    existing.push(ojObserver);
+}
+
+
 makePropertySynthesized(name, backing)
 {
     let property = this._propertyMap[name];
@@ -332,6 +377,12 @@ addMethod(method)
 }
 
 
+respondsToSelector(selectorName)
+{
+    return !!_knownSelectors[selectorName];
+}
+
+
 getAllIvars()
 {
     return _.values(this._ivarMap);
@@ -355,31 +406,37 @@ getAllIvarNamesWithoutProperties()
 }
 
 
+getObserversWithName(propertyName)
+{
+    return this._observerMap[propertyName];
+}
+
+
 getAllMethods()
 {
     return _.values(this._classMethodMap).concat(_.values(this._instanceMethodMap));
 }
 
 
-getClassMethods()
+getImplementedClassMethods()
 {
     return _.values(this._classMethodMap);
 }
 
 
-getInstanceMethods()
+getImplementedInstanceMethods()
 {
     return _.values(this._instanceMethodMap);
 }
 
 
-getInstanceMethodWithName(selectorName)
+getImplementedInstanceMethodWithName(selectorName)
 {
     return this._instanceMethodMap[selectorName];
 }
 
 
-getClassMethodWithName(selectorName)
+getImplementedClassMethodWithName(selectorName)
 {
     return this._classMethodMap[selectorName];
 }
