@@ -28,7 +28,6 @@ OJError.DollarOJIsReserved             = "OJDollarOJIsReservedError";
 OJError.ReservedMethodName             = "OJReservedMethodNameError";
 OJError.SqueezerReachedEndIndex        = "OJSqueezerReachedEndIndexError";
 OJError.CircularTypeHierarchy          = "OJCircularTypeHierarchyError";
-OJError.CircularClassHierarchy         = "OJCircularClassHierarchyError";
 OJError.VariableAlreadyDeclared        = "OJVariableAlreadyDeclaredError";
 OJError.VariableNotYetDeclared         = "OJVariableNotYetDeclaredError";
 OJError.RestrictedUsage                = "OJRestrictedUsageError";
@@ -36,6 +35,7 @@ OJError.APIMisuse                      = "OJAPIMisuseError";
 
 const OJWarning = { };
 
+OJWarning.CircularClassHierarchy       = "OJCircularClassHierarchyWarning";
 OJWarning.UnknownSelector              = "OJUnknownSelectorWarning";
 OJWarning.UseOfThisInMethod            = "OJUseOfThisInMethodWarning";
 OJWarning.UseOfSelfInNonMethod         = "OJUseOfSelfInNonMethodWarning";

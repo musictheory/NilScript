@@ -1249,6 +1249,10 @@ generate()
         } else if (type === Syntax.OJClassImplementation) {
             currentClass = model.classes[node.id.name];
 
+            _.each(currentClass.prepareWarnings, warning => {
+                warnings.push(warning);
+            });
+
             usedIvarMap = { };
             assignedIvarMap = { }
 
