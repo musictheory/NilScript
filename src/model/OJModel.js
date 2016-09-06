@@ -162,22 +162,12 @@ prepare()
     let booleanMap  = { };
     let numericMap  = { };
 
+    _.each(this.classes, ojClass => {
+        ojClass.prepared = false;
+    });
+
     _.each(this.classes, (ojClass, name) => {
-        // Check for circular hierarchy
-        let visited = [ name ];
-        let superclass = ojClass.superclassName ? this.classes[ojClass.superclassName] : null;
-
-        while (superclass) {
-            if (visited.indexOf(superclass.name) >= 0) {
-                Utils.throwError(OJError.CircularClassHierarchy, "Circular class hierarchy detected: '" + visited.join(",") + "'");
-            }
-
-            visited.push(superclass.name);
-
-            superclass = this.classes[superclass.superclassName];
-        }
-
-        ojClass.doAutomaticSynthesis();
+        ojClass.prepare(this);
 
         let methods = ojClass.getAllMethods();
         for (let i = 0, length = methods.length; i < length; i++) {

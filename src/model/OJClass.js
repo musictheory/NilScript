@@ -9,6 +9,7 @@
 
 const _           = require("lodash");
 const OJError     = require("../errors").OJError;
+const OJWarning   = require("../errors").OJWarning;
 const Utils       = require("../utils");
 const OJIvar      = require("./OJIvar");
 const OJProperty  = require("./OJProperty");
@@ -36,6 +37,9 @@ constructor(location, name, superclassName, protocolNames)
  
     // Is this class in the current compilation unit?  *not archived*
     this.local = true;
+
+    // prepare() checks this and sets it to true
+    this.prepared = false;
 
     // Warnings during the prepare() phase
     this.prepareWarnings = [ ];
@@ -105,7 +109,7 @@ saveState()
 }
 
 
-doAutomaticSynthesis()
+_doAutomaticSynthesis()
 {
     if (this.didSynthesis) {
         return;
@@ -183,24 +187,76 @@ doAutomaticSynthesis()
 }
 
 
-prepare(model)
+_checkForCircularHierarchy(model)
 {
-    this.prepareWarnings = [ ];
-    this.doAutomaticSynthesis();
+    let visited = [ this.name ];
+    let superclass = this.superclassName ? model.classes[this.superclassName] : null;
+
+    while (superclass) {
+        if (visited.indexOf(superclass.name) >= 0) {
+             this.prepareWarnings.push(Utils.makeError(OJWarning.CircularClassHierarchy, "Circular class hierarchy detected: '" + visited.join(",") + "'", this.location));
+             break;
+        }
+
+        visited.push(superclass.name);
+
+        superclass = model.classes[superclass.superclassName];
+    }
 }
 
 
-checkObservers()
+_checkObservers()
 {
+    let knownSelectors = this._knownSelectors;
+
     _.each(_.values(this._observerMap), observers => {
         _.each(observers, observer => {
             let before = observer.before;
             let after  = observer.after;
 
-            console.log("Check observer: ", before);
-            console.log("Check observer: ", after);
+            if (before && !knownSelectors[before]) {
+                this.prepareWarnings.push(Utils.makeError(OJWarning.UnknownSelector, "Unknown selector: '" + before + "'", observer.location));
+            }
+
+            if (after && !knownSelectors[after]) {
+                this.prepareWarnings.push(Utils.makeError(OJWarning.UnknownSelector, "Unknown selector: '" + after + "'", observer.location));
+            }
+
+            let name = observer.name;
+            let property = this._propertyMap[name];
+
+            if (!property) {
+                this.prepareWarnings.push(Utils.makeError(OJWarning.UnknownProperty, "Unknown property: '" + name + "'", observer.location));
+            }
         });
     });
+}
+
+
+prepare(model)
+{
+    if (this.prepared) return;
+    this.prepared = true;
+
+    this.prepareWarnings = [ ];
+
+    this._doAutomaticSynthesis();
+    this._checkForCircularHierarchy(model);
+
+    this._knownSelectors = { };
+
+    _.each(_.keys(this._instanceMethodMap), selectorName => {
+        this._knownSelectors[selectorName] = 1;
+    });
+
+    let superclass = this.superclassName ? model.classes[this.superclassName] : null;
+
+    if (superclass) {
+        superclass.prepare(model);
+        this._knownSelectors = _.merge(this._knownSelectors, superclass._knownSelectors || { });
+    }
+
+    this._checkObservers();
 }
 
 
