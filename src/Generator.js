@@ -116,16 +116,17 @@ generate()
 
     let methodUsesSelfVar = false;
 
-    let optionWarnDebugger           = options["warn-debugger"];
-    let optionWarnEmptyArrayElement  = options["warn-empty-array-element"];
-    let optionWarnGlobalNoType       = options["warn-global-no-type"];
-    let optionWarnThisInMethods      = options["warn-this-in-methods"];
-    let optionWarnSelfInNonMethod    = options["warn-self-in-non-methods"];
-    let optionWarnUnknownIvars       = options["warn-unknown-ivars"];
-    let optionWarnUnknownSelectors   = options["warn-unknown-selectors"];
-    let optionWarnUnusedIvars        = options["warn-unused-ivars"];
-    let optionStrictFunctions        = options["strict-functions"];
-    let optionStrictObjectLiterals   = options["strict-object-literals"];
+    let optionWarnDebugger            = options["warn-debugger"];
+    let optionWarnEmptyArrayElement   = options["warn-empty-array-element"];
+    let optionWarnGlobalNoType        = options["warn-global-no-type"];
+    let optionWarnThisInMethods       = options["warn-this-in-methods"];
+    let optionWarnSelfInNonMethod     = options["warn-self-in-non-methods"];
+    let optionWarnUnknownIvars        = options["warn-unknown-ivars"];
+    let optionWarnUnknownSelectors    = options["warn-unknown-selectors"];
+    let optionWarnUnknownSuperclasses = options["warn-unknown-superclasses"];
+    let optionWarnUnusedIvars         = options["warn-unused-ivars"];
+    let optionStrictFunctions         = options["strict-functions"];
+    let optionStrictObjectLiterals    = options["strict-object-literals"];
 
     let optionSqueeze = this._squeeze;
     let symbolTyper   = model.getSymbolTyper();
@@ -523,6 +524,14 @@ generate()
         if (superName) {
             constructorCallSuper = getClassAsRuntimeVariable(superName) + ".call(this);";
             superSelector        = "{" + symbolTyper.getSymbolForClassName(superName) + ":1}";
+
+            if (optionWarnUnknownSuperclasses) {
+                let superclass = model.classes[superName];
+
+                if (!superclass || superclass.forward == true || superclass.placeholder == true) {
+                    warnings.push(Utils.makeError(OJWarning.UnknownSuperclass, "Use of unknown superclass '" + superName + "'.", node.superClass));
+                }
+            }
         }
 
         let constructorSetIvars = generateIvarAssignments(currentClass);

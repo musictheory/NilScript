@@ -76,6 +76,7 @@ const sPublicOptions = [
     "warn-self-in-non-methods",  // Boolean, warn about usage of 'self' in non-methods
     "warn-unknown-ivars",        // Boolean, warn about unknown ivars
     "warn-unknown-selectors",    // Boolean, warn about usage of unknown selectors
+    "warn-unknown-superclasses", // Boolean, warn about usage of unknown superclasses
     "warn-unused-ivars",         // Boolean, warn about unused ivars
 
     // Private / Development

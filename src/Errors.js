@@ -36,6 +36,7 @@ OJError.APIMisuse                      = "OJAPIMisuseError";
 const OJWarning = { };
 
 OJWarning.CircularClassHierarchy       = "OJCircularClassHierarchyWarning";
+OJWarning.UnknownSuperclass            = "OJUnknownSuperclassWarning";
 OJWarning.UnknownSelector              = "OJUnknownSelectorWarning";
 OJWarning.UseOfThisInMethod            = "OJUseOfThisInMethodWarning";
 OJWarning.UseOfSelfInNonMethod         = "OJUseOfSelfInNonMethodWarning";
