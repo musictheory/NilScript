@@ -329,7 +329,7 @@ getChangedSelectorMap(other)
 
 getAggregateClass()
 {
-    let result = new OJClass(null, null, null);
+    let result = new OJClass(null, null, null, null);
 
     function extractMethodsIntoMap(methods, map) {
         _.each(methods, function(m) {
@@ -360,7 +360,7 @@ getAggregateClass()
             let index = 0;
             _.each(value, function(v) { variableNames.push("a" + index++);  });
 
-            let m = new OJMethod(key, selectorType, returnType, value, variableNames);  
+            let m = new OJMethod(null, key, selectorType, returnType, value, variableNames);  
             result.addMethod(m);
         });
     }
@@ -369,9 +369,9 @@ getAggregateClass()
     let classMap    = { };
 
     _.each(this.classes, function(ojClass) {
-        extractMethodsIntoMap(ojClass.getClassMethods(),    classMap);
-        extractMethodsIntoMap(ojClass.getClassMethods(),    instanceMap);   // 'id' should also cover 'Class'
-        extractMethodsIntoMap(ojClass.getInstanceMethods(), instanceMap);
+        extractMethodsIntoMap(ojClass.getImplementedClassMethods(),    classMap);
+        extractMethodsIntoMap(ojClass.getImplementedClassMethods(),    instanceMap);   // 'id' should also cover 'Class'
+        extractMethodsIntoMap(ojClass.getImplementedInstanceMethods(), instanceMap);
     });
 
     addMethodsWithMap(classMap,    "+");

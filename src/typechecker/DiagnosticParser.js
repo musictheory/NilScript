@@ -180,14 +180,14 @@ getWarnings(diagnostics, fileCallback)
                         if (retargetType == "class") {
                             let ojClass = model.classes[resolvedArg];
 
-                            fileName   = ojClass ? ojClass.pathLine.path : fileName;
-                            lineNumber = ojClass ? ojClass.pathLine.line : lineNumber;
+                            fileName   = ojClass && ojClass.location ? ojClass.location.path : fileName;
+                            lineNumber = ojClass && ojClass.location ? ojClass.location.line : lineNumber;
 
                         } else if (retargetType == "protocol") {
                             let ojProtocol = model.protocols[resolvedArg];
 
-                            fileName   = ojProtocol ? ojProtocol.pathLine.path : fileName;
-                            lineNumber = ojProtocol ? ojProtocol.pathLine.line : lineNumber;
+                            fileName   = ojProtocol && ojProtocol.location ? ojProtocol.location.path : fileName;
+                            lineNumber = ojProtocol && ojProtocol.location ? ojProtocol.location.line : lineNumber;
                         }
                     }
                 }

@@ -1,0 +1,74 @@
+//@opts = { }
+
+var assert = require("assert");
+
+@implementation PropertyObserversClass {
+    Array<String> _log;
+}
+
+
+@property Number propertyNoArgs;
+@property Number propertyArgs;
+
+@observe (after=_observeNoArgsChange) propertyNoArgs;
+@observe (before=_observeArgsBeforeChange:,after=_observeArgsAfterChange:)  propertyArgs;
+@observe (after=_observeBothChange) propertyArgs, propertyNoArgs;
+@observe (set, before=_observeArgsBeforeSet:, after=_observeArgsAfterSet:) propertyArgs;
+
+
+- (void) _observeNoArgsChange                      { _log.push(`_observeNoArgsChange (${_propertyNoArgs})`); }
+- (void) _observeArgsBeforeChange:(Number)newValue { _log.push(`_observeArgsBeforeChange:${newValue} (${_propertyArgs})`); }
+- (void) _observeArgsAfterChange:(Number)oldValue  { _log.push(`_observeArgsAfterChange:${oldValue} (${_propertyArgs})`); }
+- (void) _observeArgsBeforeSet:(Number)newValue    { _log.push(`_observeArgsBeforeSet:${newValue} (${_propertyArgs})`); }
+- (void) _observeArgsAfterSet:(Number)oldValue     { _log.push(`_observeArgsAfterSet:${oldValue} (${_propertyArgs})`); }
+- (void) _observeBothChange                        { _log.push("_observeBothChange");     }
+
+- (BOOL) runTests
+{
+    _log = [ ];
+    [self setPropertyNoArgs:5];
+
+    assert.deepEqual(_log, [
+        "_observeNoArgsChange (5)",
+        "_observeBothChange"
+    ]);
+
+    _log = [ ];
+    [self setPropertyArgs:0];
+    [self setPropertyArgs:1];
+    [self setPropertyArgs:1];
+    [self setPropertyArgs:2];
+
+    assert.deepEqual(_log, [
+        // [self setPropertyArgs:0];
+        "_observeArgsBeforeSet:0 (0)",
+        "_observeArgsAfterSet:0 (0)",
+
+        // [self setPropertyArgs:1];
+        "_observeArgsBeforeSet:1 (0)",
+        "_observeArgsBeforeChange:1 (0)",
+        "_observeArgsAfterChange:0 (1)",
+        "_observeBothChange",
+        "_observeArgsAfterSet:0 (1)",
+
+        // [self setPropertyArgs:1];
+        "_observeArgsBeforeSet:1 (1)",
+        "_observeArgsAfterSet:1 (1)",
+
+        // [self setPropertyArgs:2];
+        "_observeArgsBeforeSet:2 (1)",
+        "_observeArgsBeforeChange:2 (1)",
+        "_observeArgsAfterChange:1 (2)",
+        "_observeBothChange",
+        "_observeArgsAfterSet:1 (2)",
+    ]);
+
+    return YES;
+}
+
+@end
+
+
+var instance = [[PropertyObserversClass alloc] init];
+[instance runTests];
+

@@ -75,11 +75,17 @@ function isBaseObjectClass(name)
 function makeError(name, message, arg)
 {
     let error = new Error(message);
+    let path = null;
     let line, column;
 
     if (_.isObject(arg) && arg.loc && arg.loc.start) {
         line   = arg.loc.start.line;
         column = arg.loc.start.col;
+
+    } else if (_.isObject(arg) && arg.path) {
+        path   = arg.path;
+        line   = arg.line;
+        column = arg.column;
 
     } else if (_.isString(arg)) {
         line = parseInt(arg, 10);
@@ -88,7 +94,7 @@ function makeError(name, message, arg)
         line = arg;
     }
 
-    error.file    = null;
+    error.file    = path;
     error.line    = line;
     error.column  = column;
     error.name    = name;

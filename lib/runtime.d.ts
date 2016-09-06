@@ -26,21 +26,6 @@ interface $oj_$Runtime {
     msgSend(receiver : any, selector : $oj_$SEL, ...args : any[]) : any;
 }
 
-
-// This allows [Foo class] to be used on the right-hand side of instanceof
-declare class $oj_$Constructor implements Function {
-    apply(thisArg: any, argArray?: any): any;
-    call(thisArg: any, ...argArray: any[]): any;
-    bind(thisArg: any, ...argArray: any[]): any;
-    prototype: any;
-    length: number;
-    arguments: any;
-    caller: Function;
-    [Symbol.hasInstance](value: any): boolean;
-    readonly name: string;
-}
-
-
 declare class $oj_MethodMap {
     [ s : string ] : Function;
 }
@@ -77,7 +62,7 @@ declare class $oj_$Base {
     isEqual_(other : any) : boolean;
 }
 
-declare class $oj_$StaticBase extends $oj_$Constructor {
+declare class $oj_$StaticBase extends Function {
     alloc() : $oj_$Base;
     class() : $oj_$StaticBase;
     superclass() : $oj_$StaticBase;

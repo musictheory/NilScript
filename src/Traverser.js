@@ -27,6 +27,8 @@ const ojVisitorKeys = {
     [ Syntax.OJInstanceVariableDeclaration  ]: [ "parameterType", "ivars" ],
     [ Syntax.OJPropertyDirective            ]: [ "attributes", "id" ],
     [ Syntax.OJPropertyAttribute            ]: [ ],
+    [ Syntax.OJObserveDirective             ]: [ "attributes", "ids" ],
+    [ Syntax.OJObserveAttribute             ]: [ ],
     [ Syntax.OJSynthesizeDirective          ]: [ "pairs" ],
     [ Syntax.OJClassDirective               ]: [ "ids" ],
     [ Syntax.OJSqueezeDirective             ]: [ "ids" ],

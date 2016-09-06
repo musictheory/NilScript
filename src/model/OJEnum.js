@@ -11,8 +11,9 @@
 module.exports = class OJEnum {
 
 
-constructor(name, unsigned, bridged)
+constructor(location, name, unsigned, bridged)
 {
+    this.location  =   location;
     this.name      =   name;
     this.unsigned  =   unsigned;
     this.anonymous =  !name;
@@ -24,6 +25,7 @@ constructor(name, unsigned, bridged)
 
 loadState(state)
 {
+    this.location  =   state.location;
     this.name      =   state.name;
     this.unsigned  = !!state.unsigned;
     this.anonymous = !!state.anonymous;
@@ -35,6 +37,7 @@ loadState(state)
 saveState()
 {
     return {
+        location:  this.location,
         name:      this.name,
         bridged:   this.bridged,
         unsigned:  this.unsigned,

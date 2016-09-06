@@ -11,8 +11,9 @@
 module.exports = class OJIvar {
 
 
-constructor(name, className, type)
+constructor(location, name, className, type)
 {
+    this.location    = location;
     this.name        = name;
     this.className   = className;
     this.type        = type;
