@@ -464,6 +464,18 @@ var arr = [,,,,];  //@warning OJUseOfEmptyArrayElementWarning
 
 @end
 
+
+
+
+// --------------------------------------------------------------------
+// @name Unknown Class
+// @opts { "warn-unknown-superclasses": true  }
+
+@implementation Foo : NonExistantSuperClass //@warning OJUnknownSuperclassWarning
+
+@end
+
+
 // --------------------------------------------------------------------
 // @name Missing Method Name (Protocol)
 
