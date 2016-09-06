@@ -14,15 +14,17 @@ Added:
   - New 'Compiler' API (#73)
   - API to get symbol list (for crash log symbolication) (#75)
   - "before-compile" and "after-compile" hooks for preprocessors/linters/transformers (#79, #97)
+  - New 'warn-unknown-superclasses' option (#119)
 
 Language Changes:
   - '@enum' and '@const' are always global and inlined (#103)
   - Removed '@struct' and '@typedef' in favor of '@type' (#105, #106)
   - Removed 'var _ivar' declaration syntax (#108)
   - Added 'struct' property attribute, fixed 'copy' property attribute (#94)
+  - Added '@observe' property observers (#118)
 
 Breaking Changes:
-  - node 4.2+ is now required to run ojc (#76)
+  - node 6+ is now required to run ojc (#76, #117)
   - 'include-state' compiler option is needed to include the 'state' key (#74)
   - 'runtime.js' is now located in the 'lib' directory (#72)
   - Removed JSHint integration (#78) in favor of a generic "after-compile" hook (#79)
