@@ -1098,6 +1098,7 @@ function doWebAppCompile(callback) {
 3. All higher-level `.js` and `.oj` files are passed into `webAppCompiler`.  `webAppCompiler` pulls state from `coreCompiler` due to the `Compiler#uses` API.
 4. The `result.code` from this compilation pass is saved as `webapp.js`.
 5. Both `core.js` and `webapp.js` are included (in that order) in various HTML files via `<script>` elements.
+6. The oj runtime (`runtime.js`) is also included in various HTML files.  You can obtain its location via the `ojc.getRuntimePath` API.
 
 --
 
