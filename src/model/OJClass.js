@@ -14,6 +14,7 @@ const Utils       = require("../utils");
 const OJIvar      = require("./OJIvar");
 const OJProperty  = require("./OJProperty");
 const OJMethod    = require("./OJMethod");
+const OJObserver  = require("./OJObserver");
 
 
 const OJDynamicProperty = " OJDynamicProperty ";
