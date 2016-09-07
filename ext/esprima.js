@@ -185,7 +185,7 @@
         OJPropertyDirective: 'OJPropertyDirective',
         OJPropertyAttribute: 'OJPropertyAttribute',
         OJSynthesizeDirective: 'OJSynthesizeDirective',
-        OJClassDirective: 'OJClassDirective',
+        OJForwardDirective: 'OJForwardDirective',
         OJSqueezeDirective: 'OJSqueezeDirective',
         OJSynthesizePair: 'OJSynthesizePair',
         OJDynamicDirective: 'OJDynamicDirective',
@@ -404,6 +404,7 @@
                    (id === '@optional')       ||
                    (id === '@required')       ||
                    (id === '@class')          ||
+                   (id === '@forward')        ||
                    (id === '@property')       ||
                    (id === '@synthesize')     ||
                    (id === '@selector')       ||
@@ -2587,8 +2588,9 @@
             return this;
         },
 
-        oj_finishClassDirective: function (ids) {
-            this.type = Syntax.OJClassDirective;
+        oj_finishForwardDirective: function (kind, ids) {
+            this.type = Syntax.OJForwardDirective;
+            this.kind = kind;
             this.ids = ids;
             this.finish();
             return this;        
@@ -5161,12 +5163,13 @@
             case 'with':
                 return parseWithStatement(node);
 //!oj: Start changes
+            case '@class':
             case '@implementation':
                 return oj_parseClassImplementationDefinition(node);
             case '@protocol':
                 return oj_parseProtocolDefinition(node);
-            case '@class':
-                return oj_parseClassDirective(node);
+            case '@forward':
+                return oj_parseForwardDirective(node);
             case '@squeeze':
                 return oj_parseSqueezeDirective(node);
             case '@bridged':
@@ -6110,7 +6113,7 @@
     // http://www.antlr.org/grammar/1212699960054/ObjectiveC2ansi.g
 
     function oj_init() {
-        Messages.OJCannotNestImplementations  = "OJ: Cannot nest @implementation blocks";
+        Messages.OJCannotNestImplementations  = "OJ: Cannot nest implementation blocks";
         exports.version += "-oj";
     }
 
@@ -6609,7 +6612,11 @@
         previousStrict = strict;
         strict = true;
 
-        expectKeyword('@implementation');
+        if (matchKeyword('@class')) {
+            expectKeyword('@class');
+        } else {
+            expectKeyword('@implementation');
+        }
 
         id = parseVariableIdentifier();
 
@@ -6744,10 +6751,17 @@
         return node.oj_finishProtocolDefinition(id, protocolList, body);
     }
 
-    function oj_parseClassDirective(node) {
-        var ids = [ ];
+    function oj_parseForwardDirective(node) {
+        var kind = "class", ids = [ ];
 
-        expectKeyword('@class');
+        expectKeyword('@forward');
+
+        if (match('@protocol')) {
+            expectKeyword('@protocol');
+            kind = "protocol";
+        } else if (match('@class')) {
+            expectKeyword('@class');
+        }
 
         ids.push(parseVariableIdentifier());
 
@@ -6758,7 +6772,7 @@
 
         consumeSemicolon();
 
-        return node.oj_finishClassDirective(ids);
+        return node.oj_finishForwardDirective(kind, ids);
     }
 
     function oj_parseSqueezeDirective(node) {

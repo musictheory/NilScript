@@ -157,15 +157,21 @@ build()
         declaredProtocols.push(ojProtocol.name);
     }
 
-    function handleOJClassDirective(node)
+    function handleOJForwardDirective(node)
     {
         let ids = node.ids;
+        let kind = node.lind;
 
-        for (let i = 0, length = ids.length; i < length; i++) {
-            let cls = new Model.OJClass(makeLocation(node), ids[i].name);
-            cls.forward = true;
+        if (kind == "class") {
+            for (let i = 0, length = ids.length; i < length; i++) {
+                let cls = new Model.OJClass(makeLocation(node), ids[i].name);
+                cls.forward = true;
 
-            model.addClass(cls);
+                model.addClass(cls);
+            }
+
+        } else if (kind == "protocol") {
+            Utils.throwError(OJError.NotYetSupported, "@forward protocol declarations are not yet supported", node);
         }
     }
  
@@ -499,8 +505,8 @@ build()
             } else if (type === Syntax.OJProtocolDefinition) {
                 handleOJProtocolDefinition(node);
 
-            } else if (type === Syntax.OJClassDirective) {
-                handleOJClassDirective(node);
+            } else if (type === Syntax.OJForwardDirective) {
+                handleOJForwardDirective(node);
 
             } else if (type === Syntax.OJSqueezeDirective) {
                 handleOJSqueezeDirective(node);

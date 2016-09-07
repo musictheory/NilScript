@@ -283,7 +283,7 @@ function test() {
 // --------------------------------------------------------------------
 // @name Duplicate Class 2
 
-@class DuplicateClass
+@forward DuplicateClass;
 
 @implementation DuplicateClass
 @end

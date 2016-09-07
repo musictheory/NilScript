@@ -487,7 +487,7 @@ generate()
         let classSymbol   = symbolTyper.getSymbolForClassName(node.id.name);
         let classSelector = "{" + classSymbol + ":1}";
  
-        // Only allow whitelisted children inside of an @implementation
+        // Only allow whitelisted children inside of an implementation block
         _.each(node.body.body, child => {
             let type = child.type;
             
@@ -500,7 +500,7 @@ generate()
                 type !== Syntax.OJDynamicDirective    &&
                 type !== Syntax.OJSynthesizeDirective)
             {
-                Utils.throwError(OJError.ParseError, 'Unexpected @implementation child.', child);
+                Utils.throwError(OJError.ParseError, 'Unexpected implementation child.', child);
             }
 
             if (type === Syntax.VariableDeclaration) {
@@ -675,7 +675,7 @@ generate()
             if (currentClass) {
                 modifier.select(node).replace('"' + currentClass.name + '"');
             } else {
-                Utils.throwError(OJError.ParseError, 'Cannot use @CLASS outside of a class @implementation');
+                Utils.throwError(OJError.ParseError, 'Cannot use @CLASS outside of a class implementation');
             }
 
         } else if (name === "@SEL") {
@@ -1241,7 +1241,7 @@ generate()
 
         if (type === Syntax.OJStructDefinition                   || 
             type === Syntax.OJProtocolDefinition                 ||
-            type === Syntax.OJClassDirective                     ||
+            type === Syntax.OJForwardDirective                   ||
             type === Syntax.OJObserveDirective                   ||
             type === Syntax.OJSqueezeDirective                   ||
             type === Syntax.OJSynthesizeDirective                ||
