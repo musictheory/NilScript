@@ -1,6 +1,6 @@
 /*
     OJClass.js
-    Model class for an oj class @implementation
+    Model class for an oj class implementation
     (c) 2013-2016 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
@@ -32,7 +32,7 @@ constructor(location, name, superclassName, protocolNames)
     // For @class
     this.forward = false;
 
-    // For category definitions that appear before @implementation
+    // For category definitions that appear before the implementation
     this.placeholder = false;
  
     // Is this class in the current compilation unit?  *not archived*

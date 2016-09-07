@@ -30,7 +30,7 @@ const ojVisitorKeys = {
     [ Syntax.OJObserveDirective             ]: [ "attributes", "ids" ],
     [ Syntax.OJObserveAttribute             ]: [ ],
     [ Syntax.OJSynthesizeDirective          ]: [ "pairs" ],
-    [ Syntax.OJClassDirective               ]: [ "ids" ],
+    [ Syntax.OJForwardDirective             ]: [ "ids" ],
     [ Syntax.OJSqueezeDirective             ]: [ "ids" ],
     [ Syntax.OJSynthesizePair               ]: [ "id", "backing" ],
     [ Syntax.OJDynamicDirective             ]: [ "ids" ],
