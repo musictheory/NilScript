@@ -6756,10 +6756,11 @@
 
         expectKeyword('@forward');
 
-        if (match('@protocol')) {
+        if (matchKeyword('@protocol')) {
             expectKeyword('@protocol');
             kind = "protocol";
-        } else if (match('@class')) {
+
+        } else if (matchKeyword('@class')) {
             expectKeyword('@class');
         }
 

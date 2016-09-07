@@ -12,6 +12,7 @@ with modern web browsers and environments.
 
 Added:
   - New 'Compiler' API (#73)
+  - New 'getRuntimePath()' API (#121)
   - API to get symbol list (for crash log symbolication) (#75)
   - "before-compile" and "after-compile" hooks for preprocessors/linters/transformers (#79, #97)
   - New 'warn-unknown-superclasses' option (#119)
@@ -22,6 +23,7 @@ Language Changes:
   - Removed 'var _ivar' declaration syntax (#108)
   - Added 'struct' property attribute, fixed 'copy' property attribute (#94)
   - Added '@observe' property observers (#118)
+  - Forward declarations now use `@forward` rather than `@class` (#120)
 
 Breaking Changes:
   - node 6+ is now required to run ojc (#76, #117)
