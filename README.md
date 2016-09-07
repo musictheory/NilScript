@@ -112,14 +112,14 @@ oj_private_function(…, function() {
 
 To prevent undefined behavior, variable declarations must be initialized to a literal or function expression (or left uninitialized).  
 
-Note: Only `@property`, `@synthesize`, `@dynamic`, instance variable declarations, method declarations, variable declarations, or function declarations may be used inside of an `@implementation` block.
+Note: Only `@property`, `@synthesize`, `@dynamic`, `@observe`, instance variable declarations, method declarations, variable declarations, or function declarations may be used inside of an `@implementation` block.
 
 ### <a name="at-class"></a>Forward Declarations
 
 In older versions of oj (0.x), the compiler would compile each file separately.  This led to situations where a [forward declaration](http://en.wikipedia.org/wiki/Forward_declaration) of a class was needed:
 
 ```
-@class TheFirstClass;
+@forward TheFirstClass;
 
 @implementation TheSecondClass
     
@@ -132,7 +132,7 @@ In older versions of oj (0.x), the compiler would compile each file separately. 
 @end
 ```
 
-oj 1.x+ uses a multi-pass compiler which eliminates the need for forward declarations.  In general, the need to use `@class` indicates an underlying issue with the dependency tree, which will cause issues if you need to use `@const`/`@enum` inlining or the [squeezer](#squeeze).  For more information, read [Compiling Projects](#compiling-projects).  
+oj 1.x+ uses a multi-pass compiler which eliminates the need for forward declarations.  In general, the need to use `@forward` indicates an underlying issue with the dependency tree, which will cause issues if you need to use `@const`/`@enum` inlining or the [squeezer](#squeeze).  For more information, read [Compiling Projects](#compiling-projects).  
 
 ---
 
