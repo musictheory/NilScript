@@ -17,10 +17,7 @@
         "type": "git",
         "url": "http://github.com/musictheory/oj.git"
     },
-    "licenses": [{
-        "type": "MIT",
-        "url": "http://github.com/musictheory/oj/raw/master/LICENSE.MIT"
-    }],
+    "license": "MIT",
     "devDependencies": {
         "mocha": "*"
     },
