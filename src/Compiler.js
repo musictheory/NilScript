@@ -344,13 +344,15 @@ _generateJavaScript(files, model, options, callback)
 {
     let err = null;
 
-    let afterCompileCallback  = options["after-compile"];
+    let afterCompileCallback = options["after-compile"];
 
     async.each(files, (ojFile, callback) => {
         if (!ojFile.generatorLines) {
             async.series([
                 callback => {
                     try {
+                        Log(`Generating ${ojFile.path}`);
+
                         let generator = new Generator(ojFile, model, false, options);
                         let result    = generator.generate();
 

@@ -67,6 +67,31 @@ function sToBase52(index)
 }
 
 
+function sSymbolicate(string, fromSqueezedMap)
+{
+    return string.replace(/\$oj[_$][A-Za-z0-9_$]+/g, function(symbol) {
+        if (fromSqueezedMap && symbol.indexOf("$oj$") === 0) {
+            return fromSqueezedMap[symbol];
+
+        } else if (symbol.match(/^\$oj_[cCpPi]_/)) {
+            return symbol.substr(OJClassPrefix.length);
+
+        } else if (symbol.indexOf(OJMethodPrefix) === 0) {
+            symbol = symbol.substr(OJMethodPrefix.length);
+            symbol = symbol.replace(/_([^_])/g, ":$1");
+            symbol = symbol.replace(/_$/g,      ":");
+            symbol = symbol.replace(/__/g,    "_");
+            symbol = symbol.replace(/^\:/g,   "_");
+
+            return symbol;
+
+        } else {
+            return symbol;
+        }
+    });
+}
+
+
 class OJSymbolTyper {
 
 
@@ -409,28 +434,7 @@ fromTypecheckerType(rawInType)
 
 getSymbolicatedString(inString)
 {
-    let fromSqueezedMap = this._fromSqueezedMap;
-
-    return inString.replace(/\$oj[_$][A-Za-z0-9_$]+/g, function(symbol) {
-        if (symbol.indexOf("$oj$") === 0) {
-            return fromSqueezedMap[symbol];
-
-        } else if (symbol.match(/^\$oj_[cCpPi]_/)) {
-            return symbol.substr(OJClassPrefix.length);
-
-        } else if (symbol.indexOf(OJMethodPrefix) === 0) {
-            symbol = symbol.substr(OJMethodPrefix.length);
-            symbol = symbol.replace(/_([^_])/g, ":$1");
-            symbol = symbol.replace(/_$/g,      ":");
-            symbol = symbol.replace(/__/g,    "_");
-            symbol = symbol.replace(/^\:/g,   "_");
-
-            return symbol;
-
-        } else {
-            return symbol;
-        }
-    });
+    return sSymbolicate(inString, this._fromSqueezedMap);
 }
 
 
@@ -525,5 +529,6 @@ getAllSymbolsMap()
 
 OJSymbolTyper.TypecheckerSymbols = TypecheckerSymbols;
 OJSymbolTyper.Location = Location;
+OJSymbolTyper.symbolicate = sSymbolicate;
 
 module.exports = OJSymbolTyper;
