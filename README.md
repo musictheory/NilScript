@@ -38,7 +38,7 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 - [Squeezing oj!](#squeeze)
 - [Hinting](#hinting)
 - [Type Checking](#typechecking)
-- [Compiler API](#compiler-api)
+- [API](#api)
 - [Compiling Projects](#compiling-projects)
 - [License](#license)
 
@@ -892,7 +892,7 @@ In order to support compiler optimizations, the following method names are reser
     isMemberOfClass:
 
 ---
-## <a name="compiler-api"></a>Compiler API
+## <a name="api"></a>API
 
 Traditionally, oj's API consisted of a single `compile` method:
 
@@ -1045,6 +1045,19 @@ ojOptions["after-compile"] = function(file, callback) {
 
 
 Note: `options.state` and `result.state` are private objects and the format/contents will change between releases.  Users are encouraged to use the new `Compiler#uses` API rather than `state`. (See below).
+
+--
+
+oj 2.x also adds the `symbolicate` function as API.  This converts an internal oj identifier such as `$oj_f_stringWithString_` to a human-readable string (`"stringWithString:"`).
+
+```javascript
+let ojc = require("ojc");
+
+let a = ojc.symbolicate("$oj_C_Foo");               // "Foo"
+let a = ojc.symbolicate("$oj_p_TheProtocol");       // "TheProtocol"
+let b = ojc.symbolicate("$oj_f_stringWithString_"); // "stringWithString:"
+let c = ojc.symbolicate("$oj_i__anIvar");           // "_anIvar"
+```
 
 ---
 ## <a name="compiler-projects"></a>Compiling Projects
