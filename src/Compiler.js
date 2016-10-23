@@ -43,7 +43,6 @@ const sPublicOptions = [
     "output-language",           // Output language ('none' or 'es5' public, 'typechecker' for debugging only)
     "include-map",               // Boolean, include 'map' key in results object
     "include-state",             // Boolean, include 'state' key in results object
-    "include-symbols",           // Boolean, include 'symbols' key in results object
     "source-map-file",           // Output source map file name
     "source-map-root",           // Output source map root URL
 
@@ -543,7 +542,6 @@ compile(options, callback)
     let optionsDefs               = extractOption("defs");
     let optionsState              = extractOption("state");
     let optionsIncludeState       = extractOption("include-state");
-    let optionsIncludeSymbols     = extractOption("include-symbols");
     let optionsIncludeBridged     = extractOption("include-bridged");
 
     if (extractOption("dev-print-log")) {
@@ -747,8 +745,8 @@ compile(options, callback)
             result.state = model.saveState();
         }
 
-        if (optionsIncludeSymbols) {
-            result.symbols = model.saveSymbols();
+        if (options["squeeze"]) {
+            result.squeeze = model.getSqueezeMap();
         }
 
         if (optionsIncludeBridged) {
