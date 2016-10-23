@@ -35,11 +35,11 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 - [@global](#global)
 - [Runtime](#runtime)
 - [Restrictions](#restrictions)
-- [Squeezing oj!](#squeeze)
 - [Hinting](#hinting)
 - [Type Checking](#typechecking)
-- [Compiler API](#compiler-api)
+- [API](#api)
 - [Compiling Projects](#compiling-projects)
+- [Squeezing and Symbolication](#squeeze)
 - [License](#license)
 
 
@@ -726,13 +726,6 @@ Returns a human-readable string of a class or selector.  Note that this is for d
 If `object` is an oj instance, invokes `-copy`.  If `object` is a JavaScript array, returns a shallow clone (via `slice(0)`).  If `object` is a JavaScript primitive, returns `object`.  Else, returns a clone of each key/value pair (via `Object.keys`) on `object`.
 
 ---
-## <a name="squeeze"></a>Squeezing oj!
-
-oj features a code minifier/compressor/obfuscator called the squeezer.  When the `--squeeze` option is passed to the compiler, all identifiers for classes (`$oj_c_ClassName`), methods (`$oj_f_MethodName`), ivars (`$oj_i_ClassName_IvarName`), and `@global`s will be replaced with a shortened "squeezed" version (`$oj$ID`).  For example, all occurrences of `$oj_c_Foo` might be assigned the identifier `$oj$a`, all occurrences of `$oj_f_initWithFoo_` might be assigned `$oj$b`.  This is a safe transformation as long as all files are squeezed together.
-
-Squeezed identifiers are persisted via `--output-state` and `--input-state`.
-
----
 ## <a name="hinting"></a>Hinting
 
 oj provides basic code hinting to catch common errors.
@@ -892,7 +885,7 @@ In order to support compiler optimizations, the following method names are reser
     isMemberOfClass:
 
 ---
-## <a name="compiler-api"></a>Compiler API
+## <a name="api"></a>API
 
 Traditionally, oj's API consisted of a single `compile` method:
 
@@ -936,7 +929,6 @@ state                    | Private  | Input compiler state, corresponds to conte
 output-language          | String   | If 'none', disable source code output
 include-map              | Boolean  | If true, include `map` key in results object
 include-state            | Boolean  | If true, include `state` key in results object
-include-symbols          | Boolean  | If true, include `symbols` key in results object
 source-map-file          | String   | Output source map file name
 source-map-root          | String   | Output source map root URL
 before-compile           | Function | Before-compile callback (see below)
@@ -973,9 +965,9 @@ Properties for the `result` object:
 Key     | Type    | Description
 ------- | ------- | ---
 code    | String  | Compiled JavaScript source code
-state   | Private | Output compiler state (if `include-state` is true).  See Compiling Projects below.
+state   | Private | Output compiler state (if `include-state` is true).  See [Compiling Projects](#compiling-projects) below.
 map     | String  | Source map (if `include-map` is true)
-symbols | Object  | Symbol-to-readable-name map (if `include-symbols` is true).  For symbolicating stack traces.
+squeeze | Object  | Map of squeezed identifiers to original identifiers.  See [Squeezing and Symbolication](#squeeze) below.
 
 
 The `before-compile` key specifies a callback which is called prior to the compiler's oj->js stage.  This allows you to preprocess files.  After this callback is invoked, a file's content must be valid oj or JavaScript.
@@ -1046,6 +1038,10 @@ ojOptions["after-compile"] = function(file, callback) {
 
 Note: `options.state` and `result.state` are private objects and the format/contents will change between releases.  Users are encouraged to use the new `Compiler#uses` API rather than `state`. (See below).
 
+--
+
+oj 2.x also adds the `symbolicate` function as API.  This converts an internal oj identifier such as `$oj_f_stringWithString_` to a human-readable string (`"stringWithString:"`).  See [Squeezing and Symbolication](#squeeze) below.
+
 ---
 ## <a name="compiler-projects"></a>Compiling Projects
 
@@ -1108,6 +1104,57 @@ We've found it best to run a separate typecheck pass in parallel with the `core.
 * Several `.d.ts` definitions (for jQuery, underscore, etc.) are specified with the `--defs` option (or `options.defs`).
 * `--output-language` is set to `none`.
 * `--check-types` is enabled 
+
+---
+## <a name="squeeze"></a>Squeezing and Symbolication
+
+As mentioned in previous sections, oj uses internal identifier names for classes, methods, and ivars.  These identifiers are always prefixed with `$oj_…`:
+
+Type                     | Humand-readable name  | Internal Identifier
+------------------------ | -------- | ---
+Class                    | `TheClass` | `$oj_c_TheClass`
+Protocol                 | `TheProtocol` | `$oj_p_TheProtocol`
+Instance variable        | `_theIvar` | `$oj_i_TheClass__theIvar`
+Method                   | `-doSomethingWithFoo:bar:baz:` | `$oj_f_doSomethingWithFoo_bar_baz_`
+
+Since these identifiers can be quite long (and aid in competitor's reverse-engineering efforts), oj features a code minifier/compressor/obfuscator called the squeezer. 
+
+When the `--squeeze` option is passed to the compiler, each `$oj_…` identifier is replaced with a shortened "squeezed" version (prefixed with `$oj$…`).  For example, all occurrences of `$oj_c_Foo` might be replaced with `$oj$a`, all occurrences of `$oj_f_initWithFoo_` with `$oj$b`, etc.  `@global`s are also replaced in this manner.
+
+This is a safe transformation as long as all files are squeezed together (or state is persisted via `--output-state` and `--input-state`).
+
+The `--squeeze` compiler option adds a `squeeze` property to the compiler results.  This is a map of squeezed identifiers to original identifiers:
+
+```javascript
+{
+    "$oj$a": "$oj_c_TheClass",
+    "$oj$b": "$oj_f_initWithFoo_"
+    "$oj$c": "$oj_i_TheClass__firstIvar",
+    "$oj$d": "$oj_i_TheClass__secondIvar",
+    "$oj$e": "$oj_f_doSomethingWithFoo_bar_baz_",
+    …
+}
+```
+
+--
+
+Symbolication is the process of transforming an internal identifier (either squeezed or unsqueezed) into a human-readable name.  This is frequently used for stack traces in crash reports.
+
+oj 2.x adds `ojc.symbolicate(str, squeezeMap)` as API.  This function replaces all `$oj_…` identifiers in a string with the human-readable name.  If the optional `squeezeMap` parameter is
+provided, squeezed `$oj$…` identifiers are also transformed:
+
+```javascript
+let ojc = require("ojc");
+
+let a = ojc.symbolicate("$oj_c_Foo, $oj_c_Bar");                 // "Foo, Bar"
+let a = ojc.symbolicate("$oj_p_TheProtocol");                    // "TheProtocol"
+let b = ojc.symbolicate("Exception in $oj_f_stringWithString_"); // "Exception in stringWithString:"
+let c = ojc.symbolicate("$oj_i__anIvar");                        // "_anIvar"
+
+// Normally, the 'squeeze' property on the compiler result object would be used for squeezeMap
+let squeezeMap = { "$oj$a": "$oj_f_stringWithString_" };
+let e = ojc.symbolicate("Exception in $oj$a", squeezeMap); // "Exception in stringWithString:"
+```
 
 ---
 ## <a name="license"></a>License
