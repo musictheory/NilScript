@@ -13,7 +13,7 @@ with modern web browsers and environments.
 Added:
   - New 'Compiler' API (#73)
   - New 'getRuntimePath()' API (#121)
-  - API to get symbol list (for crash log symbolication) (#75)
+  - ojc.symbolicate API for crash log symbolication (#75, #122)
   - "before-compile" and "after-compile" hooks for preprocessors/linters/transformers (#79, #97)
   - New 'warn-unknown-superclasses' option (#119)
 
