@@ -929,7 +929,6 @@ state                    | Private  | Input compiler state, corresponds to conte
 output-language          | String   | If 'none', disable source code output
 include-map              | Boolean  | If true, include `map` key in results object
 include-state            | Boolean  | If true, include `state` key in results object
-include-symbols          | Boolean  | If true, include `symbols` key in results object
 source-map-file          | String   | Output source map file name
 source-map-root          | String   | Output source map root URL
 before-compile           | Function | Before-compile callback (see below)
