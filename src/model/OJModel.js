@@ -116,7 +116,7 @@ saveState()
 }
 
 
-saveSymbols()
+getSqueezeMap()
 {
     let symbolTyper = this._symbolTyper;
     let result = { };
