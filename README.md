@@ -40,6 +40,7 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 - [API](#api)
 - [Compiling Projects](#compiling-projects)
 - [Squeezing and Symbolication](#squeeze)
+- [Acknowledgements](#acknowledgements)
 - [License](#license)
 
 
@@ -1155,6 +1156,11 @@ let c = ojc.symbolicate("$oj_i__anIvar");                        // "_anIvar"
 let squeezeMap = { "$oj$a": "$oj_f_stringWithString_" };
 let e = ojc.symbolicate("Exception in $oj$a", squeezeMap); // "Exception in stringWithString:"
 ```
+
+---
+## <a name="license"></a>Acknowledgements
+
+oj uses a modified version of [Esprima](http://esprima.org) for parsing and [TypeScript](http://www.typescriptlang.org) for type checking.
 
 ---
 ## <a name="license"></a>License
