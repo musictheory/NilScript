@@ -607,7 +607,7 @@ someFunction(zero, one, two, three, four, TheConstant);
 The oj compiler inlines these values.  The above code becomes:
 
 ```
-    someFunction(0, 1, 2, 3, 4, "Hello World");
+someFunction(0, 1, 2, 3, 4, "Hello World");
 ```
 
 Note: Inlining causes the enum or const to be lifted to the global scope.  Inlining affects all occurrences of that identifier in all files for the current compilation.  Inlined enums/consts are persisted via `--output-state` and `--input-state`.
@@ -918,8 +918,6 @@ source-map-file          | String   | Output source map file name
 source-map-root          | String   | Output source map root URL
 before-compile           | Function | Before-compile callback (see below)
 after-compile            | Function | After-compile callback (see below)
-inline-const             | Boolean  | inline @const identifiers
-inline-enum              | Boolean  | inline @enum identifiers
 squeeze                  | Boolean  | If true, enable squeezer
 squeeze-start-index      | Number   | Start index for squeezer
 squeeze-end-index        | Number   | End index for squeezer
