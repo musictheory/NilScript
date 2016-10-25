@@ -48,8 +48,6 @@ const sPublicOptions = [
 
     "before-compile",            // Function, callback to call per-file before the oj->js compile
     "after-compile",             // Function, callback to call per-file after the oj->js compile
-    "inline-const",              // Boolean, inline @const identifiers
-    "inline-enum",               // Boolean, inline @enum identifiers
 
     // Squeezer options
     "squeeze",                   // Boolean, enable squeezer
