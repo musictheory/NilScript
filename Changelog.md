@@ -27,6 +27,7 @@ Language Changes:
 
 Breaking Changes:
   - node 6+ is now required to run ojc (#76, #117)
+  - TypeScript updated to 2.0. See [Breaking Changes on the TypeScript Wiki](https://github.com/Microsoft/TypeScript/wiki/Breaking-Changes).
   - 'include-state' compiler option is needed to include the 'state' key (#74)
   - 'runtime.js' is now located in the 'lib' directory (#72)
   - Removed JSHint integration (#78) in favor of a generic "after-compile" hook (#79)
