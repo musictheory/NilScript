@@ -604,27 +604,11 @@ oj supports C-style enumerations via the `@enum` keyword and constants via the `
 someFunction(zero, one, two, three, four, TheConstant);
 ```
 
-By default, oj compiles the above to:
+The oj compiler inlines these values.  The above code becomes:
 
 ```
-var zero  = 0;
-var one   = 1;
-var two   = 2;
-var three = 3;
-var four  = 4;
-
-var TheConstant = "Hello World";
-
-someFunction(zero, one, two, three, four, TheConstant);
-```
-
-However, when the `--inline-enum` option is passed into the oj compiler, oj inlines enum values:
-
-    someFunction(0, 1, 2, 3, 4, TheConstant);
-
-The `--inline-const` option inlines `TheConstant` as well:
-    
     someFunction(0, 1, 2, 3, 4, "Hello World");
+```
 
 Note: Inlining causes the enum or const to be lifted to the global scope.  Inlining affects all occurrences of that identifier in all files for the current compilation.  Inlined enums/consts are persisted via `--output-state` and `--input-state`.
 
