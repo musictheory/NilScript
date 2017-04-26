@@ -8,8 +8,8 @@ const cp     = require("child_process");
 const fs     = require("fs");
 const path   = require("path");
 
-const OJError   = require("../src/errors.js").OJError;
-const OJWarning = require("../src/errors.js").OJWarning;
+const OJError   = require("../src/Errors.js").OJError;
+const OJWarning = require("../src/Errors.js").OJWarning;
 const ojc       = require("../lib/api");
 const oj        = require("../lib/runtime");
 
