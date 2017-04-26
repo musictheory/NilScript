@@ -16,7 +16,7 @@ const ts      = require("typescript");
 
 const DefinitionMaker  = require("./DefinitionMaker");
 const DiagnosticParser = require("./DiagnosticParser");
-const Utils            = require("../utils")
+const Utils            = require("../Utils")
 
 
 module.exports = class Typechecker {
