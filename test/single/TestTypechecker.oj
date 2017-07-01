@@ -9,6 +9,10 @@
 - (BOOL) isFoo { return true; }
 @end
 
+@implementation Foo2 : Foo
+- (String) aString { return "foo"; }
+@end
+
 @implementation Bar
 - (id) initWithString:(String)string { return [self init]; }
 - (BOOL) isBar { return true; }
@@ -17,16 +21,17 @@
 
 @implementation TestReturnTypes
 
-- (BOOL) returnsStringInsteadOfBOOL { return 5; }   //@typecheck 2322,Number,BOOL
+// TypeScript reports constants as their own type, so use functions here to get Number/String
+//
+- (BOOL) returnsNumberInsteadOfBOOL { return Math.round(3.14);            }  //@typecheck 2322,Number,BOOL
+- (Foo) returnsStringInsteadOfFoo   { return [ "b", "a", "r" ].join(","); }  //@typecheck 2322,String,Foo
+- (Foo) returnsNumberInsteadOfFoo   { return Math.round(3.14);            }  //@typecheck 2322,Number,Foo
 
 - (Singleton) returnsSingleton  { return null;                          }
 - (Singleton) returnsSingleton2 { return [[Singleton alloc] init];      }
 - (Singleton) returnsSingleton3 { return [Singleton sharedInstance];    }
 
 - (Class) returnsClass { return [Singleton class]; }
-
-- (Foo) returnsStringInsteadOfFoo { return "asdf";                                    }  //@typecheck 2322,String,Foo
-- (Foo) returnsNumberInsteadOfFoo { return 5;                                         }  //@typecheck 2322,Number,Foo
 
 - (Foo) returnsBarInsteadOfFoo    { return [[Bar alloc] init];                        }  //@typecheck 2322,Bar,Foo
 - (Foo) returnsBarInsteadOfFoo2   { return [[[Bar class] alloc] init];                }  //@typecheck 2322,Bar,Foo
@@ -43,14 +48,22 @@
 
 @implementation TestMethodCalls
 
-- (void) doSomethingWithFoo:(Foo)foo { }
+- (void) doSomethingWithFoo:(Foo)foo
+{
+    if ([foo isKindOfClass:[Foo2 class]]) {
+        [self doSomethingWithString:[@cast(Foo2, foo) aString]];
+    }
+}
+
 - (void) doSomethingWithBar:(Bar)bar { }
 - (void) doSomethingWithClass:(Class)cls { }
+- (void) doSomethingWithString:(String)aString { }
 
 - (void) test
 {
-    var foo = [[Foo alloc] init];
-    var bar = [[Bar alloc] init];
+    var foo  = [[Foo alloc] init];
+    var foo2 = [[Foo2 alloc] init];
+    var bar  = [[Bar alloc] init];
 
     [self doSomethingWithClass:[Foo class]];
     [self doSomethingWithFoo: [[Foo alloc] init] ];

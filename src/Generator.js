@@ -965,8 +965,8 @@ generate()
         let after  = ")";
 
         if (language == LanguageTypechecker) {
-            before = "<" + symbolTyper.toTypecheckerType(node.id.name) + ">(<any>(";
-            after  = "))";
+            before = "(<" + symbolTyper.toTypecheckerType(node.id.name) + ">(<any>(";
+            after  = ")))";
         }
 
         modifier.from(node).to(node.argument).replace(before);
@@ -975,10 +975,11 @@ generate()
 
     function handleOJAnyExpression(node)
     {
-        let before = (language == LanguageTypechecker) ? "<any>(" : "(";
+        let before = (language == LanguageTypechecker) ? "(<any>(" : "(";
+        let after  = (language == LanguageTypechecker) ? "))"      : ")";
 
         modifier.from(node).to(node.argument).replace(before);
-        modifier.from(node.argument).to(node).replace(")");
+        modifier.from(node.argument).to(node).replace(after);
     }
 
     function handleOJTypeAnnotation(node, parent)
