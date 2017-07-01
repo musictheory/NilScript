@@ -1,7 +1,7 @@
 /*
     OJIvar.js
     Simple model class for an instance variable
-    (c) 2013-2016 musictheory.net, LLC
+    (c) 2013-2017 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
