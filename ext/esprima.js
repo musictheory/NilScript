@@ -6364,7 +6364,7 @@
 
             appendNameAngle();
 
-            while (match(',')) {
+            while (angles > 0 && match(',')) {
                 lex();
                 parts.push(',');
                 appendNameAngle();

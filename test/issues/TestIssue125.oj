@@ -1,0 +1,11 @@
+// This just needs to parse
+
+@type TestIssue125Type = {
+    a: String,
+    b: String,
+    c: Object<Object<String>>,
+    d: String,
+    e: Object<String>
+};
+
+true;
