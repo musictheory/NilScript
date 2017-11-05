@@ -209,7 +209,7 @@ build()
     {
         let name = node.id.name;
 
-        let type        = node.id.annotation;
+        let type        = node.id.annotation.value;
         let writable    = true;
         let getter      = name;
         let setter      = "set" + name.substr(0,1).toUpperCase() + name.substr(1, name.length) + ":";
@@ -322,16 +322,18 @@ build()
         let name = node.name;
         let kind = node.kind;
 
-        let parameterNames = [ ];
-        let parameterTypes = [ ];
-        let returnType = node.annotation;
+        let parameterNames    = [ ];
+        let parameterTypes    = [ ];
+        let parameterOptional = [ ];
+        let returnType = node.annotation ? node.annotation.value : null;
 
         _.each(node.params, param => {
             parameterNames.push(param.name);
-            parameterTypes.push(param.annotation);
+            parameterTypes.push(param.annotation ? param.annotation.value : null);
+            parameterOptional.push(param.annotation ? param.annotation.optional : null);
         });
 
-        let type = new Model.OJType(name, kind, parameterNames, parameterTypes, returnType);
+        let type = new Model.OJType(name, kind, parameterNames, parameterTypes, parameterOptional, returnType);
         model.addType(type);
 
         declaredTypes.push(name);

@@ -2690,9 +2690,10 @@
             return this;
         },
 
-        oj_finishTypeAnnotation: function (value) {
+        oj_finishTypeAnnotation: function (value, optional) {
             this.type = Syntax.OJTypeAnnotation;
             this.value = value;
+            this.optional = optional;
             this.finish();
             return this;
         },
@@ -5409,7 +5410,7 @@
             message = tmp.message;
         }
 
-        var annotation = match(":") ? oj_parseTypeAnnotation(true) : null;  //!oj: Allow annotations
+        var annotation = match(":") ? oj_parseTypeAnnotation({ allowVoid: true }) : null; //!oj: Allow annotations
 
         previousStrict = strict;
         body = parseFunctionSourceElements();
@@ -5468,7 +5469,7 @@
             message = tmp.message;
         }
 
-        var annotation = match(":") ? oj_parseTypeAnnotation(true) : null;  //!oj: Allow annotations
+        var annotation = match(":") ? oj_parseTypeAnnotation({ allowVoid: true }) : null;  //!oj: Allow annotations
 
         previousStrict = strict;
         body = parseFunctionSourceElements();
@@ -6230,7 +6231,9 @@
             expect(')');
         }
 
-        annotation = oj_parseType();
+        annotation = new Node();
+        annotation.oj_finishTypeAnnotation(oj_parseType(null), false);
+
         name = parseVariableIdentifier().name;
 
         id = new Node();
@@ -6396,10 +6399,10 @@
         return parts.join("");
     }
 
-    function oj_parseType(allowVoid) {
+    function oj_parseType(options) {
         var name;
 
-        if (allowVoid && matchKeyword("void")) {
+        if (options && options.allowVoid && matchKeyword("void")) {
             lex();
             name = "void";
         } else {
@@ -6415,7 +6418,7 @@
 
     function oj_parseParameterType(identifierOnly) {
         var node = new Node();
-        return node.oj_finishParameterType(oj_parseType(false));
+        return node.oj_finishParameterType(oj_parseType(null));
     }
 
     function oj_parseParameterTypeOrKeyword(keyword) {
@@ -6572,7 +6575,7 @@
     function oj_parseInstanceVariableDeclaration() {
         var parameterType = new Node(), ivars = [], node = new Node();
 
-        parameterType.oj_finishParameterType(oj_parseType(false));
+        parameterType.oj_finishParameterType(oj_parseType(null));
 
         ivars.push(parseVariableIdentifier());
 
@@ -7003,7 +7006,7 @@
     }
 
     function oj_parseTypeDefinition(node) {
-        var params = [ ], annotation = null, name, kind, param, paramName, paramType;
+        var params = [ ], annotation = null, name, kind, param, paramName;
 
         expectKeyword('@type');
 
@@ -7016,12 +7019,11 @@
             expect('{');
 
             while (!match('}')) {
-                paramName = parseVariableIdentifier().name;
-                expect(":");
-                paramType = oj_parseType();
+                paramName = parseObjectPropertyKey().name;
+                annotation = oj_parseTypeAnnotation({ allowOptional: true });
 
                 param = new Node();
-                param.oj_finishIdentifierWithAnnotation(paramName, paramType);
+                param.oj_finishIdentifierWithAnnotation(paramName, annotation);
                 params.push(param);
 
                 if (!match('}')) {
@@ -7037,10 +7039,12 @@
 
             while (!match(']')) {
                 paramName = "" + params.length;
-                paramType = oj_parseType();
+
+                annotation = new Node();
+                annotation.oj_finishTypeAnnotation(oj_parseType(null), false);
 
                 param = new Node();
-                param.oj_finishIdentifierWithAnnotation(paramName, paramType);
+                param.oj_finishIdentifierWithAnnotation(paramName, annotation);
                 params.push(param);
 
                 if (!match(']')) {
@@ -7057,12 +7061,11 @@
             expect('(')
 
             while (!match(')')) {
-                paramName = parseVariableIdentifier().name;
-                expect(':');
-                paramType = oj_parseType();
+                paramName  = parseVariableIdentifier().name;
+                annotation = oj_parseTypeAnnotation({ allowOptional: true });
 
                 param = new Node();
-                param.oj_finishIdentifierWithAnnotation(paramName, paramType);
+                param.oj_finishIdentifierWithAnnotation(paramName, annotation);
                 params.push(param);
 
                 if (!match(')')) {
@@ -7071,12 +7074,13 @@
             }
 
             expect(')');
-            expect(':');
-            annotation = oj_parseType(true);
+            annotation = oj_parseTypeAnnotation({ allowVoid: true });
 
         } else if (lookahead.type === Token.Identifier) {
             kind = 'alias';
-            annotation = oj_parseType();
+
+            annotation = new Node();
+            annotation.oj_finishTypeAnnotation(oj_parseType(null), false);
 
         } else {
             throwUnexpectedToken();
@@ -7087,10 +7091,18 @@
         return node.oj_finishTypeDefinition(name, kind, params, annotation);
     }
 
-    function oj_parseTypeAnnotation(allowVoid) {
-        var node = new Node();
-        expect(":");
-        return node.oj_finishTypeAnnotation(oj_parseType(allowVoid));
+    function oj_parseTypeAnnotation(options) {
+        var node = new Node(), optional = false;
+
+        if (options && options.allowOptional) {
+            if (match('?')) {
+                expect('?');
+                optional = true;
+            }
+        }
+
+        expect(':');
+        return node.oj_finishTypeAnnotation(oj_parseType(options), optional);
     }
 
     function oj_parseVariableIdentifierWithOptionalTypeAnnotation(kind) {
@@ -7116,8 +7128,8 @@
             tolerateUnexpectedToken(token);
         }
 
-        if (match(":")) {
-            return node.oj_finishIdentifierWithAnnotation(token.value, oj_parseTypeAnnotation(false));
+        if (match(':')) {
+            return node.oj_finishIdentifierWithAnnotation(token.value, oj_parseTypeAnnotation(null)); //!oj: Allow annotations
         } else {
             return node.finishIdentifier(token.value);
         }

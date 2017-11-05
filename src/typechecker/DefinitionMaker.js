@@ -203,7 +203,10 @@ _appendOJType(lines, ojType)
         let returnType = symbolTyper.toTypecheckerType(ojType.returnType);
 
         for (let i = 0; i < ojType.parameterTypes.length; i++) {
-            params.push(ojType.parameterNames[i] + ": " + symbolTyper.toTypecheckerType(ojType.parameterTypes[i]));
+            let optional = ojType.parameterOptional[i];
+            let name     = ojType.parameterNames[i];
+
+            params.push(name + (optional ? "?" : "") + ": " + symbolTyper.toTypecheckerType(ojType.parameterTypes[i]));
         }
 
         lines.push(`declare type ${name} = ( ${params.join(", ")} ) => ${returnType}`);
@@ -221,7 +224,10 @@ _appendOJType(lines, ojType)
         let params = [ ];
 
         for (let i = 0; i < ojType.parameterTypes.length; i++) {
-            params.push(ojType.parameterNames[i] + ": " + symbolTyper.toTypecheckerType(ojType.parameterTypes[i]));
+            let optional = ojType.parameterOptional[i];
+            let name     = ojType.parameterNames[i];
+
+            params.push(name + (optional ? "?" : "") + ": " + symbolTyper.toTypecheckerType(ojType.parameterTypes[i]));
         }
 
         lines.push(`interface ${name} { ${params.join(", ")} }`);
@@ -241,31 +247,6 @@ _appendOJEnum(lines, ojEnum)
     });
 
     lines.push("}"); 
-}
-
-
-_appendOJGlobal(lines, ojGlobal)
-{
-    let symbolTyper = this._symbolTyper;
-
-    let name        = symbolTyper.getSymbolForIdentifierName(ojGlobal.name);
-    let annotation  = _.clone(ojGlobal.annotation);
-
-    if (_.isArray(annotation)) {
-        let line = name;
-        let returnType = annotation.shift();
-
-        line += "(" + _.map(annotation, function(a, index) {
-            return "a" + index + ":" + symbolTyper.toTypecheckerType(a);
-        }).join(",") + ")";
-
-        line += " : " + symbolTyper.toTypecheckerType(returnType) + ";";
-
-        lines.push(line);
-
-    } else {
-        lines.push(name + " : " + symbolTyper.toTypecheckerType(annotation) + ";");
-    }
 }
 
 

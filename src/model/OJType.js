@@ -14,12 +14,13 @@ const _           = require("lodash");
 
 class OJType {
 
-constructor(name, kind, parameterNames, parameterTypes, returnType)
+constructor(name, kind, parameterNames, parameterTypes, parameterOptional, returnType)
 {
     this.name = name;
     this.kind = kind;
     this.parameterNames = parameterNames;
     this.parameterTypes = parameterTypes;
+    this.parameterOptional = parameterOptional;
     this.returnType = returnType;
 
     // Is this type in the current compilation unit?
@@ -29,22 +30,24 @@ constructor(name, kind, parameterNames, parameterTypes, returnType)
 
 loadState(state)
 {
-    this.name           = state.name;
-    this.kind           = state.kind;
-    this.parameterNames = state.parameterNames;
-    this.parameterTypes = state.parameterTypes;
-    this.returnType     = state.returnType;
+    this.name              = state.name;
+    this.kind              = state.kind;
+    this.parameterNames    = state.parameterNames;
+    this.parameterTypes    = state.parameterTypes;
+    this.parameterOptional = state.parameterOptional;
+    this.returnType        = state.returnType;
 }
 
 
 saveState()
 {
     return {
-        name:           this.name,
-        kind:           this.kind,
-        parameterNames: this.parameterNames,
-        parameterTypes: this.parameterTypes,
-        returnType:     this.returnType
+        name:              this.name,
+        kind:              this.kind,
+        parameterNames:    this.parameterNames,
+        parameterTypes:    this.parameterTypes,
+        parameterOptional: this.parameterOptional,
+        returnType:        this.returnType
     };
 }
 
@@ -58,31 +61,13 @@ OJType.KindObject    = "object";
 
 OJType.makePrimitive = function(name)
 {
-    return new OJType(name, OJType.KindPrimitive, null, null, null);
+    return new OJType(name, OJType.KindPrimitive, null, null, null, null);
 }
 
 
 OJType.makeAlias = function(name, original)
 {
-    return new OJType(name, OJType.KindAlias, null, null, original);
-}
-
-
-OJType.makeFunction = function(name, parameterNames, parameterTypes, returnType)
-{
-    return new OJType(name, OJType.KindFunction, parameterNames, parameterTypes, returnType);
-}
-
-
-OJType.makeObject = function(name, memberNames, memberTypes)
-{
-    return new OJType(name, OJType.KindObject, memberNames, memberTypes, null);
-}
-
-
-OJType.makeTuple = function(name, memberTypes)
-{
-    return new OJType(name, OJType.KindTuple, null, memberTypes, null);
+    return new OJType(name, OJType.KindAlias, null, null, null, original);
 }
 
 

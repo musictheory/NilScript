@@ -707,11 +707,11 @@ generate()
             let typesToCheck = [ ];
 
             _.each(node.params, param => {
-                typesToCheck.push( symbolTyper.toTypecheckerType(param.annotation) );
+                typesToCheck.push( symbolTyper.toTypecheckerType(param.annotation.value) );
             });
 
             if (node.annotation) {
-                typesToCheck.push( symbolTyper.toTypecheckerType(node.annotation) );
+                typesToCheck.push( symbolTyper.toTypecheckerType(node.annotation.value) );
             }
 
             // Lay down a cast operation with all needed types.  This will generate a warning due to an unknown type.  
