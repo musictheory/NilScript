@@ -415,7 +415,9 @@ build()
             let raw;
             let value;
 
-            if (declaration.init.type === Syntax.Literal) {
+            let initType = declaration.init ? declaration.init.type : null;
+
+            if (initType === Syntax.Literal) {
                 value = declaration.init.value;
                 raw   = declaration.init.raw;
 
@@ -424,7 +426,7 @@ build()
                 else if (raw == "NULL")  raw = "null";
                 else if (raw == "nil")   raw = "null";
 
-            } else if (declaration.init.type === Syntax.UnaryExpression && _.isNumber(declaration.init.argument.value)) {
+            } else if (initType === Syntax.UnaryExpression && _.isNumber(declaration.init.argument.value)) {
                 value = -declaration.init.argument.value;
                 raw   = JSON.stringify(value);
 
