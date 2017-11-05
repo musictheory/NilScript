@@ -1,0 +1,6 @@
+// This just needs to parse
+
+let issues = @cast(Array<Object>, [ { foo: bar } ] );
+let issues = @cast(Array<Object<String>>, [ { foo: "bar" } ] );
+
+true;

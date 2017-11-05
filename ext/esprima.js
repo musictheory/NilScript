@@ -6803,14 +6803,14 @@
         if (match('<')) {
             expect('<');
 
-            id = parseVariableIdentifier();
-
+            id = oj_parseType();
+            
             expect('>');
             expect('(');
 
         } else {
             expect('(');
-            id = parseVariableIdentifier();
+            id = oj_parseType();
             expect(',');
         }
 
