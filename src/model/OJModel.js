@@ -7,8 +7,8 @@
 "use strict";
 
 const _             = require("lodash");
-const OJError       = require("../errors").OJError;
-const Utils         = require("../utils");
+const OJError       = require("../Errors").OJError;
+const Utils         = require("../Utils");
 const OJClass       = require("./OJClass");
 const OJGlobal      = require("./OJGlobal");
 const OJProtocol    = require("./OJProtocol");

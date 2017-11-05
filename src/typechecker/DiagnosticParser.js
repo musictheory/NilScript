@@ -9,7 +9,7 @@
 
 const _         = require("lodash");
 const ts        = require("typescript");
-const OJWarning = require("../errors").OJWarning;
+const OJWarning = require("../Errors").OJWarning;
 
 const sBlacklistCodes  = [ 2417 ];
 

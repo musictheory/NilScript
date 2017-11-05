@@ -7,8 +7,8 @@
 
 "use strict";
 
-const Utils     = require("../utils");
-const OJWarning = require("../errors").OJWarning;
+const Utils     = require("../Utils");
+const OJWarning = require("../Errors").OJWarning;
 
 
 module.exports = class OJCompileCallbackFile {

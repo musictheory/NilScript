@@ -604,27 +604,11 @@ oj supports C-style enumerations via the `@enum` keyword and constants via the `
 someFunction(zero, one, two, three, four, TheConstant);
 ```
 
-By default, oj compiles the above to:
+The oj compiler inlines these values.  The above code becomes:
 
 ```
-var zero  = 0;
-var one   = 1;
-var two   = 2;
-var three = 3;
-var four  = 4;
-
-var TheConstant = "Hello World";
-
-someFunction(zero, one, two, three, four, TheConstant);
+someFunction(0, 1, 2, 3, 4, "Hello World");
 ```
-
-However, when the `--inline-enum` option is passed into the oj compiler, oj inlines enum values:
-
-    someFunction(0, 1, 2, 3, 4, TheConstant);
-
-The `--inline-const` option inlines `TheConstant` as well:
-    
-    someFunction(0, 1, 2, 3, 4, "Hello World");
 
 Note: Inlining causes the enum or const to be lifted to the global scope.  Inlining affects all occurrences of that identifier in all files for the current compilation.  Inlined enums/consts are persisted via `--output-state` and `--input-state`.
 
@@ -921,37 +905,39 @@ Below is a list of supported properties for `options` and `results`.  While othe
 
 Valid properties for the `options` object:
 
-Key                      | Type     | Description
------------------------- | -------- | ---
-files                    | Array    | Strings of paths to compile, or Objects of `file` type (see below)
-prepend                  | String   | Content to prepend, not compiled or typechecked
-append                   | String   | Content to append, not compiled or typechecked
-state                    | Private  | Input compiler state, corresponds to contents of `--input-state`
-output-language          | String   | If 'none', disable source code output
-include-map              | Boolean  | If true, include `map` key in results object
-include-state            | Boolean  | If true, include `state` key in results object
-source-map-file          | String   | Output source map file name
-source-map-root          | String   | Output source map root URL
-before-compile           | Function | Before-compile callback (see below)
-after-compile            | Function | After-compile callback (see below)
-inline-const             | Boolean  | inline @const identifiers
-inline-enum              | Boolean  | inline @enum identifiers
-squeeze                  | Boolean  | If true, enable squeezer
-squeeze-start-index      | Number   | Start index for squeezer
-squeeze-end-index        | Number   | End index for squeezer
-check-types              | Boolean  | Enable type checker
-defs                     | Array    | Additional typechecker definition files (same format as `files`)
-typescript-lib           | String   | Built-in type declarations (`tsc --lib`)
-no-implicit-any          | Boolean  | If true, disallow implicit any
-strict-functions         | Boolean  | If true, enforce TypeScript-style functions
-strict-object-literals   | Boolean  | If true, enforce TypeScript object literals
-warn-debugger            | Boolean  | warn about use of 'debugger' statement
-warn-empty-array-element | Boolean  | warn about empty array element
-warn-global-no-type      | Boolean  | warn about missing type annotations on @globals
-warn-this-in-methods     | Boolean  | warn about usage of 'this' in oj methods
-warn-unknown-ivars       | Boolean  | warn about unknown ivars
-warn-unknown-selectors   | Boolean  | warn about usage of unknown selectors
-warn-unused-ivars        | Boolean  | warn about unused ivars
+Key                       | Type     | Description
+------------------------- | -------- | ---
+files                     | Array    | Strings of paths to compile, or Objects of `file` type (see below)
+prepend                   | String   | Content to prepend, not compiled or typechecked
+append                    | String   | Content to append, not compiled or typechecked
+state                     | Private  | Input compiler state, corresponds to contents of `--input-state`
+output-language           | String   | If 'none', disable source code output
+include-map               | Boolean  | If true, include `map` key in results object
+include-state             | Boolean  | If true, include `state` key in results object
+source-map-file           | String   | Output source map file name
+source-map-root           | String   | Output source map root URL
+before-compile            | Function | Before-compile callback (see below)
+after-compile             | Function | After-compile callback (see below)
+squeeze                   | Boolean  | Enable squeezer
+squeeze-start-index       | Number   | Start index for squeezer
+squeeze-end-index         | Number   | End index for squeezer
+check-types               | Boolean  | Enable type checker
+defs                      | Array    | Additional typechecker definition files (same format as `files`)
+typescript-lib            | String   | Built-in type declarations (`tsc --lib`)
+no-implicit-any           | Boolean  | Disallow implicit any (`tsc --noImplicitAny`)
+no-implicit-returns       | Boolean  | Disallow implicit returns (`tsc --noImplicitReturns`)
+no-unreachable-code       | Boolean  | Disallow unreachable code (inverse of `tsc --allowUnreachableCode`)
+strict-functions          | Boolean  | Enforce TypeScript-style functions
+strict-object-literals    | Boolean  | Enforce TypeScript object literals
+warn-debugger             | Boolean  | Warn about use of 'debugger' statement
+warn-empty-array-element  | Boolean  | Warn about empty array element
+warn-global-no-type       | Boolean  | Warn about missing type annotations on @globals
+warn-this-in-methods      | Boolean  | Warn about usage of 'this' in oj methods
+warn-self-in-non-methods  | Boolean  | Warn about usage of 'self' in non-oj methods
+warn-unknown-ivars        | Boolean  | Warn about unknown ivars
+warn-unknown-selectors    | Boolean  | Warn about usage of unknown selectors
+warn-unknown-superclasses | Boolean  | Warn about usage of unknown selectors
+warn-unused-ivars         | Boolean  | Warn about unused ivars
 
 Valid properties for each `file` or `defs` object:
 
