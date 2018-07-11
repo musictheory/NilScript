@@ -1,7 +1,7 @@
 /*
     OJType.js
     Model class for an @type or internal alias
-    (c) 2017 musictheory.net, LLC
+    (c) 2017-2018 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 

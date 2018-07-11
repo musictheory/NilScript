@@ -1,6 +1,6 @@
 /*
     Modifier.js
-    (c) 2013-2017 musictheory.net, LLC
+    (c) 2013-2018 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 
     Based on Modifier from harmonizr (http://github.com/jdiamond/harmonizr)
