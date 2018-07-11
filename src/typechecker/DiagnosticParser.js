@@ -99,7 +99,7 @@ getWarnings(diagnostics, fileCallback)
         let sawClass    = false;
         let sawProtocol = false;
 
-        if (_.include(sBlacklistCodes, code)) {
+        if (_.includes(sBlacklistCodes, code)) {
             return null;
         }
 
