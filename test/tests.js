@@ -59,7 +59,7 @@ _parseLines()
 _checkResults(err, result)
 {
     function checkMaps(expectedMap, actualMap, noun) {
-        let lineNumbers = _.unique([].concat(
+        let lineNumbers = _.uniq([].concat(
             _.keys(expectedMap),
             _.keys(actualMap)
         )).sort();

@@ -5,20 +5,28 @@ var assert = require("assert");
 @implementation Issue58Class {
 }
 
-+ (BOOL) checkWithArgument:(BOOL)yn unused:(BOOL)yn2
++ (BOOL) checkWithArgument:(String)alpha argument:(String)beta
 {
-    assert.equal( @CLASS,    "Issue58Class"                              );
-    assert.equal( @SEL,      "checkWithArgument:unused:"                 );
-    assert.equal( @FUNCTION, "+[Issue58Class checkWithArgument:unused:]" );
+    if (!@CLASS.startsWith("$oj")) {
+        assert.equal( @CLASS,    "Issue58Class"                                );
+        assert.equal( @SEL,      "checkWithArgument:argument:"                 );
+        assert.equal( @FUNCTION, "+[Issue58Class checkWithArgument:argument:]" );
+    }
+
+    assert.deepEqual( @ARGS, [ alpha, beta ] );
 
     return YES;
 }
 
 - (BOOL) check
 {
-    assert.equal( @CLASS,    "Issue58Class"          );
-    assert.equal( @SEL,      "check"                 );
-    assert.equal( @FUNCTION, "-[Issue58Class check]" );
+    if (!@CLASS.startsWith("$oj")) {
+        assert.equal( @CLASS,    "Issue58Class"          );
+        assert.equal( @SEL,      "check"                 );
+        assert.equal( @FUNCTION, "-[Issue58Class check]" );
+    }
+
+    assert.deepEqual( @ARGS, [ ] );
 
     return YES;
 }
@@ -33,7 +41,7 @@ var assert = require("assert");
 function runTests()
 {
     var instance = [[Issue58Class alloc] init];
-    return [instance check] && [[Issue58Class class] checkWithArgument:NO unused:NO];
+    return [instance check] && [[Issue58Class class] checkWithArgument:"Alpha" argument:"Beta"];
 }
 
 runTests();

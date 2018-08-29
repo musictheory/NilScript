@@ -671,29 +671,44 @@ generate()
     {
         let name = node.name;
 
+        let className    = currentClass      ? currentClass.name              : null;
+        let selectorName = currentMethodNode ? currentMethodNode.selectorName : null;
+        
+        if (optionSqueeze) {
+            className    = className    && symbolTyper.getSymbolForClassName(className);
+            selectorName = selectorName && symbolTyper.getSymbolForSelectorName(selectorName);
+        }
+
         if (name === "@CLASS") {
             if (currentClass) {
-                modifier.select(node).replace('"' + currentClass.name + '"');
+                modifier.select(node).replace('"' + className + '"');
             } else {
                 Utils.throwError(OJError.ParseError, 'Cannot use @CLASS outside of a class implementation');
             }
 
         } else if (name === "@SEL") {
-            if (currentClass && currentMethodNode) {
-                modifier.select(node).replace('"' + currentMethodNode.selectorName + '"');
+            if (selectorName) {
+                modifier.select(node).replace('"' + selectorName + '"');
             } else {
                 Utils.throwError(OJError.ParseError, 'Cannot use @SEL outside of a method definition');
             }
 
         } else if (name === "@FUNCTION") {
-            if (currentClass && currentMethodNode) {
-                modifier.select(node).replace('"' +
-                    currentMethodNode.selectorType + "[" + 
-                    currentClass.name              + " " +
-                    currentMethodNode.selectorName + "]" +
-                '"');
+            if (className && selectorName && currentMethodNode) {
+                let selectorType = currentMethodNode.selectorType;
+                modifier.select(node).replace(`"${selectorType}[${className} ${selectorName}]"`);
             } else {
                 Utils.throwError(OJError.ParseError, 'Cannot use @SEL outside of a method definition');
+            }
+
+        } else if (name === "@ARGS") {
+            let currentMethod = getCurrentMethodInModel();
+            
+            if (currentMethod) {
+                let variableNames = currentMethod.variableNames || [ ];
+                modifier.select(node).replace("[" + variableNames.join(",") + "]");
+            } else {
+                Utils.throwError(OJError.ParseError, 'Cannot use @ARGS outside of a method definition');
             }
 
         } else {
