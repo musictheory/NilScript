@@ -1,7 +1,7 @@
 {
-    "name": "ojc",
-    "description": "compiler for the oj language",
-    "homepage": "http://github.com/musictheory/oj",
+    "name": "nilscript",
+    "description": "compiler for the NilScript language",
+    "homepage": "http://github.com/musictheory/NilScript",
     "main": "./lib/api.js",
     "bin": {
         "ojc": "./bin/ojc"
@@ -15,7 +15,7 @@
     }],
     "repository": {
         "type": "git",
-        "url": "http://github.com/musictheory/oj.git"
+        "url": "http://github.com/musictheory/NilScript.git"
     },
     "license": "MIT",
     "devDependencies": {
