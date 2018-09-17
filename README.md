@@ -10,7 +10,7 @@ Note: NilScript was previously known as oj. To comply with [Semantic Versioning]
 
 ### Installation
 
-    npm install ???
+    npm install nilscript
 
 ### Main Features
 
