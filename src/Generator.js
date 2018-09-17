@@ -151,7 +151,7 @@ generate()
             scope.node.type === Syntax.FunctionDeclaration     ||
             scope.node.type === Syntax.FunctionExpression      ||
             scope.node.type === Syntax.ArrowFunctionExpression ||
-            scope.node.type === Syntax.OJMethodDefinition
+            scope.node.type === Syntax.NSMethodDefinition
         );
     }
 
@@ -297,7 +297,7 @@ generate()
         }
     }
 
-    function handleOJMessageExpression(node)
+    function handleNSMessageExpression(node)
     {
         let receiver     = node.receiver.value;
         let methodName   = symbolTyper.getSymbolForSelectorName(node.selectorName);
@@ -481,7 +481,7 @@ generate()
         modifier.from(lastSelector).to(node).replace(")");
     }
 
-    function handleOJClassImplementation(node)
+    function handleNSClassImplementation(node)
     {
         let superName     = (node.superClass && node.superClass.name);
         let classSymbol   = symbolTyper.getSymbolForClassName(node.id.name);
@@ -494,11 +494,11 @@ generate()
             if (type !== Syntax.EmptyStatement        &&
                 type !== Syntax.FunctionDeclaration   &&
                 type !== Syntax.VariableDeclaration   &&
-                type !== Syntax.OJMethodDefinition    &&
-                type !== Syntax.OJPropertyDirective   &&
-                type !== Syntax.OJObserveDirective    &&
-                type !== Syntax.OJDynamicDirective    &&
-                type !== Syntax.OJSynthesizeDirective)
+                type !== Syntax.NSMethodDefinition    &&
+                type !== Syntax.NSPropertyDirective   &&
+                type !== Syntax.NSObserveDirective    &&
+                type !== Syntax.NSDynamicDirective    &&
+                type !== Syntax.NSSynthesizeDirective)
             {
                 Utils.throwError(NSError.ParseError, 'Unexpected implementation child.', child);
             }
@@ -578,7 +578,7 @@ generate()
         }
     }
 
-    function handleOJInstanceVariableDeclarations_typeCheckerOnly(node)
+    function handleNSInstanceVariableDeclarations_typeCheckerOnly(node)
     {
         if (!node.declarations.length) {
             modifier.select(node).remove();
@@ -667,7 +667,7 @@ generate()
         }
     }
 
-    function handleOJPredefinedMacro(node)
+    function handleNSPredefinedMacro(node)
     {
         let name = node.name;
 
@@ -715,11 +715,11 @@ generate()
             }
 
         } else {
-            Utils.throwError(NSError.DollarOJIsReserved, 'Unknown identifier: "' + name + '"');
+            Utils.throwError(NSError.DollarNSIsReserved, 'Unknown identifier: "' + name + '"');
         }
     }
 
-    function handleOJTypeDefinition(node)
+    function handleNSTypeDefinition(node)
     {
         if (language === LanguageTypechecker) {
             let typesToCheck = [ ];
@@ -748,12 +748,12 @@ generate()
         if (name[0] === "$") {
             if (name.indexOf("$oj") == 0) {
                 if (name[3] == "$" || name[3] == "_") {
-                    Utils.throwError(NSError.DollarOJIsReserved, "Identifiers may not start with \"$oj_\" or \"$oj$\"", node);
+                    Utils.throwError(NSError.DollarNSIsReserved, "Identifiers may not start with \"$oj_\" or \"$oj$\"", node);
                 }
             }
 
         } else if (name[0] === "@") {
-            handleOJPredefinedMacro(node);
+            handleNSPredefinedMacro(node);
             return;
         }
 
@@ -824,7 +824,7 @@ generate()
         }
     }
 
-    function handleOJPropertyDirective(node)
+    function handleNSPropertyDirective(node)
     {
         let name = node.id.name;
 
@@ -916,7 +916,7 @@ generate()
         }
     }
 
-    function handleOJSelectorDirective(node)
+    function handleNSSelectorDirective(node)
     {
         let name = symbolTyper.getSymbolForSelectorName(node.name);
 
@@ -927,7 +927,7 @@ generate()
         modifier.select(node).replace("{ " + name + ": 1 }");
     }
 
-    function handleOJEnumDeclaration(node)
+    function handleNSEnumDeclaration(node)
     {
         let length = node.declarations ? node.declarations.length : 0;
         let last   = node;
@@ -963,7 +963,7 @@ generate()
         }
     }
 
-    function handleOJConstDeclaration(node)
+    function handleNSConstDeclaration(node)
     {
         let length = node.declarations ? node.declarations.length : 0;
         let values = [ ];
@@ -977,7 +977,7 @@ generate()
         }
     }
 
-    function handleOJCastExpression(node)
+    function handleNSCastExpression(node)
     {
         let before = "(";
         let after  = ")";
@@ -991,7 +991,7 @@ generate()
         modifier.from(node.argument).to(node).replace(after);
     }
 
-    function handleOJAnyExpression(node)
+    function handleNSAnyExpression(node)
     {
         let before = (language == LanguageTypechecker) ? "(<any>(" : "(";
         let after  = (language == LanguageTypechecker) ? "))"      : ")";
@@ -1000,7 +1000,7 @@ generate()
         modifier.from(node.argument).to(node).replace(after);
     }
 
-    function handleOJTypeAnnotation(node, parent)
+    function handleNSTypeAnnotation(node, parent)
     {
         if (language === LanguageTypechecker) {
             let inValue  = node.value;
@@ -1015,7 +1015,7 @@ generate()
         }
     }
 
-    function handleOJEachStatement(node)
+    function handleNSEachStatement(node)
     {
         if (language === LanguageTypechecker) {
             let object = "";
@@ -1082,7 +1082,7 @@ generate()
         }
     }
 
-    function handleOJGlobalDeclaration(node)
+    function handleNSGlobalDeclaration(node)
     {
         let declaration = node.declaration;
         let declarators = node.declarators;
@@ -1237,9 +1237,9 @@ generate()
         for (let i = path.length - 1; i >= 0; i--) {
             let node = path[i];
 
-            if (node.type == Syntax.OJMethodDefinition ||
-                node.type == Syntax.OJClassImplementation ||
-                node.type == Syntax.OJMessageExpression)
+            if (node.type == Syntax.NSMethodDefinition ||
+                node.type == Syntax.NSClassImplementation ||
+                node.type == Syntax.NSMessageExpression)
             {
                 warnings.push(Utils.makeError(NSWarning.UseOfThisInMethod, "Use of 'this' keyword in oj method definition", thisNode));
 
@@ -1258,23 +1258,23 @@ generate()
 
         if (node.oj_skip) return Traverser.SkipNode;
 
-        if (type === Syntax.OJStructDefinition                   || 
-            type === Syntax.OJProtocolDefinition                 ||
-            type === Syntax.OJForwardDirective                   ||
-            type === Syntax.OJObserveDirective                   ||
-            type === Syntax.OJSqueezeDirective                   ||
-            type === Syntax.OJSynthesizeDirective                ||
-            type === Syntax.OJDynamicDirective                   ||
-            type === Syntax.OJEnumDeclaration                    ||
-            type === Syntax.OJConstDeclaration
+        if (type === Syntax.NSStructDefinition                   || 
+            type === Syntax.NSProtocolDefinition                 ||
+            type === Syntax.NSForwardDirective                   ||
+            type === Syntax.NSObserveDirective                   ||
+            type === Syntax.NSSqueezeDirective                   ||
+            type === Syntax.NSSynthesizeDirective                ||
+            type === Syntax.NSDynamicDirective                   ||
+            type === Syntax.NSEnumDeclaration                    ||
+            type === Syntax.NSConstDeclaration
         ) {
             modifier.select(node).remove();
             return Traverser.SkipNode;
 
-        } else if (type === Syntax.OJBridgedDeclaration) {
+        } else if (type === Syntax.NSBridgedDeclaration) {
             modifier.from(node).to(node.declaration).remove();
 
-        } else if (type === Syntax.OJClassImplementation) {
+        } else if (type === Syntax.NSClassImplementation) {
             currentClass = model.classes[node.id.name];
 
             _.each(currentClass.prepareWarnings, warning => {
@@ -1284,59 +1284,59 @@ generate()
             usedIvarMap = { };
             assignedIvarMap = { }
 
-            handleOJClassImplementation(node);
+            handleNSClassImplementation(node);
 
-        } else if (type === Syntax.OJInstanceVariableDeclarations) {
+        } else if (type === Syntax.NSInstanceVariableDeclarations) {
             if (language === LanguageTypechecker) {
-                handleOJInstanceVariableDeclarations_typeCheckerOnly(node);
+                handleNSInstanceVariableDeclarations_typeCheckerOnly(node);
             } else {
                 modifier.select(node).remove();
             }
 
             return Traverser.SkipNode;
 
-        } else if (type === Syntax.OJMethodDefinition) {
+        } else if (type === Syntax.NSMethodDefinition) {
             currentMethodNode = node;
             methodUsesSelfVar = false;
 
             handleMethodDefinition(node);
 
-        } else if (type === Syntax.OJMessageExpression) {
-            handleOJMessageExpression(node);
+        } else if (type === Syntax.NSMessageExpression) {
+            handleNSMessageExpression(node);
 
-        } else if (type === Syntax.OJPropertyDirective) {
-            handleOJPropertyDirective(node);
+        } else if (type === Syntax.NSPropertyDirective) {
+            handleNSPropertyDirective(node);
             return Traverser.SkipNode;
 
-        } else if (type === Syntax.OJSelectorDirective) {
-            handleOJSelectorDirective(node);
+        } else if (type === Syntax.NSSelectorDirective) {
+            handleNSSelectorDirective(node);
 
-        } else if (type === Syntax.OJEnumDeclaration) {
-            handleOJEnumDeclaration(node);
+        } else if (type === Syntax.NSEnumDeclaration) {
+            handleNSEnumDeclaration(node);
 
-        } else if (type === Syntax.OJConstDeclaration) {
-            handleOJConstDeclaration(node);
+        } else if (type === Syntax.NSConstDeclaration) {
+            handleNSConstDeclaration(node);
 
-        } else if (type === Syntax.OJCastExpression) {
-            handleOJCastExpression(node);
+        } else if (type === Syntax.NSCastExpression) {
+            handleNSCastExpression(node);
 
-        } else if (type === Syntax.OJAnyExpression) {
-            handleOJAnyExpression(node);
+        } else if (type === Syntax.NSAnyExpression) {
+            handleNSAnyExpression(node);
 
-        } else if (type === Syntax.OJTypeAnnotation) {
-            handleOJTypeAnnotation(node, parent);
+        } else if (type === Syntax.NSTypeAnnotation) {
+            handleNSTypeAnnotation(node, parent);
 
-        } else if (type === Syntax.OJEachStatement) {
-            handleOJEachStatement(node);
+        } else if (type === Syntax.NSEachStatement) {
+            handleNSEachStatement(node);
 
-        } else if (type === Syntax.OJGlobalDeclaration) {
-            handleOJGlobalDeclaration(node);
+        } else if (type === Syntax.NSGlobalDeclaration) {
+            handleNSGlobalDeclaration(node);
 
-        } else if (type === Syntax.OJPredefinedMacro) {
-            handleOJPredefinedMacro(node);
+        } else if (type === Syntax.NSPredefinedMacro) {
+            handleNSPredefinedMacro(node);
 
-        } else if (type === Syntax.OJTypeDefinition) {
-            handleOJTypeDefinition(node);
+        } else if (type === Syntax.NSTypeDefinition) {
+            handleNSTypeDefinition(node);
 
         } else if (type === Syntax.Literal) {
             handleLiteral(node);
@@ -1392,7 +1392,7 @@ generate()
     }, function(node, parent) {
         let type = node.type;
 
-        if (type === Syntax.OJClassImplementation && !node.category) {
+        if (type === Syntax.NSClassImplementation && !node.category) {
             if (optionWarnUnusedIvars) {
                 _.each(currentClass.getAllIvarNamesWithoutProperties(), ivarName => {
                     if (!usedIvarMap[ivarName]) {
@@ -1406,7 +1406,7 @@ generate()
 
             currentClass = null;
 
-        } else if (type === Syntax.OJMethodDefinition) {
+        } else if (type === Syntax.NSMethodDefinition) {
             finishScope(scope, methodUsesSelfVar);
             currentMethodNode = null;
 

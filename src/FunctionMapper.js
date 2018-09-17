@@ -61,12 +61,12 @@ map()
         }
     }
 
-    function handleOJClassImplementation(node)
+    function handleNSClassImplementation(node)
     {
         currentClassName = node.id.name;
     }
 
-    function handleOJMethodDefinition(node)
+    function handleNSMethodDefinition(node)
     {
         let selectorType = node.selectorType;
         let selectorName = node.selectorName;
@@ -97,11 +97,11 @@ map()
         let type = node.type;
 
         try {
-            if (type === Syntax.OJClassImplementation) {
-                handleOJClassImplementation(node);
+            if (type === Syntax.NSClassImplementation) {
+                handleNSClassImplementation(node);
 
-            } else if (type === Syntax.OJMethodDefinition) {
-                handleOJMethodDefinition(node);
+            } else if (type === Syntax.NSMethodDefinition) {
+                handleNSMethodDefinition(node);
 
             } else if (type === Syntax.FunctionDeclaration) {
                 handleFunctionDeclaration(node);
@@ -117,10 +117,10 @@ map()
     }, function(node, parent) {
         let type = node.type;
 
-        if (type === Syntax.OJClassImplementation) {
+        if (type === Syntax.NSClassImplementation) {
             currentClassName = null;
 
-        } else if (type === Syntax.OJMethodDefinition  ||
+        } else if (type === Syntax.NSMethodDefinition  ||
                    type === Syntax.FunctionDeclaration ||
                    type === Syntax.FunctionExpression  ||
                    type === Syntax.ArrowFunctionExpression)

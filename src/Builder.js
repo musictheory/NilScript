@@ -58,7 +58,7 @@ build()
         return null;
     }
 
-    function makeOJMethodNode(node)
+    function makeNSMethodNode(node)
     {
         let selectorName    = node.selectorName;
         let selectorType    = node.selectorType;
@@ -92,7 +92,7 @@ build()
     }
 
 
-    function handleOJClassImplementation(node)
+    function handleNSClassImplementation(node)
     {
         let className      = node.id.name;
         let superclassName = node.superClass && node.superClass.name;
@@ -138,7 +138,7 @@ build()
         declaredClasses.push(ojClass.name)
     }
 
-    function handleOJProtocolDefinition(node)
+    function handleNSProtocolDefinition(node)
     {
         let name = node.id.name;
         let parentProtocolNames  = [ ];
@@ -157,7 +157,7 @@ build()
         declaredProtocols.push(ojProtocol.name);
     }
 
-    function handleOJForwardDirective(node)
+    function handleNSForwardDirective(node)
     {
         let ids = node.ids;
         let kind = node.lind;
@@ -175,23 +175,23 @@ build()
         }
     }
  
-    function handleOJSqueezeDirective(node)
+    function handleNSSqueezeDirective(node)
     {
         node.ids.forEach(function(id) {
             model.getSymbolTyper().enrollForSqueezing(id.name);
         });
     }
 
-    function handleOJMethodDefinition(node)
+    function handleNSMethodDefinition(node)
     {
-        let method = makeOJMethodNode(node);
+        let method = makeNSMethodNode(node);
         currentClass.addMethod(method);
         currentMethod = method;
     }
 
-    function handleOJMethodDeclaration(node)
+    function handleNSMethodDeclaration(node)
     {
-        let method = makeOJMethodNode(node);
+        let method = makeNSMethodNode(node);
         currentProtocol.addMethod(method);
     }
 
@@ -205,7 +205,7 @@ build()
         }
     }
 
-    function handleOJPropertyDirective(node)
+    function handleNSPropertyDirective(node)
     {
         let name = node.id.name;
 
@@ -254,7 +254,7 @@ build()
         }
     }        
 
-    function handleOJObserveDirective(node)
+    function handleNSObserveDirective(node)
     {
         let hasSet    = false;
         let hasChange = false;
@@ -288,7 +288,7 @@ build()
         }
     }           
 
-    function handleOJSynthesizeDirective(node) {
+    function handleNSSynthesizeDirective(node) {
         let pairs = node.pairs;
 
         if (currentCategoryName) {
@@ -304,7 +304,7 @@ build()
         }        
     }
 
-    function handleOJDynamicDirective(node) {
+    function handleNSDynamicDirective(node) {
         let ids = node.ids;
 
         if (currentCategoryName) {
@@ -317,7 +317,7 @@ build()
         }
     }
 
-    function handleOJTypeDefinition(node)
+    function handleNSTypeDefinition(node)
     {
         let name = node.name;
         let kind = node.kind;
@@ -339,11 +339,11 @@ build()
         declaredTypes.push(name);
     }
 
-    function handleOJEnumDeclaration(node, parent)
+    function handleNSEnumDeclaration(node, parent)
     {
         let length  = node.declarations ? node.declarations.length : 0;
         let last    = node;
-        let bridged = (parent.type === Syntax.OJBridgedDeclaration);
+        let bridged = (parent.type === Syntax.NSBridgedDeclaration);
 
         // From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isInteger
         function isInteger(nVal) {
@@ -405,10 +405,10 @@ build()
         model.addEnum(e);
     }
 
-    function handleOJConstDeclaration(node, parent)
+    function handleNSConstDeclaration(node, parent)
     {
         let length  = node.declarations ? node.declarations.length : 0;
-        let bridged = (parent.type === Syntax.OJBridgedDeclaration);
+        let bridged = (parent.type === Syntax.NSBridgedDeclaration);
 
         for (let i = 0; i < length; i++) {
             let declaration = node.declarations[i];
@@ -439,7 +439,7 @@ build()
         }
     }
 
-    function handleOJGlobalDeclaration(inNode)
+    function handleNSGlobalDeclaration(inNode)
     {
         function addGlobalWithNode(node) {
             let name = node.id.name;
@@ -503,50 +503,50 @@ build()
         }
 
         try {
-            if (type === Syntax.OJClassImplementation) {
-                handleOJClassImplementation(node);
+            if (type === Syntax.NSClassImplementation) {
+                handleNSClassImplementation(node);
 
-            } else if (type === Syntax.OJProtocolDefinition) {
-                handleOJProtocolDefinition(node);
+            } else if (type === Syntax.NSProtocolDefinition) {
+                handleNSProtocolDefinition(node);
 
-            } else if (type === Syntax.OJForwardDirective) {
-                handleOJForwardDirective(node);
+            } else if (type === Syntax.NSForwardDirective) {
+                handleNSForwardDirective(node);
 
-            } else if (type === Syntax.OJSqueezeDirective) {
-                handleOJSqueezeDirective(node);
+            } else if (type === Syntax.NSSqueezeDirective) {
+                handleNSSqueezeDirective(node);
 
-            } else if (type === Syntax.OJInstanceVariableDeclaration) {
+            } else if (type === Syntax.NSInstanceVariableDeclaration) {
                 handleInstanceVariableDeclaration(node);
 
-            } else if (type === Syntax.OJPropertyDirective) {
-                handleOJPropertyDirective(node);
+            } else if (type === Syntax.NSPropertyDirective) {
+                handleNSPropertyDirective(node);
 
-            } else if (type === Syntax.OJObserveDirective) {
-                handleOJObserveDirective(node);
+            } else if (type === Syntax.NSObserveDirective) {
+                handleNSObserveDirective(node);
 
-            } else if (type === Syntax.OJSynthesizeDirective) {
-                handleOJSynthesizeDirective(node);
+            } else if (type === Syntax.NSSynthesizeDirective) {
+                handleNSSynthesizeDirective(node);
 
-            } else if (type === Syntax.OJDynamicDirective) {
-                handleOJDynamicDirective(node);
+            } else if (type === Syntax.NSDynamicDirective) {
+                handleNSDynamicDirective(node);
 
-            } else if (type === Syntax.OJTypeDefinition) {
-                handleOJTypeDefinition(node);
+            } else if (type === Syntax.NSTypeDefinition) {
+                handleNSTypeDefinition(node);
 
-            } else if (type === Syntax.OJMethodDefinition) {
-                handleOJMethodDefinition(node);
+            } else if (type === Syntax.NSMethodDefinition) {
+                handleNSMethodDefinition(node);
 
-            } else if (type === Syntax.OJMethodDeclaration) {
-                handleOJMethodDeclaration(node);
+            } else if (type === Syntax.NSMethodDeclaration) {
+                handleNSMethodDeclaration(node);
 
-            } else if (type === Syntax.OJEnumDeclaration) {
-                handleOJEnumDeclaration(node, parent);
+            } else if (type === Syntax.NSEnumDeclaration) {
+                handleNSEnumDeclaration(node, parent);
 
-            } else if (type === Syntax.OJConstDeclaration) {
-                handleOJConstDeclaration(node, parent);
+            } else if (type === Syntax.NSConstDeclaration) {
+                handleNSConstDeclaration(node, parent);
 
-            } else if (type === Syntax.OJGlobalDeclaration) {
-                handleOJGlobalDeclaration(node);
+            } else if (type === Syntax.NSGlobalDeclaration) {
+                handleNSGlobalDeclaration(node);
 
             } else if (type === Syntax.VariableDeclarator) {
                 handleVariableDeclarator(node);
@@ -554,10 +554,10 @@ build()
             } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression) {
                 handleFunctionDeclarationOrExpression(node);
 
-            } else if (type === Syntax.OJMessageExpression) {
+            } else if (type === Syntax.NSMessageExpression) {
                 usedSelectorMap[node.selectorName] = true;
 
-            } else if (type === Syntax.OJSelectorDirective) {
+            } else if (type === Syntax.NSSelectorDirective) {
                 usedSelectorMap[node.name] = true;
             }
 
@@ -579,15 +579,15 @@ build()
     }, function(node, parent) {
         let type = node.type;
 
-        if (type === Syntax.OJClassImplementation) {
+        if (type === Syntax.NSClassImplementation) {
             currentClass  = null;
             currentMethod = null;
             currentCategoryName = null;
 
-        } else if (type === Syntax.OJProtocolDefinition) {
+        } else if (type === Syntax.NSProtocolDefinition) {
             currentProtocol = null;
 
-        } else if (type === Syntax.OJMethodDefinition) {
+        } else if (type === Syntax.NSMethodDefinition) {
             currentMethod = null;
         }
     });

@@ -405,43 +405,43 @@ return /******/ (function(modules) { // webpackBootstrap
 	    WhileStatement: 'WhileStatement',
 	    WithStatement: 'WithStatement',
 	    YieldExpression: 'YieldExpression'
-	    //!oj: start changes
+	    //!ns: start changes
 	    ,
-	    OJMessageExpression: 'OJMessageExpression',
-	    OJMessageReceiver: 'OJMessageReceiver',
-	    OJMessageSelector: 'OJMessageSelector',
-	    OJMethodNameSegment: 'OJMethodNameSegment',
-	    OJClassImplementation: 'OJClassImplementation',
-	    OJMethodDefinition: 'OJMethodDefinition',
-	    OJMethodSelector: 'OJMethodSelector',
-	    OJSelector: 'OJSelector',
-	    OJParameterType: 'OJParameterType',
-	    OJInstanceVariableDeclarations: 'OJInstanceVariableDeclarations',
-	    OJInstanceVariableDeclaration: 'OJInstanceVariableDeclaration',
-	    OJPropertyDirective: 'OJPropertyDirective',
-	    OJPropertyAttribute: 'OJPropertyAttribute',
-	    OJSynthesizeDirective: 'OJSynthesizeDirective',
-	    OJForwardDirective: 'OJForwardDirective',
-	    OJSqueezeDirective: 'OJSqueezeDirective',
-	    OJSynthesizePair: 'OJSynthesizePair',
-	    OJDynamicDirective: 'OJDynamicDirective',
-	    OJSelectorDirective: 'OJSelectorDirective',
-	    OJConstDeclaration: 'OJConstDeclaration',
-	    OJEnumDeclaration: 'OJEnumDeclaration',
-	    OJStructDefinition: 'OJStructDefinition',
-	    OJProtocolDefinition: 'OJProtocolDefinition',
-	    OJProtocolList: 'OJProtocolList',
-	    OJMethodDeclaration: 'OJMethodDeclaration',
-	    OJAnyExpression: 'OJAnyExpression',
-	    OJCastExpression: 'OJCastExpression',
-	    OJTypeAnnotation: 'OJTypeAnnotation',
-	    OJEachStatement: 'OJEachStatement',
-	    OJGlobalDeclaration: 'OJGlobalDeclaration',
-	    OJBridgedDeclaration: 'OJBridgedDeclaration',
-	    OJTypeDefinition: 'OJTypeDefinition',
-	    OJObserveDirective: 'OJObserveDirective',
-	    OJObserveAttribute: 'OJObserveAttribute'
-	    //!oj: end changes
+	    NSMessageExpression: 'NSMessageExpression',
+	    NSMessageReceiver: 'NSMessageReceiver',
+	    NSMessageSelector: 'NSMessageSelector',
+	    NSMethodNameSegment: 'NSMethodNameSegment',
+	    NSClassImplementation: 'NSClassImplementation',
+	    NSMethodDefinition: 'NSMethodDefinition',
+	    NSMethodSelector: 'NSMethodSelector',
+	    NSSelector: 'NSSelector',
+	    NSParameterType: 'NSParameterType',
+	    NSInstanceVariableDeclarations: 'NSInstanceVariableDeclarations',
+	    NSInstanceVariableDeclaration: 'NSInstanceVariableDeclaration',
+	    NSPropertyDirective: 'NSPropertyDirective',
+	    NSPropertyAttribute: 'NSPropertyAttribute',
+	    NSSynthesizeDirective: 'NSSynthesizeDirective',
+	    NSForwardDirective: 'NSForwardDirective',
+	    NSSqueezeDirective: 'NSSqueezeDirective',
+	    NSSynthesizePair: 'NSSynthesizePair',
+	    NSDynamicDirective: 'NSDynamicDirective',
+	    NSSelectorDirective: 'NSSelectorDirective',
+	    NSConstDeclaration: 'NSConstDeclaration',
+	    NSEnumDeclaration: 'NSEnumDeclaration',
+	    NSStructDefinition: 'NSStructDefinition',
+	    NSProtocolDefinition: 'NSProtocolDefinition',
+	    NSProtocolList: 'NSProtocolList',
+	    NSMethodDeclaration: 'NSMethodDeclaration',
+	    NSAnyExpression: 'NSAnyExpression',
+	    NSCastExpression: 'NSCastExpression',
+	    NSTypeAnnotation: 'NSTypeAnnotation',
+	    NSEachStatement: 'NSEachStatement',
+	    NSGlobalDeclaration: 'NSGlobalDeclaration',
+	    NSBridgedDeclaration: 'NSBridgedDeclaration',
+	    NSTypeDefinition: 'NSTypeDefinition',
+	    NSObserveDirective: 'NSObserveDirective',
+	    NSObserveAttribute: 'NSObserveAttribute'
+	    //!ns: end changes
 	};
 
 
@@ -1494,7 +1494,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        this.params = params;
 	        this.body = body;
 	        this.generator = generator;
-	        this.annotation = annotation; //!oj: Add annotation
+	        this.annotation = annotation; //!ns: Add annotation
 	        this.expression = false;
 	        this.async = false;
 	    }
@@ -1508,7 +1508,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        this.params = params;
 	        this.body = body;
 	        this.generator = generator;
-	        this.annotation = annotation; //!oj: Add annotation
+	        this.annotation = annotation; //!ns: Add annotation
 	        this.expression = false;
 	        this.async = false;
 	    }
@@ -1519,7 +1519,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    function Identifier(name) {
 	        this.type = syntax_1.Syntax.Identifier;
 	        this.name = name;
-	        this.annotation = null; //!oj: optimization
+	        this.annotation = null; //!ns: optimization
 	    }
 	    return Identifier;
 	}());
@@ -1864,46 +1864,46 @@ return /******/ (function(modules) { // webpackBootstrap
 	    return YieldExpression;
 	}());
 	exports.YieldExpression = YieldExpression;
-	//!oj: begin changes
-	var OJMessageExpression = (function () {
-	    function OJMessageExpression(receiver, selectorName, messageSelectors) {
-	        this.type = syntax_1.Syntax.OJMessageExpression;
+	//!ns: begin changes
+	var NSMessageExpression = (function () {
+	    function NSMessageExpression(receiver, selectorName, messageSelectors) {
+	        this.type = syntax_1.Syntax.NSMessageExpression;
 	        this.receiver = receiver;
 	        this.selectorName = selectorName;
 	        this.messageSelectors = messageSelectors;
 	    }
-	    return OJMessageExpression;
+	    return NSMessageExpression;
 	}());
-	exports.OJMessageExpression = OJMessageExpression;
-	var OJMessageReceiver = (function () {
-	    function OJMessageReceiver(value) {
-	        this.type = syntax_1.Syntax.OJMessageReceiver;
+	exports.NSMessageExpression = NSMessageExpression;
+	var NSMessageReceiver = (function () {
+	    function NSMessageReceiver(value) {
+	        this.type = syntax_1.Syntax.NSMessageReceiver;
 	        this.value = value;
 	    }
-	    return OJMessageReceiver;
+	    return NSMessageReceiver;
 	}());
-	exports.OJMessageReceiver = OJMessageReceiver;
-	var OJMessageSelector = (function () {
-	    function OJMessageSelector(name, arg, args) {
-	        this.type = syntax_1.Syntax.OJMessageSelector;
+	exports.NSMessageReceiver = NSMessageReceiver;
+	var NSMessageSelector = (function () {
+	    function NSMessageSelector(name, arg, args) {
+	        this.type = syntax_1.Syntax.NSMessageSelector;
 	        this.name = name;
 	        this.argument = arg;
 	        this.arguments = args;
 	    }
-	    return OJMessageSelector;
+	    return NSMessageSelector;
 	}());
-	exports.OJMessageSelector = OJMessageSelector;
-	var OJMethodNameSegment = (function () {
-	    function OJMethodNameSegment(value) {
-	        this.type = syntax_1.Syntax.OJMethodNameSegment;
+	exports.NSMessageSelector = NSMessageSelector;
+	var NSMethodNameSegment = (function () {
+	    function NSMethodNameSegment(value) {
+	        this.type = syntax_1.Syntax.NSMethodNameSegment;
 	        this.value = value;
 	    }
-	    return OJMethodNameSegment;
+	    return NSMethodNameSegment;
 	}());
-	exports.OJMethodNameSegment = OJMethodNameSegment;
-	var OJClassImplementation = (function () {
-	    function OJClassImplementation(id, superClass, category, extension, protocolList, ivarDeclarations, body) {
-	        this.type = syntax_1.Syntax.OJClassImplementation;
+	exports.NSMethodNameSegment = NSMethodNameSegment;
+	var NSClassImplementation = (function () {
+	    function NSClassImplementation(id, superClass, category, extension, protocolList, ivarDeclarations, body) {
+	        this.type = syntax_1.Syntax.NSClassImplementation;
 	        this.id = id;
 	        this.body = body;
 	        this.superClass = superClass;
@@ -1912,271 +1912,271 @@ return /******/ (function(modules) { // webpackBootstrap
 	        this.protocolList = protocolList;
 	        this.ivarDeclarations = ivarDeclarations;
 	    }
-	    return OJClassImplementation;
+	    return NSClassImplementation;
 	}());
-	exports.OJClassImplementation = OJClassImplementation;
-	var OJMethodDefinition = (function () {
-	    function OJMethodDefinition(selectorType, selectorName, returnType, methodSelectors, body) {
-	        this.type = syntax_1.Syntax.OJMethodDefinition;
+	exports.NSClassImplementation = NSClassImplementation;
+	var NSMethodDefinition = (function () {
+	    function NSMethodDefinition(selectorType, selectorName, returnType, methodSelectors, body) {
+	        this.type = syntax_1.Syntax.NSMethodDefinition;
 	        this.selectorType = selectorType;
 	        this.selectorName = selectorName;
 	        this.returnType = returnType;
 	        this.methodSelectors = methodSelectors;
 	        this.body = body;
 	    }
-	    return OJMethodDefinition;
+	    return NSMethodDefinition;
 	}());
-	exports.OJMethodDefinition = OJMethodDefinition;
-	var OJMethodSelector = (function () {
-	    function OJMethodSelector(name, methodType, variableName) {
-	        this.type = syntax_1.Syntax.OJMethodSelector;
+	exports.NSMethodDefinition = NSMethodDefinition;
+	var NSMethodSelector = (function () {
+	    function NSMethodSelector(name, methodType, variableName) {
+	        this.type = syntax_1.Syntax.NSMethodSelector;
 	        this.name = name;
 	        this.methodType = methodType;
 	        this.variableName = variableName;
 	    }
-	    return OJMethodSelector;
+	    return NSMethodSelector;
 	}());
-	exports.OJMethodSelector = OJMethodSelector;
-	var OJSelector = (function () {
-	    function OJSelector(name) {
-	        this.type = syntax_1.Syntax.OJSelector;
+	exports.NSMethodSelector = NSMethodSelector;
+	var NSSelector = (function () {
+	    function NSSelector(name) {
+	        this.type = syntax_1.Syntax.NSSelector;
 	        this.selectorName = name;
 	    }
-	    return OJSelector;
+	    return NSSelector;
 	}());
-	exports.OJSelector = OJSelector;
-	var OJParameterType = (function () {
-	    function OJParameterType(value) {
-	        this.type = syntax_1.Syntax.OJParameterType;
+	exports.NSSelector = NSSelector;
+	var NSParameterType = (function () {
+	    function NSParameterType(value) {
+	        this.type = syntax_1.Syntax.NSParameterType;
 	        this.value = value;
 	    }
-	    return OJParameterType;
+	    return NSParameterType;
 	}());
-	exports.OJParameterType = OJParameterType;
-	var OJInstanceVariableDeclarations = (function () {
-	    function OJInstanceVariableDeclarations(declarations) {
-	        this.type = syntax_1.Syntax.OJInstanceVariableDeclarations;
+	exports.NSParameterType = NSParameterType;
+	var NSInstanceVariableDeclarations = (function () {
+	    function NSInstanceVariableDeclarations(declarations) {
+	        this.type = syntax_1.Syntax.NSInstanceVariableDeclarations;
 	        this.declarations = declarations;
 	    }
-	    return OJInstanceVariableDeclarations;
+	    return NSInstanceVariableDeclarations;
 	}());
-	exports.OJInstanceVariableDeclarations = OJInstanceVariableDeclarations;
-	var OJInstanceVariableDeclaration = (function () {
-	    function OJInstanceVariableDeclaration(parameterType, ivars) {
-	        this.type = syntax_1.Syntax.OJInstanceVariableDeclaration;
+	exports.NSInstanceVariableDeclarations = NSInstanceVariableDeclarations;
+	var NSInstanceVariableDeclaration = (function () {
+	    function NSInstanceVariableDeclaration(parameterType, ivars) {
+	        this.type = syntax_1.Syntax.NSInstanceVariableDeclaration;
 	        this.parameterType = parameterType;
 	        this.ivars = ivars;
 	    }
-	    return OJInstanceVariableDeclaration;
+	    return NSInstanceVariableDeclaration;
 	}());
-	exports.OJInstanceVariableDeclaration = OJInstanceVariableDeclaration;
-	var OJPropertyDirective = (function () {
-	    function OJPropertyDirective(id, attributes) {
-	        this.type = syntax_1.Syntax.OJPropertyDirective;
+	exports.NSInstanceVariableDeclaration = NSInstanceVariableDeclaration;
+	var NSPropertyDirective = (function () {
+	    function NSPropertyDirective(id, attributes) {
+	        this.type = syntax_1.Syntax.NSPropertyDirective;
 	        this.id = id;
 	        this.attributes = attributes;
 	    }
-	    return OJPropertyDirective;
+	    return NSPropertyDirective;
 	}());
-	exports.OJPropertyDirective = OJPropertyDirective;
-	var OJPropertyAttribute = (function () {
-	    function OJPropertyAttribute(name, selector) {
-	        this.type = syntax_1.Syntax.OJPropertyAttribute;
+	exports.NSPropertyDirective = NSPropertyDirective;
+	var NSPropertyAttribute = (function () {
+	    function NSPropertyAttribute(name, selector) {
+	        this.type = syntax_1.Syntax.NSPropertyAttribute;
 	        this.name = name;
 	        this.selector = selector;
 	    }
-	    return OJPropertyAttribute;
+	    return NSPropertyAttribute;
 	}());
-	exports.OJPropertyAttribute = OJPropertyAttribute;
-	var OJObserveDirective = (function () {
-	    function OJObserveDirective(ids, attributes) {
-	        this.type = syntax_1.Syntax.OJObserveDirective;
+	exports.NSPropertyAttribute = NSPropertyAttribute;
+	var NSObserveDirective = (function () {
+	    function NSObserveDirective(ids, attributes) {
+	        this.type = syntax_1.Syntax.NSObserveDirective;
 	        this.ids = ids;
 	        this.attributes = attributes;
 	    }
-	    return OJObserveDirective;
+	    return NSObserveDirective;
 	}());
-	exports.OJObserveDirective = OJObserveDirective;
-	var OJObserveAttribute = (function () {
-	    function OJObserveAttribute(name, selector) {
-	        this.type = syntax_1.Syntax.OJObserveAttribute;
+	exports.NSObserveDirective = NSObserveDirective;
+	var NSObserveAttribute = (function () {
+	    function NSObserveAttribute(name, selector) {
+	        this.type = syntax_1.Syntax.NSObserveAttribute;
 	        this.name = name;
 	        this.selector = selector;
 	    }
-	    return OJObserveAttribute;
+	    return NSObserveAttribute;
 	}());
-	exports.OJObserveAttribute = OJObserveAttribute;
-	var OJSynthesizeDirective = (function () {
-	    function OJSynthesizeDirective(pairs) {
-	        this.type = syntax_1.Syntax.OJSynthesizeDirective;
+	exports.NSObserveAttribute = NSObserveAttribute;
+	var NSSynthesizeDirective = (function () {
+	    function NSSynthesizeDirective(pairs) {
+	        this.type = syntax_1.Syntax.NSSynthesizeDirective;
 	        this.pairs = pairs;
 	    }
-	    return OJSynthesizeDirective;
+	    return NSSynthesizeDirective;
 	}());
-	exports.OJSynthesizeDirective = OJSynthesizeDirective;
-	var OJForwardDirective = (function () {
-	    function OJForwardDirective(kind, ids) {
-	        this.type = syntax_1.Syntax.OJForwardDirective;
+	exports.NSSynthesizeDirective = NSSynthesizeDirective;
+	var NSForwardDirective = (function () {
+	    function NSForwardDirective(kind, ids) {
+	        this.type = syntax_1.Syntax.NSForwardDirective;
 	        this.kind = kind;
 	        this.ids = ids;
 	    }
-	    return OJForwardDirective;
+	    return NSForwardDirective;
 	}());
-	exports.OJForwardDirective = OJForwardDirective;
-	var OJSqueezeDirective = (function () {
-	    function OJSqueezeDirective(ids) {
-	        this.type = syntax_1.Syntax.OJSqueezeDirective;
+	exports.NSForwardDirective = NSForwardDirective;
+	var NSSqueezeDirective = (function () {
+	    function NSSqueezeDirective(ids) {
+	        this.type = syntax_1.Syntax.NSSqueezeDirective;
 	        this.ids = ids;
 	    }
-	    return OJSqueezeDirective;
+	    return NSSqueezeDirective;
 	}());
-	exports.OJSqueezeDirective = OJSqueezeDirective;
-	var OJSynthesizePair = (function () {
-	    function OJSynthesizePair(id, backing) {
-	        this.type = syntax_1.Syntax.OJSynthesizePair;
+	exports.NSSqueezeDirective = NSSqueezeDirective;
+	var NSSynthesizePair = (function () {
+	    function NSSynthesizePair(id, backing) {
+	        this.type = syntax_1.Syntax.NSSynthesizePair;
 	        this.id = id;
 	        this.backing = backing;
 	    }
-	    return OJSynthesizePair;
+	    return NSSynthesizePair;
 	}());
-	exports.OJSynthesizePair = OJSynthesizePair;
-	var OJDynamicDirective = (function () {
-	    function OJDynamicDirective(ids) {
-	        this.type = syntax_1.Syntax.OJDynamicDirective;
+	exports.NSSynthesizePair = NSSynthesizePair;
+	var NSDynamicDirective = (function () {
+	    function NSDynamicDirective(ids) {
+	        this.type = syntax_1.Syntax.NSDynamicDirective;
 	        this.ids = ids;
 	    }
-	    return OJDynamicDirective;
+	    return NSDynamicDirective;
 	}());
-	exports.OJDynamicDirective = OJDynamicDirective;
-	var OJSelectorDirective = (function () {
-	    function OJSelectorDirective(name) {
-	        this.type = syntax_1.Syntax.OJSelectorDirective;
+	exports.NSDynamicDirective = NSDynamicDirective;
+	var NSSelectorDirective = (function () {
+	    function NSSelectorDirective(name) {
+	        this.type = syntax_1.Syntax.NSSelectorDirective;
 	        this.name = name;
 	    }
-	    return OJSelectorDirective;
+	    return NSSelectorDirective;
 	}());
-	exports.OJSelectorDirective = OJSelectorDirective;
-	var OJConstDeclaration = (function () {
-	    function OJConstDeclaration(declarations) {
-	        this.type = syntax_1.Syntax.OJConstDeclaration;
+	exports.NSSelectorDirective = NSSelectorDirective;
+	var NSConstDeclaration = (function () {
+	    function NSConstDeclaration(declarations) {
+	        this.type = syntax_1.Syntax.NSConstDeclaration;
 	        this.declarations = declarations;
 	    }
-	    return OJConstDeclaration;
+	    return NSConstDeclaration;
 	}());
-	exports.OJConstDeclaration = OJConstDeclaration;
-	var OJEnumDeclaration = (function () {
-	    function OJEnumDeclaration(id, declarations) {
-	        this.type = syntax_1.Syntax.OJEnumDeclaration;
+	exports.NSConstDeclaration = NSConstDeclaration;
+	var NSEnumDeclaration = (function () {
+	    function NSEnumDeclaration(id, declarations) {
+	        this.type = syntax_1.Syntax.NSEnumDeclaration;
 	        this.id = id;
 	        this.declarations = declarations;
 	    }
-	    return OJEnumDeclaration;
+	    return NSEnumDeclaration;
 	}());
-	exports.OJEnumDeclaration = OJEnumDeclaration;
-	var OJProtocolList = (function () {
-	    function OJProtocolList(protocols) {
-	        this.type = syntax_1.Syntax.OJProtocolList;
+	exports.NSEnumDeclaration = NSEnumDeclaration;
+	var NSProtocolList = (function () {
+	    function NSProtocolList(protocols) {
+	        this.type = syntax_1.Syntax.NSProtocolList;
 	        this.protocols = protocols;
 	    }
-	    return OJProtocolList;
+	    return NSProtocolList;
 	}());
-	exports.OJProtocolList = OJProtocolList;
-	var OJProtocolDefinition = (function () {
-	    function OJProtocolDefinition(id, protocolList, body) {
-	        this.type = syntax_1.Syntax.OJProtocolDefinition;
+	exports.NSProtocolList = NSProtocolList;
+	var NSProtocolDefinition = (function () {
+	    function NSProtocolDefinition(id, protocolList, body) {
+	        this.type = syntax_1.Syntax.NSProtocolDefinition;
 	        this.id = id;
 	        this.protocolList = protocolList;
 	        this.body = body;
 	    }
-	    return OJProtocolDefinition;
+	    return NSProtocolDefinition;
 	}());
-	exports.OJProtocolDefinition = OJProtocolDefinition;
-	var OJMethodDeclaration = (function () {
-	    function OJMethodDeclaration(selectorType, selectorName, returnType, methodSelectors) {
-	        this.type = syntax_1.Syntax.OJMethodDeclaration;
+	exports.NSProtocolDefinition = NSProtocolDefinition;
+	var NSMethodDeclaration = (function () {
+	    function NSMethodDeclaration(selectorType, selectorName, returnType, methodSelectors) {
+	        this.type = syntax_1.Syntax.NSMethodDeclaration;
 	        this.selectorType = selectorType;
 	        this.selectorName = selectorName;
 	        this.returnType = returnType;
 	        this.methodSelectors = methodSelectors;
 	        this.optional = false;
 	    }
-	    return OJMethodDeclaration;
+	    return NSMethodDeclaration;
 	}());
-	exports.OJMethodDeclaration = OJMethodDeclaration;
-	var OJCastExpression = (function () {
-	    function OJCastExpression(id, argument) {
-	        this.type = syntax_1.Syntax.OJCastExpression;
+	exports.NSMethodDeclaration = NSMethodDeclaration;
+	var NSCastExpression = (function () {
+	    function NSCastExpression(id, argument) {
+	        this.type = syntax_1.Syntax.NSCastExpression;
 	        this.id = id;
 	        this.argument = argument;
 	    }
-	    return OJCastExpression;
+	    return NSCastExpression;
 	}());
-	exports.OJCastExpression = OJCastExpression;
-	var OJAnyExpression = (function () {
-	    function OJAnyExpression(argument) {
-	        this.type = syntax_1.Syntax.OJAnyExpression;
+	exports.NSCastExpression = NSCastExpression;
+	var NSAnyExpression = (function () {
+	    function NSAnyExpression(argument) {
+	        this.type = syntax_1.Syntax.NSAnyExpression;
 	        this.argument = argument;
 	    }
-	    return OJAnyExpression;
+	    return NSAnyExpression;
 	}());
-	exports.OJAnyExpression = OJAnyExpression;
-	var OJTypeAnnotation = (function () {
-	    function OJTypeAnnotation(value, optional) {
-	        this.type = syntax_1.Syntax.OJTypeAnnotation;
+	exports.NSAnyExpression = NSAnyExpression;
+	var NSTypeAnnotation = (function () {
+	    function NSTypeAnnotation(value, optional) {
+	        this.type = syntax_1.Syntax.NSTypeAnnotation;
 	        this.value = value;
 	        this.optional = optional;
 	    }
-	    return OJTypeAnnotation;
+	    return NSTypeAnnotation;
 	}());
-	exports.OJTypeAnnotation = OJTypeAnnotation;
-	var OJTypeDefinition = (function () {
-	    function OJTypeDefinition(name, kind, params, annotation) {
-	        this.type = syntax_1.Syntax.OJTypeDefinition;
+	exports.NSTypeAnnotation = NSTypeAnnotation;
+	var NSTypeDefinition = (function () {
+	    function NSTypeDefinition(name, kind, params, annotation) {
+	        this.type = syntax_1.Syntax.NSTypeDefinition;
 	        this.name = name;
 	        this.kind = kind;
 	        this.params = params;
 	        this.annotation = annotation;
 	    }
-	    return OJTypeDefinition;
+	    return NSTypeDefinition;
 	}());
-	exports.OJTypeDefinition = OJTypeDefinition;
-	var OJEachStatement = (function () {
-	    function OJEachStatement(left, right, body) {
-	        this.type = syntax_1.Syntax.OJEachStatement;
+	exports.NSTypeDefinition = NSTypeDefinition;
+	var NSEachStatement = (function () {
+	    function NSEachStatement(left, right, body) {
+	        this.type = syntax_1.Syntax.NSEachStatement;
 	        this.left = left;
 	        this.right = right;
 	        this.body = body;
 	    }
-	    return OJEachStatement;
+	    return NSEachStatement;
 	}());
-	exports.OJEachStatement = OJEachStatement;
-	var OJGlobalDeclaration = (function () {
-	    function OJGlobalDeclaration(declaration, declarators) {
-	        this.type = syntax_1.Syntax.OJGlobalDeclaration;
+	exports.NSEachStatement = NSEachStatement;
+	var NSGlobalDeclaration = (function () {
+	    function NSGlobalDeclaration(declaration, declarators) {
+	        this.type = syntax_1.Syntax.NSGlobalDeclaration;
 	        this.declaration = declaration;
 	        this.declarators = declarators;
 	    }
-	    return OJGlobalDeclaration;
+	    return NSGlobalDeclaration;
 	}());
-	exports.OJGlobalDeclaration = OJGlobalDeclaration;
-	var OJBridgedDeclaration = (function () {
-	    function OJBridgedDeclaration(declaration) {
-	        this.type = syntax_1.Syntax.OJBridgedDeclaration;
+	exports.NSGlobalDeclaration = NSGlobalDeclaration;
+	var NSBridgedDeclaration = (function () {
+	    function NSBridgedDeclaration(declaration) {
+	        this.type = syntax_1.Syntax.NSBridgedDeclaration;
 	        this.declaration = declaration;
 	    }
-	    return OJBridgedDeclaration;
+	    return NSBridgedDeclaration;
 	}());
-	exports.OJBridgedDeclaration = OJBridgedDeclaration;
-	var OJIdentifierWithAnnotation = (function () {
-	    function OJIdentifierWithAnnotation(name, annotation) {
+	exports.NSBridgedDeclaration = NSBridgedDeclaration;
+	var NSIdentifierWithAnnotation = (function () {
+	    function NSIdentifierWithAnnotation(name, annotation) {
 	        this.type = syntax_1.Syntax.Identifier;
 	        this.name = name;
 	        this.annotation = annotation;
 	    }
-	    return OJIdentifierWithAnnotation;
+	    return NSIdentifierWithAnnotation;
 	}());
-	exports.OJIdentifierWithAnnotation = OJIdentifierWithAnnotation;
-	//!oj: end changes
+	exports.NSIdentifierWithAnnotation = NSIdentifierWithAnnotation;
+	//!ns: end changes
 
 
 /***/ },
@@ -2263,7 +2263,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	            inSwitch: false,
 	            labelSet: {},
 	            strict: false,
-	            oj_inImplementation: false //!oj: Add oj_inImplementation
+	            ns_inImplementation: false //!ns: Add ns_inImplementation
 	        };
 	        this.tokens = [];
 	        this.startMarker = {
@@ -2692,7 +2692,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                this.context.isBindingElement = false;
 	                token = this.nextToken();
 	                raw = this.getTokenRaw(token);
-	                expr = this.finalize(node, new Node.Literal(token.value === 'true' || token.value === 'YES', raw)); //!oj: Adding YES
+	                expr = this.finalize(node, new Node.Literal(token.value === 'true' || token.value === 'YES', raw)); //!ns: Adding YES
 	                break;
 	            case 5 /* NullLiteral */:
 	                this.context.isAssignmentTarget = false;
@@ -2711,7 +2711,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                        expr = this.inheritCoverGrammar(this.parseGroupExpression);
 	                        break;
 	                    case '[':
-	                        expr = this.inheritCoverGrammar(this.oj_parseArrayInitializerOrMessageExpression); //!oj: Allow message expressions
+	                        expr = this.inheritCoverGrammar(this.ns_parseArrayInitializerOrMessageExpression); //!ns: Allow message expressions
 	                        break;
 	                    case '{':
 	                        expr = this.inheritCoverGrammar(this.parseObjectInitializer);
@@ -2745,11 +2745,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	                    else if (this.matchKeyword('this')) {
 	                        this.nextToken();
 	                        expr = this.finalize(node, new Node.ThisExpression());
-	                        //!oj: start changes
+	                        //!ns: start changes
 	                    }
 	                    else if (this.matchKeyword('@selector')) {
-	                        expr = this.oj_parseSelectorDirective();
-	                        //!oj: end changes
+	                        expr = this.ns_parseSelectorDirective();
+	                        //!ns: end changes
 	                    }
 	                    else if (this.matchKeyword('class')) {
 	                        expr = this.parseClassExpression();
@@ -2828,7 +2828,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        var params = this.parseFormalParameters();
 	        var method = this.parsePropertyMethod(params);
 	        this.context.allowYield = previousAllowYield;
-	        return this.finalize(node, new Node.FunctionExpression(null, params.params, method, isGenerator, null)); //!oj: null for annotation
+	        return this.finalize(node, new Node.FunctionExpression(null, params.params, method, isGenerator, null)); //!ns: null for annotation
 	    };
 	    Parser.prototype.parsePropertyMethodAsyncFunction = function () {
 	        var node = this.createNode();
@@ -3434,14 +3434,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	            }
 	            this.context.isAssignmentTarget = false;
 	            this.context.isBindingElement = false;
-	            //!oj: start changes
+	            //!ns: start changes
 	        }
 	        else if (this.matchKeyword('@cast')) {
-	            expr = this.oj_parseCastExpression();
+	            expr = this.ns_parseCastExpression();
 	        }
 	        else if (this.matchKeyword('@any')) {
-	            expr = this.oj_parseAnyExpression();
-	            //!oj: end changes
+	            expr = this.ns_parseAnyExpression();
+	            //!ns: end changes
 	        }
 	        else if (this.context.await && this.matchContextualKeyword('await')) {
 	            expr = this.parseAwaitExpression();
@@ -3786,11 +3786,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	                case 'function':
 	                    statement = this.parseFunctionDeclaration();
 	                    break;
-	                //!oj: start changes
+	                //!ns: start changes
 	                case '@global':
-	                    statement = this.oj_parseGlobalDeclaration();
+	                    statement = this.ns_parseGlobalDeclaration();
 	                    break;
-	                //!oj: end changes
+	                //!ns: end changes
 	                case 'class':
 	                    statement = this.parseClassDeclaration();
 	                    break;
@@ -3981,7 +3981,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                this.tolerateUnexpectedToken(this.lookahead, messages_1.Messages.LetInLexicalBinding);
 	            }
 	            params.push(this.lookahead);
-	            pattern = this.oj_parseVariableIdentifierWithOptionalTypeAnnotation(kind); //!oj: Allow type annotation
+	            pattern = this.ns_parseVariableIdentifierWithOptionalTypeAnnotation(kind); //!ns: Allow type annotation
 	        }
 	        return pattern;
 	    };
@@ -4588,39 +4588,39 @@ return /******/ (function(modules) { // webpackBootstrap
 	                    case 'with':
 	                        statement = this.parseWithStatement();
 	                        break;
-	                    //!oj: Start changes
+	                    //!ns: Start changes
 	                    case '@class':
 	                    case '@implementation':
-	                        statement = this.oj_parseClassImplementationDefinition();
+	                        statement = this.ns_parseClassImplementationDefinition();
 	                        break;
 	                    case '@protocol':
-	                        statement = this.oj_parseProtocolDefinition();
+	                        statement = this.ns_parseProtocolDefinition();
 	                        break;
 	                    case '@forward':
-	                        statement = this.oj_parseForwardDirective();
+	                        statement = this.ns_parseForwardDirective();
 	                        break;
 	                    case '@squeeze':
-	                        statement = this.oj_parseSqueezeDirective();
+	                        statement = this.ns_parseSqueezeDirective();
 	                        break;
 	                    case '@bridged':
-	                        statement = this.oj_parseBridgedDeclaration();
+	                        statement = this.ns_parseBridgedDeclaration();
 	                        break;
 	                    case '@const':
-	                        statement = this.oj_parseConstDeclaration();
+	                        statement = this.ns_parseConstDeclaration();
 	                        break;
 	                    case '@enum':
-	                        statement = this.oj_parseEnumStatement();
+	                        statement = this.ns_parseEnumStatement();
 	                        break;
 	                    case '@each':
-	                        statement = this.oj_parseEachStatement();
+	                        statement = this.ns_parseEachStatement();
 	                        break;
 	                    case '@global':
-	                        statement = this.oj_parseGlobalDeclaration();
+	                        statement = this.ns_parseGlobalDeclaration();
 	                        break;
 	                    case '@type':
-	                        statement = this.oj_parseTypeDefinition();
+	                        statement = this.ns_parseTypeDefinition();
 	                        break;
-	                    //!oj: End changes
+	                    //!ns: End changes
 	                    default:
 	                        statement = this.parseExpressionStatement();
 	                        break;
@@ -4797,7 +4797,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        if (formalParameters.message) {
 	            message = formalParameters.message;
 	        }
-	        var annotation = this.match(':') ? this.oj_parseTypeAnnotation({ allowVoid: true }) : null; //!oj: Allow annotations
+	        var annotation = this.match(':') ? this.ns_parseTypeAnnotation({ allowVoid: true }) : null; //!ns: Allow annotations
 	        var previousStrict = this.context.strict;
 	        var previousAllowStrictDirective = this.context.allowStrictDirective;
 	        this.context.allowStrictDirective = formalParameters.simple;
@@ -4813,7 +4813,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        this.context.await = previousAllowAwait;
 	        this.context.allowYield = previousAllowYield;
 	        return isAsync ? this.finalize(node, new Node.AsyncFunctionDeclaration(id, params, body)) :
-	            this.finalize(node, new Node.FunctionDeclaration(id, params, body, isGenerator, annotation)); //!oj: Allow annotations
+	            this.finalize(node, new Node.FunctionDeclaration(id, params, body, isGenerator, annotation)); //!ns: Allow annotations
 	    };
 	    Parser.prototype.parseFunctionExpression = function () {
 	        var node = this.createNode();
@@ -4859,7 +4859,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        if (formalParameters.message) {
 	            message = formalParameters.message;
 	        }
-	        var annotation = this.match(':') ? this.oj_parseTypeAnnotation({ allowVoid: true }) : null; //!oj: Allow annotations
+	        var annotation = this.match(':') ? this.ns_parseTypeAnnotation({ allowVoid: true }) : null; //!ns: Allow annotations
 	        var previousStrict = this.context.strict;
 	        var previousAllowStrictDirective = this.context.allowStrictDirective;
 	        this.context.allowStrictDirective = formalParameters.simple;
@@ -4875,7 +4875,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        this.context.await = previousAllowAwait;
 	        this.context.allowYield = previousAllowYield;
 	        return isAsync ? this.finalize(node, new Node.AsyncFunctionExpression(id, params, body)) :
-	            this.finalize(node, new Node.FunctionExpression(id, params, body, isGenerator, annotation)); //!oj: Allow annotations
+	            this.finalize(node, new Node.FunctionExpression(id, params, body, isGenerator, annotation)); //!ns: Allow annotations
 	    };
 	    // https://tc39.github.io/ecma262/#sec-directive-prologues-and-the-use-strict-directive
 	    Parser.prototype.parseDirective = function () {
@@ -4945,7 +4945,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	        var method = this.parsePropertyMethod(formalParameters);
 	        this.context.allowYield = previousAllowYield;
-	        return this.finalize(node, new Node.FunctionExpression(null, formalParameters.params, method, isGenerator, null)); //!oj: null for annotation
+	        return this.finalize(node, new Node.FunctionExpression(null, formalParameters.params, method, isGenerator, null)); //!ns: null for annotation
 	    };
 	    Parser.prototype.parseSetterMethod = function () {
 	        var node = this.createNode();
@@ -4961,7 +4961,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	        var method = this.parsePropertyMethod(formalParameters);
 	        this.context.allowYield = previousAllowYield;
-	        return this.finalize(node, new Node.FunctionExpression(null, formalParameters.params, method, isGenerator, null)); //!oj: null for annotation
+	        return this.finalize(node, new Node.FunctionExpression(null, formalParameters.params, method, isGenerator, null)); //!ns: null for annotation
 	    };
 	    Parser.prototype.parseGeneratorMethod = function () {
 	        var node = this.createNode();
@@ -4972,7 +4972,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        this.context.allowYield = false;
 	        var method = this.parsePropertyMethod(params);
 	        this.context.allowYield = previousAllowYield;
-	        return this.finalize(node, new Node.FunctionExpression(null, params.params, method, isGenerator, null)); //!oj: null for annotation
+	        return this.finalize(node, new Node.FunctionExpression(null, params.params, method, isGenerator, null)); //!ns: null for annotation
 	    };
 	    // https://tc39.github.io/ecma262/#sec-generator-function-definitions
 	    Parser.prototype.isStartOfExpression = function () {
@@ -5423,13 +5423,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	        return exportDeclaration;
 	    };
-	    //!oj: start changes
-	    // OJ additions, based on Objective-C 2.0 Grammar for ANTLR
+	    //!ns: start changes
+	    // NilScript additions, based on Objective-C 2.0 Grammar for ANTLR
 	    // http://www.antlr.org/grammar/1212699960054/ObjectiveC2ansi.g
-	    Parser.prototype.oj_init = function () {
-	        // exports.version += "-oj";
+	    Parser.prototype.ns_init = function () {
+	        // exports.version += "-nilscript";
 	    };
-	    Parser.prototype.oj_parseMethodNameSegment = function () {
+	    Parser.prototype.ns_parseMethodNameSegment = function () {
 	        var node = this.createNode();
 	        var token, value, keyword;
 	        token = this.nextToken();
@@ -5449,9 +5449,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	        else {
 	            this.throwUnexpectedToken(token);
 	        }
-	        return this.finalize(node, new Node.OJMethodNameSegment(value));
+	        return this.finalize(node, new Node.NSMethodNameSegment(value));
 	    };
-	    Parser.prototype.oj_parseSelector = function (allowComma) {
+	    Parser.prototype.ns_parseSelector = function (allowComma) {
 	        var node = this.createNode();
 	        var name = "";
 	        while (!this.match(')') && (!allowComma || !this.match(','))) {
@@ -5462,15 +5462,15 @@ return /******/ (function(modules) { // webpackBootstrap
 	                this.expect(':');
 	            }
 	        }
-	        return this.finalize(node, new Node.OJSelector(name));
+	        return this.finalize(node, new Node.NSSelector(name));
 	    };
-	    Parser.prototype.oj_parseSelectorDirective = function () {
+	    Parser.prototype.ns_parseSelectorDirective = function () {
 	        var node = this.createNode();
 	        var name = "";
 	        this.expectKeyword("@selector");
 	        this.expect("(");
 	        while (!this.match(')')) {
-	            var id = this.oj_parseMethodNameSegment();
+	            var id = this.ns_parseMethodNameSegment();
 	            name += id.value;
 	            if (this.match(':')) {
 	                name += ":";
@@ -5478,9 +5478,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	            }
 	        }
 	        this.expect(")");
-	        return this.finalize(node, new Node.OJSelectorDirective(name));
+	        return this.finalize(node, new Node.NSSelectorDirective(name));
 	    };
-	    Parser.prototype.oj_parsePropertyAttribute = function () {
+	    Parser.prototype.ns_parsePropertyAttribute = function () {
 	        var node = this.createNode();
 	        var startToken = this.lookahead;
 	        var name = this.parseVariableIdentifier().name;
@@ -5506,33 +5506,33 @@ return /******/ (function(modules) { // webpackBootstrap
 	        ];
 	        if (name == 'getter' || name == 'setter') {
 	            this.expect('=');
-	            selector = this.oj_parseSelector(true);
+	            selector = this.ns_parseSelector(true);
 	        }
 	        else if (allowedNames.indexOf(name) < 0) {
 	            this.throwUnexpectedToken(startToken);
 	        }
-	        return this.finalize(node, new Node.OJPropertyAttribute(name, selector));
+	        return this.finalize(node, new Node.NSPropertyAttribute(name, selector));
 	    };
-	    Parser.prototype.oj_parsePropertyDirective = function () {
+	    Parser.prototype.ns_parsePropertyDirective = function () {
 	        var node = this.createNode();
 	        var attributes = [];
 	        this.expectKeyword('@property');
 	        if (this.match('(')) {
 	            this.expect('(');
-	            attributes.push(this.oj_parsePropertyAttribute());
+	            attributes.push(this.ns_parsePropertyAttribute());
 	            while (this.match(',')) {
 	                this.expect(',');
-	                attributes.push(this.oj_parsePropertyAttribute());
+	                attributes.push(this.ns_parsePropertyAttribute());
 	            }
 	            this.expect(')');
 	        }
-	        var annotation = new Node.OJTypeAnnotation(this.oj_parseType(null), false);
+	        var annotation = new Node.NSTypeAnnotation(this.ns_parseType(null), false);
 	        var name = this.parseVariableIdentifier().name;
-	        var id = new Node.OJIdentifierWithAnnotation(name, annotation);
+	        var id = new Node.NSIdentifierWithAnnotation(name, annotation);
 	        this.consumeSemicolon();
-	        return this.finalize(node, new Node.OJPropertyDirective(id, attributes));
+	        return this.finalize(node, new Node.NSPropertyDirective(id, attributes));
 	    };
-	    Parser.prototype.oj_parseObserveAttribute = function () {
+	    Parser.prototype.ns_parseObserveAttribute = function () {
 	        var node = this.createNode();
 	        var startToken = this.lookahead;
 	        var name = this.parseVariableIdentifier().name;
@@ -5540,23 +5540,23 @@ return /******/ (function(modules) { // webpackBootstrap
 	        var allowedNames = ['change', 'set'];
 	        if (name == 'before' || name == 'after') {
 	            this.expect('=');
-	            selector = this.oj_parseSelector(true);
+	            selector = this.ns_parseSelector(true);
 	        }
 	        else if (allowedNames.indexOf(name) < 0) {
 	            this.throwUnexpectedToken(startToken);
 	        }
-	        return this.finalize(node, new Node.OJObserveAttribute(name, selector));
+	        return this.finalize(node, new Node.NSObserveAttribute(name, selector));
 	    };
-	    Parser.prototype.oj_parseObserveDirective = function () {
+	    Parser.prototype.ns_parseObserveDirective = function () {
 	        var node = this.createNode();
 	        var attributes = [];
 	        var ids = [];
 	        this.expectKeyword('@observe');
 	        this.expect('(');
-	        attributes.push(this.oj_parseObserveAttribute());
+	        attributes.push(this.ns_parseObserveAttribute());
 	        while (this.match(',')) {
 	            this.expect(',');
-	            attributes.push(this.oj_parseObserveAttribute());
+	            attributes.push(this.ns_parseObserveAttribute());
 	        }
 	        this.expect(')');
 	        ids.push(this.parseVariableIdentifier());
@@ -5565,9 +5565,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	            ids.push(this.parseVariableIdentifier());
 	        }
 	        this.consumeSemicolon();
-	        return this.finalize(node, new Node.OJObserveDirective(ids, attributes));
+	        return this.finalize(node, new Node.NSObserveDirective(ids, attributes));
 	    };
-	    Parser.prototype.oj_parseSynthesizePair = function () {
+	    Parser.prototype.ns_parseSynthesizePair = function () {
 	        var node = this.createNode();
 	        var id = this.parseVariableIdentifier();
 	        var backing = null;
@@ -5575,21 +5575,21 @@ return /******/ (function(modules) { // webpackBootstrap
 	            this.expect('=');
 	            backing = this.parseVariableIdentifier();
 	        }
-	        return this.finalize(node, new Node.OJSynthesizePair(id, backing));
+	        return this.finalize(node, new Node.NSSynthesizePair(id, backing));
 	    };
-	    Parser.prototype.oj_parseSynthesizeDirective = function () {
+	    Parser.prototype.ns_parseSynthesizeDirective = function () {
 	        var node = this.createNode();
 	        var pairs = [];
 	        this.expectKeyword('@synthesize');
-	        pairs.push(this.oj_parseSynthesizePair());
+	        pairs.push(this.ns_parseSynthesizePair());
 	        while (this.match(',')) {
 	            this.expect(',');
-	            pairs.push(this.oj_parseSynthesizePair());
+	            pairs.push(this.ns_parseSynthesizePair());
 	        }
 	        this.consumeSemicolon();
-	        return this.finalize(node, new Node.OJSynthesizeDirective(pairs));
+	        return this.finalize(node, new Node.NSSynthesizeDirective(pairs));
 	    };
-	    Parser.prototype.oj_parseDynamicDirective = function () {
+	    Parser.prototype.ns_parseDynamicDirective = function () {
 	        var node = this.createNode();
 	        var ids = [];
 	        this.expectKeyword('@dynamic');
@@ -5599,10 +5599,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	            ids.push(this.parseVariableIdentifier());
 	        }
 	        this.consumeSemicolon();
-	        return this.finalize(node, new Node.OJDynamicDirective(ids));
+	        return this.finalize(node, new Node.NSDynamicDirective(ids));
 	    };
 	    // This should be called when lookahead is a '<' token.
-	    Parser.prototype.oj_parseTypeAngleSuffix = function () {
+	    Parser.prototype.ns_parseTypeAngleSuffix = function () {
 	        var parser = this;
 	        var parts = [];
 	        var angles = 0;
@@ -5652,7 +5652,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        appendAngle();
 	        return parts.join("");
 	    };
-	    Parser.prototype.oj_parseType = function (options) {
+	    Parser.prototype.ns_parseType = function (options) {
 	        var name = "";
 	        if (options && options.allowVoid && this.matchKeyword("void")) {
 	            this.nextToken();
@@ -5662,41 +5662,41 @@ return /******/ (function(modules) { // webpackBootstrap
 	            name = this.parseVariableIdentifier().name;
 	        }
 	        if (this.match('<')) {
-	            name += this.oj_parseTypeAngleSuffix();
+	            name += this.ns_parseTypeAngleSuffix();
 	        }
 	        return name;
 	    };
-	    Parser.prototype.oj_parseParameterType = function () {
+	    Parser.prototype.ns_parseParameterType = function () {
 	        var node = this.createNode();
-	        return this.finalize(node, new Node.OJParameterType(this.oj_parseType(null)));
+	        return this.finalize(node, new Node.NSParameterType(this.ns_parseType(null)));
 	    };
-	    Parser.prototype.oj_parseParameterTypeOrKeyword = function (keyword) {
+	    Parser.prototype.ns_parseParameterTypeOrKeyword = function (keyword) {
 	        var node = this.createNode();
 	        if (this.matchKeyword(keyword)) {
 	            this.nextToken();
-	            return this.finalize(node, new Node.OJParameterType(keyword));
+	            return this.finalize(node, new Node.NSParameterType(keyword));
 	        }
 	        else {
-	            return this.finalize(node, new Node.OJParameterType(this.oj_parseType(null)));
+	            return this.finalize(node, new Node.NSParameterType(this.ns_parseType(null)));
 	        }
 	    };
-	    Parser.prototype.oj_parseMethodSelector = function () {
+	    Parser.prototype.ns_parseMethodSelector = function () {
 	        var node = this.createNode();
 	        var methodType = null;
 	        var variableName = null;
-	        var name = this.oj_parseMethodNameSegment();
+	        var name = this.ns_parseMethodNameSegment();
 	        if (!this.match('{') && !this.match(';')) {
 	            this.expect(':');
 	            if (this.match('(')) {
 	                this.expect('(');
-	                methodType = this.oj_parseParameterType();
+	                methodType = this.ns_parseParameterType();
 	                this.expect(')');
 	            }
 	            variableName = this.parseVariableIdentifier();
 	        }
-	        return this.finalize(node, new Node.OJMethodSelector(name, methodType, variableName));
+	        return this.finalize(node, new Node.NSMethodSelector(name, methodType, variableName));
 	    };
-	    Parser.prototype.oj_parseMethodDefinition = function () {
+	    Parser.prototype.ns_parseMethodDefinition = function () {
 	        var node = this.createNode();
 	        var methodSelectors = [];
 	        var returnType = null;
@@ -5705,11 +5705,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	        this.expect(type);
 	        if (this.match('(')) {
 	            this.expect('(');
-	            returnType = this.oj_parseParameterTypeOrKeyword('void');
+	            returnType = this.ns_parseParameterTypeOrKeyword('void');
 	            this.expect(')');
 	        }
 	        while (!this.match('{')) {
-	            var methodSelector = this.oj_parseMethodSelector();
+	            var methodSelector = this.ns_parseMethodSelector();
 	            selectorName += methodSelector.name.value;
 	            if (methodSelector.variableName) {
 	                selectorName += ":";
@@ -5722,9 +5722,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	        var previousStrict = this.context.strict;
 	        var body = this.parseFunctionSourceElements();
 	        this.context.strict = previousStrict;
-	        return this.finalize(node, new Node.OJMethodDefinition(type, selectorName, returnType, methodSelectors, body));
+	        return this.finalize(node, new Node.NSMethodDefinition(type, selectorName, returnType, methodSelectors, body));
 	    };
-	    Parser.prototype.oj_parseMethodDeclaration = function () {
+	    Parser.prototype.ns_parseMethodDeclaration = function () {
 	        var node = this.createNode();
 	        var methodSelectors = [];
 	        var returnType = null;
@@ -5733,11 +5733,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	        this.expect(type);
 	        if (this.match('(')) {
 	            this.expect('(');
-	            returnType = this.oj_parseParameterTypeOrKeyword('void');
+	            returnType = this.ns_parseParameterTypeOrKeyword('void');
 	            this.expect(')');
 	        }
 	        while (!this.match(";")) {
-	            var methodSelector = this.oj_parseMethodSelector();
+	            var methodSelector = this.ns_parseMethodSelector();
 	            selectorName += methodSelector.name.value;
 	            if (methodSelector.variableName) {
 	                selectorName += ":";
@@ -5750,9 +5750,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	        if (this.match(';')) {
 	            this.expect(";");
 	        }
-	        return this.finalize(node, new Node.OJMethodDeclaration(type, selectorName, returnType, methodSelectors));
+	        return this.finalize(node, new Node.NSMethodDeclaration(type, selectorName, returnType, methodSelectors));
 	    };
-	    Parser.prototype.oj_parseClassImplementationBody = function () {
+	    Parser.prototype.ns_parseClassImplementationBody = function () {
 	        var node = this.createNode();
 	        var sourceElements = [];
 	        var sourceElement;
@@ -5764,16 +5764,16 @@ return /******/ (function(modules) { // webpackBootstrap
 	            else if (token.type === 4 /* Keyword */) {
 	                switch (token.value) {
 	                    case '@property':
-	                        sourceElement = this.oj_parsePropertyDirective();
+	                        sourceElement = this.ns_parsePropertyDirective();
 	                        break;
 	                    case '@observe':
-	                        sourceElement = this.oj_parseObserveDirective();
+	                        sourceElement = this.ns_parseObserveDirective();
 	                        break;
 	                    case '@synthesize':
-	                        sourceElement = this.oj_parseSynthesizeDirective();
+	                        sourceElement = this.ns_parseSynthesizeDirective();
 	                        break;
 	                    case '@dynamic':
-	                        sourceElement = this.oj_parseDynamicDirective();
+	                        sourceElement = this.ns_parseDynamicDirective();
 	                        break;
 	                    default:
 	                        sourceElement = this.parseStatementListItem();
@@ -5781,7 +5781,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                }
 	            }
 	            else if (this.match('-') || this.match('+')) {
-	                sourceElement = this.oj_parseMethodDefinition();
+	                sourceElement = this.ns_parseMethodDefinition();
 	            }
 	            else {
 	                sourceElement = this.parseStatementListItem();
@@ -5793,39 +5793,39 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	        return this.finalize(node, new Node.BlockStatement(sourceElements));
 	    };
-	    Parser.prototype.oj_parseInstanceVariableDeclaration = function () {
+	    Parser.prototype.ns_parseInstanceVariableDeclaration = function () {
 	        var node = this.createNode();
 	        var ivars = [];
-	        var parameterType = new Node.OJParameterType(this.oj_parseType(null));
+	        var parameterType = new Node.NSParameterType(this.ns_parseType(null));
 	        ivars.push(this.parseVariableIdentifier());
 	        while (this.match(',')) {
 	            this.expect(',');
 	            ivars.push(this.parseVariableIdentifier());
 	        }
-	        return this.finalize(node, new Node.OJInstanceVariableDeclaration(parameterType, ivars));
+	        return this.finalize(node, new Node.NSInstanceVariableDeclaration(parameterType, ivars));
 	    };
-	    Parser.prototype.oj_parseInstanceVariableDeclarations = function () {
+	    Parser.prototype.ns_parseInstanceVariableDeclarations = function () {
 	        var node = this.createNode();
 	        var declarations = [];
 	        this.expect('{');
 	        while (!this.match('}')) {
-	            declarations.push(this.oj_parseInstanceVariableDeclaration());
+	            declarations.push(this.ns_parseInstanceVariableDeclaration());
 	            this.consumeSemicolon();
 	        }
 	        this.expect('}');
-	        return this.finalize(node, new Node.OJInstanceVariableDeclarations(declarations));
+	        return this.finalize(node, new Node.NSInstanceVariableDeclarations(declarations));
 	    };
-	    Parser.prototype.oj_parseClassImplementationDefinition = function () {
+	    Parser.prototype.ns_parseClassImplementationDefinition = function () {
 	        var node = this.createNode();
 	        var superClass = null;
 	        var extension = false;
 	        var category = null;
 	        var protocolList = null;
 	        var ivarDeclarations = null;
-	        if (this.context.oj_inImplementation) {
-	            this.throwError(messages_1.Messages.OJCannotNestImplementations);
+	        if (this.context.ns_inImplementation) {
+	            this.throwError(messages_1.Messages.NSCannotNestImplementations);
 	        }
-	        this.context.oj_inImplementation = true;
+	        this.context.ns_inImplementation = true;
 	        var oldLabelSet = this.context.labelSet;
 	        var previousStrict = this.context.strict;
 	        this.context.strict = true;
@@ -5852,29 +5852,29 @@ return /******/ (function(modules) { // webpackBootstrap
 	            this.expect(')');
 	        }
 	        if (this.match('<')) {
-	            protocolList = this.oj_parseProtocolReferenceList();
+	            protocolList = this.ns_parseProtocolReferenceList();
 	        }
 	        // Has ivar declarations
 	        if (this.match('{')) {
 	            if (category)
 	                this.throwUnexpectedToken();
-	            ivarDeclarations = this.oj_parseInstanceVariableDeclarations();
+	            ivarDeclarations = this.ns_parseInstanceVariableDeclarations();
 	        }
-	        var body = this.oj_parseClassImplementationBody();
+	        var body = this.ns_parseClassImplementationBody();
 	        this.expectKeyword('@end');
 	        this.context.strict = previousStrict;
-	        this.context.oj_inImplementation = false;
+	        this.context.ns_inImplementation = false;
 	        this.context.labelSet = oldLabelSet;
-	        return this.finalize(node, new Node.OJClassImplementation(id, superClass, category, extension, protocolList, ivarDeclarations, body));
+	        return this.finalize(node, new Node.NSClassImplementation(id, superClass, category, extension, protocolList, ivarDeclarations, body));
 	    };
-	    Parser.prototype.oj_parseProtocolReferenceList = function () {
+	    Parser.prototype.ns_parseProtocolReferenceList = function () {
 	        var protocolList;
 	        this.expect('<');
-	        protocolList = this.oj_parseProtocolList();
+	        protocolList = this.ns_parseProtocolList();
 	        this.expect('>');
 	        return protocolList;
 	    };
-	    Parser.prototype.oj_parseProtocolList = function () {
+	    Parser.prototype.ns_parseProtocolList = function () {
 	        var node = this.createNode();
 	        var protocols = [];
 	        protocols.push(this.parseVariableIdentifier());
@@ -5882,9 +5882,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	            this.expect(',');
 	            protocols.push(this.parseVariableIdentifier());
 	        }
-	        return this.finalize(node, new Node.OJProtocolList(protocols));
+	        return this.finalize(node, new Node.NSProtocolList(protocols));
 	    };
-	    Parser.prototype.oj_parseProtocolDefinitionBody = function () {
+	    Parser.prototype.ns_parseProtocolDefinitionBody = function () {
 	        var node = this.createNode();
 	        var sourceElements = [];
 	        var optional = false;
@@ -5903,10 +5903,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	                optional = true;
 	            }
 	            else if (this.matchKeyword('@property')) {
-	                sourceElement = this.oj_parsePropertyDirective();
+	                sourceElement = this.ns_parsePropertyDirective();
 	            }
 	            else if (this.match('-') || this.match('+')) {
-	                sourceElement = this.oj_parseMethodDeclaration();
+	                sourceElement = this.ns_parseMethodDeclaration();
 	            }
 	            else {
 	                this.throwUnexpectedToken(token);
@@ -5919,29 +5919,29 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	        return this.finalize(node, new Node.BlockStatement(sourceElements));
 	    };
-	    Parser.prototype.oj_parseProtocolDefinition = function () {
+	    Parser.prototype.ns_parseProtocolDefinition = function () {
 	        var node = this.createNode();
 	        var protocolList = null;
-	        if (this.context.oj_inImplementation) {
-	            this.throwError(messages_1.Messages.OJCannotNestImplementations);
+	        if (this.context.ns_inImplementation) {
+	            this.throwError(messages_1.Messages.NSCannotNestImplementations);
 	        }
 	        var oldLabelSet = this.context.labelSet;
 	        var previousStrict = this.context.strict;
 	        this.context.strict = true;
-	        this.context.oj_inImplementation = true;
+	        this.context.ns_inImplementation = true;
 	        this.expectKeyword('@protocol');
 	        var id = this.parseVariableIdentifier();
 	        if (this.match('<')) {
-	            protocolList = this.oj_parseProtocolReferenceList();
+	            protocolList = this.ns_parseProtocolReferenceList();
 	        }
-	        var body = this.oj_parseProtocolDefinitionBody();
+	        var body = this.ns_parseProtocolDefinitionBody();
 	        this.expectKeyword('@end');
 	        this.context.strict = previousStrict;
-	        this.context.oj_inImplementation = false;
+	        this.context.ns_inImplementation = false;
 	        this.context.labelSet = oldLabelSet;
-	        return this.finalize(node, new Node.OJProtocolDefinition(id, protocolList, body));
+	        return this.finalize(node, new Node.NSProtocolDefinition(id, protocolList, body));
 	    };
-	    Parser.prototype.oj_parseForwardDirective = function () {
+	    Parser.prototype.ns_parseForwardDirective = function () {
 	        var node = this.createNode();
 	        var ids = [];
 	        var kind = "class";
@@ -5959,9 +5959,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	            ids.push(this.parseVariableIdentifier());
 	        }
 	        this.consumeSemicolon();
-	        return this.finalize(node, new Node.OJForwardDirective(kind, ids));
+	        return this.finalize(node, new Node.NSForwardDirective(kind, ids));
 	    };
-	    Parser.prototype.oj_parseSqueezeDirective = function () {
+	    Parser.prototype.ns_parseSqueezeDirective = function () {
 	        var node = this.createNode();
 	        var ids = [];
 	        this.expectKeyword('@squeeze');
@@ -5971,36 +5971,36 @@ return /******/ (function(modules) { // webpackBootstrap
 	            ids.push(this.parseVariableIdentifier());
 	        }
 	        this.consumeSemicolon();
-	        return this.finalize(node, new Node.OJSqueezeDirective(ids));
+	        return this.finalize(node, new Node.NSSqueezeDirective(ids));
 	    };
-	    Parser.prototype.oj_parseCastExpression = function () {
+	    Parser.prototype.ns_parseCastExpression = function () {
 	        var node = this.createNode();
 	        var id;
 	        this.expectKeyword('@cast');
 	        if (this.match('<')) {
 	            this.expect('<');
-	            id = this.oj_parseType(null);
+	            id = this.ns_parseType(null);
 	            this.expect('>');
 	            this.expect('(');
 	        }
 	        else {
 	            this.expect('(');
-	            id = this.oj_parseType(null);
+	            id = this.ns_parseType(null);
 	            this.expect(',');
 	        }
 	        var argument = this.parseExpression();
 	        this.expect(')');
-	        return this.finalize(node, new Node.OJCastExpression(id, argument));
+	        return this.finalize(node, new Node.NSCastExpression(id, argument));
 	    };
-	    Parser.prototype.oj_parseAnyExpression = function () {
+	    Parser.prototype.ns_parseAnyExpression = function () {
 	        var node = this.createNode();
 	        this.expectKeyword('@any');
 	        this.expect('(');
 	        var argument = this.parseExpression();
 	        this.expect(')');
-	        return this.finalize(node, new Node.OJAnyExpression(argument));
+	        return this.finalize(node, new Node.NSAnyExpression(argument));
 	    };
-	    Parser.prototype.oj_parseMessageReceiver = function () {
+	    Parser.prototype.ns_parseMessageReceiver = function () {
 	        var node = this.createNode();
 	        var token = this.nextToken();
 	        var isSuper = (token.type == 4 /* Keyword */ && token.value == "super");
@@ -6012,13 +6012,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	        return this.finalize(node, new Node.Identifier(token.value));
 	    };
-	    Parser.prototype.oj_parseArrayInitializerOrMessageExpression = function () {
+	    Parser.prototype.ns_parseArrayInitializerOrMessageExpression = function () {
 	        var node = this.createNode();
 	        var elements = [];
-	        var ojSelectorName = null;
-	        var ojMessageSelectors = null;
-	        var ojReceiver = null;
-	        var ojMightBeMessageExpression = true, ojMaybeElement;
+	        var nsSelectorName = null;
+	        var nsMessageSelectors = null;
+	        var nsReceiver = null;
+	        var nsMightBeMessageExpression = true, nsMaybeElement;
 	        this.expect('[');
 	        while (!this.match(']')) {
 	            if (this.match(',')) {
@@ -6034,34 +6034,34 @@ return /******/ (function(modules) { // webpackBootstrap
 	                }
 	                elements.push(element);
 	            }
-	            else if (ojMightBeMessageExpression) {
+	            else if (nsMightBeMessageExpression) {
 	                if (this.matchKeyword("super")) {
-	                    ojMaybeElement = this.oj_parseMessageReceiver();
+	                    nsMaybeElement = this.ns_parseMessageReceiver();
 	                }
 	                else {
-	                    ojMaybeElement = this.inheritCoverGrammar(this.parseAssignmentExpression);
-	                    ojMightBeMessageExpression = !(this.match(",") || this.match("]"));
+	                    nsMaybeElement = this.inheritCoverGrammar(this.parseAssignmentExpression);
+	                    nsMightBeMessageExpression = !(this.match(",") || this.match("]"));
 	                }
-	                // At this point, ojMightBeMessageExpression is really "isMessageExpression"
-	                if (ojMightBeMessageExpression) {
-	                    ojReceiver = new Node.OJMessageReceiver(ojMaybeElement);
-	                    if (ojMaybeElement.loc) {
-	                        ojReceiver.loc = ojMaybeElement.loc;
+	                // At this point, nsMightBeMessageExpression is really "isMessageExpression"
+	                if (nsMightBeMessageExpression) {
+	                    nsReceiver = new Node.NSMessageReceiver(nsMaybeElement);
+	                    if (nsMaybeElement.loc) {
+	                        nsReceiver.loc = nsMaybeElement.loc;
 	                    }
-	                    ojMessageSelectors = [];
-	                    ojSelectorName = "";
+	                    nsMessageSelectors = [];
+	                    nsSelectorName = "";
 	                    while (!this.match(']')) {
-	                        var ojMessageSelector = this.oj_parseMessageSelector();
-	                        ojMessageSelectors.push(ojMessageSelector);
-	                        ojSelectorName += ojMessageSelector.name.value;
-	                        if (ojMessageSelector.argument || ojMessageSelector.arguments) {
-	                            ojSelectorName += ":";
+	                        var nsMessageSelector = this.ns_parseMessageSelector();
+	                        nsMessageSelectors.push(nsMessageSelector);
+	                        nsSelectorName += nsMessageSelector.name.value;
+	                        if (nsMessageSelector.argument || nsMessageSelector.arguments) {
+	                            nsSelectorName += ":";
 	                        }
 	                    }
 	                    break;
 	                }
 	                else {
-	                    elements.push(ojMaybeElement);
+	                    elements.push(nsMaybeElement);
 	                    if (!this.match(']')) {
 	                        this.expect(',');
 	                    }
@@ -6075,16 +6075,16 @@ return /******/ (function(modules) { // webpackBootstrap
 	            }
 	        }
 	        this.expect(']');
-	        if (ojMessageSelectors) {
-	            return this.finalize(node, new Node.OJMessageExpression(ojReceiver, ojSelectorName, ojMessageSelectors));
+	        if (nsMessageSelectors) {
+	            return this.finalize(node, new Node.NSMessageExpression(nsReceiver, nsSelectorName, nsMessageSelectors));
 	        }
 	        else {
 	            return this.finalize(node, new Node.ArrayExpression(elements));
 	        }
 	    };
-	    Parser.prototype.oj_parseMessageSelector = function () {
+	    Parser.prototype.ns_parseMessageSelector = function () {
 	        var node = this.createNode();
-	        var name = this.oj_parseMethodNameSegment();
+	        var name = this.ns_parseMethodNameSegment();
 	        var arg = null;
 	        var args = null;
 	        if (!this.match(']')) {
@@ -6100,16 +6100,16 @@ return /******/ (function(modules) { // webpackBootstrap
 	            if (args)
 	                args.push(this.parseAssignmentExpression());
 	        }
-	        return this.finalize(node, new Node.OJMessageSelector(name, arg, args));
+	        return this.finalize(node, new Node.NSMessageSelector(name, arg, args));
 	    };
-	    Parser.prototype.oj_parseConstDeclaration = function () {
+	    Parser.prototype.ns_parseConstDeclaration = function () {
 	        var node = this.createNode();
 	        this.expectKeyword("@const");
 	        var declarations = this.parseVariableDeclarationList({ inFor: false });
 	        this.consumeSemicolon();
-	        return this.finalize(node, new Node.OJConstDeclaration(declarations));
+	        return this.finalize(node, new Node.NSConstDeclaration(declarations));
 	    };
-	    Parser.prototype.oj_parseEnumDeclaration = function () {
+	    Parser.prototype.ns_parseEnumDeclaration = function () {
 	        var node = this.createNode();
 	        var id = this.parseVariableIdentifier();
 	        var init = null;
@@ -6123,7 +6123,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	        return this.finalize(node, new Node.VariableDeclarator(id, init));
 	    };
-	    Parser.prototype.oj_parseEnumStatement = function () {
+	    Parser.prototype.ns_parseEnumStatement = function () {
 	        var node = this.createNode();
 	        var declarations = [];
 	        var id = null;
@@ -6134,15 +6134,15 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	        this.expect("{");
 	        while (!this.match('}')) {
-	            declarations.push(this.oj_parseEnumDeclaration());
+	            declarations.push(this.ns_parseEnumDeclaration());
 	            if (!this.match('}'))
 	                this.expect(',');
 	        }
 	        this.expect("}");
 	        this.consumeSemicolon();
-	        return this.finalize(node, new Node.OJEnumDeclaration(id, declarations));
+	        return this.finalize(node, new Node.NSEnumDeclaration(id, declarations));
 	    };
-	    Parser.prototype.oj_parseTypeDefinition = function () {
+	    Parser.prototype.ns_parseTypeDefinition = function () {
 	        var node = this.createNode();
 	        var params = [];
 	        var annotation = null;
@@ -6155,8 +6155,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	            this.expect('{');
 	            while (!this.match('}')) {
 	                var paramName = this.parseIdentifierName().name;
-	                var paramAnnotation = this.oj_parseTypeAnnotation({ allowOptional: true });
-	                params.push(new Node.OJIdentifierWithAnnotation(paramName, paramAnnotation));
+	                var paramAnnotation = this.ns_parseTypeAnnotation({ allowOptional: true });
+	                params.push(new Node.NSIdentifierWithAnnotation(paramName, paramAnnotation));
 	                if (!this.match('}')) {
 	                    this.expect(",");
 	                }
@@ -6168,8 +6168,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	            this.expect('[');
 	            while (!this.match(']')) {
 	                var paramName = "" + params.length;
-	                var paramAnnotation = new Node.OJTypeAnnotation(this.oj_parseType(null), false);
-	                params.push(new Node.OJIdentifierWithAnnotation(paramName, paramAnnotation));
+	                var paramAnnotation = new Node.NSTypeAnnotation(this.ns_parseType(null), false);
+	                params.push(new Node.NSIdentifierWithAnnotation(paramName, paramAnnotation));
 	                if (!this.match(']')) {
 	                    this.expect(',');
 	                }
@@ -6182,26 +6182,26 @@ return /******/ (function(modules) { // webpackBootstrap
 	            this.expect('(');
 	            while (!this.match(')')) {
 	                var paramName = this.parseVariableIdentifier().name;
-	                var paramAnnotation = this.oj_parseTypeAnnotation({ allowOptional: true });
-	                params.push(new Node.OJIdentifierWithAnnotation(paramName, paramAnnotation));
+	                var paramAnnotation = this.ns_parseTypeAnnotation({ allowOptional: true });
+	                params.push(new Node.NSIdentifierWithAnnotation(paramName, paramAnnotation));
 	                if (!this.match(')')) {
 	                    this.expect(',');
 	                }
 	            }
 	            this.expect(')');
-	            annotation = this.oj_parseTypeAnnotation({ allowVoid: true });
+	            annotation = this.ns_parseTypeAnnotation({ allowVoid: true });
 	        }
 	        else if (this.lookahead.type === 3 /* Identifier */) {
 	            kind = 'alias';
-	            annotation = new Node.OJTypeAnnotation(this.oj_parseType(null), false);
+	            annotation = new Node.NSTypeAnnotation(this.ns_parseType(null), false);
 	        }
 	        else {
 	            this.throwUnexpectedToken();
 	        }
 	        this.consumeSemicolon();
-	        return this.finalize(node, new Node.OJTypeDefinition(name, kind, params, annotation));
+	        return this.finalize(node, new Node.NSTypeDefinition(name, kind, params, annotation));
 	    };
-	    Parser.prototype.oj_parseTypeAnnotation = function (options) {
+	    Parser.prototype.ns_parseTypeAnnotation = function (options) {
 	        var node = this.createNode();
 	        var optional = false;
 	        if (options && options.allowOptional) {
@@ -6211,9 +6211,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	            }
 	        }
 	        this.expect(':');
-	        return this.finalize(node, new Node.OJTypeAnnotation(this.oj_parseType(options), optional));
+	        return this.finalize(node, new Node.NSTypeAnnotation(this.ns_parseType(options), optional));
 	    };
-	    Parser.prototype.oj_parseVariableIdentifierWithOptionalTypeAnnotation = function (kind) {
+	    Parser.prototype.ns_parseVariableIdentifierWithOptionalTypeAnnotation = function (kind) {
 	        var node = this.createNode();
 	        var token = this.nextToken();
 	        if (token.type === 4 /* Keyword */ && token.value === 'yield') {
@@ -6238,13 +6238,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	            this.tolerateUnexpectedToken(token);
 	        }
 	        if (this.match(':')) {
-	            return this.finalize(node, new Node.OJIdentifierWithAnnotation(token.value, this.oj_parseTypeAnnotation(null)));
+	            return this.finalize(node, new Node.NSIdentifierWithAnnotation(token.value, this.ns_parseTypeAnnotation(null)));
 	        }
 	        else {
 	            return this.finalize(node, new Node.Identifier(token.value));
 	        }
 	    };
-	    Parser.prototype.oj_parseEachStatement = function () {
+	    Parser.prototype.ns_parseEachStatement = function () {
 	        var node = this.createNode();
 	        var left;
 	        this.expectKeyword('@each');
@@ -6268,34 +6268,34 @@ return /******/ (function(modules) { // webpackBootstrap
 	        this.context.inIteration = true;
 	        var body = this.parseStatement();
 	        this.context.inIteration = oldInIteration;
-	        return this.finalize(node, new Node.OJEachStatement(left, right, body));
+	        return this.finalize(node, new Node.NSEachStatement(left, right, body));
 	    };
-	    Parser.prototype.oj_parseGlobalDeclaration = function () {
+	    Parser.prototype.ns_parseGlobalDeclaration = function () {
 	        var node = this.createNode();
 	        this.expectKeyword('@global');
 	        if (this.matchKeyword("function")) {
 	            var declaration = this.parseFunctionDeclaration();
-	            return this.finalize(node, new Node.OJGlobalDeclaration(declaration, null));
+	            return this.finalize(node, new Node.NSGlobalDeclaration(declaration, null));
 	        }
 	        else {
 	            var declarators = this.parseBindingList('var', { inFor: false });
-	            return this.finalize(node, new Node.OJGlobalDeclaration(null, declarators));
+	            return this.finalize(node, new Node.NSGlobalDeclaration(null, declarators));
 	        }
 	    };
-	    Parser.prototype.oj_parseBridgedDeclaration = function () {
+	    Parser.prototype.ns_parseBridgedDeclaration = function () {
 	        var node = this.createNode();
 	        var declaration;
 	        this.expectKeyword('@bridged');
 	        if (this.matchKeyword("@const")) {
-	            declaration = this.oj_parseConstDeclaration();
+	            declaration = this.ns_parseConstDeclaration();
 	        }
 	        else if (this.matchKeyword("@enum")) {
-	            declaration = this.oj_parseEnumStatement();
+	            declaration = this.ns_parseEnumStatement();
 	        }
 	        else {
 	            this.throwUnexpectedToken();
 	        }
-	        return this.finalize(node, new Node.OJBridgedDeclaration(declaration));
+	        return this.finalize(node, new Node.NSBridgedDeclaration(declaration));
 	    };
 	    return Parser;
 	}());
@@ -6453,10 +6453,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	    UnexpectedTokenIllegal: 'Unexpected token ILLEGAL',
 	    UnknownLabel: 'Undefined label \'%0\'',
 	    UnterminatedRegExp: 'Invalid regular expression: missing /'
-	    //!oj: begin changes
+	    //!ns: begin changes
 	    ,
-	    OJCannotNestImplementations: 'OJ: Cannot nest implementation blocks'
-	    //!oj: end changes
+	    NSCannotNestImplementations: 'NilScript: Cannot nest implementation blocks'
+	    //!ns: end changes
 	};
 
 
@@ -6736,7 +6736,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    };
 	    // https://tc39.github.io/ecma262/#sec-keywords
 	    Scanner.prototype.isKeyword = function (id) {
-	        //!oj: start changes
+	        //!ns: start changes
 	        if (id[0] === '@') {
 	            return (id === '@end') ||
 	                (id === '@implementation') ||
@@ -6760,7 +6760,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                (id === '@bridged') ||
 	                (id === '@observe');
 	        }
-	        //!oj: end changes
+	        //!ns: end changes
 	        switch (id.length) {
 	            case 2:
 	                return (id === 'if') || (id === 'in') || (id === 'do');

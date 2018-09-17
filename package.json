@@ -4,7 +4,7 @@
     "homepage": "http://github.com/musictheory/NilScript",
     "main": "./lib/api.js",
     "bin": {
-        "ojc": "./bin/ojc"
+        "nsc": "./bin/nsc"
     },
     "version": "2.1.0",
     "engines": { "node": ">=6.0" },

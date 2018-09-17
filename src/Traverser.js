@@ -13,40 +13,40 @@ const estraverse = require("estraverse");
 const Syntax     = esprima.Syntax;
 
 // Add additional visitor keys for the oj language extension
-const ojVisitorKeys = {
-    [ Syntax.OJMessageExpression            ]: [ "receiver", "messageSelectors" ],
-    [ Syntax.OJMessageReceiver              ]: [ "value" ],
-    [ Syntax.OJMessageSelector              ]: [ "name", "argument", "arguments" ],
-    [ Syntax.OJMethodNameSegment            ]: [ ],
-    [ Syntax.OJClassImplementation          ]: [ "id", "superclass", "ivarDeclarations", "body" ],
-    [ Syntax.OJMethodDefinition             ]: [ "returnType", "methodSelectors", "body" ],
-    [ Syntax.OJMethodSelector               ]: [ "name", "variableName" ],
-    [ Syntax.OJSelector                     ]: [ ],
-    [ Syntax.OJParameterType                ]: [ ],
-    [ Syntax.OJInstanceVariableDeclarations ]: [ "declarations" ],
-    [ Syntax.OJInstanceVariableDeclaration  ]: [ "parameterType", "ivars" ],
-    [ Syntax.OJPropertyDirective            ]: [ "attributes", "id" ],
-    [ Syntax.OJPropertyAttribute            ]: [ ],
-    [ Syntax.OJObserveDirective             ]: [ "attributes", "ids" ],
-    [ Syntax.OJObserveAttribute             ]: [ ],
-    [ Syntax.OJSynthesizeDirective          ]: [ "pairs" ],
-    [ Syntax.OJForwardDirective             ]: [ "ids" ],
-    [ Syntax.OJSqueezeDirective             ]: [ "ids" ],
-    [ Syntax.OJSynthesizePair               ]: [ "id", "backing" ],
-    [ Syntax.OJDynamicDirective             ]: [ "ids" ],
-    [ Syntax.OJSelectorDirective            ]: [ ],
-    [ Syntax.OJConstDeclaration             ]: [ "declarations" ],
-    [ Syntax.OJEnumDeclaration              ]: [ "declarations" ],
-    [ Syntax.OJProtocolDefinition           ]: [ "id", "body" ],
-    [ Syntax.OJMethodDeclaration            ]: [ "returnType", "methodSelectors" ],
-    [ Syntax.OJCastExpression               ]: [ "id", "argument" ],
-    [ Syntax.OJAnyExpression                ]: [ "argument" ],
-    [ Syntax.OJEachStatement                ]: [ "left", "right", "body" ],
-    [ Syntax.OJTypeAnnotation               ]: [ ],
-    [ Syntax.OJGlobalDeclaration            ]: [ "declaration", "declarators" ],
-    [ Syntax.OJStructDefinition             ]: [ "id", "variables" ],
-    [ Syntax.OJBridgedDeclaration           ]: [ "declaration" ],
-    [ Syntax.OJTypeDefinition               ]: [ ],
+const NSVisitorKeys = {
+    [ Syntax.NSMessageExpression            ]: [ "receiver", "messageSelectors" ],
+    [ Syntax.NSMessageReceiver              ]: [ "value" ],
+    [ Syntax.NSMessageSelector              ]: [ "name", "argument", "arguments" ],
+    [ Syntax.NSMethodNameSegment            ]: [ ],
+    [ Syntax.NSClassImplementation          ]: [ "id", "superclass", "ivarDeclarations", "body" ],
+    [ Syntax.NSMethodDefinition             ]: [ "returnType", "methodSelectors", "body" ],
+    [ Syntax.NSMethodSelector               ]: [ "name", "variableName" ],
+    [ Syntax.NSSelector                     ]: [ ],
+    [ Syntax.NSParameterType                ]: [ ],
+    [ Syntax.NSInstanceVariableDeclarations ]: [ "declarations" ],
+    [ Syntax.NSInstanceVariableDeclaration  ]: [ "parameterType", "ivars" ],
+    [ Syntax.NSPropertyDirective            ]: [ "attributes", "id" ],
+    [ Syntax.NSPropertyAttribute            ]: [ ],
+    [ Syntax.NSObserveDirective             ]: [ "attributes", "ids" ],
+    [ Syntax.NSObserveAttribute             ]: [ ],
+    [ Syntax.NSSynthesizeDirective          ]: [ "pairs" ],
+    [ Syntax.NSForwardDirective             ]: [ "ids" ],
+    [ Syntax.NSSqueezeDirective             ]: [ "ids" ],
+    [ Syntax.NSSynthesizePair               ]: [ "id", "backing" ],
+    [ Syntax.NSDynamicDirective             ]: [ "ids" ],
+    [ Syntax.NSSelectorDirective            ]: [ ],
+    [ Syntax.NSConstDeclaration             ]: [ "declarations" ],
+    [ Syntax.NSEnumDeclaration              ]: [ "declarations" ],
+    [ Syntax.NSProtocolDefinition           ]: [ "id", "body" ],
+    [ Syntax.NSMethodDeclaration            ]: [ "returnType", "methodSelectors" ],
+    [ Syntax.NSCastExpression               ]: [ "id", "argument" ],
+    [ Syntax.NSAnyExpression                ]: [ "argument" ],
+    [ Syntax.NSEachStatement                ]: [ "left", "right", "body" ],
+    [ Syntax.NSTypeAnnotation               ]: [ ],
+    [ Syntax.NSGlobalDeclaration            ]: [ "declaration", "declarators" ],
+    [ Syntax.NSStructDefinition             ]: [ "id", "variables" ],
+    [ Syntax.NSBridgedDeclaration           ]: [ "declaration" ],
+    [ Syntax.NSTypeDefinition               ]: [ ],
 };
 
 
@@ -59,7 +59,7 @@ const ojVisitorKeys = {
 
         children.splice(indexOfBody, 0, "annotation");
 
-        ojVisitorKeys[key] = children;
+        NSVisitorKeys[key] = children;
     }
 
     function addAnnotationAtEnd(key) {
@@ -67,7 +67,7 @@ const ojVisitorKeys = {
 
         children.push("annotation");
 
-        ojVisitorKeys[key] = children;
+        NSVisitorKeys[key] = children;
     }
 
     addAnnotationBeforeBody(Syntax.FunctionExpression);
@@ -92,7 +92,7 @@ traverse(pre, post)
     this._controller.traverse(this._ast, {
         enter: pre,
         leave: post,
-        keys:  ojVisitorKeys
+        keys:  NSVisitorKeys
     });
 }
 
