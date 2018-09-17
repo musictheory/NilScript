@@ -1,14 +1,16 @@
-# oj
+# NilScript
 
-oj is a superset of the JavaScript language inspired by the latest versions of Objective-C.  It features a fast, simple runtime without a dynamic messaging overhead. 
+NilScript is a superset of the JavaScript language inspired by the latest versions of Objective-C.  It features a fast, simple runtime without a dynamic messaging overhead. 
 
-oj is designed to ease the pain of syncing class interfaces (not necessarily implementations) between Objective-C projects and their web counterparts.
+NilScript is designed to ease the pain of syncing class interfaces (not necessarily implementations) between Objective-C projects and their web counterparts.
 
 In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) with the [musictheory.net exercises](http://www.musictheory.net/exercises), and [Theory Lessons](http://musictheory.net/buy/lessons) with the [musictheory.net lessons](http://www.musictheory.net/lessons).
 
+Note: NilScript was previously known as oj. To comply with [Semantic Versioning](https://semver.org), various parts of the runtime still use "oj" names. This will be addressed in the next major version of the language.
+
 ### Installation
 
-    npm install ojc
+    npm install ???
 
 ### Main Features
 
@@ -48,22 +50,22 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 
 In contrast to [Objective-J](http://en.wikipedia.org/wiki/Objective-J): 
 
-  - oj always uses [consistent property names](https://developers.google.com/closure/compiler/docs/api-tutorial3#propnames).
+  - NilScript always uses [consistent property names](https://developers.google.com/closure/compiler/docs/api-tutorial3#propnames).
    This allows the resulting JavaScript code to be optimized using Closure Compiler's ADVANCED_OPTIMIZATIONS.
-  - oj uses the native JavaScript runtime to call methods rather than imitating the Objective-C runtime (see below).
-  - oj focuses on being a language, not a framework.  The only requirement at runtime is the `runtime.js` file.
-  - oj has full support of @property and the default synthesis of ivars/getters/setters.
-  - oj includes a [built-in obfuscator](#squeeze) which hides method and class names in compiled code.
+  - NilScript uses the native JavaScript runtime to call methods rather than imitating the Objective-C runtime (see below).
+  - NilScript focuses on being a language, not a framework.  The only requirement at runtime is the `runtime.js` file.
+  - NilScript has full support of @property and the default synthesis of ivars/getters/setters.
+  - NilScript includes a [built-in obfuscator](#squeeze) which hides method and class names in compiled code.
 
 ---
 
 ## <a name="class"></a>Classes
 
-While Objective-C uses `@interface` to define a class interface and `@implementation` for its implementation, oj only uses `@implementation` (due to the lack of header files in JavaScript).  Information that would normally appear in the `@interface` block, such as `@property` declarations or the inherited superclass instead appear in `@implementation`.
+While Objective-C uses `@interface` to define a class interface and `@implementation` for its implementation, NilScript only uses `@implementation` (due to the lack of header files in JavaScript).  Information that would normally appear in the `@interface` block, such as `@property` declarations or the inherited superclass instead appear in `@implementation`.
 
 ### <a name="class-syntax"></a>Basic syntax
 
-The syntax to create an empty oj class looks like this:
+The syntax to create an empty NilScript class looks like this:
 
 ```
 @implementation TheClass
@@ -93,7 +95,7 @@ Additional [instance variables](#ivar) can be added by using a block after class
 
 ### <a name="class-compiler"></a>Behind the scenes (Class)
 
-Behind the scenes, the oj compiler changes the `@implementation`/`@end` block into a JavaScript function block which is invoked at runtime.  Private functions and variables may be declared inside of an `@implementation` without polluting the global namespace.
+Behind the scenes, the NilScript compiler changes the `@implementation`/`@end` block into a JavaScript function block which is invoked at runtime.  Private functions and variables may be declared inside of an `@implementation` without polluting the global namespace.
 
 ```
 @implementation TheClass
@@ -117,7 +119,7 @@ Note: Only `@property`, `@synthesize`, `@dynamic`, `@observe`, instance variable
 
 ### <a name="at-class"></a>Forward Declarations
 
-In older versions of oj (0.x), the compiler would compile each file separately.  This led to situations where a [forward declaration](http://en.wikipedia.org/wiki/Forward_declaration) of a class was needed:
+In older versions of NilScript (0.x), the compiler would compile each file separately.  This led to situations where a [forward declaration](http://en.wikipedia.org/wiki/Forward_declaration) of a class was needed:
 
 ```
 @forward TheFirstClass;
@@ -125,21 +127,21 @@ In older versions of oj (0.x), the compiler would compile each file separately. 
 @implementation TheSecondClass
     
 - (void) foo {
-    // Without the forward declaration, oj 0.x didn't know if TheFirstClass
-    // was a JS identifier or an oj class.
+    // Without the forward declaration, NilScript 0.x didn't know if TheFirstClass
+    // was a JS identifier or an NilScript class.
     [TheFirstClass doSomething];
 }
 
 @end
 ```
 
-oj 1.x+ uses a multi-pass compiler which eliminates the need for forward declarations.  In general, the need to use `@forward` indicates an underlying issue with the dependency tree, which will cause issues if you need to use `@const`/`@enum` inlining or the [squeezer](#squeeze).  For more information, read [Compiling Projects](#compiling-projects).  
+NilScript 1.x+ uses a multi-pass compiler which eliminates the need for forward declarations.  In general, the need to use `@forward` indicates an underlying issue with the dependency tree, which will cause issues if you need to use `@const`/`@enum` inlining or the [squeezer](#squeeze).  For more information, read [Compiling Projects](#compiling-projects).  
 
 ---
 
 ## <a name="base-class"></a>The Built-in Base Class
 
-Unlike Objective-C, all oj classes inherit from a private root base class.  There is no way to specify your own root class (how often do you *not* inherit from NSObject in your code?).
+Unlike Objective-C, all NilScript classes inherit from a private root base class.  There is no way to specify your own root class (how often do you *not* inherit from NSObject in your code?).
 
 The root base class provides the following methods:
 
@@ -171,7 +173,7 @@ The root base class provides the following methods:
 - (BOOL) isEqual:(id)anotherObject
 ```
 
-While oj 0.x supported `+load` and `+initialize`, this feature was removed in oj 1.x to optimize runtime performance.  Note: `+className` and `-className` are intended for debugging purposes only.  When `--squeeze` is passed into the compiler, class names will be obfuscated/shortened.
+While NilScript 0.x supported `+load` and `+initialize`, this feature was removed in NilScript 1.x to optimize runtime performance.  Note: `+className` and `-className` are intended for debugging purposes only.  When `--squeeze` is passed into the compiler, class names will be obfuscated/shortened.
 
 ---
 ### <a name="method"></a>Methods
@@ -210,7 +212,7 @@ Old-school bare method declarations may also be used:
 
 ### <a name="method-falsy"></a>Falsy Messaging
 
-Just as Objective-C supports messaging `nil`, oj supports the concept of "Falsy Messaging".
+Just as Objective-C supports messaging `nil`, NilScript supports the concept of "Falsy Messaging".
 
 Any message to a falsy JavaScript value (false / undefined / null / 0 / "" / NaN ) will return that value.  
 
@@ -221,7 +223,7 @@ let result = [foo doSomething];  // result is null
 
 ### <a name="method-compiler"></a>Behind the Scenes (Methods)
 
-Behind the scenes, oj methods are simply renamed JavaScript functions.  Each colon (`:`) in a method name is replaced by an underscore and a prefix is added to the start of the method name.
+Behind the scenes, NilScript methods are simply renamed JavaScript functions.  Each colon (`:`) in a method name is replaced by an underscore and a prefix is added to the start of the method name.
 
 Hence:
 
@@ -262,9 +264,9 @@ Sometimes the compiler will choose to use `oj.msgSend()` rather than a direct fu
 ---
 ## <a name="property"></a>Properties and Instance Variables
 
-oj uses the Objective-C 2.0 `@property` syntax which originally appeared in Mac OS X 10.5 Leopard.  It also supports the concept of default property synthesis added in Xcode 4.4.
+NilScript uses the Objective-C 2.0 `@property` syntax which originally appeared in Mac OS X 10.5 Leopard.  It also supports the concept of default property synthesis added in Xcode 4.4.
 
-In addition, oj allows storage for additional instance variables (ivars) to be defined on a class.
+In addition, NilScript allows storage for additional instance variables (ivars) to be defined on a class.
 
 A class that uses a property, private ivar, and accesses them in a method may look like this:
 
@@ -386,7 +388,7 @@ However, some are ignored due to differences between JavaScript and Objective-C.
 
 ### <a name="property-init"></a>Initialization
 
-During `+alloc`, oj initializes all instance variables to one of the following values based on its type:
+During `+alloc`, NilScript initializes all instance variables to one of the following values based on its type:
 
     Boolean         -> false
     Number          -> 0
@@ -397,14 +399,14 @@ This allows Number instance variables to be used in math operations  without the
 
 ### <a name="property-compiler"></a>Behind the Scenes (Properties/ivars)
 
-Unlike other parts of the oj runtime, properties and instance variables aren't intended to be accessed from non-oj JavaScript (they should be private to the subclass which defines them).  However, they may need to be accessed in the debugger.
+Unlike other parts of the NilScript runtime, properties and instance variables aren't intended to be accessed from non-NilScript JavaScript (they should be private to the subclass which defines them).  However, they may need to be accessed in the debugger.
 
 The compiler currently uses a JavaScript property on the instance with the follow name:
 
     $oj_i_{{CLASS NAME}}_{{IVAR NAME}}
 
 
-Hence, the following oj code:
+Hence, the following NilScript code:
 
 ```
 @interface TheClass
@@ -531,7 +533,7 @@ Counter.prototype.incrementAfterDelay = function(delay) {
 }
 ```
 
-oj handles the binding for you.  No additional code is needed to access ivars or `self`:
+NilScript handles the binding for you.  No additional code is needed to access ivars or `self`:
 
 ```
 - (void) incrementAfterDelay:(Number)delay
@@ -563,7 +565,7 @@ May (depending on optimizations) be turned into:
 ---
 ## <a name="aliases"></a>Boolean/null aliases
 
-The oj compiler adds the following keywords for Boolean/null values and replaces them to their JavaScript equivalent:
+The NilScript compiler adds the following keywords for Boolean/null values and replaces them to their JavaScript equivalent:
 
     BOOL    ->  Boolean
     YES     ->  true
@@ -588,7 +590,7 @@ becomes:
 ---
 ## <a name="enum"></a>@enum and @const
 
-oj supports C-style enumerations via the `@enum` keyword and constants via the `@const` keyword:
+NilScript supports C-style enumerations via the `@enum` keyword and constants via the `@const` keyword:
 
 ```
 @enum OptionalEnumName {
@@ -604,7 +606,7 @@ oj supports C-style enumerations via the `@enum` keyword and constants via the `
 someFunction(zero, one, two, three, four, TheConstant);
 ```
 
-The oj compiler inlines these values.  The above code becomes:
+The NilScript compiler inlines these values.  The above code becomes:
 
 ```
 someFunction(0, 1, 2, 3, 4, "Hello World");
@@ -615,7 +617,7 @@ Note: Inlining causes the enum or const to be lifted to the global scope.  Inlin
 ---
 ## <a name="global"></a>@global
 
-To mimic C APIs such as CoreGraphics, oj has the ability to declare global functions and variables with `@global`.
+To mimic C APIs such as CoreGraphics, NilScript has the ability to declare global functions and variables with `@global`.
 
 ```
 @global function CGRectMake(x: Number, y: Number, width: Number, height: Number): void {
@@ -637,12 +639,12 @@ $oj_oj._g.CGRectZero = $oj_oj._g.CGRectMake(0, 0, 0, 0);
 $oj_oj._g.CGRectNull = $oj_oj._g.CGRectMake(Infinity, Infinity, 0, 0);
 ```
 
-Unlike inlined enums and consts, globals are assigned at runtime.  Hence, in the above code example, care must be given that `CGRectMake()` isn't used for initializing `CGRectZero` until after the `@global function CGRectMake` line.  This limitation should not affect globals used from within oj methods (as the global will already be declared by that time).
+Unlike inlined enums and consts, globals are assigned at runtime.  Hence, in the above code example, care must be given that `CGRectMake()` isn't used for initializing `CGRectZero` until after the `@global function CGRectMake` line.  This limitation should not affect globals used from within NilScript methods (as the global will already be declared by that time).
 
 ---
 ## <a name="protocols"></a>Protocols
 
-Like Objective-C, oj includes support for protocols.  Both `@required` and `@optional` methods may be specified:
+Like Objective-C, NilScript includes support for protocols.  Both `@required` and `@optional` methods may be specified:
 
 ```
 @protocol ControllerDelegate
@@ -675,7 +677,7 @@ Restores the `oj` global variable to its previous value.
 
 
 **oj.getClassList()**  
-Returns an array of all known oj Class objects.
+Returns an array of all known NilScript Class objects.
 
 
 **oj.class_getSuperclass(cls) /  oj.getSuperclass(cls)**  
@@ -685,7 +687,7 @@ Returns the superclass of the specified `cls`.
 Returns an array of all subclasses of the specified `cls`.
 
 **oj.isObject(object)**  
-Returns true if `object` is an oj instance or Class, false otherwise.
+Returns true if `object` is an NilScript instance or Class, false otherwise.
 
 **oj.sel_isEqual(aSelector, bSelector)**  
 Returns true if two selectors are equal to each other.
@@ -708,18 +710,18 @@ If `receiver` is non-falsy, invokes `aSelector` on it.
 Returns a human-readable string of a class or selector.  Note that this is for debug purposes only!  When `--squeeze` is passed into the compiler, the resulting class/selector names will be obfuscated/shortened.
 
 **oj.makeCopy(object)**  
-If `object` is an oj instance, invokes `-copy`.  If `object` is a JavaScript array, returns a shallow clone (via `slice(0)`).  If `object` is a JavaScript primitive, returns `object`.  Else, returns a clone of each key/value pair (via `Object.keys`) on `object`.
+If `object` is an NilScript instance, invokes `-copy`.  If `object` is a JavaScript array, returns a shallow clone (via `slice(0)`).  If `object` is a JavaScript primitive, returns `object`.  Else, returns a clone of each key/value pair (via `Object.keys`) on `object`.
 
 ---
 ## <a name="hinting"></a>Hinting
 
-oj provides basic code hinting to catch common errors.
+NilScript provides basic code hinting to catch common errors.
 
-When the `--warn-unknown-selectors` option is specified, oj warns about usage of undefined selectors/methods.  This can help catch typos at compile time:
+When the `--warn-unknown-selectors` option is specified, NilScript warns about usage of undefined selectors/methods.  This can help catch typos at compile time:
 
     let c = [[TheClass allc] init]; // Warns if no +allc or -allc method exists on any class
 
-When the `--warn-unknown-ivars` option is specified, oj checks all JavaScript identifiers prefixed with an underscore.  A warning is produced when such an identifier is used in a method declaration and the current class lacks a corresponding `@property` or instance variable declaration.
+When the `--warn-unknown-ivars` option is specified, NilScript checks all JavaScript identifiers prefixed with an underscore.  A warning is produced when such an identifier is used in a method declaration and the current class lacks a corresponding `@property` or instance variable declaration.
 
 ```
 @implementation TheClass
@@ -734,7 +736,7 @@ When the `--warn-unknown-ivars` option is specified, oj checks all JavaScript id
 @end
 ```
 
-When the `--warn-unused-ivars` option is specified, oj warns about ivar declarations that are unused within an implementation.
+When the `--warn-unused-ivars` option is specified, NilScript warns about ivar declarations that are unused within an implementation.
 
 ```
 @implementation TheClass {
@@ -743,26 +745,26 @@ When the `--warn-unused-ivars` option is specified, oj warns about ivar declarat
 @end
 ```
 
-When the `--warn-unknown-selectors` option is used, oj checks each selector against all known selectors.
+When the `--warn-unknown-selectors` option is used, NilScript checks each selector against all known selectors.
 
 ---
 
-oj integrates with [JSHint](http://www.jshint.com) via the `--jshint` option; however, this feature is deprecated and will be removed in the future (2.x).  Many JSHint warnings are duplicated by the [typechecker](#typechecking).
+NilScript integrates with [JSHint](http://www.jshint.com) via the `--jshint` option; however, this feature is deprecated and will be removed in the future (2.x).  Many JSHint warnings are duplicated by the [typechecker](#typechecking).
 
 To prevent false positives, the following JSHint options are forced: `asi: true`, `laxbreak: true`, `laxcomma: true`, `newcap:   false`.
 
-`expr: true` is enabled on a per-method basis when the oj compiler uses certain optimizations.
+`expr: true` is enabled on a per-method basis when the NilScript compiler uses certain optimizations.
 
 The `--jshint-ignore` option may be used to disable specific JSHint warnings.
 
 ---
 ## <a name="typechecking"></a>Type Checking
 
-When the `--check-types` option is used, oj performs static type checking via [TypeScript](http://www.typescriptlang.org).  
+When the `--check-types` option is used, NilScript performs static type checking via [TypeScript](http://www.typescriptlang.org).  
 
-oj uses an Objective-C inspired syntax for types, which is automatically translated to and from TypeScript types:
+NilScript uses an Objective-C inspired syntax for types, which is automatically translated to and from TypeScript types:
 
-| oj Type            | TypeScript type / Description                                                      
+| NilScript Type     | TypeScript type / Description                                                      
 |--------------------|------------------------------------------------------------------
 | `Number`           | `number`
 | `Boolean`, `BOOL`  | `boolean`
@@ -770,7 +772,7 @@ oj uses an Objective-C inspired syntax for types, which is automatically transla
 | `Array<Number>`    | An array of numbers, corresponds to the `number[]` TypeScript type.
 | `Object<Number>`   | A JavaScript object used as a string-to-number map. corresponds to the `{ [i:string]: number }` TypeScript type
 | `Object`, `any`    | The `any` type (which effectively turns off typechecking)
-| `TheType`          | The JavaScript type (as defined by the `lib.d.ts` TypeScript file) or an instance of an oj class
+| `TheType`          | The JavaScript type (as defined by the `lib.d.ts` TypeScript file) or an instance of an NilScript class
 | `Array<TheType>`   | A typed array, corresponds to the `TheType[]` TypeScript type.
 | `Object<TheType>`  | A JavaScript object used as a string-to-TheType map. corresponds to the `{ [i:string]: TheType }` TypeScript type
 | `id<ProtocolName>` | An object which conforms to the specified protocol name(s)
@@ -778,7 +780,7 @@ oj uses an Objective-C inspired syntax for types, which is automatically transla
 | `Class`            | A special aggregate type containing all known class methods definitions.
 | `SEL`              | A special type that represents a selector
 
-Most oj method declarations will have type information and should behave exactly as their Objective-C counterparts.  However, JavaScript functions need to be annotated via type annotations, similar to ActionScript and TypeScript:
+Most NilScript method declarations will have type information and should behave exactly as their Objective-C counterparts.  However, JavaScript functions need to be annotated via type annotations, similar to ActionScript and TypeScript:
 
 ```
 function getStringWithNumber(a : String, b : Number) : String {
@@ -797,7 +799,7 @@ function doSometingWithNumber() : void {
 }
 ```    
     
-oj also provides `@type` to declare basic types.  `@type` does not affect generated code and only provides hints to the typechecker:
+NilScript also provides `@type` to declare basic types.  `@type` does not affect generated code and only provides hints to the typechecker:
 
 ```
 @type MyNumericType = Number;
@@ -827,7 +829,7 @@ function example() {
 }
 ```
 
-By default, oj mitigates this by casting all objects literals to the `any` type.  However, this may cause issues with function overloading when using [external type definitions](http://definitelytyped.org).  Hence, you can revert to the original TypeScript behavior via the `--strict-object-literals` option.
+By default, NilScript mitigates this by casting all objects literals to the `any` type.  However, this may cause issues with function overloading when using [external type definitions](http://definitelytyped.org).  Hence, you can revert to the original TypeScript behavior via the `--strict-object-literals` option.
 
 TypeScript also requires function calls to strictly match the parameters of the definition.  The following is allowed in JavaScript but not in TypeScript:
 
@@ -840,22 +842,22 @@ foo(1); // Error in TS: parameter b is required
 foo(1, 2, 3); // Error in TS
 ```
 
-By default, oj mitigates this by rewriting function definitions so that all parameters are optional.  You can revert to the original TypeScript behavior via the `--strict-functions` option.
+By default, NilScript mitigates this by rewriting function definitions so that all parameters are optional.  You can revert to the original TypeScript behavior via the `--strict-functions` option.
 
 ---
 
 For performance reasons, we recommend a separate typechecker pass (in parallel with the main build), with `--check-types` enabled, `--output-language` set to `none`, and TypeScript type definitions (such as those found at [DefinitelyTyped](http://definitelytyped.org)) specified using the `--prepend` option.
 
-oj tries to convert TypeScript error messages back into oj syntax.  Please report any confusing error messages.
+NilScript tries to convert TypeScript error messages back into NilScript syntax.  Please report any confusing error messages.
 
 ---
 ## <a name="restrictions"></a>Restrictions
 
 All identifiers that start with `$oj_` or `$oj$` are classified as Reserved Words.
 
-Inside an oj method declaration, `self` is added to the list of Reserved Words.  Hence, it may not be used as a variable name.
+Inside an NilScript method declaration, `self` is added to the list of Reserved Words.  Hence, it may not be used as a variable name.
 
-The oj compiler uses the global variable `$oj_oj` to access the runtime.  You should not use `$oj_oj` directly or modify it in your source code.  In a web browser environment, runtime.js also defines the global variable `oj` for the runtime.  You may use `oj.noConflict()` to restore the previous value of `oj`.  If you are using a linter or obfuscator, add both `$oj_oj` and `oj` as global variable names.
+The NilScript compiler uses the global variable `$oj_oj` to access the runtime.  You should not use `$oj_oj` directly or modify it in your source code.  In a web browser environment, runtime.js also defines the global variable `oj` for the runtime.  You may use `oj.noConflict()` to restore the previous value of `oj`.  If you are using a linter or obfuscator, add both `$oj_oj` and `oj` as global variable names.
 
 In order to support compiler optimizations, the following method names are reserved and may not be overridden/implemented in subclasses:
 
@@ -872,7 +874,7 @@ In order to support compiler optimizations, the following method names are reser
 ---
 ## <a name="api"></a>API
 
-Traditionally, oj's API consisted of a single `compile` method:
+Traditionally, NilScript's API consisted of a single `compile` method:
 
 ```javascript
 let ojc = require("ojc");
@@ -883,7 +885,7 @@ ojc.compile(options, function(err, results) {
 });
 ```
 
-To allow for fast incremental compiles, oj 2.x adds a `Compiler` constructor:
+To allow for fast incremental compiles, NilScript 2.x adds a `Compiler` constructor:
 
 ```javascript
 let ojc = require("ojc");
@@ -932,8 +934,8 @@ strict-object-literals    | Boolean  | Enforce TypeScript object literals
 warn-debugger             | Boolean  | Warn about use of 'debugger' statement
 warn-empty-array-element  | Boolean  | Warn about empty array element
 warn-global-no-type       | Boolean  | Warn about missing type annotations on @globals
-warn-this-in-methods      | Boolean  | Warn about usage of 'this' in oj methods
-warn-self-in-non-methods  | Boolean  | Warn about usage of 'self' in non-oj methods
+warn-this-in-methods      | Boolean  | Warn about usage of 'this' in NilScript methods
+warn-self-in-non-methods  | Boolean  | Warn about usage of 'self' in non-NilScript methods
 warn-unknown-ivars        | Boolean  | Warn about unknown ivars
 warn-unknown-selectors    | Boolean  | Warn about usage of unknown selectors
 warn-unknown-superclasses | Boolean  | Warn about usage of unknown selectors
@@ -957,7 +959,7 @@ map     | String  | Source map (if `include-map` is true)
 squeeze | Object  | Map of squeezed identifiers to original identifiers.  See [Squeezing and Symbolication](#squeeze) below.
 
 
-The `before-compile` key specifies a callback which is called prior to the compiler's oj->js stage.  This allows you to preprocess files.  After this callback is invoked, a file's content must be valid oj or JavaScript.
+The `before-compile` key specifies a callback which is called prior to the compiler's NilScript->js stage.  This allows you to preprocess files.  After this callback is invoked, a file's content must be valid NilScript or JavaScript.
 
 The `after-compile` key specifies a callback which is called each time the compiler generates JavaScript code for a file.  This allows you to run the generated JavaScript through a linter (such as [JSHint](http://jshint.com) or [ESLint](http://eslint.org)), or allows further transformations via [Babel](https://babeljs.io).  When this callback is invoked, a file's content will be valid JavaScript.
 
@@ -1003,7 +1005,7 @@ ojOptions["after-compile"] = function(file, callback) {
 ojOptions["after-compile"] = function(file, callback) {
     if (!babel) babel = require("babel-core");
     
-    // retainLines must be true or oj's output source map will be useless
+    // retainLines must be true or NilScript's output source map will be useless
     babelOptions.retainLines = true;
 
     try {
@@ -1027,12 +1029,12 @@ Note: `options.state` and `result.state` are private objects and the format/cont
 
 --
 
-oj 2.x also adds the `symbolicate` function as API.  This converts an internal oj identifier such as `$oj_f_stringWithString_` to a human-readable string (`"stringWithString:"`).  See [Squeezing and Symbolication](#squeeze) below.
+NilScript 2.x also adds the `symbolicate` function as API.  This converts an internal NilScript identifier such as `$oj_f_stringWithString_` to a human-readable string (`"stringWithString:"`).  See [Squeezing and Symbolication](#squeeze) below.
 
 ---
 ## <a name="compiler-projects"></a>Compiling Projects
 
-The easiest way to use oj is to pass all `.oj` and `.js` files in your project into `ojc` and produce a single `.js` output file.  In general: the more files you compile at the same time, the easier your life will be.  However, there are specific situations where a more-complex pipeline is needed.
+The easiest way to use NilScript is to pass all `.ns` and `.js` files in your project into `ojc` and produce a single `.js` output file.  In general: the more files you compile at the same time, the easier your life will be.  However, there are specific situations where a more-complex pipeline is needed.
 
 In our usage, we have two output files: `core.js` and `webapp.js`.
 
@@ -1040,9 +1042,9 @@ In our usage, we have two output files: `core.js` and `webapp.js`.
 
 `webapp.js` is used exclusively by the client-side web app and contains HTML/CSS view and view-controller classes.  In certain cases, `webapp.js` needs to allocate classes directly from `core.js`.
 
-In previous versions of oj, this was accomplished via the `--output-state` and `--input-state` compiler flags, or the `options.state`/`result.state` properties in the compiler API.  The state output from `core.js` would be passed as the state input to `webapp.js`.
+In previous versions of NilScript, this was accomplished via the `--output-state` and `--input-state` compiler flags, or the `options.state`/`result.state` properties in the compiler API.  The state output from `core.js` would be passed as the state input to `webapp.js`.
 
-oj 2 introduces a new `Compiler` API with `Compiler#uses` and `Compiler#compile`.  This allows both incremental compiles, and allows for more efficient state sharing:
+NilScript 2 introduces a new `Compiler` API with `Compiler#uses` and `Compiler#compile`.  This allows both incremental compiles, and allows for more efficient state sharing:
 
 ```javascript
 let ojc = require("ojc");
@@ -1057,7 +1059,7 @@ let webAppOptions = { … };
 // It's your responsibility to watch files for changes and kick off the correct
 // doXCompile() functions.
 //
-// If core.js includes the compiled result of foo.oj, a change to foo.oj 
+// If core.js includes the compiled result of foo.ns, a change to foo.ns 
 // needs to call *both* doCoreCompile() and doWebAppCompile()
 //
 webAppCompiler.uses(coreCompiler);
@@ -1076,18 +1078,18 @@ function doWebAppCompile(callback) {
 }    
 ```
 
-1. All lower-level `.js` and `.oj` files are passed into `coreCompiler` via `coreOptions`.
+1. All lower-level `.js` and `.ns` files are passed into `coreCompiler` via `coreOptions`.
 2. The compiler products a `result` object. `result.code` is saved as `core.js`.
-3. All higher-level `.js` and `.oj` files are passed into `webAppCompiler`.  `webAppCompiler` pulls state from `coreCompiler` due to the `Compiler#uses` API.
+3. All higher-level `.js` and `.ns` files are passed into `webAppCompiler`.  `webAppCompiler` pulls state from `coreCompiler` due to the `Compiler#uses` API.
 4. The `result.code` from this compilation pass is saved as `webapp.js`.
 5. Both `core.js` and `webapp.js` are included (in that order) in various HTML files via `<script>` elements.
-6. The oj runtime (`runtime.js`) is also included in various HTML files.  You can obtain its location via the `ojc.getRuntimePath` API.
+6. The NilScript runtime (`runtime.js`) is also included in various HTML files.  You can obtain its location via the `ojc.getRuntimePath` API.
 
 --
 
 We've found it best to run a separate typecheck pass in parallel with the `core.js`/`webapp.js` build (via a separate `node` process).  This allows one CPU to be dedicated to typechecking while the other performs transpiling.  The typecheck pass uses the following options:
 
-* All `.js` and `.oj` files (From steps #1 and #3) are passed as `INPUT_FILES` (or `options.files`).
+* All `.js` and `.ns` files (From steps #1 and #3) are passed as `INPUT_FILES` (or `options.files`).
 * Several `.d.ts` definitions (for jQuery, underscore, etc.) are specified with the `--defs` option (or `options.defs`).
 * `--output-language` is set to `none`.
 * `--check-types` is enabled 
@@ -1095,7 +1097,7 @@ We've found it best to run a separate typecheck pass in parallel with the `core.
 ---
 ## <a name="squeeze"></a>Squeezing and Symbolication
 
-As mentioned in previous sections, oj uses internal identifier names for classes, methods, and ivars.  These identifiers are always prefixed with `$oj_…`:
+As mentioned in previous sections, NilScript uses internal identifier names for classes, methods, and ivars.  These identifiers are always prefixed with `$oj_…`:
 
 Type                     | Humand-readable name  | Internal Identifier
 ------------------------ | -------- | ---
@@ -1104,7 +1106,7 @@ Protocol                 | `TheProtocol` | `$oj_p_TheProtocol`
 Instance variable        | `_theIvar` | `$oj_i_TheClass__theIvar`
 Method                   | `-doSomethingWithFoo:bar:baz:` | `$oj_f_doSomethingWithFoo_bar_baz_`
 
-Since these identifiers can be quite long (and aid in competitor's reverse-engineering efforts), oj features a code minifier/compressor/obfuscator called the squeezer. 
+Since these identifiers can be quite long (and aid in competitor's reverse-engineering efforts), NilScript features a code minifier/compressor/obfuscator called the squeezer. 
 
 When the `--squeeze` option is passed to the compiler, each `$oj_…` identifier is replaced with a shortened "squeezed" version (prefixed with `$oj$…`).  For example, all occurrences of `$oj_c_Foo` might be replaced with `$oj$a`, all occurrences of `$oj_f_initWithFoo_` with `$oj$b`, etc.  `@global`s are also replaced in this manner.
 
@@ -1127,7 +1129,7 @@ The `--squeeze` compiler option adds a `squeeze` property to the compiler result
 
 Symbolication is the process of transforming an internal identifier (either squeezed or unsqueezed) into a human-readable name.  This is frequently used for stack traces in crash reports.
 
-oj 2.x adds `ojc.symbolicate(str, squeezeMap)` as API.  This function replaces all `$oj_…` identifiers in a string with the human-readable name.  If the optional `squeezeMap` parameter is
+NilScript 2.x adds `ojc.symbolicate(str, squeezeMap)` as API.  This function replaces all `$oj_…` identifiers in a string with the human-readable name.  If the optional `squeezeMap` parameter is
 provided, squeezed `$oj$…` identifiers are also transformed:
 
 ```javascript
@@ -1146,12 +1148,12 @@ let e = ojc.symbolicate("Exception in $oj$a", squeezeMap); // "Exception in stri
 ---
 ## <a name="license"></a>Acknowledgements
 
-oj uses a modified version of [Esprima](http://esprima.org) for parsing and [TypeScript](http://www.typescriptlang.org) for type checking.
+NilScript uses a modified version of [Esprima](http://esprima.org) for parsing and [TypeScript](http://www.typescriptlang.org) for type checking.
 
 ---
 ## <a name="license"></a>License
 
 runtime.js is public domain.
 
-All other files in this project are licensed under the [MIT license](http://github.com/musictheory/oj/raw/master/LICENSE.MIT).
+All other files in this project are licensed under the [MIT license](http://github.com/musictheory/NilScript/raw/master/LICENSE.MIT).
 
