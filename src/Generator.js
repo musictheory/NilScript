@@ -686,29 +686,32 @@ generate()
                 Utils.throwError(OJError.ParseError, 'Cannot use @CLASS outside of a class implementation');
             }
 
-        } else if (name === "@SEL") {
-            if (selectorName) {
-                modifier.select(node).replace('"' + selectorName + '"');
-            } else {
-                Utils.throwError(OJError.ParseError, 'Cannot use @SEL outside of a method definition');
-            }
-
-        } else if (name === "@FUNCTION") {
-            if (className && selectorName && currentMethodNode) {
-                let selectorType = currentMethodNode.selectorType;
-                modifier.select(node).replace(`"${selectorType}[${className} ${selectorName}]"`);
-            } else {
-                Utils.throwError(OJError.ParseError, 'Cannot use @SEL outside of a method definition');
-            }
-
-        } else if (name === "@ARGS") {
+        } else if (name === "@SEL" || name === "@FUNCTION" || name === "@ARGS" || name === "@FUNCTION_ARGS") {
             let currentMethod = getCurrentMethodInModel();
-            
-            if (currentMethod) {
-                let variableNames = currentMethod.variableNames || [ ];
-                modifier.select(node).replace("[" + variableNames.join(",") + "]");
+            let replacement   = null;
+
+            if (className && selectorName && currentMethodNode && currentMethod) {
+                let selectorType   = currentMethodNode.selectorType;
+                let functionString = `${selectorType}[${className} ${selectorName}]`;
+                let argsString     = "[" + (currentMethod.variableNames || [ ]).join(",") + "]";
+
+                if (name === "@SEL") {
+                    replacement = '"' + selectorName + '"';
+                } else if (name === "@FUNCTION") {
+                    replacement = '"' + functionString + '"';
+
+                } else if (name === "@FUNCTION_ARGS") {
+                    replacement = '"' + functionString + ' " + ' + argsString;
+
+                } else if (name === "@ARGS") {
+                    replacement = argsString;
+                }
+            }
+
+            if (replacement) {
+                modifier.select(node).replace(replacement);
             } else {
-                Utils.throwError(OJError.ParseError, 'Cannot use @ARGS outside of a method definition');
+                Utils.throwError(OJError.ParseError, 'Cannot use ' + name + ' outside of a method definition');
             }
 
         } else {
