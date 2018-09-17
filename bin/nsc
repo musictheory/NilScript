@@ -7,12 +7,12 @@
 
 "use strict";
 
-const fs       = require("fs");
-const util     = require("util");
-const getopt   = require("node-getopt");
-const _        = require("lodash");
+const fs        = require("fs");
+const util      = require("util");
+const getopt    = require("node-getopt");
+const _         = require("lodash");
 
-const ojc      = require("../lib/api");
+const nilscript = require("../lib/api");
 
 
 let opt = getopt.create([
@@ -43,7 +43,7 @@ let opt = getopt.create([
     [ "",  "warn-debugger",             "warn about use of 'debugger' statement"   ],
     [ "",  "warn-empty-array-element",  "warn about empty array element"           ],
     [ "",  "warn-global-no-type",       "warn about missing type annotations on @globals" ],
-    [ "",  "warn-this-in-methods",      "warn about usage of 'this' in oj methods" ],
+    [ "",  "warn-this-in-methods",      "warn about usage of 'this' in NilScript methods" ],
     [ "",  "warn-self-in-non-methods",  "warn about usage of 'self' in non-methods" ],
 
     [ "",  "warn-unknown-ivars",        "warn about unknown ivars"                 ],
@@ -60,12 +60,12 @@ let opt = getopt.create([
 
 
 opt.setHelp(
-    "Usage: ojc [OPTIONS] INPUT_FILES\n" +
+    "Usage: nsc [OPTIONS] INPUT_FILES\n" +
     "\n" +
     "[[OPTIONS]]\n" +
     "\n" +
-    "Installation: npm install ojc\n" +
-    "Respository:  https://github.com/musictheory/oj"
+    "Installation: npm install nilscript\n" +
+    "Respository:  https://github.com/musictheory/NilScript"
 );
 
 opt.bindHelp();
@@ -119,7 +119,7 @@ function read_files(files)
             let contents = (fs.readFileSync(file).toString());
             results.push({ path: file, contents: contents });
         } catch (e) {
-            console.error("ojc: error reading file: " + e);
+            console.error("nsc: error reading file: " + e);
             process.exit(1);
         }
     });
@@ -146,7 +146,7 @@ function read_contents(files)
 
 // Bail if no input files (specified after options)
 if (!argv || argv.length == 0) {
-    console.error("ojc: error: no input files");
+    console.error("nsc: error: no input files");
     process.exit(1);
 }
 
@@ -177,7 +177,7 @@ if (outputSymbolsFile) {
 
 
 try {
-    ojc.compile(options, function(err, result) {
+    nilscript.compile(options, function(err, result) {
         if (err) {
             print_error(err);
             process.exit(1);
