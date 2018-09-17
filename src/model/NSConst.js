@@ -1,5 +1,5 @@
 /*
-    OJConst.js
+    NSConst.js
     Model class for an @const declaration
     (c) 2013-2018 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
@@ -8,7 +8,7 @@
 "use strict";
 
 
-module.exports = class OJConst {
+module.exports = class NSConst {
 
 
 constructor(location, name, value, raw, bridged)

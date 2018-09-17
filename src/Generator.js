@@ -15,20 +15,20 @@ const Modifier   = require("./Modifier");
 const Traverser  = require("./Traverser");
 const Utils      = require("./Utils");
 
-const OJModel    = require("./model").OJModel;
-const OJError    = require("./Errors").OJError;
-const OJWarning  = require("./Errors").OJWarning;
+const NSModel    = require("./model").NSModel;
+const NSError    = require("./Errors").NSError;
+const NSWarning  = require("./Errors").NSWarning;
 
-const Location = require("./model/OJSymbolTyper").Location;
+const Location = require("./model/NSSymbolTyper").Location;
 
-const OJRootVariable            = "$oj_oj";
-const OJClassMethodsVariable    = "$oj_s";
-const OJInstanceMethodsVariable = "$oj_m";
-const OJTemporaryVariablePrefix = "$oj_t_";
-const OJSuperVariable           = "$oj_super";
+const NSRootVariable            = "$oj_oj";
+const NSClassMethodsVariable    = "$oj_s";
+const NSInstanceMethodsVariable = "$oj_m";
+const NSTemporaryVariablePrefix = "$oj_t_";
+const NSSuperVariable           = "$oj_super";
 
-const OJRootWithGlobalPrefix = OJRootVariable + "._g."
-const OJRootWithClassPrefix  = OJRootVariable + "._cls.";
+const NSRootWithGlobalPrefix = NSRootVariable + "._g."
+const NSRootWithClassPrefix  = NSRootVariable + "._cls.";
 
 const LanguageEcmascript5 = "ecmascript5";
 const LanguageTypechecker = "typechecker";
@@ -157,7 +157,7 @@ generate()
 
     function makeTemporaryVariable(needsDeclaration)
     {
-        let name = OJTemporaryVariablePrefix + scope.count++;
+        let name = NSTemporaryVariablePrefix + scope.count++;
         if (needsDeclaration) scope.declarations.push(name);
         return name;
     }
@@ -165,7 +165,7 @@ generate()
     function getClassAsRuntimeVariable(className)
     {
         if (language === LanguageEcmascript5) {
-            return OJRootWithClassPrefix + symbolTyper.getSymbolForClassName(className);
+            return NSRootWithClassPrefix + symbolTyper.getSymbolForClassName(className);
         }
 
         return symbolTyper.getSymbolForClassName(className);
@@ -187,7 +187,7 @@ generate()
     function generateMethodDeclaration(isClassMethod, selectorName)
     {
         if (language === LanguageEcmascript5) {
-            let where = isClassMethod ? OJClassMethodsVariable : OJInstanceMethodsVariable;
+            let where = isClassMethod ? NSClassMethodsVariable : NSInstanceMethodsVariable;
             return where + "." + symbolTyper.getSymbolForSelectorName(selectorName);
         }
     }
@@ -288,12 +288,12 @@ generate()
 
         if (currentMethodNode && currentClass) {
             if (currentClass && currentClass.isIvar(name)) {
-                Utils.throwError(OJError.RestrictedUsage, "Cannot use instance variable \"" + name + "\" here.", node);
+                Utils.throwError(NSError.RestrictedUsage, "Cannot use instance variable \"" + name + "\" here.", node);
             }
         }
 
         if (inlines[name] || model.globals[name]) {
-            Utils.throwError(OJError.RestrictedUsage, "Cannot use compiler-inlined \"" + name + "\" here.", node);
+            Utils.throwError(NSError.RestrictedUsage, "Cannot use compiler-inlined \"" + name + "\" here.", node);
         }
     }
 
@@ -306,7 +306,7 @@ generate()
         let firstSelector, lastSelector;
 
         if (knownSelectors && !knownSelectors[node.selectorName]) {
-            warnings.push(Utils.makeError(OJWarning.UnknownSelector, "Use of unknown selector '" + node.selectorName + "'", node));
+            warnings.push(Utils.makeError(NSWarning.UnknownSelector, "Use of unknown selector '" + node.selectorName + "'", node));
         }
 
         for (let i = 0, length = node.messageSelectors.length; i < length; i++) {
@@ -369,7 +369,7 @@ generate()
             if (receiver.name == "super") {
                 if (language === LanguageEcmascript5) {
                     let classSymbol = symbolTyper.getSymbolForClassName(currentClass.name );
-                    doCommonReplacement(classSymbol + "." + OJSuperVariable + "." + (isInstance ? "prototype." : "") + methodName + ".call(this" + (hasArguments ? "," : ""), ")");
+                    doCommonReplacement(classSymbol + "." + NSSuperVariable + "." + (isInstance ? "prototype." : "") + methodName + ".call(this" + (hasArguments ? "," : ""), ")");
 
                 } else if (language === LanguageTypechecker) {
                     let method = getCurrentMethodInModel();
@@ -469,7 +469,7 @@ generate()
         // Slow path
         replaceMessageSelectors();
 
-        modifier.from(node).to(receiver).replace(OJRootVariable + ".msgSend(");
+        modifier.from(node).to(receiver).replace(NSRootVariable + ".msgSend(");
 
         if (receiver.type == Syntax.Identifier && model.classes[receiver.name]) {
             modifier.select(receiver).replace(getClassAsRuntimeVariable(receiver.name));
@@ -500,7 +500,7 @@ generate()
                 type !== Syntax.OJDynamicDirective    &&
                 type !== Syntax.OJSynthesizeDirective)
             {
-                Utils.throwError(OJError.ParseError, 'Unexpected implementation child.', child);
+                Utils.throwError(NSError.ParseError, 'Unexpected implementation child.', child);
             }
 
             if (type === Syntax.VariableDeclaration) {
@@ -509,7 +509,7 @@ generate()
                         if (declarator.init.type !== Syntax.Literal &&
                             declarator.init.type !== Syntax.FunctionExpression)
                         {
-                            Utils.throwError(OJError.ParseError, 'Variable declaration must be initialized to a constant.', declarator.init);
+                            Utils.throwError(NSError.ParseError, 'Variable declaration must be initialized to a constant.', declarator.init);
                         }
                     }
                 });
@@ -529,7 +529,7 @@ generate()
                 let superclass = model.classes[superName];
 
                 if (!superclass || superclass.forward == true || superclass.placeholder == true) {
-                    warnings.push(Utils.makeError(OJWarning.UnknownSuperclass, "Use of unknown superclass '" + superName + "'.", node.superClass));
+                    warnings.push(Utils.makeError(NSWarning.UnknownSuperclass, "Use of unknown superclass '" + superName + "'.", node.superClass));
                 }
             }
         }
@@ -543,29 +543,29 @@ generate()
             if (node.category) {
                 let categorySelector = "{" + symbolTyper.getSymbolForClassName(node.category) + ":1}";
 
-                startText = OJRootVariable + "._registerCategory(" +
+                startText = NSRootVariable + "._registerCategory(" +
                     classSelector + ", ";
 
             } else {
-                startText = OJRootVariable + "._registerClass(" +
+                startText = NSRootVariable + "._registerClass(" +
                     classSelector + ", " +
                     (superSelector || "null") + ", ";
             }
 
             startText = startText +
                
-                "function(" + OJClassMethodsVariable + ", " + OJInstanceMethodsVariable + ") { " +
+                "function(" + NSClassMethodsVariable + ", " + NSInstanceMethodsVariable + ") { " +
                 "function " + classSymbol + "() { " +
                 constructorCallSuper +
                 constructorSetIvars  +
                 "this.constructor = " + classSymbol + ";" +
-                "this.$oj_id = ++" + OJRootVariable + "._id;" +
+                "this.$oj_id = ++" + NSRootVariable + "._id;" +
                 "}";
 
             endText = "return " + classSymbol + ";});";
         
         } else if (language === LanguageTypechecker) {
-            startText = "var $oj_unused = (function(" + OJClassMethodsVariable + " : any, " + OJInstanceMethodsVariable + " : any) { ";
+            startText = "var $oj_unused = (function(" + NSClassMethodsVariable + " : any, " + NSInstanceMethodsVariable + " : any) { ";
             endText = "});";
         }
 
@@ -607,13 +607,13 @@ generate()
     {
         let methodName = symbolTyper.getSymbolForSelectorName(node.selectorName);
         let isClassMethod = node.selectorType == "+";
-        let where = isClassMethod ? OJClassMethodsVariable : OJInstanceMethodsVariable;
+        let where = isClassMethod ? NSClassMethodsVariable : NSInstanceMethodsVariable;
         let args = [ ];
 
         makeScope(node);
 
         if (Utils.isReservedSelectorName(node.selectorName)) {
-            Utils.throwError(OJError.ReservedMethodName, "The method name \"" + node.selectorName + "\" is reserved by the runtime and may not be overridden.", node);
+            Utils.throwError(NSError.ReservedMethodName, "The method name \"" + node.selectorName + "\" is reserved by the runtime and may not be overridden.", node);
         }
 
         if (language === LanguageTypechecker) {
@@ -683,7 +683,7 @@ generate()
             if (currentClass) {
                 modifier.select(node).replace('"' + className + '"');
             } else {
-                Utils.throwError(OJError.ParseError, 'Cannot use @CLASS outside of a class implementation');
+                Utils.throwError(NSError.ParseError, 'Cannot use @CLASS outside of a class implementation');
             }
 
         } else if (name === "@SEL" || name === "@FUNCTION" || name === "@ARGS" || name === "@FUNCTION_ARGS") {
@@ -711,11 +711,11 @@ generate()
             if (replacement) {
                 modifier.select(node).replace(replacement);
             } else {
-                Utils.throwError(OJError.ParseError, 'Cannot use ' + name + ' outside of a method definition');
+                Utils.throwError(NSError.ParseError, 'Cannot use ' + name + ' outside of a method definition');
             }
 
         } else {
-            Utils.throwError(OJError.DollarOJIsReserved, 'Unknown identifier: "' + name + '"');
+            Utils.throwError(NSError.DollarOJIsReserved, 'Unknown identifier: "' + name + '"');
         }
     }
 
@@ -748,7 +748,7 @@ generate()
         if (name[0] === "$") {
             if (name.indexOf("$oj") == 0) {
                 if (name[3] == "$" || name[3] == "_") {
-                    Utils.throwError(OJError.DollarOJIsReserved, "Identifiers may not start with \"$oj_\" or \"$oj$\"", node);
+                    Utils.throwError(NSError.DollarOJIsReserved, "Identifiers may not start with \"$oj_\" or \"$oj$\"", node);
                 }
             }
 
@@ -763,7 +763,7 @@ generate()
         let replacement;
 
         if (ojGlobal) {
-            replacement = OJRootWithGlobalPrefix + (optionSqueeze ? symbolTyper.getSymbolForIdentifierName(name) : name);
+            replacement = NSRootWithGlobalPrefix + (optionSqueeze ? symbolTyper.getSymbolForIdentifierName(name) : name);
 
             modifier.select(node).replace(replacement);
             return;
@@ -790,12 +790,12 @@ generate()
 
             } else {
                 if (name[0] == "_" && optionWarnUnknownIvars && (name.length > 1)) {
-                    warnings.push(Utils.makeError(OJWarning.UndeclaredInstanceVariable, "Use of undeclared instance variable " + node.name, node));
+                    warnings.push(Utils.makeError(NSWarning.UndeclaredInstanceVariable, "Use of undeclared instance variable " + node.name, node));
                 }
             } 
 
         } else if (isSelf && optionWarnSelfInNonMethod && !currentMethodNode) {
-            warnings.push(Utils.makeError(OJWarning.UseOfSelfInNonMethod, "Use of 'self' in non-method", node));
+            warnings.push(Utils.makeError(NSWarning.UseOfSelfInNonMethod, "Use of 'self' in non-method", node));
         }
 
         if (inlines) {
@@ -868,7 +868,7 @@ generate()
                 }
 
                 if (property.copyOnWrite) {
-                    s.push(ivar + " = " + OJRootVariable + ".makeCopy(arg);");
+                    s.push(ivar + " = " + NSRootVariable + ".makeCopy(arg);");
                 } else {
                     s.push(ivar + " = arg;");
                 }
@@ -898,7 +898,7 @@ generate()
                 result += generateMethodDeclaration(false, property.getter);
 
                 if (property.copyOnRead) {
-                    result += " = function() { return " + OJRootVariable + ".makeCopy(" + generateThisIvar(currentClass.name, property.ivar, false) + "); } ; ";
+                    result += " = function() { return " + NSRootVariable + ".makeCopy(" + generateThisIvar(currentClass.name, property.ivar, false) + "); } ; ";
                 } else {
                     result += " = function() { return " + generateThisIvar(currentClass.name, property.ivar, false) + "; } ; ";
                 }
@@ -921,7 +921,7 @@ generate()
         let name = symbolTyper.getSymbolForSelectorName(node.name);
 
         if (knownSelectors && !knownSelectors[node.name]) {
-            warnings.push(Utils.makeError(OJWarning.UnknownSelector, "Use of unknown selector '" + node.name + "'", node));
+            warnings.push(Utils.makeError(NSWarning.UnknownSelector, "Use of unknown selector '" + node.name + "'", node));
         }
 
         modifier.select(node).replace("{ " + name + ": 1 }");
@@ -1046,7 +1046,7 @@ generate()
             // The left side is just an identifier
             } else if (node.left.type == Syntax.Identifier) {
                 if (currentClass && currentClass.isIvar(node.left.name)) {
-                    Utils.throwError(OJError.RestrictedUsage, "Cannot use ivar \"" + node.left.name + "\" on left-hand side of @each", node);
+                    Utils.throwError(NSError.RestrictedUsage, "Cannot use ivar \"" + node.left.name + "\" on left-hand side of @each", node);
                 }
 
                 object = node.left.name;
@@ -1098,7 +1098,7 @@ generate()
             }
 
             if (!allTyped) {
-                warnings.push(Utils.makeError(OJWarning.MissingTypeAnnotation, "Missing type annotation on @global", node));
+                warnings.push(Utils.makeError(NSWarning.MissingTypeAnnotation, "Missing type annotation on @global", node));
             }
         }
 
@@ -1106,7 +1106,7 @@ generate()
             if (declaration) {
                 let name = symbolTyper.getSymbolForIdentifierName(declaration.id.name);
 
-                modifier.from(node).to(declaration).replace(OJRootWithGlobalPrefix + name + "=");
+                modifier.from(node).to(declaration).replace(NSRootWithGlobalPrefix + name + "=");
                 modifier.select(declaration.id).remove();
                 declaration.id.oj_skip = true;
 
@@ -1116,7 +1116,7 @@ generate()
                 _.each(declarators, declarator => {
                     let name = symbolTyper.getSymbolForIdentifierName(declarator.id.name);
 
-                    modifier.select(declarator.id).replace(OJRootWithGlobalPrefix + name);
+                    modifier.select(declarator.id).replace(NSRootWithGlobalPrefix + name);
                     declarator.id.oj_skip = true;
                 })
             }
@@ -1241,7 +1241,7 @@ generate()
                 node.type == Syntax.OJClassImplementation ||
                 node.type == Syntax.OJMessageExpression)
             {
-                warnings.push(Utils.makeError(OJWarning.UseOfThisInMethod, "Use of 'this' keyword in oj method definition", thisNode));
+                warnings.push(Utils.makeError(NSWarning.UseOfThisInMethod, "Use of 'this' keyword in oj method definition", thisNode));
 
             } else if (node.type == Syntax.FunctionDeclaration ||
                        node.type == Syntax.FunctionExpression  ||
@@ -1378,14 +1378,14 @@ generate()
             if (optionWarnEmptyArrayElement) {
                 _.each(node.elements, element => {
                     if (element === null) {
-                        warnings.push(Utils.makeError(OJWarning.UseOfEmptyArrayElement, "Use of empty array element", node));
+                        warnings.push(Utils.makeError(NSWarning.UseOfEmptyArrayElement, "Use of empty array element", node));
                     }
                 });
             }
 
         } else if (type === Syntax.DebuggerStatement) {
             if (optionWarnDebugger) {
-                warnings.push(Utils.makeError(OJWarning.UseOfDebugger, "Use of debugger statement", node));
+                warnings.push(Utils.makeError(NSWarning.UseOfDebugger, "Use of debugger statement", node));
             }
         }
 
@@ -1396,10 +1396,10 @@ generate()
             if (optionWarnUnusedIvars) {
                 _.each(currentClass.getAllIvarNamesWithoutProperties(), ivarName => {
                     if (!usedIvarMap[ivarName]) {
-                        warnings.push(Utils.makeError(OJWarning.UnusedInstanceVariable, "Unused instance variable '" + ivarName + "'", node));
+                        warnings.push(Utils.makeError(NSWarning.UnusedInstanceVariable, "Unused instance variable '" + ivarName + "'", node));
 
                     } else if (!assignedIvarMap[ivarName]) {
-                        warnings.push(Utils.makeError(OJWarning.UnassignedInstanceVariable, "Instance variable '" + ivarName + "' used but never assigned", node));
+                        warnings.push(Utils.makeError(NSWarning.UnassignedInstanceVariable, "Instance variable '" + ivarName + "' used but never assigned", node));
                     }
                 });
             }

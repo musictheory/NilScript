@@ -1,5 +1,5 @@
 /*
-    OJProperty.js
+    NSProperty.js
     Simple model class for a @property on a class
     (c) 2013-2018 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
@@ -8,7 +8,7 @@
 "use strict";
 
 
-module.exports = class OJProperty {
+module.exports = class NSProperty {
 
 
 constructor(location, name, type, writable, copyOnRead, copyOnWrite, getter, setter, ivar, optional)

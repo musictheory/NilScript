@@ -8,8 +8,8 @@ const cp     = require("child_process");
 const fs     = require("fs");
 const path   = require("path");
 
-const OJError   = require("../src/Errors.js").OJError;
-const OJWarning = require("../src/Errors.js").OJWarning;
+const NSError   = require("../src/Errors.js").NSError;
+const NSWarning = require("../src/Errors.js").NSWarning;
 const ojc       = require("../lib/api");
 const oj        = require("../lib/runtime");
 
@@ -98,7 +98,7 @@ _checkResults(err, result)
     _.each(result.warnings, warning => {
         canRun = false;
 
-        if (warning.name == OJWarning.Typechecker) {
+        if (warning.name == NSWarning.Typechecker) {
             let codeQuoted = [ warning.code ];
 
             warning.reason.replace(/'(.*?)'/g, function(a0, a1) {

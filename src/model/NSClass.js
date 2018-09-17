@@ -1,5 +1,5 @@
 /*
-    OJClass.js
+    NSClass.js
     Model class for an oj class implementation
     (c) 2013-2018 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
@@ -8,19 +8,19 @@
 "use strict";
 
 const _           = require("lodash");
-const OJError     = require("../Errors").OJError;
-const OJWarning   = require("../Errors").OJWarning;
+const NSError     = require("../Errors").NSError;
+const NSWarning   = require("../Errors").NSWarning;
 const Utils       = require("../Utils");
-const OJIvar      = require("./OJIvar");
-const OJProperty  = require("./OJProperty");
-const OJMethod    = require("./OJMethod");
-const OJObserver  = require("./OJObserver");
+const NSIvar      = require("./NSIvar");
+const NSProperty  = require("./NSProperty");
+const NSMethod    = require("./NSMethod");
+const NSObserver  = require("./NSObserver");
 
 
-const OJDynamicProperty = " OJDynamicProperty ";
+const NSDynamicProperty = " NSDynamicProperty ";
 
 
-module.exports = class OJClass {
+module.exports = class NSClass {
 
 
 constructor(location, name, superclassName, protocolNames)
@@ -67,19 +67,19 @@ loadState(state)
     this.didSynthesis    = state.didSynthesis;
 
     _.each(state.ivars, i => {
-        this.addIvar(new OJIvar(i.location, i.name, i.className, i.type));
+        this.addIvar(new NSIvar(i.location, i.name, i.className, i.type));
     });
 
     _.each(state.properties, p => {
-        this.addProperty(new OJProperty(p.location, p.name, p.type, p.writable, p.copyOnRead, p.copyOnWrite, p.getter, p.setter, p.ivar, false));
+        this.addProperty(new NSProperty(p.location, p.name, p.type, p.writable, p.copyOnRead, p.copyOnWrite, p.getter, p.setter, p.ivar, false));
     });
 
     _.each(state.observers, o => {
-        this.addObserver(new OJObserver(o.location, o.name, o.change, o.before, o.after));
+        this.addObserver(new NSObserver(o.location, o.name, o.change, o.before, o.after));
     });
 
     _.each(state.methods, m => {
-        this.addMethod(new OJMethod(m.location, m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, false));
+        this.addMethod(new NSMethod(m.location, m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, false));
     });
 }
 
@@ -128,7 +128,7 @@ _doAutomaticSynthesis()
         let getter   = property.getter;
         let setter   = property.setter;
 
-        if (ivarName == OJDynamicProperty) continue;
+        if (ivarName == NSDynamicProperty) continue;
 
         let hadExplicitlySynthesizedIvarName = !!ivarName;
 
@@ -159,26 +159,26 @@ _doAutomaticSynthesis()
         }
 
         if (backingIvarToPropertyNameMap[ivarName]) {
-            Utils.throwError(OJError.InstanceVariableAlreadyClaimed, "Synthesized properties '" +  backingIvarToPropertyNameMap[ivarName] + "' and '" + name + "' both claim instance variable '" + ivarName + "'");
+            Utils.throwError(NSError.InstanceVariableAlreadyClaimed, "Synthesized properties '" +  backingIvarToPropertyNameMap[ivarName] + "' and '" + name + "' both claim instance variable '" + ivarName + "'");
         } else {
             backingIvarToPropertyNameMap[ivarName] = name;
         }
 
         // Generate backing ivar
         if (generateBackingIvar) {
-            ivar = new OJIvar(_.clone(location), ivarName, this.name, property.type);
+            ivar = new NSIvar(_.clone(location), ivarName, this.name, property.type);
             ivar.synthesized = true;
             this._ivarMap[ivarName] = ivar;
         }
 
         if (getter && !getterMethod) {
-            getterMethod = new OJMethod(_.clone(location), getter, "-", property.type, [ ]);
+            getterMethod = new NSMethod(_.clone(location), getter, "-", property.type, [ ]);
             getterMethod.synthesized = true;
             this._instanceMethodMap[getter] = getterMethod;
         }
 
         if (setter && !setterMethod) {
-            setterMethod = new OJMethod(_.clone(location), setter, "-", "void", [ property.type ]);
+            setterMethod = new NSMethod(_.clone(location), setter, "-", "void", [ property.type ]);
             setterMethod.synthesized = true;
             this._instanceMethodMap[setter] = setterMethod;
         }
@@ -195,7 +195,7 @@ _checkForCircularHierarchy(model)
 
     while (superclass) {
         if (visited.indexOf(superclass.name) >= 0) {
-             this.prepareWarnings.push(Utils.makeError(OJWarning.CircularClassHierarchy, "Circular class hierarchy detected: '" + visited.join(",") + "'", this.location));
+             this.prepareWarnings.push(Utils.makeError(NSWarning.CircularClassHierarchy, "Circular class hierarchy detected: '" + visited.join(",") + "'", this.location));
              break;
         }
 
@@ -216,18 +216,18 @@ _checkObservers()
             let after  = observer.after;
 
             if (before && !knownSelectors[before]) {
-                this.prepareWarnings.push(Utils.makeError(OJWarning.UnknownSelector, "Unknown selector: '" + before + "'", observer.location));
+                this.prepareWarnings.push(Utils.makeError(NSWarning.UnknownSelector, "Unknown selector: '" + before + "'", observer.location));
             }
 
             if (after && !knownSelectors[after]) {
-                this.prepareWarnings.push(Utils.makeError(OJWarning.UnknownSelector, "Unknown selector: '" + after + "'", observer.location));
+                this.prepareWarnings.push(Utils.makeError(NSWarning.UnknownSelector, "Unknown selector: '" + after + "'", observer.location));
             }
 
             let name = observer.name;
             let property = this._propertyMap[name];
 
             if (!property) {
-                this.prepareWarnings.push(Utils.makeError(OJWarning.UnknownProperty, "Unknown property: '" + name + "'", observer.location));
+                this.prepareWarnings.push(Utils.makeError(NSWarning.UnknownProperty, "Unknown property: '" + name + "'", observer.location));
             }
         });
     });
@@ -272,7 +272,7 @@ getIvarNameForPropertyName(propertyName)
     let property = this._propertyMap[propertyName];
     if (!propertyName) return null;
 
-    if (property.ivar == OJDynamicProperty) {
+    if (property.ivar == NSDynamicProperty) {
         return null;
     }
 
@@ -285,7 +285,7 @@ shouldSynthesizeIvarForPropertyName(propertyName)
     let property = this._propertyMap[propertyName];
     if (!property) return false;
 
-    if (property.ivar == OJDynamicProperty) return false;
+    if (property.ivar == NSDynamicProperty) return false;
 
     let hasGetter = property.getter ? this.hasInstanceMethod(property.getter) : false;
     let hasSetter = property.setter ? this.hasInstanceMethod(property.setter) : false;
@@ -309,7 +309,7 @@ shouldGenerateGetterImplementationForPropertyName(propertyName)
     let property = this._propertyMap[propertyName];
     if (!property) return false;
 
-    if (property.ivar == OJDynamicProperty) return false;
+    if (property.ivar == NSDynamicProperty) return false;
 
     if (property.getter) {
         let method = this._instanceMethodMap[property.getter];
@@ -325,7 +325,7 @@ shouldGenerateSetterImplementationForPropertyName(propertyName)
     let property = this._propertyMap[propertyName];
     if (!property) return false;
 
-    if (property.ivar == OJDynamicProperty) return false;
+    if (property.ivar == NSDynamicProperty) return false;
 
     if (property.setter) {
         let method = this._instanceMethodMap[property.setter];
@@ -341,7 +341,7 @@ addIvar(ivar)
     let name = ivar.name;
 
     if (this._ivarMap[name]) {
-        Utils.throwError(OJError.DuplicateIvarDefinition, "Instance variable " + name + " has previous declaration");
+        Utils.throwError(NSError.DuplicateIvarDefinition, "Instance variable " + name + " has previous declaration");
     }
 
     this._ivarMap[name] = ivar;    
@@ -353,7 +353,7 @@ addProperty(ojProperty)
     let name = ojProperty.name;
 
     if (this._propertyMap[name]) {
-        Utils.throwError(OJError.DuplicatePropertyDefinition, "Property " + name + " has previous declaration");
+        Utils.throwError(NSError.DuplicatePropertyDefinition, "Property " + name + " has previous declaration");
     }
 
     this._propertyMap[name] = ojProperty;
@@ -378,11 +378,11 @@ makePropertySynthesized(name, backing)
 {
     let property = this._propertyMap[name];
     if (!property) {
-        Utils.throwError(OJError.UnknownProperty, "Unknown property: " + name);
-    } else if (property.ivar == OJDynamicProperty) {
-        Utils.throwError(OJError.PropertyAlreadyDynamic, "Property " + name + " already declared dynamic");
+        Utils.throwError(NSError.UnknownProperty, "Unknown property: " + name);
+    } else if (property.ivar == NSDynamicProperty) {
+        Utils.throwError(NSError.PropertyAlreadyDynamic, "Property " + name + " already declared dynamic");
     } else if (property.ivar) {
-        Utils.throwError(OJError.PropertyAlreadySynthesized, "Property " + name + " already synthesized to " + property.ivar);
+        Utils.throwError(NSError.PropertyAlreadySynthesized, "Property " + name + " already synthesized to " + property.ivar);
     }
 
     property.ivar = backing;
@@ -393,14 +393,14 @@ makePropertyDynamic(name)
 {
     let property = this._propertyMap[name];
     if (!property) {
-        Utils.throwError(OJError.UnknownProperty, "Unknown property: " + name);
-    } else if (property.ivar == OJDynamicProperty) {
-        Utils.throwError(OJError.PropertyAlreadyDynamic, "Property " + name + " already declared dynamic");
+        Utils.throwError(NSError.UnknownProperty, "Unknown property: " + name);
+    } else if (property.ivar == NSDynamicProperty) {
+        Utils.throwError(NSError.PropertyAlreadyDynamic, "Property " + name + " already declared dynamic");
     } else if (property.ivar) {
-        Utils.throwError(OJError.PropertyAlreadySynthesized, "Property " + name + " already synthesized to " + property.ivar);
+        Utils.throwError(NSError.PropertyAlreadySynthesized, "Property " + name + " already synthesized to " + property.ivar);
     }
 
-    property.ivar   = OJDynamicProperty;
+    property.ivar   = NSDynamicProperty;
     property.setter = null;
     property.getter = null;
 }
@@ -427,7 +427,7 @@ addMethod(method)
     }
 
     if (map[selectorName]) {
-        Utils.throwError(OJError.DuplicateMethodDefinition, "Duplicate declaration of method '" + selectorName + "'");
+        Utils.throwError(NSError.DuplicateMethodDefinition, "Duplicate declaration of method '" + selectorName + "'");
     }
 
     map[selectorName] = method;

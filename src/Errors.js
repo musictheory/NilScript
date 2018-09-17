@@ -6,50 +6,50 @@
 
 "use strict";
 
-const OJError = { };
+const NSError = { };
 
-OJError.ParseError                     = "OJParseError";
-OJError.NotYetSupported                = "OJNotYetSupportedError";
-OJError.DuplicateDeclaration           = "OJDuplicateDeclarationError";
-OJError.DuplicatePropertyDefinition    = "OJDuplicatePropertyDefinitionError";
-OJError.DuplicateMethodDefinition      = "OJDuplicateMethodDefinitionError";
-OJError.DuplicateIvarDefinition        = "OJDuplicateIvarDefinitionError";
-OJError.DuplicateEnumDefinition        = "OJDuplicateEnumDefinition";
-OJError.UnknownProperty                = "OJUnknownPropertyError";
-OJError.DuplicateJavascriptFunction    = "OJDuplicateJavascriptFunctionError";
-OJError.PropertyAlreadySynthesized     = "OJPropertyAlreadySynthesizedError";
-OJError.PropertyAlreadyDynamic         = "OJPropertyAlreadyDynamicError";
-OJError.InstanceVariableAlreadyClaimed = "OJInstanceVariableAlreadyClaimedError";
-OJError.NonLiteralConst                = "OJNonLiteralConstError";
-OJError.NonLiteralEnum                 = "OJNonLiteralEnumError";
-OJError.NonIntegerEnum                 = "OJNonIntegerEnumError";
-OJError.SelfIsReserved                 = "OJSelfIsReservedError";
-OJError.DollarOJIsReserved             = "OJDollarOJIsReservedError";
-OJError.ReservedMethodName             = "OJReservedMethodNameError";
-OJError.SqueezerReachedEndIndex        = "OJSqueezerReachedEndIndexError";
-OJError.CircularTypeHierarchy          = "OJCircularTypeHierarchyError";
-OJError.VariableAlreadyDeclared        = "OJVariableAlreadyDeclaredError";
-OJError.VariableNotYetDeclared         = "OJVariableNotYetDeclaredError";
-OJError.RestrictedUsage                = "OJRestrictedUsageError";
-OJError.APIMisuse                      = "OJAPIMisuseError";
+NSError.ParseError                     = "NilScriptParseError";
+NSError.NotYetSupported                = "NilScriptNotYetSupportedError";
+NSError.DuplicateDeclaration           = "NilScriptDuplicateDeclarationError";
+NSError.DuplicatePropertyDefinition    = "NilScriptDuplicatePropertyDefinitionError";
+NSError.DuplicateMethodDefinition      = "NilScriptDuplicateMethodDefinitionError";
+NSError.DuplicateIvarDefinition        = "NilScriptDuplicateIvarDefinitionError";
+NSError.DuplicateEnumDefinition        = "NilScriptDuplicateEnumDefinition";
+NSError.UnknownProperty                = "NilScriptUnknownPropertyError";
+NSError.DuplicateJavascriptFunction    = "NilScriptDuplicateJavascriptFunctionError";
+NSError.PropertyAlreadySynthesized     = "NilScriptPropertyAlreadySynthesizedError";
+NSError.PropertyAlreadyDynamic         = "NilScriptPropertyAlreadyDynamicError";
+NSError.InstanceVariableAlreadyClaimed = "NilScriptInstanceVariableAlreadyClaimedError";
+NSError.NonLiteralConst                = "NilScriptNonLiteralConstError";
+NSError.NonLiteralEnum                 = "NilScriptNonLiteralEnumError";
+NSError.NonIntegerEnum                 = "NilScriptNonIntegerEnumError";
+NSError.SelfIsReserved                 = "NilScriptSelfIsReservedError";
+NSError.DollarOJIsReserved             = "NilScriptDollarOJIsReservedError";
+NSError.ReservedMethodName             = "NilScriptReservedMethodNameError";
+NSError.SqueezerReachedEndIndex        = "NilScriptSqueezerReachedEndIndexError";
+NSError.CircularTypeHierarchy          = "NilScriptCircularTypeHierarchyError";
+NSError.VariableAlreadyDeclared        = "NilScriptVariableAlreadyDeclaredError";
+NSError.VariableNotYetDeclared         = "NilScriptVariableNotYetDeclaredError";
+NSError.RestrictedUsage                = "NilScriptRestrictedUsageError";
+NSError.APIMisuse                      = "NilScriptAPIMisuseError";
 
-const OJWarning = { };
+const NSWarning = { };
 
-OJWarning.CircularClassHierarchy       = "OJCircularClassHierarchyWarning";
-OJWarning.UnknownSuperclass            = "OJUnknownSuperclassWarning";
-OJWarning.UnknownSelector              = "OJUnknownSelectorWarning";
-OJWarning.UseOfThisInMethod            = "OJUseOfThisInMethodWarning";
-OJWarning.UseOfSelfInNonMethod         = "OJUseOfSelfInNonMethodWarning";
-OJWarning.UseOfDebugger                = "OJUseOfDebuggerWarning";
-OJWarning.UseOfEmptyArrayElement       = "OJUseOfEmptyArrayElementWarning";
-OJWarning.UnusedInstanceVariable       = "OJUnusedInstanceVariableWarning";
-OJWarning.UnassignedInstanceVariable   = "OJUnassignedInstanceVariableWarning";
-OJWarning.UndeclaredInstanceVariable   = "OJUndeclaredInstanceVariableWarning";
-OJWarning.MissingTypeAnnotation        = "OJMissingTypeAnnotationWarning";
-OJWarning.OnCompileFunction            = "OJOnCompileFunctionWarning";
-OJWarning.Typechecker                  = "OJTypecheckerWarning";
+NSWarning.CircularClassHierarchy       = "NilScriptCircularClassHierarchyWarning";
+NSWarning.UnknownSuperclass            = "NilScriptUnknownSuperclassWarning";
+NSWarning.UnknownSelector              = "NilScriptUnknownSelectorWarning";
+NSWarning.UseOfThisInMethod            = "NilScriptUseOfThisInMethodWarning";
+NSWarning.UseOfSelfInNonMethod         = "NilScriptUseOfSelfInNonMethodWarning";
+NSWarning.UseOfDebugger                = "NilScriptUseOfDebuggerWarning";
+NSWarning.UseOfEmptyArrayElement       = "NilScriptUseOfEmptyArrayElementWarning";
+NSWarning.UnusedInstanceVariable       = "NilScriptUnusedInstanceVariableWarning";
+NSWarning.UnassignedInstanceVariable   = "NilScriptUnassignedInstanceVariableWarning";
+NSWarning.UndeclaredInstanceVariable   = "NilScriptUndeclaredInstanceVariableWarning";
+NSWarning.MissingTypeAnnotation        = "NilScriptMissingTypeAnnotationWarning";
+NSWarning.OnCompileFunction            = "NilScriptOnCompileFunctionWarning";
+NSWarning.Typechecker                  = "NilScriptTypecheckerWarning";
 
 module.exports = {
-    OJError:   OJError,
-    OJWarning: OJWarning
+    NSError:   NSError,
+    NSWarning: NSWarning
 };

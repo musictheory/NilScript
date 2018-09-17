@@ -9,18 +9,18 @@
 
 const _ = require("lodash");
 
-const TypecheckerSymbols = require("../model/OJSymbolTyper").TypecheckerSymbols;
-const Location           = require("../model/OJSymbolTyper").Location;
-const OJType             = require("../model/OJType");
+const TypecheckerSymbols = require("../model/NSSymbolTyper").TypecheckerSymbols;
+const Location           = require("../model/NSSymbolTyper").Location;
+const NSType             = require("../model/NSType");
 
 
 module.exports = class DefinitionMaker {
 
 
-constructor(ojModel)
+constructor(model)
 {
-    this._model       = ojModel;
-    this._symbolTyper = ojModel.getSymbolTyper();
+    this._model       = model;
+    this._symbolTyper = model.getSymbolTyper();
 }
 
 
@@ -100,7 +100,7 @@ _siftMethodDeclarations(allMethods, classMethodDeclarations, instanceMethodDecla
 }
 
 
-_appendOJClass(lines, ojClass, classSymbol, staticSymbol)
+_appendClass(lines, ojClass, classSymbol, staticSymbol)
 {
     let symbolTyper = this._symbolTyper;
 
@@ -156,7 +156,7 @@ _appendOJClass(lines, ojClass, classSymbol, staticSymbol)
 }
 
 
-_appendOJProtocol(lines, ojProtocol)
+_appendProtocol(lines, ojProtocol)
 {
     let symbolTyper = this._symbolTyper;
 
@@ -186,19 +186,19 @@ _appendOJProtocol(lines, ojProtocol)
 }
 
 
-_appendOJType(lines, ojType)
+_appendType(lines, ojType)
 {
     let symbolTyper = this._symbolTyper;
 
     let name = ojType.name;
     let kind = ojType.kind;
 
-    if (kind == OJType.KindAlias) {
+    if (kind == NSType.KindAlias) {
         let returnType = symbolTyper.toTypecheckerType(ojType.returnType);
 
         lines.push(`declare type ${name} = ${returnType};`);
 
-    } else if (kind == OJType.KindFunction) {
+    } else if (kind == NSType.KindFunction) {
         let params = [ ];
         let returnType = symbolTyper.toTypecheckerType(ojType.returnType);
 
@@ -211,7 +211,7 @@ _appendOJType(lines, ojType)
 
         lines.push(`declare type ${name} = ( ${params.join(", ")} ) => ${returnType}`);
 
-    } else if (kind == OJType.KindTuple) {
+    } else if (kind == NSType.KindTuple) {
         let params = [ ];
 
         for (let i = 0; i < ojType.parameterTypes.length; i++) {
@@ -220,7 +220,7 @@ _appendOJType(lines, ojType)
 
         lines.push(`declare type ${name} = [ ${params.join(", ")} ]`);
 
-    } else if (kind == OJType.KindObject) {
+    } else if (kind == NSType.KindObject) {
         let params = [ ];
 
         for (let i = 0; i < ojType.parameterTypes.length; i++) {
@@ -235,7 +235,7 @@ _appendOJType(lines, ojType)
 }
 
 
-_appendOJEnum(lines, ojEnum)
+_appendEnum(lines, ojEnum)
 {
     // Anonymous enums are inlined
     if (!ojEnum.name || ojEnum.anonymous) return;
@@ -263,23 +263,23 @@ getFileDefinitions(ojFile)
         let classSymbol  = symbolTyper.getSymbolForClassName(ojClass.name, false);
         let staticSymbol = symbolTyper.getSymbolForClassName(ojClass.name, true);
 
-        this._appendOJClass(lines, ojClass, classSymbol, staticSymbol);
+        this._appendClass(lines, ojClass, classSymbol, staticSymbol);
     });
 
     _.each(ojFile.declares.protocols, name => {
-        this._appendOJProtocol(lines, model.protocols[name]);
+        this._appendProtocol(lines, model.protocols[name]);
     });
 
     _.each(ojFile.declares.structs, name => {
-        this._appendOJStruct(lines, model.structs[name]);
+        this._appendStruct(lines, model.structs[name]);
     });
 
     _.each(ojFile.declares.enums, name => {
-        this._appendOJEnum(lines, model.enums[name]);
+        this._appendEnum(lines, model.enums[name]);
     });
 
     _.each(ojFile.declares.types, name => {
-        this._appendOJType(lines, model.types[name]);
+        this._appendType(lines, model.types[name]);
     });
 
     return lines.join("\n");
@@ -320,7 +320,7 @@ getGlobalDefinitions()
     });
     lines.push("}");
 
-    this._appendOJClass( lines, model.getAggregateClass(), TypecheckerSymbols.Combined, TypecheckerSymbols.StaticCombined );
+    this._appendClass( lines, model.getAggregateClass(), TypecheckerSymbols.Combined, TypecheckerSymbols.StaticCombined );
     classSymbols .unshift(TypecheckerSymbols.Combined);
     staticSymbols.unshift(TypecheckerSymbols.StaticCombined)
 

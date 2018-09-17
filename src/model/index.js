@@ -8,19 +8,19 @@
 
 
 module.exports = {
-    OJModel:    require("./OJModel"),
-    OJFile:     require("./OJFile"),
-    OJClass:    require("./OJClass"),
-    OJProtocol: require("./OJProtocol"),
-    OJProperty: require("./OJProperty"),
-    OJObserver: require("./OJObserver"),
-    OJMethod:   require("./OJMethod"),
-    OJIvar:     require("./OJIvar"),
-    OJConst:    require("./OJConst"),
-    OJEnum:     require("./OJEnum"),
-    OJGlobal:   require("./OJGlobal"),
-    OJType:     require("./OJType"),
+    NSModel:    require("./NSModel"),
+    NSFile:     require("./NSFile"),
+    NSClass:    require("./NSClass"),
+    NSProtocol: require("./NSProtocol"),
+    NSProperty: require("./NSProperty"),
+    NSObserver: require("./NSObserver"),
+    NSMethod:   require("./NSMethod"),
+    NSIvar:     require("./NSIvar"),
+    NSConst:    require("./NSConst"),
+    NSEnum:     require("./NSEnum"),
+    NSGlobal:   require("./NSGlobal"),
+    NSType:     require("./NSType"),
 
     // For public APIs
-    OJCompileCallbackFile: require("./OJCompileCallbackFile")
+    NSCompileCallbackFile: require("./NSCompileCallbackFile")
 };

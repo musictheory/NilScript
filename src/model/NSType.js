@@ -1,5 +1,5 @@
 /*
-    OJType.js
+    NSType.js
     Model class for an @type or internal alias
     (c) 2017-2018 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
@@ -7,12 +7,11 @@
 
 "use strict";
 
-const OJError     = require("../Errors").OJError;
 const Utils       = require("../Utils");
 const _           = require("lodash");
 
 
-class OJType {
+class NSType {
 
 constructor(name, kind, parameterNames, parameterTypes, parameterOptional, returnType)
 {
@@ -53,22 +52,22 @@ saveState()
 
 }
 
-OJType.KindPrimitive = "primitive";
-OJType.KindAlias     = "alias";
-OJType.KindFunction  = "function";
-OJType.KindTuple     = "tuple";
-OJType.KindObject    = "object";
+NSType.KindPrimitive = "primitive";
+NSType.KindAlias     = "alias";
+NSType.KindFunction  = "function";
+NSType.KindTuple     = "tuple";
+NSType.KindObject    = "object";
 
-OJType.makePrimitive = function(name)
+NSType.makePrimitive = function(name)
 {
-    return new OJType(name, OJType.KindPrimitive, null, null, null, null);
+    return new NSType(name, NSType.KindPrimitive, null, null, null, null);
 }
 
 
-OJType.makeAlias = function(name, original)
+NSType.makeAlias = function(name, original)
 {
-    return new OJType(name, OJType.KindAlias, null, null, null, original);
+    return new NSType(name, NSType.KindAlias, null, null, null, original);
 }
 
 
-module.exports = OJType;
+module.exports = NSType;

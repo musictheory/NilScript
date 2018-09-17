@@ -1,5 +1,5 @@
 /*
-    OJSymbolTyper.js
+    NSSymbolTyper.js
     Converts to/from names to compiler symbols
     Also converts to/from typechecker types
     (c) 2013-2018 musictheory.net, LLC
@@ -9,23 +9,23 @@
 "use strict";
 
 const _           = require("lodash");
-const OJError     = require("../Errors").OJError;
+const NSError     = require("../Errors").NSError;
 const Utils       = require("../Utils");
-const OJClass     = require("./OJClass");
-const OJProtocol  = require("./OJProtocol");
-const OJMethod    = require("./OJMethod");
-const OJEnum      = require("./OJEnum");
+const NSClass     = require("./NSClass");
+const NSProtocol  = require("./NSProtocol");
+const NSMethod    = require("./NSMethod");
+const NSEnum      = require("./NSEnum");
 
-const OJClassPrefix             = "$oj_c_";
-const OJProtocolPrefix          = "$oj_p_";
-const OJMethodPrefix            = "$oj_f_";
-const OJIvarPrefix              = "$oj_i_";
+const NSClassPrefix             = "$oj_c_";
+const NSProtocolPrefix          = "$oj_p_";
+const NSMethodPrefix            = "$oj_f_";
+const NSIvarPrefix              = "$oj_i_";
 
-const OJKindofClassPrefix       = "$oj_k_";   // Typechecker only
-const OJStaticClassPrefix       = "$oj_C_";   // Typechecker only
-const OJStaticProtocolPrefix    = "$oj_P_";   // Typechecker only
-const OJStructPrefix            = "$oj_s_";   // Typechecker only
-const OJEnumPrefix              = "$oj_e_";   // Typechecker only
+const NSKindofClassPrefix       = "$oj_k_";   // Typechecker only
+const NSStaticClassPrefix       = "$oj_C_";   // Typechecker only
+const NSStaticProtocolPrefix    = "$oj_P_";   // Typechecker only
+const NSStructPrefix            = "$oj_s_";   // Typechecker only
+const NSEnumPrefix              = "$oj_e_";   // Typechecker only
 
 
 const TypecheckerSymbols = {
@@ -74,10 +74,10 @@ function sSymbolicate(string, fromSqueezedMap)
             return fromSqueezedMap[symbol];
 
         } else if (symbol.match(/^\$oj_[cCpPi]_/)) {
-            return symbol.substr(OJClassPrefix.length);
+            return symbol.substr(NSClassPrefix.length);
 
-        } else if (symbol.indexOf(OJMethodPrefix) === 0) {
-            symbol = symbol.substr(OJMethodPrefix.length);
+        } else if (symbol.indexOf(NSMethodPrefix) === 0) {
+            symbol = symbol.substr(NSMethodPrefix.length);
             symbol = symbol.replace(/_([^_])/g, ":$1");
             symbol = symbol.replace(/_$/g,      ":");
             symbol = symbol.replace(/__/g,    "_");
@@ -92,7 +92,7 @@ function sSymbolicate(string, fromSqueezedMap)
 }
 
 
-class OJSymbolTyper {
+class NSSymbolTyper {
 
 
 constructor(model)
@@ -160,7 +160,7 @@ _getSqueezedSymbol(readableName, add)
             this._squeezerId++;
 
             if (this._maxSqueezerId && (this._squeezerId >= this._maxSqueezerId)) {
-                Utils.throwError(OJError.SqueezerReachedEndIndex, "Squeezer reached max index of " + this._maxSqueezerId);
+                Utils.throwError(NSError.SqueezerReachedEndIndex, "Squeezer reached max index of " + this._maxSqueezerId);
             }
         }
 
@@ -231,7 +231,7 @@ _setupTypecheckerMaps()
         "string":           "String"
     });
 
-    fromMap[TypecheckerSymbols.Base] = "OJ.BaseObject";
+    fromMap[TypecheckerSymbols.Base] = "NilScript.BaseObject";
     fromMap[TypecheckerSymbols.StaticBase] = "Class";
 
     this._toTypecheckerMap   = toMap;
@@ -294,7 +294,7 @@ toTypecheckerType(rawInType, location, currentClass)
                 result = "(" + protocolSymbols.join("&") + ")";
 
             } else {
-                Utils.throwError(OJError.ParseError, "Cannot parse type '" + rawInType + "'");
+                Utils.throwError(NSError.ParseError, "Cannot parse type '" + rawInType + "'");
             }
 
         } else if (part == "String" || part == "string") {
@@ -440,7 +440,7 @@ getSymbolicatedString(inString)
 
 getSymbolForClassName(className, isTypecheckerStatic)
 {
-    let prefix = isTypecheckerStatic ? OJStaticClassPrefix : OJClassPrefix;
+    let prefix = isTypecheckerStatic ? NSStaticClassPrefix : NSClassPrefix;
 
     if (!className) return;
 
@@ -458,19 +458,19 @@ getSymbolForClassName(className, isTypecheckerStatic)
 
 getSymbolForStructName(structName)
 {
-    return OJStructPrefix + structName;
+    return NSStructPrefix + structName;
 }
 
 
 getSymbolForEnumName(enumName)
 {
-    return OJEnumPrefix + enumName;
+    return NSEnumPrefix + enumName;
 }
 
 
 getSymbolForProtocolName(protocolName, isTypecheckerStatic)
 {
-    let prefix = isTypecheckerStatic ? OJStaticProtocolPrefix : OJProtocolPrefix;
+    let prefix = isTypecheckerStatic ? NSStaticProtocolPrefix : NSProtocolPrefix;
     return prefix + protocolName;
 }
 
@@ -484,9 +484,9 @@ getSymbolForSelectorName(selectorName)
 
     if (!Utils.isBaseObjectSelectorName(selectorName)) {
         if (this._squeeze) {
-            return this._getSqueezedSymbol(OJMethodPrefix + replacedName, true);
+            return this._getSqueezedSymbol(NSMethodPrefix + replacedName, true);
         } else {
-            return OJMethodPrefix + replacedName;
+            return NSMethodPrefix + replacedName;
         }
     }
 
@@ -506,7 +506,7 @@ getSymbolForIdentifierName(name)
 
 getSymbolForClassNameAndIvarName(className, ivarName)
 {
-    let result = OJIvarPrefix + className + "$" + ivarName;
+    let result = NSIvarPrefix + className + "$" + ivarName;
     if (this._squeeze) result = this._getSqueezedSymbol(result, true);
     return result;
 }
@@ -527,8 +527,8 @@ getAllSymbolsMap()
 }
 
 
-OJSymbolTyper.TypecheckerSymbols = TypecheckerSymbols;
-OJSymbolTyper.Location = Location;
-OJSymbolTyper.symbolicate = sSymbolicate;
+NSSymbolTyper.TypecheckerSymbols = TypecheckerSymbols;
+NSSymbolTyper.Location = Location;
+NSSymbolTyper.symbolicate = sSymbolicate;
 
-module.exports = OJSymbolTyper;
+module.exports = NSSymbolTyper;

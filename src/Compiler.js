@@ -21,12 +21,12 @@ const Typechecker     = require("./typechecker/Typechecker");
 const Utils           = require("./Utils");
 const Log             = Utils.log;
 
-const OJError         = require("./Errors").OJError;
-const OJWarning       = require("./Errors").OJWarning;
-const OJModel         = require("./model").OJModel;
-const OJFile          = require("./model").OJFile;
+const NSError         = require("./Errors").NSError;
+const NSWarning       = require("./Errors").NSWarning;
+const NSModel         = require("./model").NSModel;
+const NSFile          = require("./model").NSFile;
 
-const OJCompileCallbackFile = require("./model").OJCompileCallbackFile;
+const NSCompileCallbackFile = require("./model").NSCompileCallbackFile;
 
 
 const sPublicOptions = [
@@ -140,7 +140,7 @@ _extractFilesFromOptions(optionsFiles, previousFiles)
     });
 
     if (!_.isArray(optionsFiles)) {
-        Utils.throwError(OJError.APIMisuse, "options.files must be an array");
+        Utils.throwError(NSError.APIMisuse, "options.files must be an array");
     }
 
     // The 'files' option can either be an Array of String file paths, or
@@ -161,14 +161,14 @@ _extractFilesFromOptions(optionsFiles, previousFiles)
             time     = f.time || Date.now()
 
         } else {
-            Utils.throwError(OJError.APIMisuse, "Each member of options.files must be a string or object");
+            Utils.throwError(NSError.APIMisuse, "Each member of options.files must be a string or object");
         }
 
         if (!path) {
-            Utils.throwError(OJError.APIMisuse, "No 'path' key in " + f);
+            Utils.throwError(NSError.APIMisuse, "No 'path' key in " + f);
         }
 
-        ojFile = existingMap[path] || new OJFile(path);
+        ojFile = existingMap[path] || new NSFile(path);
 
         if (contents && time) {
             ojFile.updateWithContentsAndTime(contents, time);
@@ -188,7 +188,7 @@ _runBeforeCompileCallback(beforeCompileCallback, ojFile, doneCallback)
     let lines    = ojFile.contents.split("\n");
     let warnings = [ ];
 
-    let callbackFile = new OJCompileCallbackFile(ojFile.path, lines, warnings)
+    let callbackFile = new NSCompileCallbackFile(ojFile.path, lines, warnings)
 
     beforeCompileCallback(callbackFile, (error) => {
         if (error) {
@@ -262,7 +262,7 @@ _parseFiles(files, options, callback)
                 outError.file   = ojFile.path;
                 outError.line   = inError.lineNumber;
                 outError.column = inError.column;
-                outError.name   = OJError.ParseError;
+                outError.name   = NSError.ParseError;
                 outError.reason = message;
 
                 ojFile.needsParse();
@@ -316,7 +316,7 @@ _buildFiles(files, model, options, callback)
 
 _runAfterCompileCallback(afterCompileCallback, ojFile, doneCallback)
 {
-    let callbackFile = new OJCompileCallbackFile(ojFile.path, ojFile.generatorLines, ojFile.generatorWarnings);
+    let callbackFile = new NSCompileCallbackFile(ojFile.path, ojFile.generatorLines, ojFile.generatorWarnings);
 
     afterCompileCallback(callbackFile, (error) => {
         if (error) {
@@ -555,7 +555,7 @@ compile(options, callback)
         "source-map-root"
     ]);
 
-    // Extract options.files and convert to a map of path->OJFiles
+    // Extract options.files and convert to a map of path->NSFiles
     let files = this._extractFilesFromOptions(optionsFiles, previousFiles);
     options.files = null;
 
@@ -573,7 +573,7 @@ compile(options, callback)
         _.filter(previousOptions, value => !_.isFunction(value) )
     )) {
         previousOptions = options;
-        previousModel   = new OJModel();
+        previousModel   = new NSModel();
 
         Log("Calling needsAll() on all files");
 
@@ -584,7 +584,7 @@ compile(options, callback)
         this._checker = null;
     }
 
-    let model = new OJModel();
+    let model = new NSModel();
     if (this._parents) {
         _.each(this._parents, parent => {
             if (parent._model) {
@@ -714,12 +714,12 @@ compile(options, callback)
 
         // If we have an internal error, throw it now
         {
-            if (err && err.name && !err.name.startsWith("OJ")) {
+            if (err && err.name && !err.name.startsWith("NilScript")) {
                 throw err;
             }
 
             _.each(errors, function(error) {
-                if (!error.name.startsWith("OJ")) {
+                if (!error.name.startsWith("NilScript")) {
                     throw error;
                 }
             });

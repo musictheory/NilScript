@@ -1,5 +1,5 @@
 /*
-    OJModel.js
+    NSModel.js
     (c) 2013-2018 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
@@ -7,26 +7,26 @@
 "use strict";
 
 const _             = require("lodash");
-const OJError       = require("../Errors").OJError;
+const NSError       = require("../Errors").NSError;
 const Utils         = require("../Utils");
-const OJClass       = require("./OJClass");
-const OJGlobal      = require("./OJGlobal");
-const OJProtocol    = require("./OJProtocol");
-const OJMethod      = require("./OJMethod");
-const OJConst       = require("./OJConst");
-const OJEnum        = require("./OJEnum");
-const OJType        = require("./OJType");
-const OJSymbolTyper = require("./OJSymbolTyper")
+const NSClass       = require("./NSClass");
+const NSGlobal      = require("./NSGlobal");
+const NSProtocol    = require("./NSProtocol");
+const NSMethod      = require("./NSMethod");
+const NSConst       = require("./NSConst");
+const NSEnum        = require("./NSEnum");
+const NSType        = require("./NSType");
+const NSSymbolTyper = require("./NSSymbolTyper")
 
 const Log           = Utils.log;
 
 
-class OJModel {
+class NSModel {
 
 
 constructor()
 {
-    this._symbolTyper = new OJSymbolTyper(this);
+    this._symbolTyper = new NSSymbolTyper(this);
     this._declarationMap = { };
 
     this.enums     = { };
@@ -42,17 +42,17 @@ constructor()
     this.selectorMap = { };
 
     _.each([ "Array", "Boolean", "Number", "Object", "String", "Symbol" ], name => {
-        this.types[name] = new OJType.makePrimitive(name);
+        this.types[name] = new NSType.makePrimitive(name);
         this._declarationMap[name] = true;
     });
 
     _.each([ "boolean", "BOOL", "Bool", "bool" ], name => {
-        this.types[name] = new OJType.makeAlias(name, "Boolean");
+        this.types[name] = new NSType.makeAlias(name, "Boolean");
         this._declarationMap[name] = true;
     });
 
     _.each([ "number", "double", "float", "int", "char", "short", "long" ], name => {
-        this.types[name] = new OJType.makeAlias(name, "Number");
+        this.types[name] = new NSType.makeAlias(name, "Number");
         this._declarationMap[name] = true;
     });
 }
@@ -71,19 +71,19 @@ loadState(state)
         });
     };
 
-    load( state.consts,     this.consts,     OJConst    );
-    load( state.enums,      this.enums,      OJEnum     );
-    load( state.globals,    this.globals,    OJGlobal   );
-    load( state.classes,    this.classes,    OJClass    );
-    load( state.protocols,  this.protocols,  OJProtocol );
-    load( state.types,      this.types,      OJType     );
+    load( state.consts,     this.consts,     NSConst    );
+    load( state.enums,      this.enums,      NSEnum     );
+    load( state.globals,    this.globals,    NSGlobal   );
+    load( state.classes,    this.classes,    NSClass    );
+    load( state.protocols,  this.protocols,  NSProtocol );
+    load( state.types,      this.types,      NSType     );
 
     _.extend(this.numericMap,      state.numericMap);
     _.extend(this.booleanMap,      state.booleanMap);
     _.extend(this.selectorMap,     state.selectorMap);
     _.extend(this._declarationMap, state.declarationMap);
 
-    // OJSymbolTyper state is at same level for backwards compatibility
+    // NSSymbolTyper state is at same level for backwards compatibility
     this._symbolTyper.loadState(state);
 }
 
@@ -109,7 +109,7 @@ saveState()
         selectorMap: this.selectorMap
     };
 
-    // OJSymbolTyper state is at same level for backwards compatibility
+    // NSSymbolTyper state is at same level for backwards compatibility
     _.extend(state, this._symbolTyper.saveState());
 
     return state;
@@ -199,7 +199,7 @@ prepare()
         let visitedNames = [ currentName ];
 
         while (currentType) {
-            if (currentType.kind == OJType.KindAlias) {
+            if (currentType.kind == NSType.KindAlias) {
                 currentName = currentType.returnType;
                 currentType = this.types[currentName];
 
@@ -209,12 +209,12 @@ prepare()
                 }
 
                 if (visitedNames.indexOf(currentName) >= 0) {
-                    Utils.throwError(OJError.CircularTypeHierarchy, "Circular @type hierarchy detected: '" + visitedNames.join("' -> '") + "'");
+                    Utils.throwError(NSError.CircularTypeHierarchy, "Circular @type hierarchy detected: '" + visitedNames.join("' -> '") + "'");
                 }
 
                 visitedNames.push(currentName);
 
-            } else if (currentType.kind == OJType.KindPrimitive) {
+            } else if (currentType.kind == NSType.KindPrimitive) {
                 let name = currentType.name;
 
                 if (name == "Boolean") {
@@ -319,7 +319,7 @@ getChangedSelectorMap(other)
 
 getAggregateClass()
 {
-    let result = new OJClass(null, null, null, null);
+    let result = new NSClass(null, null, null, null);
 
     function extractMethodsIntoMap(methods, map) {
         _.each(methods, function(m) {
@@ -350,7 +350,7 @@ getAggregateClass()
             let index = 0;
             _.each(value, function(v) { variableNames.push("a" + index++);  });
 
-            let m = new OJMethod(null, key, selectorType, returnType, value, variableNames);  
+            let m = new NSMethod(null, key, selectorType, returnType, value, variableNames);  
             result.addMethod(m);
         });
     }
@@ -376,7 +376,7 @@ registerDeclaration(name, node)
     let existing = this._declarationMap[name];
 
     if (existing) {
-        Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of '" + name + "'.", node)
+        Utils.throwError(NSError.DuplicateDeclaration, "Duplicate declaration of '" + name + "'.", node)
     }
 
     this._declarationMap[name] = true;
@@ -398,11 +398,11 @@ addEnum(ojEnum)
 
     if (name) {
         if (this.enums[name]) {
-            Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of enum '" + name + "'");
+            Utils.throwError(NSError.DuplicateDeclaration, "Duplicate declaration of enum '" + name + "'");
         }
 
     } else {
-        name = "$OJAnonymousEnum" + _.size(this.enums);
+        name = "$NSAnonymousEnum" + _.size(this.enums);
 
         ojEnum.name = name;
         ojEnum.anonymous = true;
@@ -432,7 +432,7 @@ addClass(ojClass)
             });
 
         } else if (!existing.forward && !ojClass.forward) {
-            Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of class '" + name + "'");
+            Utils.throwError(NSError.DuplicateDeclaration, "Duplicate declaration of class '" + name + "'");
         }
 
     } else {
@@ -447,7 +447,7 @@ addProtocol(ojProtocol)
     let name = ojProtocol.name;
 
     if (this.protocols[name]) {
-        Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of protocol '" + name + "'");
+        Utils.throwError(NSError.DuplicateDeclaration, "Duplicate declaration of protocol '" + name + "'");
     }
 
     this.protocols[name] = ojProtocol;
@@ -459,7 +459,7 @@ addType(ojType)
     let name = ojType.name;
 
     if (this.types[name]) {
-        Utils.throwError(OJError.DuplicateDeclaration, "Duplicate declaration of type '" + name + "'");
+        Utils.throwError(NSError.DuplicateDeclaration, "Duplicate declaration of type '" + name + "'");
     }
 
     this.types[name] = ojType;
@@ -497,4 +497,4 @@ getSymbolTyper()
 }
 
 
-module.exports = OJModel;
+module.exports = NSModel;

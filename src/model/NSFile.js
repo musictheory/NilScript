@@ -1,5 +1,5 @@
 /*
-    OJFile.js
+    NSFile.js
     Represents a file passed into the compiler
     (c) 2013-2018 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
@@ -10,7 +10,7 @@
 const fs = require("fs");
 
 
-module.exports = class OJFile {
+module.exports = class NSFile {
 
 
 constructor(path)

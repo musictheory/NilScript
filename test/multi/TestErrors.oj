@@ -6,8 +6,8 @@
 
 @property id foo;
 
-- (void) setFoo:(id)foo { _foo = foo; } //@warning OJUndeclaredInstanceVariableWarning
-- (id) foo { return _foo; }             //@warning OJUndeclaredInstanceVariableWarning
+- (void) setFoo:(id)foo { _foo = foo; } //@warning NilScriptUndeclaredInstanceVariableWarning
+- (id) foo { return _foo; }             //@warning NilScriptUndeclaredInstanceVariableWarning
 
 @end
 
@@ -20,7 +20,7 @@
 
 @property (readonly) id foo;
 
-- (id) foo { return _foo; } //@warning OJUndeclaredInstanceVariableWarning
+- (id) foo { return _foo; } //@warning NilScriptUndeclaredInstanceVariableWarning
 
 @end
 
@@ -33,7 +33,7 @@
 
 - (void) testCheckIvar
 {
-     _moo;  //@warning OJUndeclaredInstanceVariableWarning
+     _moo;  //@warning NilScriptUndeclaredInstanceVariableWarning
 }
 
 @end
@@ -46,7 +46,7 @@
 @implementation UseOfThisInMethod
 
 function usesSelf() {
-    self; //@warning OJUseOfSelfInNonMethodWarning
+    self; //@warning NilScriptUseOfSelfInNonMethodWarning
 }
 
 @end
@@ -60,7 +60,7 @@ function usesSelf() {
 
 - (void) foo
 {
-    this.doSomething(); //@warning OJUseOfThisInMethodWarning
+    this.doSomething(); //@warning NilScriptUseOfThisInMethodWarning
 }
 
 @end
@@ -70,7 +70,7 @@ function usesSelf() {
 // @name Non-integer enum
 
 @enum {
-    Foo = "Foo"  // @error OJNonIntegerEnumError
+    Foo = "Foo"  // @error NilScriptNonIntegerEnumError
 }
 
 
@@ -78,27 +78,27 @@ function usesSelf() {
 // @name Non-integer enum 2
 
 @enum {
-    Foo = 3.1415  // @error OJNonIntegerEnumError
+    Foo = 3.1415  // @error NilScriptNonIntegerEnumError
 }
 
 
 // --------------------------------------------------------------------
 // @name Non-literal Const
 
-@const moo = { };  // @error OJNonLiteralConstError
+@const moo = { };  // @error NilScriptNonLiteralConstError
 
 
 // --------------------------------------------------------------------
 // @name Non-literal Const 2
 
-@const moo = (4 + 3);  // @error OJNonLiteralConstError
+@const moo = (4 + 3);  // @error NilScriptNonLiteralConstError
 
 
 // --------------------------------------------------------------------
 // @name Non-literal Enum
 
 @enum {
-    Foo = { }  // @error OJNonLiteralEnumError
+    Foo = { }  // @error NilScriptNonLiteralEnumError
 }
 
 
@@ -106,7 +106,7 @@ function usesSelf() {
 // @name Non-literal Enum 2
 
 @enum {
-    Foo = (4 + 3)  // @error OJNonLiteralEnumError
+    Foo = (4 + 3)  // @error NilScriptNonLiteralEnumError
 }
 
 
@@ -117,7 +117,7 @@ function usesSelf() {
 
 - (void) test
 {
-    var self = "foo";  //@error OJSelfIsReservedError
+    var self = "foo";  //@error NilScriptSelfIsReservedError
 }
 
 @end
@@ -130,7 +130,7 @@ function usesSelf() {
 
 - (void) test
 {
-    function moo(self) {  //@error OJSelfIsReservedError
+    function moo(self) {  //@error NilScriptSelfIsReservedError
 
     }
 }
@@ -145,7 +145,7 @@ function usesSelf() {
 
 - (void) test
 {
-    var moo = function (self) {  //@error OJSelfIsReservedError
+    var moo = function (self) {  //@error NilScriptSelfIsReservedError
 
     }
 }
@@ -160,7 +160,7 @@ function usesSelf() {
 
 - (void) test
 {
-    var $oj_foo = "foo"; //@error OJDollarOJIsReservedError
+    var $oj_foo = "foo"; //@error NilScriptDollarOJIsReservedError
 }
 
 @end
@@ -170,13 +170,13 @@ function usesSelf() {
 // @name $oj Reserved 2
 
 function test() {
-    var $oj_foo;   //@error OJDollarOJIsReservedError
+    var $oj_foo;   //@error NilScriptDollarOJIsReservedError
 }
 
 
 // --------------------------------------------------------------------
 // @name Ivar Claimed
-// @error-no-line OJInstanceVariableAlreadyClaimedError
+// @error-no-line NilScriptInstanceVariableAlreadyClaimedError
 
 @implementation InstanceVariableAlreadyClaimed
 
@@ -191,7 +191,7 @@ function test() {
 
 // --------------------------------------------------------------------
 // @name Ivar Claimed 2
-// @error-no-line OJInstanceVariableAlreadyClaimedError
+// @error-no-line NilScriptInstanceVariableAlreadyClaimedError
 
 @implementation InstanceVariableAlreadyClaimed2
 
@@ -210,7 +210,7 @@ function test() {
 
 @property id foo;
 @dynamic foo;
-@synthesize foo=_bar;   //@error OJPropertyAlreadyDynamicError
+@synthesize foo=_bar;   //@error NilScriptPropertyAlreadyDynamicError
 
 @end
 
@@ -222,7 +222,7 @@ function test() {
 
 @property id foo;
 @dynamic foo;
-@dynamic foo;       //@error OJPropertyAlreadyDynamicError
+@dynamic foo;       //@error NilScriptPropertyAlreadyDynamicError
 
 @end
 
@@ -234,7 +234,7 @@ function test() {
 
 @property id foo;
 @synthesize foo=_foo;
-@synthesize foo=_bar;   //@error OJPropertyAlreadySynthesizedError
+@synthesize foo=_bar;   //@error NilScriptPropertyAlreadySynthesizedError
 
 @end
 
@@ -244,7 +244,7 @@ function test() {
 
 @implementation TestReservedMethod
 
-- (void) isSubclassOfClass:(id)unused { }   //@error OJReservedMethodNameError
+- (void) isSubclassOfClass:(id)unused { }   //@error NilScriptReservedMethodNameError
 
 @end
 
@@ -254,7 +254,7 @@ function test() {
 
 @implementation TestReservedMethod
 
-- (void) alloc { }  //@error OJReservedMethodNameError
+- (void) alloc { }  //@error NilScriptReservedMethodNameError
 
 @end
 
@@ -265,7 +265,7 @@ function test() {
 @implementation DuplicateProperty
 
 @property id foo;
-@property id foo;   //@error OJDuplicatePropertyDefinitionError
+@property id foo;   //@error NilScriptDuplicatePropertyDefinitionError
 
 @end
 
@@ -276,7 +276,7 @@ function test() {
 @implementation DuplicateClass
 @end
 
-@implementation DuplicateClass //@error OJDuplicateDeclarationError
+@implementation DuplicateClass //@error NilScriptDuplicateDeclarationError
 @end
 
 
@@ -288,7 +288,7 @@ function test() {
 @implementation DuplicateClass
 @end
 
-@implementation DuplicateClass //@error OJDuplicateDeclarationError
+@implementation DuplicateClass //@error NilScriptDuplicateDeclarationError
 @end
 
 
@@ -298,7 +298,7 @@ function test() {
 @implementation DuplicateMethod
 
 - (void) foo { }
-- (void) foo { }    //@error OJDuplicateMethodDefinitionError
+- (void) foo { }    //@error NilScriptDuplicateMethodDefinitionError
 
 @end
 
@@ -307,14 +307,14 @@ function test() {
 // @name Duplicate Enum Name
 
 @enum Foo { Foo1, Foo2 }
-@enum Foo { Bar1, Bar2 } //@error OJDuplicateDeclarationError
+@enum Foo { Bar1, Bar2 } //@error NilScriptDuplicateDeclarationError
 
 
 // --------------------------------------------------------------------
 // @name Duplicate Enum Value 1
 
 @enum Foo { Foo1, Foo2 }
-@enum Bar { Foo1, Foo2 } //@error OJDuplicateDeclarationError
+@enum Bar { Foo1, Foo2 } //@error NilScriptDuplicateDeclarationError
 
 
 // --------------------------------------------------------------------
@@ -324,33 +324,33 @@ function test() {
 
 @enum {
     Foo2,
-    FooDuplicate //@error OJDuplicateDeclarationError
+    FooDuplicate //@error NilScriptDuplicateDeclarationError
 }
 
 
 // --------------------------------------------------------------------
 // @name Circular Class 1
 
-@implementation CircularClassA : CircularClassB //@warning OJCircularClassHierarchyWarning
+@implementation CircularClassA : CircularClassB //@warning NilScriptCircularClassHierarchyWarning
 @end
 
 
-@implementation CircularClassB : CircularClassA //@warning OJCircularClassHierarchyWarning
+@implementation CircularClassB : CircularClassA //@warning NilScriptCircularClassHierarchyWarning
 @end
 
 // --------------------------------------------------------------------
 // @name Circular Class 2
 
-@implementation CircularClassA : CircularClassB //@warning OJCircularClassHierarchyWarning
+@implementation CircularClassA : CircularClassB //@warning NilScriptCircularClassHierarchyWarning
 @end
 
-@implementation CircularClassB : CircularClassC //@warning OJCircularClassHierarchyWarning
+@implementation CircularClassB : CircularClassC //@warning NilScriptCircularClassHierarchyWarning
 @end
 
-@implementation CircularClassC : CircularClassD //@warning OJCircularClassHierarchyWarning
+@implementation CircularClassC : CircularClassD //@warning NilScriptCircularClassHierarchyWarning
 @end
 
-@implementation CircularClassD : CircularClassA //@warning OJCircularClassHierarchyWarning
+@implementation CircularClassD : CircularClassA //@warning NilScriptCircularClassHierarchyWarning
 @end
 
 // --------------------------------------------------------------------
@@ -361,7 +361,7 @@ function test() {
 }
 
 - (void) foo {
-    (function(ivar1) {      //@error OJRestrictedUsageError
+    (function(ivar1) {      //@error NilScriptRestrictedUsageError
     });
 }
 
@@ -379,7 +379,7 @@ function test() {
 }
 
 - (void) foo {
-    var ivar1; //@error OJRestrictedUsageError
+    var ivar1; //@error NilScriptRestrictedUsageError
 }
 
 @end
@@ -396,7 +396,7 @@ function test() {
     id ivar1;
 }
 
-- (void) foo:(id)ivar1 {  //@error OJRestrictedUsageError
+- (void) foo:(id)ivar1 {  //@error NilScriptRestrictedUsageError
 
 }
 
@@ -406,7 +406,7 @@ function test() {
 // --------------------------------------------------------------------
 // @name Category No Ivars
 
-@implementation CategoryNoIvars (CategoryName) { //@error OJParseError
+@implementation CategoryNoIvars (CategoryName) { //@error NilScriptParseError
 
 }
 
@@ -417,7 +417,7 @@ function test() {
 // @name Category Properties Not Yet Supported
 
 @implementation CategoryNoProperties (CategoryName)
-@property String foo; //@error OJNotYetSupportedError
+@property String foo; //@error NilScriptNotYetSupportedError
 @end
 
 
@@ -426,7 +426,7 @@ function test() {
 // @opts { "warn-debugger": true  }
 
 function foo() {
-    debugger;  //@warning OJUseOfDebuggerWarning
+    debugger;  //@warning NilScriptUseOfDebuggerWarning
 }
 
 
@@ -434,14 +434,14 @@ function foo() {
 // @name Warn Empty Array
 // @opts { "warn-empty-array-element": true  }
 
-var arr = [,,,,];  //@warning OJUseOfEmptyArrayElementWarning
+var arr = [,,,,];  //@warning NilScriptUseOfEmptyArrayElementWarning
 
 
 // --------------------------------------------------------------------
 // @name Warn Unused Ivars
 // @opts { "warn-unused-ivars": true  }
 
-@implementation Foo { //@warning OJUnusedInstanceVariableWarning
+@implementation Foo { //@warning NilScriptUnusedInstanceVariableWarning
     id _bar;
 }
 
@@ -453,7 +453,7 @@ var arr = [,,,,];  //@warning OJUseOfEmptyArrayElementWarning
 // @name Warn Unused Ivars 2
 // @opts { "warn-unused-ivars": true  }
 
-@implementation Foo { //@warning OJUnassignedInstanceVariableWarning
+@implementation Foo { //@warning NilScriptUnassignedInstanceVariableWarning
     id _bar;
 }
 
@@ -471,7 +471,7 @@ var arr = [,,,,];  //@warning OJUseOfEmptyArrayElementWarning
 // @name Unknown Class
 // @opts { "warn-unknown-superclasses": true  }
 
-@implementation Foo : NonExistantSuperClass //@warning OJUnknownSuperclassWarning
+@implementation Foo : NonExistantSuperClass //@warning NilScriptUnknownSuperclassWarning
 
 @end
 
@@ -480,13 +480,13 @@ var arr = [,,,,];  //@warning OJUseOfEmptyArrayElementWarning
 // @name Missing Method Name (Protocol)
 
 @protocol MissingMethodName
-- (String); //@error OJParseError
+- (String); //@error NilScriptParseError
 @end
 
 // --------------------------------------------------------------------
 // @name Missing Method Name (Implementation)
 
 @implementation MissingMethodName
-- (String) { return ""; } //@error OJParseError
+- (String) { return ""; } //@error NilScriptParseError
 @end
 

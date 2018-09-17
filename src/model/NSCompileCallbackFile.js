@@ -1,5 +1,5 @@
 /*
-    OJFile.js
+    NSCompileCallbackFile.js
     Represents a file passed into the compiler
     (c) 2013-2018 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
@@ -8,10 +8,10 @@
 "use strict";
 
 const Utils     = require("../Utils");
-const OJWarning = require("../Errors").OJWarning;
+const NSWarning = require("../Errors").NSWarning;
 
 
-module.exports = class OJCompileCallbackFile {
+module.exports = class NSCompileCallbackFile {
 
 
 constructor(path, lines, warnings)
@@ -53,7 +53,7 @@ getPath()
 
 addWarning(line, message)
 {
-    let warning = Utils.makeError(OJWarning.OnCompileFunction, message, line);
+    let warning = Utils.makeError(NSWarning.OnCompileFunction, message, line);
     Utils.addFilePathToError(this._path, warning);
     this._warnings.push(warning);
 }

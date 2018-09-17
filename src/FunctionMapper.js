@@ -10,7 +10,6 @@ const _          = require("lodash");
 const esprima    = require("../ext/esprima");
 const Syntax     = esprima.Syntax;
 
-const OJError    = require("./Errors").OJError;
 const Traverser  = require("./Traverser");
 const Utils      = require("./Utils");
 const Model      = require("./model");

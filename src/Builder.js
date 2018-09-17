@@ -11,7 +11,7 @@ const _          = require("lodash");
 const esprima    = require("../ext/esprima");
 const Syntax     = esprima.Syntax;
 
-const OJError    = require("./Errors").OJError;
+const NSError    = require("./Errors").NSError;
 const Traverser  = require("./Traverser");
 const Utils      = require("./Utils");
 const Model      = require("./model");
@@ -88,7 +88,7 @@ build()
         if (node.returnType) returnType = node.returnType.value;
         if (!returnType) returnType = "id";
 
-        return new Model.OJMethod(makeLocation(node), selectorName, selectorType, returnType, parameterTypes, variableNames, optional);
+        return new Model.NSMethod(makeLocation(node), selectorName, selectorType, returnType, parameterTypes, variableNames, optional);
     }
 
 
@@ -101,7 +101,7 @@ build()
         let result;
 
         if (node.extension) {
-            Utils.throwError(OJError.NotYetSupported, "Class extensions are not yet supported", node);
+            Utils.throwError(NSError.NotYetSupported, "Class extensions are not yet supported", node);
         }
 
         if (node.protocolList) {
@@ -115,19 +115,19 @@ build()
             ojClass = model.classes[className];
 
             if (!ojClass) {
-                ojClass = new Model.OJClass(null, className);
+                ojClass = new Model.NSClass(null, className);
                 ojClass.placeholder = true;
                 model.addClass(ojClass);
             }
 
         } else {
-            ojClass = new Model.OJClass(makeLocation(node), className, superclassName, protocolNames);
+            ojClass = new Model.NSClass(makeLocation(node), className, superclassName, protocolNames);
             ojClass.forward = false;
             model.addClass(ojClass);
         }
 
         if (superclassName) {
-            let superclass = new Model.OJClass(null, superclassName);
+            let superclass = new Model.NSClass(null, superclassName);
             superclass.forward = true;
             model.addClass(superclass);
         }
@@ -149,7 +149,7 @@ build()
             });
         }
 
-        let ojProtocol = new Model.OJProtocol(makeLocation(node), name, parentProtocolNames);
+        let ojProtocol = new Model.NSProtocol(makeLocation(node), name, parentProtocolNames);
         model.addProtocol(ojProtocol);
 
         currentProtocol = ojProtocol;
@@ -164,14 +164,14 @@ build()
 
         if (kind == "class") {
             for (let i = 0, length = ids.length; i < length; i++) {
-                let cls = new Model.OJClass(makeLocation(node), ids[i].name);
+                let cls = new Model.NSClass(makeLocation(node), ids[i].name);
                 cls.forward = true;
 
                 model.addClass(cls);
             }
 
         } else if (kind == "protocol") {
-            Utils.throwError(OJError.NotYetSupported, "@forward protocol declarations are not yet supported", node);
+            Utils.throwError(NSError.NotYetSupported, "@forward protocol declarations are not yet supported", node);
         }
     }
  
@@ -201,7 +201,7 @@ build()
 
         for (let i = 0, length = node.ivars.length; i < length; i++) {
             let name = node.ivars[i].name;
-            currentClass.addIvar(new Model.OJIvar(makeLocation(node), name, currentClass.name, type));
+            currentClass.addIvar(new Model.NSIvar(makeLocation(node), name, currentClass.name, type));
         }
     }
 
@@ -217,7 +217,7 @@ build()
         let copyOnWrite = false;
 
         if (currentCategoryName) {
-            Utils.throwError(OJError.NotYetSupported, "@property is not yet supported in a category's implementation", node);
+            Utils.throwError(NSError.NotYetSupported, "@property is not yet supported in a category's implementation", node);
         }
 
         for (let i = 0, length = node.attributes.length; i < length; i++) {
@@ -238,7 +238,7 @@ build()
                 copyOnWrite = true;
                 copyOnRead  = true;
             } else if (attributeName == "class") {
-                Utils.throwError(OJError.NotYetSupported, "@property 'class' attribute is not supported", node);
+                Utils.throwError(NSError.NotYetSupported, "@property 'class' attribute is not supported", node);
             }
         }
 
@@ -246,7 +246,7 @@ build()
             setter = null;
         }
 
-        let property = new Model.OJProperty(makeLocation(node), name, type, writable, copyOnRead, copyOnWrite, getter, setter, null);
+        let property = new Model.NSProperty(makeLocation(node), name, type, writable, copyOnRead, copyOnWrite, getter, setter, null);
         if (currentClass) {
             currentClass.addProperty(property);
         } else if (currentProtocol) {
@@ -277,13 +277,13 @@ build()
         }
 
         if (hasSet && hasChange) {
-            Utils.throwError(OJError.NotYetSupported, "@observe 'change' and 'set' attributes are mutually exclusive", node);
+            Utils.throwError(NSError.NotYetSupported, "@observe 'change' and 'set' attributes are mutually exclusive", node);
         }
 
         for (let i = 0, length = node.ids.length; i < length; i++) {
             let name = node.ids[i].name;
 
-            let observer = new Model.OJObserver(makeLocation(node), name, !hasSet, before, after);
+            let observer = new Model.NSObserver(makeLocation(node), name, !hasSet, before, after);
             if (currentClass) currentClass.addObserver(observer);
         }
     }           
@@ -292,7 +292,7 @@ build()
         let pairs = node.pairs;
 
         if (currentCategoryName) {
-            Utils.throwError(OJError.NotYetSupported, "@synthesize is not allowed in a category's implementation", node);
+            Utils.throwError(NSError.NotYetSupported, "@synthesize is not allowed in a category's implementation", node);
         }
 
         for (let i = 0, length = pairs.length; i < length; i++) {
@@ -308,7 +308,7 @@ build()
         let ids = node.ids;
 
         if (currentCategoryName) {
-            Utils.throwError(OJError.NotYetSupported, "@dynamic is not yet supported in a category's implementation", node);
+            Utils.throwError(NSError.NotYetSupported, "@dynamic is not yet supported in a category's implementation", node);
         }
 
         for (let i = 0, length = ids.length; i < length; i++) {
@@ -333,7 +333,7 @@ build()
             parameterOptional.push(param.annotation ? param.annotation.optional : null);
         });
 
-        let type = new Model.OJType(name, kind, parameterNames, parameterTypes, parameterOptional, returnType);
+        let type = new Model.NSType(name, kind, parameterNames, parameterTypes, parameterOptional, returnType);
         model.addType(type);
 
         declaredTypes.push(name);
@@ -362,19 +362,19 @@ build()
             }
 
             if (!literalNode || (literalNode.type != Syntax.Literal)) {
-                Utils.throwError(OJError.NonLiteralEnum, "Use of non-literal value with @enum", literalNode || initNode);
+                Utils.throwError(NSError.NonLiteralEnum, "Use of non-literal value with @enum", literalNode || initNode);
             }
 
             let value = literalNode.value;
             if (!isInteger(value)) {
-                Utils.throwError(OJError.NonIntegerEnum, "Use of non-integer value with @enum", literalNode || initNode);
+                Utils.throwError(NSError.NonIntegerEnum, "Use of non-integer value with @enum", literalNode || initNode);
             }
 
             return negative ? -value : value;
         }
 
         let name = node.id ? node.id.name : null;
-        let e = new Model.OJEnum(makeLocation(node), name, node.unsigned, bridged);
+        let e = new Model.NSEnum(makeLocation(node), name, node.unsigned, bridged);
 
         if (name) {
             declaredEnums.push(name);
@@ -431,10 +431,10 @@ build()
                 raw   = JSON.stringify(value);
 
             } else {
-                Utils.throwError(OJError.NonLiteralConst, "Use of non-literal value with @const", node);
+                Utils.throwError(NSError.NonLiteralConst, "Use of non-literal value with @const", node);
             }
 
-            let ojConst = new Model.OJConst(makeLocation(node), declaration.id.name, value, raw, bridged);
+            let ojConst = new Model.NSConst(makeLocation(node), declaration.id.name, value, raw, bridged);
             model.addConst(ojConst);
         }
     }
@@ -459,7 +459,7 @@ build()
                 annotation = node.id.annotation ? node.id.annotation.value : null;
             }
 
-            model.addGlobal(new Model.OJGlobal(node, name, annotation));
+            model.addGlobal(new Model.NSGlobal(node, name, annotation));
             model.getSymbolTyper().enrollForSqueezing(name);
 
             declaredGlobals.push(name);
@@ -478,7 +478,7 @@ build()
     function handleVariableDeclarator(node)
     {
         if (node.id.name == "self" && currentMethod) {
-            Utils.throwError(OJError.SelfIsReserved, "Use of self as variable name inside of oj method", node);
+            Utils.throwError(NSError.SelfIsReserved, "Use of self as variable name inside of oj method", node);
         }
     }
 
@@ -489,7 +489,7 @@ build()
                 let param = node.params[i];
 
                 if (param.name == "self") {
-                    Utils.throwError(OJError.SelfIsReserved, "Use of self as function parameter name", node);
+                    Utils.throwError(NSError.SelfIsReserved, "Use of self as function parameter name", node);
                 }
             }
         }

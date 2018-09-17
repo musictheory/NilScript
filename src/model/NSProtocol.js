@@ -1,5 +1,5 @@
 /*
-    OJProtocol.js
+    NSProtocol.js
     Model class for a @protocol
     (c) 2013-2018 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
@@ -8,13 +8,13 @@
 "use strict";
 
 const _          = require("lodash");
-const OJError    = require("../Errors").OJError;
+const NSError    = require("../Errors").NSError;
 const Utils      = require("../Utils");
-const OJProperty = require("./OJProperty");
-const OJMethod   = require("./OJMethod");
+const NSProperty = require("./NSProperty");
+const NSMethod   = require("./NSMethod");
 
 
-module.exports = class OJProtocol {
+module.exports = class NSProtocol {
 
 
 constructor(location, name, protocolNames)
@@ -43,15 +43,15 @@ loadState(state)
     this.protocolNames = state.protocolNames || [ ];
 
     _.each(state.classMethods, function(m) {
-        classMethodMap[m.name] = new OJMethod(m.location, m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.optional);
+        classMethodMap[m.name] = new NSMethod(m.location, m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.optional);
     });
 
     _.each(state.instanceMethods, function(m) {
-        instanceMethodMap[m.name] = new OJMethod(m.location, m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.optional);
+        instanceMethodMap[m.name] = new NSMethod(m.location, m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.optional);
     });
 
     _.each(state.properties, function(p) {
-        propertyMap[p.name] = new OJProperty(p.location, p.name, p.type, p.writable, p.copyOnRead, p.copyOnWrite, p.getter, p.setter, p.ivar, p.optional);
+        propertyMap[p.name] = new NSProperty(p.location, p.name, p.type, p.writable, p.copyOnRead, p.copyOnWrite, p.getter, p.setter, p.ivar, p.optional);
     });
 }
 
@@ -62,7 +62,7 @@ addMethod(ojMethod)
     let map = (ojMethod.selectorType == "+") ? this._classMethodMap : this._instanceMethodMap;
 
     if (map[selectorName]) {
-        Utils.throwError(OJError.DuplicateMethodDefinition, "Duplicate declaration of method '" + selectorName + "'");
+        Utils.throwError(NSError.DuplicateMethodDefinition, "Duplicate declaration of method '" + selectorName + "'");
     }
 
     map[selectorName] = ojMethod;
@@ -74,7 +74,7 @@ addProperty(ojProperty)
     let name = ojProperty.name;
 
     if (this._propertyMap[name]) {
-        Utils.throwError(OJError.DuplicatePropertyDefinition, "Property " + name + " has previous declaration");
+        Utils.throwError(NSError.DuplicatePropertyDefinition, "Property " + name + " has previous declaration");
     }
 
     this._propertyMap[name] = ojProperty;
@@ -105,13 +105,13 @@ getAllMethods()
 
         if (ojProperty.writable && setter) {
             if (!this._instanceMethodMap[setter]) {
-                results.push(new OJMethod(null, setter, "-", "void", [ type ], optional));
+                results.push(new NSMethod(null, setter, "-", "void", [ type ], optional));
             }
         }
 
         if (getter) {
             if (!this._instanceMethodMap[getter]) {
-                results.push(new OJMethod(null, getter, "-", type, [ ], optional));
+                results.push(new NSMethod(null, getter, "-", type, [ ], optional));
             }
         }
     });

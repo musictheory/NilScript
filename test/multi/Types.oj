@@ -10,7 +10,7 @@ true;
 // @name Duplicate Type - OK
 
 @type Rect = Array;
-@type Rect = Array;    //@error OJDuplicateDeclarationError
+@type Rect = Array;    //@error NilScriptDuplicateDeclarationError
 
 true;
 
@@ -20,19 +20,19 @@ true;
 @implementation Foo
 @end
 
-@type Foo = Number;   //@error OJDuplicateDeclarationError
+@type Foo = Number;   //@error NilScriptDuplicateDeclarationError
 
 // --------------------------------------------------------------------
 // @name Type Exists
 
 @type Foo = Number;
 
-@implementation Foo  //@error OJDuplicateDeclarationError
+@implementation Foo  //@error NilScriptDuplicateDeclarationError
 @end
 
 // --------------------------------------------------------------------
 // @name Circular Type 1
-// @error-no-line OJCircularTypeHierarchyError
+// @error-no-line NilScriptCircularTypeHierarchyError
 
 @type Foo  = Foo2;
 @type Foo2 = Foo3;
@@ -40,7 +40,7 @@ true;
 
 // --------------------------------------------------------------------
 // @name Circular Type 2
-// @error-no-line OJCircularTypeHierarchyError
+// @error-no-line NilScriptCircularTypeHierarchyError
 
 @type Foo  = Foo2;
 @type Foo2 = Foo;

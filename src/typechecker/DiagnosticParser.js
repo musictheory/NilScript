@@ -9,7 +9,7 @@
 
 const _         = require("lodash");
 const ts        = require("typescript");
-const OJWarning = require("../Errors").OJWarning;
+const NSWarning = require("../Errors").NSWarning;
 
 const sBlacklistCodes  = [ 2417 ];
 
@@ -222,7 +222,7 @@ getWarnings(diagnostics, fileCallback)
         let result = {
             code:   code,
             column: lineColumn.column,
-            name:   OJWarning.Typechecker,
+            name:   NSWarning.Typechecker,
             file:   fileName,
             line:   lineNumber,
             reason: reason 

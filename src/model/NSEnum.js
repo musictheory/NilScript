@@ -1,5 +1,5 @@
 /*
-    OJEnum.js
+    NSEnum.js
     Model class for an @enum declaration
     (c) 2013-2018 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
@@ -8,7 +8,7 @@
 "use strict";
 
 
-module.exports = class OJEnum {
+module.exports = class NSEnum {
 
 
 constructor(location, name, unsigned, bridged)
