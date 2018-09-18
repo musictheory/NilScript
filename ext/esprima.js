@@ -173,7 +173,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	var syntax_1 = __webpack_require__(2);
 	exports.Syntax = syntax_1.Syntax;
 	// Sync with *.json manifests.
-	exports.version = '4.0.0-dev';
+	exports.version = '4.0.0-dev' + '-nilscript';
 
 
 /***/ },
@@ -421,14 +421,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	    NSPropertyDirective: 'NSPropertyDirective',
 	    NSPropertyAttribute: 'NSPropertyAttribute',
 	    NSSynthesizeDirective: 'NSSynthesizeDirective',
-	    NSForwardDirective: 'NSForwardDirective',
-	    NSSqueezeDirective: 'NSSqueezeDirective',
 	    NSSynthesizePair: 'NSSynthesizePair',
 	    NSDynamicDirective: 'NSDynamicDirective',
 	    NSSelectorDirective: 'NSSelectorDirective',
 	    NSConstDeclaration: 'NSConstDeclaration',
 	    NSEnumDeclaration: 'NSEnumDeclaration',
-	    NSStructDefinition: 'NSStructDefinition',
 	    NSProtocolDefinition: 'NSProtocolDefinition',
 	    NSProtocolList: 'NSProtocolList',
 	    NSMethodDeclaration: 'NSMethodDeclaration',
@@ -2014,23 +2011,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	    return NSSynthesizeDirective;
 	}());
 	exports.NSSynthesizeDirective = NSSynthesizeDirective;
-	var NSForwardDirective = (function () {
-	    function NSForwardDirective(kind, ids) {
-	        this.type = syntax_1.Syntax.NSForwardDirective;
-	        this.kind = kind;
-	        this.ids = ids;
-	    }
-	    return NSForwardDirective;
-	}());
-	exports.NSForwardDirective = NSForwardDirective;
-	var NSSqueezeDirective = (function () {
-	    function NSSqueezeDirective(ids) {
-	        this.type = syntax_1.Syntax.NSSqueezeDirective;
-	        this.ids = ids;
-	    }
-	    return NSSqueezeDirective;
-	}());
-	exports.NSSqueezeDirective = NSSqueezeDirective;
 	var NSSynthesizePair = (function () {
 	    function NSSynthesizePair(id, backing) {
 	        this.type = syntax_1.Syntax.NSSynthesizePair;
@@ -4590,17 +4570,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	                        break;
 	                    //!ns: Start changes
 	                    case '@class':
-	                    case '@implementation':
 	                        statement = this.ns_parseClassImplementationDefinition();
 	                        break;
 	                    case '@protocol':
 	                        statement = this.ns_parseProtocolDefinition();
-	                        break;
-	                    case '@forward':
-	                        statement = this.ns_parseForwardDirective();
-	                        break;
-	                    case '@squeeze':
-	                        statement = this.ns_parseSqueezeDirective();
 	                        break;
 	                    case '@bridged':
 	                        statement = this.ns_parseBridgedDeclaration();
@@ -5829,12 +5802,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        var oldLabelSet = this.context.labelSet;
 	        var previousStrict = this.context.strict;
 	        this.context.strict = true;
-	        if (this.matchKeyword('@class')) {
-	            this.expectKeyword('@class');
-	        }
-	        else {
-	            this.expectKeyword('@implementation');
-	        }
+	        this.expectKeyword('@class');
 	        var id = this.parseVariableIdentifier();
 	        // Has superclass
 	        if (this.match(':')) {
@@ -5941,53 +5909,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	        this.context.labelSet = oldLabelSet;
 	        return this.finalize(node, new Node.NSProtocolDefinition(id, protocolList, body));
 	    };
-	    Parser.prototype.ns_parseForwardDirective = function () {
-	        var node = this.createNode();
-	        var ids = [];
-	        var kind = "class";
-	        this.expectKeyword('@forward');
-	        if (this.matchKeyword('@protocol')) {
-	            this.expectKeyword('@protocol');
-	            kind = "protocol";
-	        }
-	        else if (this.matchKeyword('@class')) {
-	            this.expectKeyword('@class');
-	        }
-	        ids.push(this.parseVariableIdentifier());
-	        while (this.match(',')) {
-	            this.expect(',');
-	            ids.push(this.parseVariableIdentifier());
-	        }
-	        this.consumeSemicolon();
-	        return this.finalize(node, new Node.NSForwardDirective(kind, ids));
-	    };
-	    Parser.prototype.ns_parseSqueezeDirective = function () {
-	        var node = this.createNode();
-	        var ids = [];
-	        this.expectKeyword('@squeeze');
-	        ids.push(this.parseVariableIdentifier());
-	        while (this.match(',')) {
-	            this.expect(',');
-	            ids.push(this.parseVariableIdentifier());
-	        }
-	        this.consumeSemicolon();
-	        return this.finalize(node, new Node.NSSqueezeDirective(ids));
-	    };
 	    Parser.prototype.ns_parseCastExpression = function () {
 	        var node = this.createNode();
 	        var id;
 	        this.expectKeyword('@cast');
-	        if (this.match('<')) {
-	            this.expect('<');
-	            id = this.ns_parseType(null);
-	            this.expect('>');
-	            this.expect('(');
-	        }
-	        else {
-	            this.expect('(');
-	            id = this.ns_parseType(null);
-	            this.expect(',');
-	        }
+	        this.expect('(');
+	        id = this.ns_parseType(null);
+	        this.expect(',');
 	        var argument = this.parseExpression();
 	        this.expect(')');
 	        return this.finalize(node, new Node.NSCastExpression(id, argument));
@@ -6738,20 +6666,17 @@ return /******/ (function(modules) { // webpackBootstrap
 	    Scanner.prototype.isKeyword = function (id) {
 	        //!ns: start changes
 	        if (id[0] === '@') {
-	            return (id === '@end') ||
-	                (id === '@implementation') ||
+	            return (id === '@class') ||
 	                (id === '@protocol') ||
+	                (id === '@end') ||
 	                (id === '@optional') ||
 	                (id === '@required') ||
-	                (id === '@class') ||
-	                (id === '@forward') ||
 	                (id === '@property') ||
 	                (id === '@synthesize') ||
 	                (id === '@selector') ||
 	                (id === '@dynamic') ||
 	                (id === '@enum') ||
 	                (id === '@const') ||
-	                (id === '@squeeze') ||
 	                (id === '@cast') ||
 	                (id === '@any') ||
 	                (id === '@each') ||
