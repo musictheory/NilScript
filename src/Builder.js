@@ -175,13 +175,6 @@ build()
         }
     }
  
-    function handleNSSqueezeDirective(node)
-    {
-        node.ids.forEach(function(id) {
-            model.getSymbolTyper().enrollForSqueezing(id.name);
-        });
-    }
-
     function handleNSMethodDefinition(node)
     {
         let method = makeNSMethodNode(node);
@@ -511,9 +504,6 @@ build()
 
             } else if (type === Syntax.NSForwardDirective) {
                 handleNSForwardDirective(node);
-
-            } else if (type === Syntax.NSSqueezeDirective) {
-                handleNSSqueezeDirective(node);
 
             } else if (type === Syntax.NSInstanceVariableDeclaration) {
                 handleInstanceVariableDeclaration(node);

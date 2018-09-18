@@ -1262,7 +1262,6 @@ generate()
             type === Syntax.NSProtocolDefinition                 ||
             type === Syntax.NSForwardDirective                   ||
             type === Syntax.NSObserveDirective                   ||
-            type === Syntax.NSSqueezeDirective                   ||
             type === Syntax.NSSynthesizeDirective                ||
             type === Syntax.NSDynamicDirective                   ||
             type === Syntax.NSEnumDeclaration                    ||
