@@ -30,7 +30,6 @@ const NSVisitorKeys = {
     [ Syntax.NSObserveDirective             ]: [ "attributes", "ids" ],
     [ Syntax.NSObserveAttribute             ]: [ ],
     [ Syntax.NSSynthesizeDirective          ]: [ "pairs" ],
-    [ Syntax.NSForwardDirective             ]: [ "ids" ],
     [ Syntax.NSSynthesizePair               ]: [ "id", "backing" ],
     [ Syntax.NSDynamicDirective             ]: [ "ids" ],
     [ Syntax.NSSelectorDirective            ]: [ ],

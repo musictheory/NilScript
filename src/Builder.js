@@ -156,24 +156,6 @@ build()
 
         declaredProtocols.push(ojProtocol.name);
     }
-
-    function handleNSForwardDirective(node)
-    {
-        let ids = node.ids;
-        let kind = node.lind;
-
-        if (kind == "class") {
-            for (let i = 0, length = ids.length; i < length; i++) {
-                let cls = new Model.NSClass(makeLocation(node), ids[i].name);
-                cls.forward = true;
-
-                model.addClass(cls);
-            }
-
-        } else if (kind == "protocol") {
-            Utils.throwError(NSError.NotYetSupported, "@forward protocol declarations are not yet supported", node);
-        }
-    }
  
     function handleNSMethodDefinition(node)
     {
@@ -501,9 +483,6 @@ build()
 
             } else if (type === Syntax.NSProtocolDefinition) {
                 handleNSProtocolDefinition(node);
-
-            } else if (type === Syntax.NSForwardDirective) {
-                handleNSForwardDirective(node);
 
             } else if (type === Syntax.NSInstanceVariableDeclaration) {
                 handleInstanceVariableDeclaration(node);

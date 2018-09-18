@@ -281,18 +281,6 @@ function test() {
 
 
 // --------------------------------------------------------------------
-// @name Duplicate Class 2
-
-@forward DuplicateClass;
-
-@class DuplicateClass
-@end
-
-@class DuplicateClass //@error NilScriptDuplicateDeclarationError
-@end
-
-
-// --------------------------------------------------------------------
 // @name Duplicate Method
 
 @class DuplicateMethod
