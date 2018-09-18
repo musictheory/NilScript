@@ -2,7 +2,7 @@ var assert = require("assert");
 
 (function() { "use strict";
 
-@implementation Issue58Class {
+@class Issue58Class {
 }
 
 + (BOOL) checkWithArgument:(String)alpha argument:(String)beta

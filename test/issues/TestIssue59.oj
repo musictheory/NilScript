@@ -1,7 +1,7 @@
 
 (function() { "use strict";
 
-@implementation Issue59Class {
+@class Issue59Class {
     Array _array;
 }
 

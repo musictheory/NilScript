@@ -6,7 +6,7 @@ var assert = require("assert");
     Issue21Enum_Baz
 }
 
-@implementation Issue21Class {
+@class Issue21Class {
     Issue21Enum _a;
 }
 

@@ -1,5 +1,5 @@
 
-@implementation Issue77Class
+@class Issue77Class
 
 + (void) runTests
 {

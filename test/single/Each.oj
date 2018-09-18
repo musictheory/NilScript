@@ -3,7 +3,7 @@
 var assert = require("assert");
 
 
-@implementation EachIteratorTests {
+@class EachIteratorTests {
     Number _arrayAccessCount;
 }
 

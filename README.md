@@ -61,33 +61,33 @@ In contrast to [Objective-J](http://en.wikipedia.org/wiki/Objective-J):
 
 ## <a name="class"></a>Classes
 
-While Objective-C uses `@interface` to define a class interface and `@implementation` for its implementation, NilScript only uses `@implementation` (due to the lack of header files in JavaScript).  Information that would normally appear in the `@interface` block, such as `@property` declarations or the inherited superclass instead appear in `@implementation`.
+While Objective-C uses `@interface` to define a class interface and `@implementation` for its implementation, NilScript combines both into `@class` (due to the lack of header files in JavaScript).
 
 ### <a name="class-syntax"></a>Basic syntax
 
 The syntax to create an empty NilScript class looks like this:
 
 ```
-@implementation TheClass
+@class TheClass
 @end
 ```
 
 To inherit from a superclass, use a colon followed by the superclass name:
 
 ```
-@implementation TheSubClass : TheSuperClass 
+@class TheSubClass : TheSuperClass 
 @end
 ```
 
 Additional [instance variables](#ivar) can be added by using a block after class name (or superclass name):
 
 ```
-@implementation TheClass {
+@class TheClass {
     String _myStringInstanceVariable;    
 }
 @end
 
-@implementation TheSubClass : TheSuperClass {
+@class TheSubClass : TheSuperClass {
     String _myStringInstanceVariable;    
 }
 @end
@@ -95,10 +95,10 @@ Additional [instance variables](#ivar) can be added by using a block after class
 
 ### <a name="class-compiler"></a>Behind the scenes (Class)
 
-Behind the scenes, the NilScript compiler changes the `@implementation`/`@end` block into a JavaScript function block which is invoked at runtime.  Private functions and variables may be declared inside of an `@implementation` without polluting the global namespace.
+Behind the scenes, the NilScript compiler changes the `@class`/`@end` block into a JavaScript function block which is invoked at runtime.  Private functions and variables may be declared inside of an `@class` without polluting the global namespace.
 
 ```
-@implementation TheClass
+@class TheClass
 let sPrivateStaticVariable = "Private";
 function sPrivate() { }
 @end
@@ -115,7 +115,7 @@ oj_private_function(…, function() {
 
 To prevent undefined behavior, variable declarations must be initialized to a literal or function expression (or left uninitialized).  
 
-Note: Only `@property`, `@synthesize`, `@dynamic`, `@observe`, instance variable declarations, method declarations, variable declarations, or function declarations may be used inside of an `@implementation` block.
+Note: Only `@property`, `@synthesize`, `@dynamic`, `@observe`, instance variable declarations, method declarations, variable declarations, or function declarations may be used inside of an `@class` block.
 
 ### <a name="at-class"></a>Forward Declarations
 
@@ -124,7 +124,7 @@ In older versions of NilScript (0.x), the compiler would compile each file separ
 ```
 @forward TheFirstClass;
 
-@implementation TheSecondClass
+@class TheSecondClass
     
 - (void) foo {
     // Without the forward declaration, NilScript 0.x didn't know if TheFirstClass
@@ -178,10 +178,10 @@ While NilScript 0.x supported `+load` and `+initialize`, this feature was remove
 ---
 ### <a name="method"></a>Methods
 
-Methods are defined in an `@implementation` block and use standard Objective-C syntax:
+Methods are defined in a `@class` block and use standard Objective-C syntax:
 
 ```
-@implementation TheClass
+@class TheClass
     
 - (String) doSomethingWithString:(String)string andNumber:(Number)number
 {
@@ -200,7 +200,7 @@ Methods are defined in an `@implementation` block and use standard Objective-C s
 Old-school bare method declarations may also be used:
 
 ```
-@implementation TheClass
+@class TheClass
     
 - doSomethingWithString:string andNumber:number
 {
@@ -271,7 +271,7 @@ In addition, NilScript allows storage for additional instance variables (ivars) 
 A class that uses a property, private ivar, and accesses them in a method may look like this:
 
 ```
-@implementation TheClass {
+@class TheClass {
     Number _privateNumberIvar;
 }
     
@@ -287,10 +287,10 @@ A class that uses a property, private ivar, and accesses them in a method may lo
 
 ### <a name="property-synthesis"></a>Synthesis 
 
-Properties are defined using the `@property` keyword in an `@implementation` block:
+Properties are defined using the `@property` keyword in an `@class` block:
 
 ```
-@implementation TheClass
+@class TheClass
 @property String myStringProperty;
 @end
 ```
@@ -300,7 +300,7 @@ In the above example, the compiler will automatically synthesize a backing insta
 If a different backing instance variable is desired, the `@synthesize` directive is used:
 
 ```
-@implementation TheClass
+@class TheClass
 @property String myStringProperty;
     
 // Maps myStringProperty property to m_myStringProperty instance variable
@@ -311,7 +311,7 @@ If a different backing instance variable is desired, the `@synthesize` directive
 As in Objective-C, `@synthesize` without an `=` results in the same name being used for the backing instance variable:
 
 ```
-@implementation TheClass
+@class TheClass
 @property String myStringProperty;
     
 // Maps myStringProperty property to myStringProperty instance variable
@@ -322,7 +322,7 @@ As in Objective-C, `@synthesize` without an `=` results in the same name being u
 The `@dynamic` directive suppresses the generation of both the backing instance variable and the setter/getter pair.
 
 ```
-@implementation TheClass
+@class TheClass
 @property String myStringProperty;
 @dynamic myStringProperty; // No instance variable, getter, nor setter is synthesized
 @end
@@ -444,7 +444,7 @@ In our internal UI frameworks, it's very common to call `-setNeedsDisplay` or `-
 property change.  For example, our Button class has a custom corner radius property:
 
 ```
-@implementation Button : ClickableControl
+@class Button : ClickableControl
 
 …
 
@@ -654,12 +654,12 @@ Like Objective-C, NilScript includes support for protocols.  Both `@required` an
 - (BOOL) controller:(Controller)controller shouldPerformAction:(String)action;
 @end
 
-@implementation Controller
+@class Controller
 @property id<ControllerDelegate> delegate
 …
 @end
 
-@implementation TheClass <ControllerDelegate, TabBarDelegate>
+@class TheClass <ControllerDelegate, TabBarDelegate>
 - (void) controller:(Controller)controller didPerformAction:(String)action { … }
 …
 @end
@@ -724,7 +724,7 @@ When the `--warn-unknown-selectors` option is specified, NilScript warns about u
 When the `--warn-unknown-ivars` option is specified, NilScript checks all JavaScript identifiers prefixed with an underscore.  A warning is produced when such an identifier is used in a method declaration and the current class lacks a corresponding `@property` or instance variable declaration.
 
 ```
-@implementation TheClass
+@class TheClass
     
 @property String foo;
     
@@ -739,7 +739,7 @@ When the `--warn-unknown-ivars` option is specified, NilScript checks all JavaSc
 When the `--warn-unused-ivars` option is specified, NilScript warns about ivar declarations that are unused within an implementation.
 
 ```
-@implementation TheClass {
+@class TheClass {
     id _unused; // Warns
 }
 @end

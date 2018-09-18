@@ -1,25 +1,25 @@
 //@opts = { "output-language": "none", "check-types": true }
 
-@implementation Singleton
+@class Singleton
 + (instancetype) sharedInstance { return null; }
 - (void) doSomething { }
 @end
 
-@implementation Foo
+@class Foo
 - (BOOL) isFoo { return true; }
 @end
 
-@implementation Foo2 : Foo
+@class Foo2 : Foo
 - (String) aString { return "foo"; }
 @end
 
-@implementation Bar
+@class Bar
 - (id) initWithString:(String)string { return [self init]; }
 - (BOOL) isBar { return true; }
 @end
 
 
-@implementation TestReturnTypes
+@class TestReturnTypes
 
 // TypeScript reports constants as their own type, so use functions here to get Number/String
 //
@@ -46,7 +46,7 @@
 @end
 
 
-@implementation TestMethodCalls
+@class TestMethodCalls
 
 - (void) doSomethingWithFoo:(Foo)foo
 {
@@ -80,7 +80,7 @@
 @end
 
 
-@implementation TestIssue96
+@class TestIssue96
 + (void) foo:(id)x { }
 + (void) classMethod { [self foo:self]; }
 - (void) instanceMethod { [[self class] foo:self]; }

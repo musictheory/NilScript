@@ -1,6 +1,6 @@
 var assert = require("assert");
 
-@implementation Issue1Class {
+@class Issue1Class {
     Number _index;
 }
 

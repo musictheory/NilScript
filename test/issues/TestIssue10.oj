@@ -1,24 +1,24 @@
 var assert = require("assert");
 
-@implementation Mooer
+@class Mooer
 @property id wrapped;
 - (id) moo { return _wrapped; }
 @end
 
 
-@implementation Barker
+@class Barker
 @property id wrapped;
 - (id) bark { return _wrapped; }
 @end
 
 
-@implementation Oinker
+@class Oinker
 @property id wrapped;
 - (id) oink { return _wrapped; }
 @end
 
 
-@implementation Issue10Class {
+@class Issue10Class {
 
 }
 

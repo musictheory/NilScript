@@ -1,7 +1,7 @@
 
 (function() { "use strict";
 
-@implementation Issue34Class {
+@class Issue34Class {
 }
 
 @property (readonly) String getter;

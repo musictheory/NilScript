@@ -1,6 +1,6 @@
 @const Hundred = "100";
 
-@implementation Issue69Class {
+@class Issue69Class {
     String _foo;
 }
 

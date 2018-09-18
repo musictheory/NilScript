@@ -1,11 +1,11 @@
 var assert = require("assert");
 
 
-@implementation CategoryTests (BeforeImplementation)
+@class CategoryTests (BeforeImplementation)
 - (String) alpha { return "Alpha"; }
 @end
 
-@implementation CategoryTests
+@class CategoryTests
 - (String) beta { return "Beta"; }
 
 - (BOOL) runTests
@@ -19,7 +19,7 @@ var assert = require("assert");
 
 @end
 
-@implementation CategoryTests (AfterImplementation)
+@class CategoryTests (AfterImplementation)
 - (String) gamma { return "Gamma"; }
 @end
 

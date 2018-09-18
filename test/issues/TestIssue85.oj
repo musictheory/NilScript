@@ -1,4 +1,4 @@
-@implementation Foo 
+@class Foo
 @end
 
 true;

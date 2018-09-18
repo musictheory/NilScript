@@ -11,7 +11,7 @@
 @end
 
 
-@implementation MultilineMethodClass
+@class MultilineMethodClass
 
 + (BOOL) classMethod { return YES }
 

@@ -2,6 +2,17 @@ CHANGELOG
 
 ---
 
+3.0.0
+
+3.x is a backwards incompatible release, with a focus on simplifying the language and improving
+syntax consistency. This is the first major release under the new name (NilScript); as such,
+runtime APIs and generated code use "ns"/"NS"/"nilscript" rather than "oj"/"OJ".
+
+Language Changes:
+ - '@implementation' is now '@class'
+
+---
+
 2.0.0
 
 2.x is a backwards incompatible release, with a focus on improving the performance of incremental compiles

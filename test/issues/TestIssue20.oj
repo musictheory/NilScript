@@ -1,6 +1,6 @@
 var assert = require("assert");
 
-@implementation Issue20Class
+@class Issue20Class
 
 // Previously, this would fail due to oj->js naming conventions,
 // as both 'doFoo:withBar:' and 'doFoo_withBar:' map to the same

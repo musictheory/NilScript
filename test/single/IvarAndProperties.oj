@@ -2,7 +2,7 @@
 
 var assert = require("assert");
 
-@implementation IvarAndPropertiesClass {
+@class IvarAndPropertiesClass {
     any     _ivar1_shouldBeNull;
     Number  _ivar2_shouldBeZero;
     String  _ivar3_shouldBeNull;

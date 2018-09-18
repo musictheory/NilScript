@@ -1,6 +1,6 @@
 var assert = require("assert");
 
-@implementation Issue2Class {
+@class Issue2Class {
 
 }
 

@@ -1,6 +1,6 @@
 var assert = require("assert");
 
-@implementation Issue82Class
+@class Issue82Class
 - (Class) shouldThrow { "use strict"; return Issue82Class; }
 @end
 

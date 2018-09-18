@@ -1,6 +1,6 @@
 var assert = require("assert");
 
-@implementation Issue31Class {
+@class Issue31Class {
     // Ivars
     id<Foo>       _a;
     id<Foo, Bar>  _b;

@@ -2,7 +2,7 @@
 // @name unknown-ivars
 // @opts { "warn-unknown-ivars": true  }
 
-@implementation UndeclaredInstanceVariable
+@class UndeclaredInstanceVariable
 
 @property id foo;
 
@@ -16,7 +16,7 @@
 // @name unknown-ivars 2
 // @opts { "warn-unknown-ivars": true  }
 
-@implementation UndeclaredInstanceVariable
+@class UndeclaredInstanceVariable
 
 @property (readonly) id foo;
 
@@ -29,7 +29,7 @@
 // @name unknown-ivars 3
 // @opts { "warn-unknown-ivars": true  }
 
-@implementation UndeclaredInstanceVariable
+@class UndeclaredInstanceVariable
 
 - (void) testCheckIvar
 {
@@ -43,7 +43,7 @@
 // @name self-in-non-method
 // @opts { "warn-self-in-non-methods": true  }
 
-@implementation UseOfThisInMethod
+@class UseOfThisInMethod
 
 function usesSelf() {
     self; //@warning NilScriptUseOfSelfInNonMethodWarning
@@ -56,7 +56,7 @@ function usesSelf() {
 // @name this-in-method
 // @opts { "warn-this-in-methods": true  }
 
-@implementation UseOfThisInMethod
+@class UseOfThisInMethod
 
 - (void) foo
 {
@@ -113,7 +113,7 @@ function usesSelf() {
 // --------------------------------------------------------------------
 // @name self Reserved
 
-@implementation ExampleClass
+@class ExampleClass
 
 - (void) test
 {
@@ -126,7 +126,7 @@ function usesSelf() {
 // --------------------------------------------------------------------
 // @name self Reserved 2
 
-@implementation ExampleClass
+@class ExampleClass
 
 - (void) test
 {
@@ -141,7 +141,7 @@ function usesSelf() {
 // --------------------------------------------------------------------
 // @name self Reserved 3
 
-@implementation ExampleClass
+@class ExampleClass
 
 - (void) test
 {
@@ -156,7 +156,7 @@ function usesSelf() {
 // --------------------------------------------------------------------
 // @name $oj Reserved
 
-@implementation TestReservedWord
+@class TestReservedWord
 
 - (void) test
 {
@@ -178,7 +178,7 @@ function test() {
 // @name Ivar Claimed
 // @error-no-line NilScriptInstanceVariableAlreadyClaimedError
 
-@implementation InstanceVariableAlreadyClaimed
+@class InstanceVariableAlreadyClaimed
 
 @property id foo;
 @property id foo2;
@@ -193,7 +193,7 @@ function test() {
 // @name Ivar Claimed 2
 // @error-no-line NilScriptInstanceVariableAlreadyClaimedError
 
-@implementation InstanceVariableAlreadyClaimed2
+@class InstanceVariableAlreadyClaimed2
 
 @property id foo;
 @property id foo2;
@@ -206,7 +206,7 @@ function test() {
 // --------------------------------------------------------------------
 // @name Property Already Dynamic
 
-@implementation PropertyAlreadyDynamic
+@class PropertyAlreadyDynamic
 
 @property id foo;
 @dynamic foo;
@@ -218,7 +218,7 @@ function test() {
 // --------------------------------------------------------------------
 // @name Property Already Dynamic 2
 
-@implementation PropertyAlreadyDynamic
+@class PropertyAlreadyDynamic
 
 @property id foo;
 @dynamic foo;
@@ -230,7 +230,7 @@ function test() {
 // --------------------------------------------------------------------
 // @name Property Already Synthesized
 
-@implementation PropertyAlreadySynthesized
+@class PropertyAlreadySynthesized
 
 @property id foo;
 @synthesize foo=_foo;
@@ -242,7 +242,7 @@ function test() {
 // --------------------------------------------------------------------
 // @name Reserved Method Name
 
-@implementation TestReservedMethod
+@class TestReservedMethod
 
 - (void) isSubclassOfClass:(id)unused { }   //@error NilScriptReservedMethodNameError
 
@@ -252,7 +252,7 @@ function test() {
 // --------------------------------------------------------------------
 // @name Reserved Method Name 2
 
-@implementation TestReservedMethod
+@class TestReservedMethod
 
 - (void) alloc { }  //@error NilScriptReservedMethodNameError
 
@@ -262,7 +262,7 @@ function test() {
 // --------------------------------------------------------------------
 // @name Duplicate Property
 
-@implementation DuplicateProperty
+@class DuplicateProperty
 
 @property id foo;
 @property id foo;   //@error NilScriptDuplicatePropertyDefinitionError
@@ -273,10 +273,10 @@ function test() {
 // --------------------------------------------------------------------
 // @name Duplicate Class
 
-@implementation DuplicateClass
+@class DuplicateClass
 @end
 
-@implementation DuplicateClass //@error NilScriptDuplicateDeclarationError
+@class DuplicateClass //@error NilScriptDuplicateDeclarationError
 @end
 
 
@@ -285,17 +285,17 @@ function test() {
 
 @forward DuplicateClass;
 
-@implementation DuplicateClass
+@class DuplicateClass
 @end
 
-@implementation DuplicateClass //@error NilScriptDuplicateDeclarationError
+@class DuplicateClass //@error NilScriptDuplicateDeclarationError
 @end
 
 
 // --------------------------------------------------------------------
 // @name Duplicate Method
 
-@implementation DuplicateMethod
+@class DuplicateMethod
 
 - (void) foo { }
 - (void) foo { }    //@error NilScriptDuplicateMethodDefinitionError
@@ -331,32 +331,32 @@ function test() {
 // --------------------------------------------------------------------
 // @name Circular Class 1
 
-@implementation CircularClassA : CircularClassB //@warning NilScriptCircularClassHierarchyWarning
+@class CircularClassA : CircularClassB //@warning NilScriptCircularClassHierarchyWarning
 @end
 
 
-@implementation CircularClassB : CircularClassA //@warning NilScriptCircularClassHierarchyWarning
+@class CircularClassB : CircularClassA //@warning NilScriptCircularClassHierarchyWarning
 @end
 
 // --------------------------------------------------------------------
 // @name Circular Class 2
 
-@implementation CircularClassA : CircularClassB //@warning NilScriptCircularClassHierarchyWarning
+@class CircularClassA : CircularClassB //@warning NilScriptCircularClassHierarchyWarning
 @end
 
-@implementation CircularClassB : CircularClassC //@warning NilScriptCircularClassHierarchyWarning
+@class CircularClassB : CircularClassC //@warning NilScriptCircularClassHierarchyWarning
 @end
 
-@implementation CircularClassC : CircularClassD //@warning NilScriptCircularClassHierarchyWarning
+@class CircularClassC : CircularClassD //@warning NilScriptCircularClassHierarchyWarning
 @end
 
-@implementation CircularClassD : CircularClassA //@warning NilScriptCircularClassHierarchyWarning
+@class CircularClassD : CircularClassA //@warning NilScriptCircularClassHierarchyWarning
 @end
 
 // --------------------------------------------------------------------
 // @name Restricted Usage 1
 
-@implementation RestrictedUsageClass {
+@class RestrictedUsageClass {
     id ivar1;
 }
 
@@ -371,10 +371,10 @@ function test() {
 // --------------------------------------------------------------------
 // @name Restricted Usage 2
 
-@implementation FooClass
+@class FooClass
 @end
 
-@implementation RestrictedUsageClass {
+@class RestrictedUsageClass {
     id ivar1;
 }
 
@@ -389,10 +389,10 @@ function test() {
 // --------------------------------------------------------------------
 // @name Restricted Usage 3
 
-@implementation FooClass
+@class FooClass
 @end
 
-@implementation RestrictedUsageClass {
+@class RestrictedUsageClass {
     id ivar1;
 }
 
@@ -406,7 +406,7 @@ function test() {
 // --------------------------------------------------------------------
 // @name Category No Ivars
 
-@implementation CategoryNoIvars (CategoryName) { //@error NilScriptParseError
+@class CategoryNoIvars (CategoryName) { //@error NilScriptParseError
 
 }
 
@@ -416,7 +416,7 @@ function test() {
 // --------------------------------------------------------------------
 // @name Category Properties Not Yet Supported
 
-@implementation CategoryNoProperties (CategoryName)
+@class CategoryNoProperties (CategoryName)
 @property String foo; //@error NilScriptNotYetSupportedError
 @end
 
@@ -441,7 +441,7 @@ var arr = [,,,,];  //@warning NilScriptUseOfEmptyArrayElementWarning
 // @name Warn Unused Ivars
 // @opts { "warn-unused-ivars": true  }
 
-@implementation Foo { //@warning NilScriptUnusedInstanceVariableWarning
+@class Foo { //@warning NilScriptUnusedInstanceVariableWarning
     id _bar;
 }
 
@@ -453,7 +453,7 @@ var arr = [,,,,];  //@warning NilScriptUseOfEmptyArrayElementWarning
 // @name Warn Unused Ivars 2
 // @opts { "warn-unused-ivars": true  }
 
-@implementation Foo { //@warning NilScriptUnassignedInstanceVariableWarning
+@class Foo { //@warning NilScriptUnassignedInstanceVariableWarning
     id _bar;
 }
 
@@ -471,7 +471,7 @@ var arr = [,,,,];  //@warning NilScriptUseOfEmptyArrayElementWarning
 // @name Unknown Class
 // @opts { "warn-unknown-superclasses": true  }
 
-@implementation Foo : NonExistantSuperClass //@warning NilScriptUnknownSuperclassWarning
+@class Foo : NonExistantSuperClass //@warning NilScriptUnknownSuperclassWarning
 
 @end
 
@@ -486,7 +486,7 @@ var arr = [,,,,];  //@warning NilScriptUseOfEmptyArrayElementWarning
 // --------------------------------------------------------------------
 // @name Missing Method Name (Implementation)
 
-@implementation MissingMethodName
+@class MissingMethodName
 - (String) { return ""; } //@error NilScriptParseError
 @end
 

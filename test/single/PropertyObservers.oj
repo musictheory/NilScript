@@ -2,7 +2,7 @@
 
 var assert = require("assert");
 
-@implementation PropertyObserversClass {
+@class PropertyObserversClass {
     Array<String> _log;
 }
 

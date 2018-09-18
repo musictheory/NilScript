@@ -1,4 +1,4 @@
-@implementation TestIssue112
+@class TestIssue112
 
 + (Number) runTest
 {

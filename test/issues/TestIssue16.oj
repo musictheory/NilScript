@@ -1,12 +1,12 @@
 var assert = require("assert");
 
 
-@implementation WrappedNumber
+@class WrappedNumber
 @property Number number;
 @end
 
 
-@implementation Issue16Class
+@class Issue16Class
 
 @property (readonly) WrappedNumber wrappedTen;
 
