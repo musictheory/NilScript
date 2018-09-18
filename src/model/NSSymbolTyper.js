@@ -24,7 +24,6 @@ const NSIvarPrefix              = "$oj_i_";
 const NSKindofClassPrefix       = "$oj_k_";   // Typechecker only
 const NSStaticClassPrefix       = "$oj_C_";   // Typechecker only
 const NSStaticProtocolPrefix    = "$oj_P_";   // Typechecker only
-const NSStructPrefix            = "$oj_s_";   // Typechecker only
 const NSEnumPrefix              = "$oj_e_";   // Typechecker only
 
 
@@ -178,7 +177,6 @@ _setupTypecheckerMaps()
     let toMap     = { };
     let fromMap   = { };
     let classes   = _.values(this._model.classes);
-    let structs   = _.values(this._model.structs);
     let enums     = _.values(this._model.enums);
 
     for (let i = 0, length = classes.length; i < length; i++) {
@@ -193,17 +191,6 @@ _setupTypecheckerMaps()
         fromMap[className]      = className;
         fromMap[instanceSymbol] = className;
         fromMap[staticSymbol]   = className;
-    }
-
-    for (let i = 0, length = structs.length; i < length; i++) {
-        let structName   = structs[i].name;
-        let structSymbol = this.getSymbolForStructName(structName);
-
-        toMap[structName]   = structSymbol;
-        toMap[structSymbol] = structSymbol;
-
-        fromMap[structName]   = structName;
-        fromMap[structSymbol] = structName;
     }
 
     for (let i = 0, length = enums.length; i < length; i++) {
@@ -453,12 +440,6 @@ getSymbolForClassName(className, isTypecheckerStatic)
     }
 
     return className;
-}
-
-
-getSymbolForStructName(structName)
-{
-    return NSStructPrefix + structName;
 }
 
 

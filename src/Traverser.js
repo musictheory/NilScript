@@ -42,7 +42,6 @@ const NSVisitorKeys = {
     [ Syntax.NSEachStatement                ]: [ "left", "right", "body" ],
     [ Syntax.NSTypeAnnotation               ]: [ ],
     [ Syntax.NSGlobalDeclaration            ]: [ "declaration", "declarators" ],
-    [ Syntax.NSStructDefinition             ]: [ "id", "variables" ],
     [ Syntax.NSBridgedDeclaration           ]: [ "declaration" ],
     [ Syntax.NSTypeDefinition               ]: [ ],
 };

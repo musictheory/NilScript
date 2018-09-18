@@ -270,10 +270,6 @@ getFileDefinitions(ojFile)
         this._appendProtocol(lines, model.protocols[name]);
     });
 
-    _.each(ojFile.declares.structs, name => {
-        this._appendStruct(lines, model.structs[name]);
-    });
-
     _.each(ojFile.declares.enums, name => {
         this._appendEnum(lines, model.enums[name]);
     });

@@ -1258,8 +1258,7 @@ generate()
 
         if (node.oj_skip) return Traverser.SkipNode;
 
-        if (type === Syntax.NSStructDefinition                   || 
-            type === Syntax.NSProtocolDefinition                 ||
+        if (type === Syntax.NSProtocolDefinition                 ||
             type === Syntax.NSForwardDirective                   ||
             type === Syntax.NSObserveDirective                   ||
             type === Syntax.NSSynthesizeDirective                ||
