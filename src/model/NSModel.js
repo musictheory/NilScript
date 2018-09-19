@@ -62,12 +62,12 @@ loadState(state)
 {
     function load(fromStateMap, toModelMap, cons) {
         _.each(fromStateMap, jsObject => {
-            let ojObject = new cons();
+            let nsObject = new cons();
 
-            ojObject.loadState(jsObject);
-            ojObject.local = false;
+            nsObject.loadState(jsObject);
+            nsObject.local = false;
 
-            toModelMap[ojObject.name] = ojObject;
+            toModelMap[nsObject.name] = nsObject;
         });
     };
 
@@ -131,20 +131,20 @@ getSqueezeMap()
 
 saveBridged()
 {
-    let consts = _.compact(_.map(this.consts, ojConst => {
-        if (ojConst.bridged) {
-            return { name: ojConst.name, value: ojConst.value };
+    let consts = _.compact(_.map(this.consts, nsConst => {
+        if (nsConst.bridged) {
+            return { name: nsConst.name, value: nsConst.value };
         } else {
             return null;
         }
     }));
 
-    let enums  = _.compact(_.map(this.enums, ojEnum => {
-        if (ojEnum.bridged) {
+    let enums  = _.compact(_.map(this.enums, nsEnum => {
+        if (nsEnum.bridged) {
             return {
-                name: ojEnum.anonymous ? null : ojEnum.name,
-                unsigned: ojEnum.unsigned,
-                values: _.clone(ojEnum.values)
+                name: nsEnum.anonymous ? null : nsEnum.name,
+                unsigned: nsEnum.unsigned,
+                values: _.clone(nsEnum.values)
             };
 
         } else {
@@ -162,21 +162,21 @@ prepare()
     let booleanMap  = { };
     let numericMap  = { };
 
-    _.each(this.classes, ojClass => {
-        ojClass.prepared = false;
+    _.each(this.classes, nsClass => {
+        nsClass.prepared = false;
     });
 
-    _.each(this.classes, (ojClass, name) => {
-        ojClass.prepare(this);
+    _.each(this.classes, nsClass => {
+        nsClass.prepare(this);
 
-        let methods = ojClass.getAllMethods();
+        let methods = nsClass.getAllMethods();
         for (let i = 0, length = methods.length; i < length; i++) {
             selectorMap[methods[i].selectorName] = true;
         }
     });
 
-    _.each(this.protocols, ojProtocol => {
-        let methods = ojProtocol.getAllMethods();
+    _.each(this.protocols, nsProtocol => {
+        let methods = nsProtocol.getAllMethods();
 
         for (let i = 0, length = methods.length; i < length; i++) {
             selectorMap[methods[i].selectorName] = true;
@@ -188,12 +188,12 @@ prepare()
         selectorMap[baseObjectSelectors[i]] = true;
     }
 
-    _.each(this.enums, ojEnum => {
-        numericMap[ojEnum.name] = true;
+    _.each(this.enums, nsEnum => {
+        numericMap[nsEnum.name] = true;
     });
 
-    _.each(this.types, ojType => {
-        let currentType  = ojType;
+    _.each(this.types, nsType => {
+        let currentType  = nsType;
         let currentName  = currentType.name;
         let originalName = currentName;
         let visitedNames = [ currentName ];
@@ -249,8 +249,8 @@ hasGlobalChanges(other)
     function buildConstValueMap(model) {
         let result = { };
 
-        _.each(model.consts, ojConst => {
-            result[ojConst.name] = ojConst.value;
+        _.each(model.consts, nsConst => {
+            result[nsConst.name] = nsConst.value;
         });
 
         return result;
@@ -259,8 +259,8 @@ hasGlobalChanges(other)
     function buildEnumValueMap(model) {
         let result = { };
 
-        _.each(model.enums, ojEnum => {
-            _.extend(result, ojEnum.values);
+        _.each(model.enums, nsEnum => {
+            _.extend(result, nsEnum.values);
         });
 
         return result;
@@ -358,10 +358,10 @@ getAggregateClass()
     let instanceMap = { };
     let classMap    = { };
 
-    _.each(this.classes, function(ojClass) {
-        extractMethodsIntoMap(ojClass.getImplementedClassMethods(),    classMap);
-        extractMethodsIntoMap(ojClass.getImplementedClassMethods(),    instanceMap);   // 'id' should also cover 'Class'
-        extractMethodsIntoMap(ojClass.getImplementedInstanceMethods(), instanceMap);
+    _.each(this.classes, nsClass => {
+        extractMethodsIntoMap(nsClass.getImplementedClassMethods(),    classMap);
+        extractMethodsIntoMap(nsClass.getImplementedClassMethods(),    instanceMap);   // 'id' should also cover 'Class'
+        extractMethodsIntoMap(nsClass.getImplementedInstanceMethods(), instanceMap);
     });
 
     addMethodsWithMap(classMap,    "+");
@@ -383,18 +383,18 @@ registerDeclaration(name, node)
 }
 
 
-addConst(ojConst)
+addConst(nsConst)
 {
-    let name = ojConst.name;
+    let name = nsConst.name;
 
-    this.consts[name] = ojConst;
+    this.consts[name] = nsConst;
     this.registerDeclaration(name);
 }
 
 
-addEnum(ojEnum)
+addEnum(nsEnum)
 {
-    let name = ojEnum.name;
+    let name = nsEnum.name;
 
     if (name) {
         if (this.enums[name]) {
@@ -404,15 +404,14 @@ addEnum(ojEnum)
     } else {
         name = "$NSAnonymousEnum" + _.size(this.enums);
 
-        ojEnum.name = name;
-        ojEnum.anonymous = true;
+        nsEnum.name = name;
+        nsEnum.anonymous = true;
     }
 
-    this.enums[name] = ojEnum;
+    this.enums[name] = nsEnum;
 
     this.registerDeclaration(name);
 }
-
 
 
 addClass(nsClass)
@@ -442,36 +441,36 @@ addClass(nsClass)
 }
 
 
-addProtocol(ojProtocol)
+addProtocol(nsProtocol)
 {
-    let name = ojProtocol.name;
+    let name = nsProtocol.name;
 
     if (this.protocols[name]) {
         Utils.throwError(NSError.DuplicateDeclaration, "Duplicate declaration of protocol '" + name + "'");
     }
 
-    this.protocols[name] = ojProtocol;
+    this.protocols[name] = nsProtocol;
 }
 
 
-addType(ojType)
+addType(nsType)
 {
-    let name = ojType.name;
+    let name = nsType.name;
 
     if (this.types[name]) {
         Utils.throwError(NSError.DuplicateDeclaration, "Duplicate declaration of type '" + name + "'");
     }
 
-    this.types[name] = ojType;
+    this.types[name] = nsType;
     this.registerDeclaration(name);
 }
 
 
-addGlobal(ojGlobal)
+addGlobal(nsGlobal)
 {
-    let name = ojGlobal.name;
+    let name = nsGlobal.name;
 
-    this.globals[name] = ojGlobal;
+    this.globals[name] = nsGlobal;
     this.registerDeclaration(name);
 }
 
