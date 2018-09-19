@@ -414,29 +414,29 @@ addEnum(ojEnum)
 }
 
 
-addClass(ojClass)
+
+addClass(nsClass)
 {
-    let name     = ojClass.name;
+    let name     = nsClass.name;
     let existing = this.classes[name];
 
-    if (existing) {
-        if (existing.forward && !ojClass.forward) {
-            this.classes[name] = ojClass;
+    // We have an existing placeholder, copy over methods in case it's a category
+    if (existing && existing.placeholder) {
+        _.each(existing.getAllMethods(), m => nsClass.addMethod(m));
+    }
 
-        } else if (existing.placeholder && !ojClass.forward) {
-            this.classes[name] = ojClass;
+    // Ensure we aren't overwriting a non-placeholder with a placeholder
+    if (!existing || existing.placeholder) {
+        this.classes[name] = nsClass;
+    }
 
-            // This was a category placeholder and is being replaced by the real class, move over methods
-            _.each(existing.getAllMethods(), function(m) {
-                ojClass.addMethod(m);
-            });
+    // We have an existing non-placeholder and a new non-placeholder
+    if (existing && !existing.placeholder && !nsClass.placeholder) {
+        Utils.throwError(NSError.DuplicateDeclaration, "Duplicate declaration of class '" + name + "'");
+    } 
 
-        } else if (!existing.forward && !ojClass.forward) {
-            Utils.throwError(NSError.DuplicateDeclaration, "Duplicate declaration of class '" + name + "'");
-        }
-
-    } else {
-        this.classes[name] = ojClass;
+    // Register a non-placeholder
+    if (!nsClass.placeholder) {
         this.registerDeclaration(name);
     }
 }

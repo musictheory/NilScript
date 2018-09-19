@@ -122,13 +122,12 @@ build()
 
         } else {
             ojClass = new Model.NSClass(makeLocation(node), className, superclassName, protocolNames);
-            ojClass.forward = false;
             model.addClass(ojClass);
         }
 
         if (superclassName) {
             let superclass = new Model.NSClass(null, superclassName);
-            superclass.forward = true;
+            superclass.placeholder = true;
             model.addClass(superclass);
         }
 

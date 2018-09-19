@@ -528,7 +528,7 @@ generate()
             if (optionWarnUnknownSuperclasses) {
                 let superclass = model.classes[superName];
 
-                if (!superclass || superclass.forward == true || superclass.placeholder == true) {
+                if (!superclass || superclass.placeholder == true) {
                     warnings.push(Utils.makeError(NSWarning.UnknownSuperclass, "Use of unknown superclass '" + superName + "'.", node.superClass));
                 }
             }
@@ -1259,7 +1259,6 @@ generate()
         if (node.oj_skip) return Traverser.SkipNode;
 
         if (type === Syntax.NSProtocolDefinition                 ||
-            type === Syntax.NSForwardDirective                   ||
             type === Syntax.NSObserveDirective                   ||
             type === Syntax.NSSynthesizeDirective                ||
             type === Syntax.NSDynamicDirective                   ||

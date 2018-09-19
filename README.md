@@ -17,7 +17,6 @@ Note: NilScript was previously known as oj. To comply with [Semantic Versioning]
 - [Classes](#class)
   - [Basic Syntax](#class-syntax)
   - [Behind the Scenes](#class-compiler)
-  - [Forward Declarations](#at-class)
 - [The Built-in Base Class](#base-class)
 - [Methods](#method)
   - [Falsy Messaging](#method-falsy)
@@ -116,26 +115,6 @@ oj_private_function(…, function() {
 To prevent undefined behavior, variable declarations must be initialized to a literal or function expression (or left uninitialized).  
 
 Note: Only `@property`, `@synthesize`, `@dynamic`, `@observe`, instance variable declarations, method declarations, variable declarations, or function declarations may be used inside of an `@class` block.
-
-### <a name="at-class"></a>Forward Declarations
-
-In older versions of NilScript (0.x), the compiler would compile each file separately.  This led to situations where a [forward declaration](http://en.wikipedia.org/wiki/Forward_declaration) of a class was needed:
-
-```
-@forward TheFirstClass;
-
-@class TheSecondClass
-    
-- (void) foo {
-    // Without the forward declaration, NilScript 0.x didn't know if TheFirstClass
-    // was a JS identifier or an NilScript class.
-    [TheFirstClass doSomething];
-}
-
-@end
-```
-
-NilScript 1.x+ uses a multi-pass compiler which eliminates the need for forward declarations.  In general, the need to use `@forward` indicates an underlying issue with the dependency tree, which will cause issues if you need to use `@const`/`@enum` inlining or the [squeezer](#squeeze).  For more information, read [Compiling Projects](#compiling-projects).  
 
 ---
 

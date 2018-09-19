@@ -30,10 +30,8 @@ constructor(location, name, superclassName, protocolNames)
     this.superclassName = superclassName;
     this.protocolNames  = protocolNames || [ ];
 
-    // For @class
-    this.forward = false;
-
     // For category definitions that appear before the implementation
+    // Also used when a class defines a superclass that hasn't been traversed yet
     this.placeholder = false;
  
     // Is this class in the current compilation unit?  *not archived*
@@ -62,8 +60,7 @@ loadState(state)
     this.name            = state.name;
     this.superclassName  = state.superclassName;
     this.protocolNames   = state.protocolNames || [ ];
-    this.forward        = state.forward; 
-    this.placeholder    = state.placeholder;
+    this.placeholder     = state.placeholder;
     this.didSynthesis    = state.didSynthesis;
 
     _.each(state.ivars, i => {
@@ -92,7 +89,6 @@ saveState()
         superclassName:  this.superclassName,
         protocolNames:   this.protocolNames,
         didSynthesis:  !!this.didSynthesis,
-        forward:         this.forward,
         placeholder:     this.placeholder,
 
         ivars:      _.values(this._ivarMap),
