@@ -2,11 +2,9 @@ var assert = require("assert");
 
 @class Issue20Class
 
-// Previously, this would fail due to oj->js naming conventions,
+// Previously, this would fail due to ns->js naming conventions,
 // as both 'doFoo:withBar:' and 'doFoo_withBar:' map to the same
 // underlying JavaScript function 'doFoo_withBar_'
-
-// In oj 1.0, this now works
 
 - (String) doFoo:(id)foo withBar:(id)bar { return "A"; }
 - (String) doFoo_withBar:(id)bar { return "B"; }

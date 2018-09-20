@@ -36,7 +36,7 @@ function _isDescendantOf(a, b)
 {
     while (a) {
         if (a === b) return true;
-        a = a.oj_parent;
+        a = a.ns_parent;
     }
 
     return false;

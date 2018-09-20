@@ -178,16 +178,16 @@ getWarnings(diagnostics, fileCallback)
 
                     if (resolvedArg) {
                         if (retargetType == "class") {
-                            let ojClass = model.classes[resolvedArg];
+                            let nsClass = model.classes[resolvedArg];
 
-                            fileName   = ojClass && ojClass.location ? ojClass.location.path : fileName;
-                            lineNumber = ojClass && ojClass.location ? ojClass.location.line : lineNumber;
+                            fileName   = nsClass && nsClass.location ? nsClass.location.path : fileName;
+                            lineNumber = nsClass && nsClass.location ? nsClass.location.line : lineNumber;
 
                         } else if (retargetType == "protocol") {
-                            let ojProtocol = model.protocols[resolvedArg];
+                            let nsProtocol = model.protocols[resolvedArg];
 
-                            fileName   = ojProtocol && ojProtocol.location ? ojProtocol.location.path : fileName;
-                            lineNumber = ojProtocol && ojProtocol.location ? ojProtocol.location.line : lineNumber;
+                            fileName   = nsProtocol && nsProtocol.location ? nsProtocol.location.path : fileName;
+                            lineNumber = nsProtocol && nsProtocol.location ? nsProtocol.location.line : lineNumber;
                         }
                     }
                 }

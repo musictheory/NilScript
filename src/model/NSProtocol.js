@@ -56,28 +56,28 @@ loadState(state)
 }
 
 
-addMethod(ojMethod)
+addMethod(nsMethod)
 {
-    let selectorName = ojMethod.selectorName;
-    let map = (ojMethod.selectorType == "+") ? this._classMethodMap : this._instanceMethodMap;
+    let selectorName = nsMethod.selectorName;
+    let map = (nsMethod.selectorType == "+") ? this._classMethodMap : this._instanceMethodMap;
 
     if (map[selectorName]) {
         Utils.throwError(NSError.DuplicateMethodDefinition, "Duplicate declaration of method '" + selectorName + "'");
     }
 
-    map[selectorName] = ojMethod;
+    map[selectorName] = nsMethod;
 }
 
 
-addProperty(ojProperty)
+addProperty(nsProperty)
 {
-    let name = ojProperty.name;
+    let name = nsProperty.name;
 
     if (this._propertyMap[name]) {
         Utils.throwError(NSError.DuplicatePropertyDefinition, "Property " + name + " has previous declaration");
     }
 
-    this._propertyMap[name] = ojProperty;
+    this._propertyMap[name] = nsProperty;
 }
 
 
@@ -97,13 +97,13 @@ getAllMethods()
 {
     let results = _.values(this._classMethodMap).concat(_.values(this._instanceMethodMap));
 
-    _.each(this._propertyMap, ojProperty => {
-        let getter   = ojProperty.getter;
-        let setter   = ojProperty.setter;
-        let type     = ojProperty.type;
-        let optional = ojProperty.optional;
+    _.each(this._propertyMap, nsProperty => {
+        let getter   = nsProperty.getter;
+        let setter   = nsProperty.setter;
+        let type     = nsProperty.type;
+        let optional = nsProperty.optional;
 
-        if (ojProperty.writable && setter) {
+        if (nsProperty.writable && setter) {
             if (!this._instanceMethodMap[setter]) {
                 results.push(new NSMethod(null, setter, "-", "void", [ type ], optional));
             }

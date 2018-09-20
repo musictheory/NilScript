@@ -1,6 +1,6 @@
 /*
     Traverser.js
-    Extends estraverse with ability to traverse oj nodes
+    Extends estraverse with ability to traverse NilScript nodes
     (c) 2013-2018 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
@@ -12,7 +12,7 @@ const esprima    = require("../ext/esprima");
 const estraverse = require("estraverse");
 const Syntax     = esprima.Syntax;
 
-// Add additional visitor keys for the oj language extension
+// Add additional visitor keys for the NilScript language extension
 const NSVisitorKeys = {
     [ Syntax.NSMessageExpression            ]: [ "receiver", "messageSelectors" ],
     [ Syntax.NSMessageReceiver              ]: [ "value" ],

@@ -38,11 +38,11 @@ const LanguageNone        = "none";
 module.exports = class Generator {
 
 
-constructor(ojFile, model, forTypechecker, options)
+constructor(nsFile, model, forTypechecker, options)
 {
-    this._file     = ojFile;
+    this._file     = nsFile;
     this._model    = model;
-    this._modifier = new Modifier(ojFile.contents.split("\n"), options);
+    this._modifier = new Modifier(nsFile.contents.split("\n"), options);
     this._options  = options;
 
     let inlines = { };
@@ -64,10 +64,10 @@ constructor(ojFile, model, forTypechecker, options)
         this._strictFunctions = options["strict-functions"];
     }
 
-    _.each(model.enums, ojEnum => {
-        let enumNameSymbol = (ojEnum.name && !ojEnum.anonymous) ? symbolTyper.getSymbolForEnumName(ojEnum.name) : null;
+    _.each(model.enums, nsEnum => {
+        let enumNameSymbol = (nsEnum.name && !nsEnum.anonymous) ? symbolTyper.getSymbolForEnumName(nsEnum.name) : null;
 
-        _.each(ojEnum.values, (value, name) => {
+        _.each(nsEnum.values, (value, name) => {
             if (enumNameSymbol && forTypechecker) {
                 inlines[name] = enumNameSymbol + "." + name;
             } else {
@@ -76,11 +76,11 @@ constructor(ojFile, model, forTypechecker, options)
         });
     });
 
-    _.each(model.consts, ojConst => {
-        let name = ojConst.name;
+    _.each(model.consts, nsConst => {
+        let name = nsConst.name;
 
         if (inlines[name] === undefined) {
-            inlines[name] = ojConst.raw;
+            inlines[name] = nsConst.raw;
         }
     });
 
@@ -197,13 +197,13 @@ generate()
         return (useSelf ? "self" : "this") + "." + symbolTyper.getSymbolForClassNameAndIvarName(className, ivarName);
     }
 
-    function generateIvarAssignments(ojClass)
+    function generateIvarAssignments(nsClass)
     {
         let booleanIvars = [ ];
         let numericIvars = [ ];
         let objectIvars  = [ ];
 
-        let ivars = ojClass.getAllIvars();
+        let ivars = nsClass.getAllIvars();
 
         for (let i = 0, length = ivars.length; i < length; i++) {
             let ivar = ivars[i];
@@ -225,7 +225,7 @@ generate()
 
         if (objectIvars.length) {
             for (let i = 0, length = objectIvars.length; i < length; i++) {
-                result += "this." + symbolTyper.getSymbolForClassNameAndIvarName(ojClass.name, objectIvars[i]) + "="
+                result += "this." + symbolTyper.getSymbolForClassNameAndIvarName(nsClass.name, objectIvars[i]) + "="
             }
 
             result += "null;"
@@ -233,7 +233,7 @@ generate()
 
         if (numericIvars.length) {
             for (let i = 0, length = numericIvars.length; i < length; i++) {
-                result += "this." + symbolTyper.getSymbolForClassNameAndIvarName(ojClass.name, numericIvars[i]) + "="
+                result += "this." + symbolTyper.getSymbolForClassNameAndIvarName(nsClass.name, numericIvars[i]) + "="
             }
 
             result += "0;"
@@ -241,7 +241,7 @@ generate()
 
         if (booleanIvars.length) {
             for (let i = 0, length = booleanIvars.length; i < length; i++) {
-                result += "this." + symbolTyper.getSymbolForClassNameAndIvarName(ojClass.name, booleanIvars[i]) + "="
+                result += "this." + symbolTyper.getSymbolForClassNameAndIvarName(nsClass.name, booleanIvars[i]) + "="
             }
 
             result += "false;"
@@ -252,7 +252,7 @@ generate()
 
     function isIdentifierTransformable(node)
     {
-        let parent = node.oj_parent;
+        let parent = node.ns_parent;
 
         if (parent.type === Syntax.MemberExpression) {
             // identifier.x -> true
@@ -1198,10 +1198,10 @@ generate()
         let key = node.key;
 
         if (node.computed && (key.type === Syntax.Identifier)) {
-            let ojConst = model.consts[key.name];
+            let nsConst = model.consts[key.name];
 
-            if (ojConst && _.isString(ojConst.value)) {
-                modifier.from(node).to(node.value).replace(ojConst.raw + ":");
+            if (nsConst && _.isString(nsConst.value)) {
+                modifier.from(node).to(node.value).replace(nsConst.raw + ":");
                 modifier.from(node.value).to(node).replace("");
                 key.oj_skip = true;
             }
@@ -1241,7 +1241,7 @@ generate()
                 node.type == Syntax.NSClassImplementation ||
                 node.type == Syntax.NSMessageExpression)
             {
-                warnings.push(Utils.makeError(NSWarning.UseOfThisInMethod, "Use of 'this' keyword in oj method definition", thisNode));
+                warnings.push(Utils.makeError(NSWarning.UseOfThisInMethod, "Use of 'this' keyword in NilScript method definition", thisNode));
 
             } else if (node.type == Syntax.FunctionDeclaration ||
                        node.type == Syntax.FunctionExpression  ||

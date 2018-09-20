@@ -1,6 +1,6 @@
 /*
     NSClass.js
-    Model class for an oj class implementation
+    Model class for an NilScript class implementation
     (c) 2013-2018 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
@@ -344,21 +344,21 @@ addIvar(ivar)
 }
 
 
-addProperty(ojProperty)
+addProperty(nsProperty)
 {
-    let name = ojProperty.name;
+    let name = nsProperty.name;
 
     if (this._propertyMap[name]) {
         Utils.throwError(NSError.DuplicatePropertyDefinition, "Property " + name + " has previous declaration");
     }
 
-    this._propertyMap[name] = ojProperty;
+    this._propertyMap[name] = nsProperty;
 }
 
 
-addObserver(ojObserver)
+addObserver(nsObserver)
 {
-    let name = ojObserver.name;
+    let name = nsObserver.name;
 
     let existing = this._observerMap[name];
 
@@ -366,7 +366,7 @@ addObserver(ojObserver)
         this._observerMap[name] = existing = [ ];
     }
 
-    existing.push(ojObserver);
+    existing.push(nsObserver);
 }
 
 

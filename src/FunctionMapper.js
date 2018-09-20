@@ -26,9 +26,9 @@ constructor(file)
 
 map()
 {
-    let ojFile = this._file;
+    let nsFile = this._file;
 
-    let traverser  = new Traverser(ojFile.ast);
+    let traverser  = new Traverser(nsFile.ast);
     let currentClassName = null;
 
     let entryStack = [ ];

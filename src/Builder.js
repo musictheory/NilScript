@@ -29,10 +29,10 @@ constructor(file, model, options)
 
 build()
 {
-    let ojFile = this._file;
+    let nsFile = this._file;
     let model  = this._model;
 
-    let traverser = new Traverser(ojFile.ast);
+    let traverser = new Traverser(nsFile.ast);
 
     let currentClass, currentMethod, currentCategoryName;
     let currentProtocol;
@@ -49,7 +49,7 @@ build()
     function makeLocation(node) {
         if (node && node.loc && node.loc.start) {
             return {
-                path:   ojFile.path,
+                path:   nsFile.path,
                 line:   node.loc.start.line,
                 column: node.loc.start.col
             }
@@ -110,19 +110,19 @@ build()
             });
         }
 
-        let ojClass;
+        let nsClass;
         if (categoryName) {
-            ojClass = model.classes[className];
+            nsClass = model.classes[className];
 
-            if (!ojClass) {
-                ojClass = new Model.NSClass(null, className);
-                ojClass.placeholder = true;
-                model.addClass(ojClass);
+            if (!nsClass) {
+                nsClass = new Model.NSClass(null, className);
+                nsClass.placeholder = true;
+                model.addClass(nsClass);
             }
 
         } else {
-            ojClass = new Model.NSClass(makeLocation(node), className, superclassName, protocolNames);
-            model.addClass(ojClass);
+            nsClass = new Model.NSClass(makeLocation(node), className, superclassName, protocolNames);
+            model.addClass(nsClass);
         }
 
         if (superclassName) {
@@ -131,10 +131,10 @@ build()
             model.addClass(superclass);
         }
 
-        currentClass = ojClass;
+        currentClass = nsClass;
         currentCategoryName = categoryName;
 
-        declaredClasses.push(ojClass.name)
+        declaredClasses.push(nsClass.name)
     }
 
     function handleNSProtocolDefinition(node)
@@ -148,12 +148,12 @@ build()
             });
         }
 
-        let ojProtocol = new Model.NSProtocol(makeLocation(node), name, parentProtocolNames);
-        model.addProtocol(ojProtocol);
+        let nsProtocol = new Model.NSProtocol(makeLocation(node), name, parentProtocolNames);
+        model.addProtocol(nsProtocol);
 
-        currentProtocol = ojProtocol;
+        currentProtocol = nsProtocol;
 
-        declaredProtocols.push(ojProtocol.name);
+        declaredProtocols.push(nsProtocol.name);
     }
  
     function handleNSMethodDefinition(node)
@@ -408,8 +408,8 @@ build()
                 Utils.throwError(NSError.NonLiteralConst, "Use of non-literal value with @const", node);
             }
 
-            let ojConst = new Model.NSConst(makeLocation(node), declaration.id.name, value, raw, bridged);
-            model.addConst(ojConst);
+            let nsConst = new Model.NSConst(makeLocation(node), declaration.id.name, value, raw, bridged);
+            model.addConst(nsConst);
         }
     }
 
@@ -452,7 +452,7 @@ build()
     function handleVariableDeclarator(node)
     {
         if (node.id.name == "self" && currentMethod) {
-            Utils.throwError(NSError.SelfIsReserved, "Use of self as variable name inside of oj method", node);
+            Utils.throwError(NSError.SelfIsReserved, "Use of self as variable name inside of NilScript method", node);
         }
     }
 
@@ -473,7 +473,7 @@ build()
         let type = node.type;
 
         if (parent) {
-            node.oj_parent = parent;
+            node.ns_parent = parent;
         }
 
         try {
@@ -538,7 +538,7 @@ build()
             }
 
             if (!e.file) {
-                e.file = ojFile.path;
+                e.file = nsFile.path;
             }
 
             throw e;
@@ -560,11 +560,11 @@ build()
         }
     });
 
-    ojFile.uses = {
+    nsFile.uses = {
         selectors: _.keys(usedSelectorMap).sort()
     };
 
-    ojFile.declares = {
+    nsFile.declares = {
         classes:   declaredClasses.sort(),
         globals:   declaredGlobals.sort(),
         protocols: declaredProtocols.sort(),

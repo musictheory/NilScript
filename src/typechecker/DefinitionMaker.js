@@ -46,10 +46,10 @@ _getInstancetypeMethods(inClass)
 
     let declaredMethods = { };
     let toReturn = [ ];
-    let ojClass = inClass;
+    let nsClass = inClass;
 
-    while (ojClass) {
-        let methods = ojClass.getAllMethods();
+    while (nsClass) {
+        let methods = nsClass.getAllMethods();
 
         _.each(methods, function(m) {
             let name = m.selectorType + m.selectorName;
@@ -58,21 +58,21 @@ _getInstancetypeMethods(inClass)
                 if (!declaredMethods[name]) {
                     declaredMethods[name] = true;
 
-                    if (ojClass != inClass) {
+                    if (nsClass != inClass) {
                         toReturn.push(m);
                     }
                 }
             }
         });
 
-        ojClass = model.classes[ojClass.superclassName];
+        nsClass = model.classes[nsClass.superclassName];
     }
 
     return toReturn;
 }
 
 
-_getDeclarationForMethod(method, ojClass)
+_getDeclarationForMethod(method, nsClass)
 {
     let symbolTyper = this._symbolTyper;
     let methodName  = symbolTyper.getSymbolForSelectorName(method.selectorName);
@@ -85,45 +85,45 @@ _getDeclarationForMethod(method, ojClass)
         parameters.push(variableName + " : " + parameterType);
     }
 
-    let returnType = symbolTyper.toTypecheckerType(method.returnType, Location.DeclarationReturn, ojClass);
+    let returnType = symbolTyper.toTypecheckerType(method.returnType, Location.DeclarationReturn, nsClass);
 
     return methodName + (method.optional ? "?" : "") + "(" + parameters.join(", ") + ") : " + returnType + ";";
 }
 
 
-_siftMethodDeclarations(allMethods, classMethodDeclarations, instanceMethodDeclarations, ojClass)
+_siftMethodDeclarations(allMethods, classMethodDeclarations, instanceMethodDeclarations, nsClass)
 {
    _.each(allMethods, method => {
         let arr = (method.selectorType == "+") ? classMethodDeclarations : instanceMethodDeclarations;
-        arr.push(this._getDeclarationForMethod(method, ojClass));
+        arr.push(this._getDeclarationForMethod(method, nsClass));
     });
 }
 
 
-_appendClass(lines, ojClass, classSymbol, staticSymbol)
+_appendClass(lines, nsClass, classSymbol, staticSymbol)
 {
     let symbolTyper = this._symbolTyper;
 
-    let superSymbol       = ojClass.superclassName ? symbolTyper.getSymbolForClassName(ojClass.superclassName, false) : TypecheckerSymbols.Base;
-    let superStaticSymbol = ojClass.superclassName ? symbolTyper.getSymbolForClassName(ojClass.superclassName, true)  : TypecheckerSymbols.StaticBase;
+    let superSymbol       = nsClass.superclassName ? symbolTyper.getSymbolForClassName(nsClass.superclassName, false) : TypecheckerSymbols.Base;
+    let superStaticSymbol = nsClass.superclassName ? symbolTyper.getSymbolForClassName(nsClass.superclassName, true)  : TypecheckerSymbols.StaticBase;
 
     lines.push(
         "declare class " + classSymbol +
             " extends " + superSymbol +
-            this._getProtocolList("implements", false, ojClass.protocolNames) +
+            this._getProtocolList("implements", false, nsClass.protocolNames) +
             " {"
     );
 
-    let methods = [ ].concat(ojClass.getAllMethods(), this._getInstancetypeMethods(ojClass));
+    let methods = [ ].concat(nsClass.getAllMethods(), this._getInstancetypeMethods(nsClass));
     let classMethodDeclarations    = [ ];
     let instanceMethodDeclarations = [ ];
 
-    this._siftMethodDeclarations(methods, classMethodDeclarations, instanceMethodDeclarations, ojClass);
+    this._siftMethodDeclarations(methods, classMethodDeclarations, instanceMethodDeclarations, nsClass);
 
     _.each(classMethodDeclarations,    decl => {  lines.push("static " + decl);  });
     _.each(instanceMethodDeclarations, decl => {  lines.push(            decl);  });
 
-    _.each(ojClass.getAllIvars(), ojIvar => {
+    _.each(nsClass.getAllIvars(), ojIvar => {
         lines.push(symbolTyper.getSymbolForIvar(ojIvar) + " : " +  symbolTyper.toTypecheckerType(ojIvar.type) + ";");
     });
 
@@ -140,7 +140,7 @@ _appendClass(lines, ojClass, classSymbol, staticSymbol)
     lines.push(
         "declare class " + staticSymbol +
             " extends " + superStaticSymbol +
-            this._getProtocolList("implements", true, ojClass.protocolNames) +
+            this._getProtocolList("implements", true, nsClass.protocolNames) +
             " {"
     );
 
@@ -250,31 +250,31 @@ _appendEnum(lines, ojEnum)
 }
 
 
-getFileDefinitions(ojFile)
+getFileDefinitions(nsFile)
 {
     let model       = this._model;
     let symbolTyper = this._symbolTyper;
 
     let lines = [ ];
 
-    _.each(ojFile.declares.classes, name => {
-        let ojClass = model.classes[name];
+    _.each(nsFile.declares.classes, name => {
+        let nsClass = model.classes[name];
 
-        let classSymbol  = symbolTyper.getSymbolForClassName(ojClass.name, false);
-        let staticSymbol = symbolTyper.getSymbolForClassName(ojClass.name, true);
+        let classSymbol  = symbolTyper.getSymbolForClassName(nsClass.name, false);
+        let staticSymbol = symbolTyper.getSymbolForClassName(nsClass.name, true);
 
-        this._appendClass(lines, ojClass, classSymbol, staticSymbol);
+        this._appendClass(lines, nsClass, classSymbol, staticSymbol);
     });
 
-    _.each(ojFile.declares.protocols, name => {
+    _.each(nsFile.declares.protocols, name => {
         this._appendProtocol(lines, model.protocols[name]);
     });
 
-    _.each(ojFile.declares.enums, name => {
+    _.each(nsFile.declares.enums, name => {
         this._appendEnum(lines, model.enums[name]);
     });
 
-    _.each(ojFile.declares.types, name => {
+    _.each(nsFile.declares.types, name => {
         this._appendType(lines, model.types[name]);
     });
 
@@ -294,9 +294,9 @@ getGlobalDefinitions()
     let staticSymbols = _.map(classNames, name => symbolTyper.getSymbolForClassName(name, true ));
 
     lines.push("declare class " + TypecheckerSymbols.GlobalType + " {");
-    _.each(model.globals, ojGlobal => {
-        let name       = symbolTyper.getSymbolForIdentifierName(ojGlobal.name);
-        let annotation = _.clone(ojGlobal.annotation);
+    _.each(model.globals, nsGlobal => {
+        let name       = symbolTyper.getSymbolForIdentifierName(nsGlobal.name);
+        let annotation = _.clone(nsGlobal.annotation);
 
         if (_.isArray(annotation)) {
             let line = name;
