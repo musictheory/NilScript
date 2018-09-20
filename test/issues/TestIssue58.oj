@@ -7,7 +7,7 @@ var assert = require("assert");
 
 + (BOOL) checkWithArgument:(String)alpha argument:(String)beta
 {
-    if (!@CLASS.startsWith("$oj")) {
+    if (!@CLASS.startsWith("$ns")) {
         assert.equal( @CLASS,    "Issue58Class"                                );
         assert.equal( @SEL,      "checkWithArgument:argument:"                 );
         assert.equal( @FUNCTION, "+[Issue58Class checkWithArgument:argument:]" );
@@ -20,7 +20,7 @@ var assert = require("assert");
 
 - (BOOL) check
 {
-    if (!@CLASS.startsWith("$oj")) {
+    if (!@CLASS.startsWith("$ns")) {
         assert.equal( @CLASS,    "Issue58Class"          );
         assert.equal( @SEL,      "check"                 );
         assert.equal( @FUNCTION, "-[Issue58Class check]" );

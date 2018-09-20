@@ -16,28 +16,28 @@ const NSProtocol  = require("./NSProtocol");
 const NSMethod    = require("./NSMethod");
 const NSEnum      = require("./NSEnum");
 
-const NSClassPrefix             = "$oj_c_";
-const NSProtocolPrefix          = "$oj_p_";
-const NSMethodPrefix            = "$oj_f_";
-const NSIvarPrefix              = "$oj_i_";
+const NSClassPrefix             = "$ns_c_";
+const NSProtocolPrefix          = "$ns_p_";
+const NSMethodPrefix            = "$ns_f_";
+const NSIvarPrefix              = "$ns_i_";
 
-const NSKindofClassPrefix       = "$oj_k_";   // Typechecker only
-const NSStaticClassPrefix       = "$oj_C_";   // Typechecker only
-const NSStaticProtocolPrefix    = "$oj_P_";   // Typechecker only
-const NSEnumPrefix              = "$oj_e_";   // Typechecker only
+const NSKindofClassPrefix       = "$ns_k_";   // Typechecker only
+const NSStaticClassPrefix       = "$ns_C_";   // Typechecker only
+const NSStaticProtocolPrefix    = "$ns_P_";   // Typechecker only
+const NSEnumPrefix              = "$ns_e_";   // Typechecker only
 
 
 const TypecheckerSymbols = {
-    Combined:       "$oj_$Combined",
-    StaticCombined: "$oj_$StaticCombined",
+    Combined:       "$ns_$Combined",
+    StaticCombined: "$ns_$StaticCombined",
 
-    Base:           "$oj_$Base",
-    StaticBase:     "$oj_$StaticBase",
+    Base:           "$ns_$Base",
+    StaticBase:     "$ns_$StaticBase",
 
-    IdIntersection: "$oj_$id_intersection",
-    IdUnion:        "$oj_$id_union",
+    IdIntersection: "$ns_$id_intersection",
+    IdUnion:        "$ns_$id_union",
 
-    GlobalType:     "$oj_$Globals"
+    GlobalType:     "$ns_$Globals"
 };
 
 const Location = {
@@ -68,11 +68,11 @@ function sToBase52(index)
 
 function sSymbolicate(string, fromSqueezedMap)
 {
-    return string.replace(/\$oj[_$][A-Za-z0-9_$]+/g, function(symbol) {
-        if (fromSqueezedMap && symbol.indexOf("$oj$") === 0) {
+    return string.replace(/\$ns[_$][A-Za-z0-9_$]+/g, function(symbol) {
+        if (fromSqueezedMap && symbol.indexOf("$ns$") === 0) {
             return fromSqueezedMap[symbol];
 
-        } else if (symbol.match(/^\$oj_[cCpPi]_/)) {
+        } else if (symbol.match(/^\$ns_[cCpPi]_/)) {
             return symbol.substr(NSClassPrefix.length);
 
         } else if (symbol.indexOf(NSMethodPrefix) === 0) {
@@ -151,7 +151,7 @@ _getSqueezedSymbol(readableName, add)
 
     if (!hasName && add) {
         while (!squeezedName) {
-            let nameToTry = "$oj$" + sToBase52(this._squeezerId);
+            let nameToTry = "$ns$" + sToBase52(this._squeezerId);
             if (!fromMap[nameToTry]) {
                 squeezedName = nameToTry;
             }
@@ -302,7 +302,7 @@ toTypecheckerType(rawInType, location, currentClass)
             result = "any[]";
 
         } else if (part == "SEL") {
-            result = "$oj_$SEL";
+            result = "$ns_$SEL";
 
         } else if (part == "Object" || part == "Class" || part == "any") {
             result = "any";
@@ -407,7 +407,7 @@ fromTypecheckerType(rawInType)
         } else if (m = inType.match(/\{\[(.*?):string\]\:(.*)\}$/)) {
             outType = "Object<" + this.fromTypecheckerType(m[2]) + ">";
 
-        } else if (m = rawInType.match(/^typeof\s+(\$oj_[cCpPi]_.*?\b)/)) {
+        } else if (m = rawInType.match(/^typeof\s+(\$ns_[cCpPi]_.*?\b)/)) {
             outType = this.fromTypecheckerType(m[1]);
 
         } else {

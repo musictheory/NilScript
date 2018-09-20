@@ -6,11 +6,9 @@ NilScript is designed to ease the pain of syncing class interfaces (not necessar
 
 In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) with the [musictheory.net exercises](http://www.musictheory.net/exercises), and [Theory Lessons](http://musictheory.net/buy/lessons) with the [musictheory.net lessons](http://www.musictheory.net/lessons).
 
-Note: NilScript was previously known as oj. To comply with [Semantic Versioning](https://semver.org), various parts of the runtime still use "oj" names. This will be addressed in the next major version of the language.
-
 ### Installation
 
-    npm install ???
+    npm install nilscript
 
 ### Main Features
 
@@ -651,44 +649,44 @@ Protocol conformance is enforced by the [typechecker](#typechecker).
 ---
 ## <a name="runtime"></a>Runtime
 
-**oj.noConflict()**  
+**nilscript.noConflict()**  
 Restores the `oj` global variable to its previous value.
 
 
-**oj.getClassList()**  
+**nilscript.getClassList()**  
 Returns an array of all known NilScript Class objects.
 
 
-**oj.class_getSuperclass(cls) /  oj.getSuperclass(cls)**  
+**nilscript.class_getSuperclass(cls) / nilscript.getSuperclass(cls)**  
 Returns the superclass of the specified `cls`.
 
-**oj.getSubclassesOfClass(cls)**  
+**nilscript.getSubclassesOfClass(cls)**  
 Returns an array of all subclasses of the specified `cls`.
 
-**oj.isObject(object)**  
+**nilscript.isObject(object)**  
 Returns true if `object` is an NilScript instance or Class, false otherwise.
 
-**oj.sel_isEqual(aSelector, bSelector)**  
+**nilscript.sel_isEqual(aSelector, bSelector)**  
 Returns true if two selectors are equal to each other.
 
-**oj.class_isSubclassOf(cls, superclass)**  
+**nilscript.class_isSubclassOf(cls, superclass)**  
 Returns true if `superclass` is the direct superclass of `cls`, false otherwise.
 
-**oj.class_respondsToSelector(cls, aSelector)**  
+**nilscript.class_respondsToSelector(cls, aSelector)**  
 Returns true if instances of `cls` respond to the selector `aSelector`, false otherwise.
 
-**oj.object_getClass(object)**  
+**nilscript.object_getClass(object)**  
 Returns the Class of `object`.
 
-**oj.msgSend(receiver, aSelector, ...)**  
+**nilscript.msgSend(receiver, aSelector, ...)**  
 If `receiver` is non-falsy, invokes `aSelector` on it.
 
-**oj.sel_getName(aSelector)**  
-**oj.class_getName(cls)**  
+**nilscript.sel_getName(aSelector)**  
+**nilscript.class_getName(cls)**  
 **-[BaseObject className]**  
 Returns a human-readable string of a class or selector.  Note that this is for debug purposes only!  When `--squeeze` is passed into the compiler, the resulting class/selector names will be obfuscated/shortened.
 
-**oj.makeCopy(object)**  
+**nilscript.makeCopy(object)**  
 If `object` is an NilScript instance, invokes `-copy`.  If `object` is a JavaScript array, returns a shallow clone (via `slice(0)`).  If `object` is a JavaScript primitive, returns `object`.  Else, returns a clone of each key/value pair (via `Object.keys`) on `object`.
 
 ---
@@ -725,16 +723,6 @@ When the `--warn-unused-ivars` option is specified, NilScript warns about ivar d
 ```
 
 When the `--warn-unknown-selectors` option is used, NilScript checks each selector against all known selectors.
-
----
-
-NilScript integrates with [JSHint](http://www.jshint.com) via the `--jshint` option; however, this feature is deprecated and will be removed in the future (2.x).  Many JSHint warnings are duplicated by the [typechecker](#typechecking).
-
-To prevent false positives, the following JSHint options are forced: `asi: true`, `laxbreak: true`, `laxcomma: true`, `newcap:   false`.
-
-`expr: true` is enabled on a per-method basis when the NilScript compiler uses certain optimizations.
-
-The `--jshint-ignore` option may be used to disable specific JSHint warnings.
 
 ---
 ## <a name="typechecking"></a>Type Checking
@@ -832,11 +820,11 @@ NilScript tries to convert TypeScript error messages back into NilScript syntax.
 ---
 ## <a name="restrictions"></a>Restrictions
 
-All identifiers that start with `$oj_` or `$oj$` are classified as Reserved Words.
+All identifiers that start with `$ns_` or `$ns$` are classified as Reserved Words.
 
 Inside an NilScript method declaration, `self` is added to the list of Reserved Words.  Hence, it may not be used as a variable name.
 
-The NilScript compiler uses the global variable `$oj_oj` to access the runtime.  You should not use `$oj_oj` directly or modify it in your source code.  In a web browser environment, runtime.js also defines the global variable `oj` for the runtime.  You may use `oj.noConflict()` to restore the previous value of `oj`.  If you are using a linter or obfuscator, add both `$oj_oj` and `oj` as global variable names.
+The NilScript compiler uses the global variable `$ns_ns` to access the runtime.  You should not use `$ns_ns` directly or modify it in your source code.  In a web browser environment, runtime.js also defines the global variable `ns` for the runtime.  You may use `nilscript.noConflict()` to restore the previous value of `nilscript`.  If you are using a linter or obfuscator, add both `$ns_ns` and `nilscript` as global variable names.
 
 In order to support compiler optimizations, the following method names are reserved and may not be overridden/implemented in subclasses:
 
@@ -856,10 +844,10 @@ In order to support compiler optimizations, the following method names are reser
 Traditionally, NilScript's API consisted of a single `compile` method:
 
 ```javascript
-let ojc = require("ojc");
+let nsc = require("nilscript");
 let options = { … };
     
-ojc.compile(options, function(err, results) {
+nsc.compile(options, function(err, results) {
     
 });
 ```
@@ -867,10 +855,10 @@ ojc.compile(options, function(err, results) {
 To allow for fast incremental compiles, NilScript 2.x adds a `Compiler` constructor:
 
 ```javascript
-let ojc = require("ojc");
+let nsc = require("nilscript");
 
 // Important: create one compiler per output file.
-let compiler = new ojc.Compiler();
+let compiler = new nsc.Compiler();
 
 let options = { … };
 
@@ -882,7 +870,7 @@ function doCompile(callback) {
 }
 ```
 
-Below is a list of supported properties for `options` and `results`.  While other properties are available (see `bin/ojc`), they are not official API.
+Below is a list of supported properties for `options` and `results`.  While other properties are available (see `bin/nsc`), they are not official API.
 
 Valid properties for the `options` object:
 
@@ -940,12 +928,12 @@ squeeze | Object  | Map of squeezed identifiers to original identifiers.  See [S
 
 The `before-compile` key specifies a callback which is called prior to the compiler's NilScript->js stage.  This allows you to preprocess files.  After this callback is invoked, a file's content must be valid NilScript or JavaScript.
 
-The `after-compile` key specifies a callback which is called each time the compiler generates JavaScript code for a file.  This allows you to run the generated JavaScript through a linter (such as [JSHint](http://jshint.com) or [ESLint](http://eslint.org)), or allows further transformations via [Babel](https://babeljs.io).  When this callback is invoked, a file's content will be valid JavaScript.
+The `after-compile` key specifies a callback which is called each time the compiler generates JavaScript code for a file.  This allows you to run the generated JavaScript through a linter (such as [ESLint](http://eslint.org)), or allows further transformations via [Babel](https://babeljs.io).  When this callback is invoked, a file's content will be valid JavaScript.
 
 
 ```javascript
 // Simple preprocessor example.  Strips out #pragma lines and logs to console
-ojOptions["before-compile"] = function(file, callback) {
+options["before-compile"] = function(file, callback) {
     let inLines = file.getContents().split("\n");
     let outLines = [ ];
 
@@ -967,7 +955,7 @@ ojOptions["before-compile"] = function(file, callback) {
 }
 
 // ESLint example
-ojOptions["after-compile"] = function(file, callback) {
+options["after-compile"] = function(file, callback) {
     if (!linter) linter = require("eslint").linter;
 
     // file.getContents() returns the generated source as a String
@@ -981,7 +969,7 @@ ojOptions["after-compile"] = function(file, callback) {
 };
 
 // Babel example
-ojOptions["after-compile"] = function(file, callback) {
+options["after-compile"] = function(file, callback) {
     if (!babel) babel = require("babel-core");
     
     // retainLines must be true or NilScript's output source map will be useless
@@ -1013,7 +1001,7 @@ NilScript 2.x also adds the `symbolicate` function as API.  This converts an int
 ---
 ## <a name="compiler-projects"></a>Compiling Projects
 
-The easiest way to use NilScript is to pass all `.ns` and `.js` files in your project into `ojc` and produce a single `.js` output file.  In general: the more files you compile at the same time, the easier your life will be.  However, there are specific situations where a more-complex pipeline is needed.
+The easiest way to use NilScript is to pass all `.ns` and `.js` files in your project into `nsc` and produce a single `.js` output file.  In general: the more files you compile at the same time, the easier your life will be.  However, there are specific situations where a more-complex pipeline is needed.
 
 In our usage, we have two output files: `core.js` and `webapp.js`.
 
@@ -1026,9 +1014,9 @@ In previous versions of NilScript, this was accomplished via the `--output-state
 NilScript 2 introduces a new `Compiler` API with `Compiler#uses` and `Compiler#compile`.  This allows both incremental compiles, and allows for more efficient state sharing:
 
 ```javascript
-let ojc = require("ojc");
-let coreCompiler   = new ojc.Compiler();
-let webAppCompiler = new ojc.Compiler();
+let nsc = require("nilscript");
+let coreCompiler   = new nsc.Compiler();
+let webAppCompiler = new nsc.Compiler();
     
 let coreOptions   = { … };
 let webAppOptions = { … };
@@ -1062,7 +1050,7 @@ function doWebAppCompile(callback) {
 3. All higher-level `.js` and `.ns` files are passed into `webAppCompiler`.  `webAppCompiler` pulls state from `coreCompiler` due to the `Compiler#uses` API.
 4. The `result.code` from this compilation pass is saved as `webapp.js`.
 5. Both `core.js` and `webapp.js` are included (in that order) in various HTML files via `<script>` elements.
-6. The NilScript runtime (`runtime.js`) is also included in various HTML files.  You can obtain its location via the `ojc.getRuntimePath` API.
+6. The NilScript runtime (`runtime.js`) is also included in various HTML files.  You can obtain its location via the `getRuntimePath` API.
 
 --
 
@@ -1108,20 +1096,20 @@ The `--squeeze` compiler option adds a `squeeze` property to the compiler result
 
 Symbolication is the process of transforming an internal identifier (either squeezed or unsqueezed) into a human-readable name.  This is frequently used for stack traces in crash reports.
 
-NilScript 2.x adds `ojc.symbolicate(str, squeezeMap)` as API.  This function replaces all `$oj_…` identifiers in a string with the human-readable name.  If the optional `squeezeMap` parameter is
+NilScript 2.x adds `symbolicate(str, squeezeMap)` as API.  This function replaces all `$oj_…` identifiers in a string with the human-readable name.  If the optional `squeezeMap` parameter is
 provided, squeezed `$oj$…` identifiers are also transformed:
 
 ```javascript
-let ojc = require("ojc");
+let nsc = require("nilscript");
 
-let a = ojc.symbolicate("$oj_c_Foo, $oj_c_Bar");                 // "Foo, Bar"
-let a = ojc.symbolicate("$oj_p_TheProtocol");                    // "TheProtocol"
-let b = ojc.symbolicate("Exception in $oj_f_stringWithString_"); // "Exception in stringWithString:"
-let c = ojc.symbolicate("$oj_i__anIvar");                        // "_anIvar"
+let a = nsc.symbolicate("$oj_c_Foo, $oj_c_Bar");                 // "Foo, Bar"
+let a = nsc.symbolicate("$oj_p_TheProtocol");                    // "TheProtocol"
+let b = nsc.symbolicate("Exception in $oj_f_stringWithString_"); // "Exception in stringWithString:"
+let c = nsc.symbolicate("$oj_i__anIvar");                        // "_anIvar"
 
 // Normally, the 'squeeze' property on the compiler result object would be used for squeezeMap
 let squeezeMap = { "$oj$a": "$oj_f_stringWithString_" };
-let e = ojc.symbolicate("Exception in $oj$a", squeezeMap); // "Exception in stringWithString:"
+let e = nsc.symbolicate("Exception in $oj$a", squeezeMap); // "Exception in stringWithString:"
 ```
 
 ---

@@ -118,29 +118,29 @@ check(model, defs, files, callback)
     const defsSuffix      = "defs.d.ts";
     const codeSuffix      = "code.ts";
 
-    const runtimeFileName = "$oj-runtime" + path.sep + defsSuffix;
-    const globalFileName  = "$oj-global"  + path.sep + defsSuffix;
+    const runtimeFileName = "$ns-runtime" + path.sep + defsSuffix;
+    const globalFileName  = "$ns-global"  + path.sep + defsSuffix;
 
-    _.each(files, ojFile => {
-        let codeKey = path.normalize(ojFile.path) + path.sep + codeSuffix;
-        let defsKey = path.normalize(ojFile.path) + path.sep + defsSuffix;
+    _.each(files, nsFile => {
+        let codeKey = path.normalize(nsFile.path) + path.sep + codeSuffix;
+        let defsKey = path.normalize(nsFile.path) + path.sep + defsSuffix;
 
-        if (!ojFile.typecheckerDefs) {
-            ojFile.typecheckerDefs = (new DefinitionMaker(model)).getFileDefinitions(ojFile);
+        if (!nsFile.typecheckerDefs) {
+            nsFile.typecheckerDefs = (new DefinitionMaker(model)).getFileDefinitions(nsFile);
         }
 
-        sourceFileMap[codeKey] = this._getSourceFile(codeKey, ojFile.typecheckerCode);
-        sourceFileMap[defsKey] = this._getSourceFile(defsKey, ojFile.typecheckerDefs);
+        sourceFileMap[codeKey] = this._getSourceFile(codeKey, nsFile.typecheckerCode);
+        sourceFileMap[defsKey] = this._getSourceFile(defsKey, nsFile.typecheckerDefs);
         
-        originalFileMap[codeKey] = ojFile.path;
+        originalFileMap[codeKey] = nsFile.path;
         originalFileMap[defsKey] = null;
     });
 
-    _.each(defs, ojFile => {
-        let defsKey = ojFile.path + path.sep + defsSuffix;
+    _.each(defs, nsFile => {
+        let defsKey = nsFile.path + path.sep + defsSuffix;
 
-        sourceFileMap[defsKey] = this._getSourceFile(defsKey, ojFile.contents);
-        originalFileMap[defsKey] = ojFile.path;
+        sourceFileMap[defsKey] = this._getSourceFile(defsKey, nsFile.contents);
+        originalFileMap[defsKey] = nsFile.path;
     });
 
     let globalDefs = (new DefinitionMaker(model)).getGlobalDefinitions();

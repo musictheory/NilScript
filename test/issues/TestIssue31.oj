@@ -9,8 +9,8 @@ var assert = require("assert");
 
 // Properties
 @property id<Foo> _a;
-@property (nonatomic) id<Foo, Bar> _b;
-@property (nonatomic) Array<String> _c;
+@property id<Foo, Bar> _b;
+@property Array<String> _c;
 
 // Return types
 - (id<Foo>)       resultA { return nil; }

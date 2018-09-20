@@ -1,6 +1,6 @@
 /*
     DefinitionMaker.js
-    Responsible for generating TypeScript definition files for oj model objects
+    Responsible for generating TypeScript definition files for NilScript model objects
     (c) 2013-2018 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
@@ -51,7 +51,7 @@ _getInstancetypeMethods(inClass)
     while (nsClass) {
         let methods = nsClass.getAllMethods();
 
-        _.each(methods, function(m) {
+        _.each(methods, m => {
             let name = m.selectorType + m.selectorName;
 
             if (m.returnType == "instancetype") {
@@ -123,8 +123,8 @@ _appendClass(lines, nsClass, classSymbol, staticSymbol)
     _.each(classMethodDeclarations,    decl => {  lines.push("static " + decl);  });
     _.each(instanceMethodDeclarations, decl => {  lines.push(            decl);  });
 
-    _.each(nsClass.getAllIvars(), ojIvar => {
-        lines.push(symbolTyper.getSymbolForIvar(ojIvar) + " : " +  symbolTyper.toTypecheckerType(ojIvar.type) + ";");
+    _.each(nsClass.getAllIvars(), nsIvar => {
+        lines.push(symbolTyper.getSymbolForIvar(nsIvar) + " : " +  symbolTyper.toTypecheckerType(nsIvar.type) + ";");
     });
 
     lines.push(
@@ -132,8 +132,8 @@ _appendClass(lines, nsClass, classSymbol, staticSymbol)
         "class() : " + staticSymbol + ";",
         "static class() : " + staticSymbol + ";",
         "init()  : " + classSymbol + ";",
-        "$oj_super() : " + superSymbol + ";",
-        "static $oj_super() : " + superStaticSymbol + ";",
+        "$ns_super() : " + superSymbol + ";",
+        "static $ns_super() : " + superStaticSymbol + ";",
         "}"
     );
 
@@ -149,26 +149,26 @@ _appendClass(lines, nsClass, classSymbol, staticSymbol)
     lines.push(
         "alloc() : " + classSymbol  + ";",
         "class() : " + staticSymbol + ";",
-        "$oj_super() : " + superStaticSymbol + ";",
+        "$ns_super() : " + superStaticSymbol + ";",
         "}"
     );
 
 }
 
 
-_appendProtocol(lines, ojProtocol)
+_appendProtocol(lines, nsProtocol)
 {
     let symbolTyper = this._symbolTyper;
 
-    let protocolSymbol = symbolTyper.getSymbolForProtocolName(ojProtocol.name, false);
-    let staticSymbol   = symbolTyper.getSymbolForProtocolName(ojProtocol.name, true);
+    let protocolSymbol = symbolTyper.getSymbolForProtocolName(nsProtocol.name, false);
+    let staticSymbol   = symbolTyper.getSymbolForProtocolName(nsProtocol.name, true);
 
     let classMethodDeclarations    = [ ];
     let instanceMethodDeclarations = [ ];
 
-    this._siftMethodDeclarations(ojProtocol.getAllMethods(), classMethodDeclarations, instanceMethodDeclarations);
+    this._siftMethodDeclarations(nsProtocol.getAllMethods(), classMethodDeclarations, instanceMethodDeclarations);
 
-    lines.push("declare interface " + protocolSymbol + this._getProtocolList("extends", false, ojProtocol.protocolNames) + " {");
+    lines.push("declare interface " + protocolSymbol + this._getProtocolList("extends", false, nsProtocol.protocolNames) + " {");
 
     _.each(instanceMethodDeclarations, decl => {
         lines.push(decl);
@@ -176,7 +176,7 @@ _appendProtocol(lines, ojProtocol)
 
     lines.push("}");
 
-    lines.push("declare interface " + staticSymbol + this._getProtocolList("extends", true, ojProtocol.protocolNames) + " {");
+    lines.push("declare interface " + staticSymbol + this._getProtocolList("extends", true, nsProtocol.protocolNames) + " {");
 
     _.each(classMethodDeclarations, decl => {
         lines.push(decl);
@@ -186,27 +186,27 @@ _appendProtocol(lines, ojProtocol)
 }
 
 
-_appendType(lines, ojType)
+_appendType(lines, nsType)
 {
     let symbolTyper = this._symbolTyper;
 
-    let name = ojType.name;
-    let kind = ojType.kind;
+    let name = nsType.name;
+    let kind = nsType.kind;
 
     if (kind == NSType.KindAlias) {
-        let returnType = symbolTyper.toTypecheckerType(ojType.returnType);
+        let returnType = symbolTyper.toTypecheckerType(nsType.returnType);
 
         lines.push(`declare type ${name} = ${returnType};`);
 
     } else if (kind == NSType.KindFunction) {
         let params = [ ];
-        let returnType = symbolTyper.toTypecheckerType(ojType.returnType);
+        let returnType = symbolTyper.toTypecheckerType(nsType.returnType);
 
-        for (let i = 0; i < ojType.parameterTypes.length; i++) {
-            let optional = ojType.parameterOptional[i];
-            let name     = ojType.parameterNames[i];
+        for (let i = 0; i < nsType.parameterTypes.length; i++) {
+            let optional = nsType.parameterOptional[i];
+            let name     = nsType.parameterNames[i];
 
-            params.push(name + (optional ? "?" : "") + ": " + symbolTyper.toTypecheckerType(ojType.parameterTypes[i]));
+            params.push(name + (optional ? "?" : "") + ": " + symbolTyper.toTypecheckerType(nsType.parameterTypes[i]));
         }
 
         lines.push(`declare type ${name} = ( ${params.join(", ")} ) => ${returnType}`);
@@ -214,8 +214,8 @@ _appendType(lines, ojType)
     } else if (kind == NSType.KindTuple) {
         let params = [ ];
 
-        for (let i = 0; i < ojType.parameterTypes.length; i++) {
-            params.push(symbolTyper.toTypecheckerType(ojType.parameterTypes[i]));
+        for (let i = 0; i < nsType.parameterTypes.length; i++) {
+            params.push(symbolTyper.toTypecheckerType(nsType.parameterTypes[i]));
         }
 
         lines.push(`declare type ${name} = [ ${params.join(", ")} ]`);
@@ -223,11 +223,11 @@ _appendType(lines, ojType)
     } else if (kind == NSType.KindObject) {
         let params = [ ];
 
-        for (let i = 0; i < ojType.parameterTypes.length; i++) {
-            let optional = ojType.parameterOptional[i];
-            let name     = ojType.parameterNames[i];
+        for (let i = 0; i < nsType.parameterTypes.length; i++) {
+            let optional = nsType.parameterOptional[i];
+            let name     = nsType.parameterNames[i];
 
-            params.push(name + (optional ? "?" : "") + ": " + symbolTyper.toTypecheckerType(ojType.parameterTypes[i]));
+            params.push(name + (optional ? "?" : "") + ": " + symbolTyper.toTypecheckerType(nsType.parameterTypes[i]));
         }
 
         lines.push(`interface ${name} { ${params.join(", ")} }`);
@@ -235,14 +235,14 @@ _appendType(lines, ojType)
 }
 
 
-_appendEnum(lines, ojEnum)
+_appendEnum(lines, nsEnum)
 {
     // Anonymous enums are inlined
-    if (!ojEnum.name || ojEnum.anonymous) return;
+    if (!nsEnum.name || nsEnum.anonymous) return;
 
-    lines.push("declare enum " + this._symbolTyper.getSymbolForEnumName(ojEnum.name) + " {");
+    lines.push("declare enum " + this._symbolTyper.getSymbolForEnumName(nsEnum.name) + " {");
 
-    _.each(ojEnum.values, function(value, name) {
+    _.each(nsEnum.values, (value, name) => {
         lines.push(name + " = " + value + ",");
     });
 
@@ -302,7 +302,7 @@ getGlobalDefinitions()
             let line = name;
             let returnType = annotation.shift();
 
-            line += "(" + _.map(annotation, function(a, index) {
+            line += "(" + _.map(annotation, (a, index) => {
                 return "a" + index + ":" + symbolTyper.toTypecheckerType(a);
             }).join(",") + ")";
 

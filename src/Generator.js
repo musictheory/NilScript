@@ -21,11 +21,11 @@ const NSWarning  = require("./Errors").NSWarning;
 
 const Location = require("./model/NSSymbolTyper").Location;
 
-const NSRootVariable            = "$oj_oj";
-const NSClassMethodsVariable    = "$oj_s";
-const NSInstanceMethodsVariable = "$oj_m";
-const NSTemporaryVariablePrefix = "$oj_t_";
-const NSSuperVariable           = "$oj_super";
+const NSRootVariable            = "$ns_ns";
+const NSClassMethodsVariable    = "$ns_s";
+const NSInstanceMethodsVariable = "$ns_m";
+const NSTemporaryVariablePrefix = "$ns_t_";
+const NSSuperVariable           = "$ns_super";
 
 const NSRootWithGlobalPrefix = NSRootVariable + "._g."
 const NSRootWithClassPrefix  = NSRootVariable + "._cls.";
@@ -379,7 +379,7 @@ generate()
                         cast = "<" + symbolTyper.toTypecheckerType(currentClass.name) + ">";
                     }
 
-                    doCommonReplacement(cast + selfOrThis + ".$oj_super()." + methodName + "(", ")");
+                    doCommonReplacement(cast + selfOrThis + ".$ns_super()." + methodName + "(", ")");
                 }
                 return;
 
@@ -559,13 +559,13 @@ generate()
                 constructorCallSuper +
                 constructorSetIvars  +
                 "this.constructor = " + classSymbol + ";" +
-                "this.$oj_id = ++" + NSRootVariable + "._id;" +
+                "this.$ns_id = ++" + NSRootVariable + "._id;" +
                 "}";
 
             endText = "return " + classSymbol + ";});";
         
         } else if (language === LanguageTypechecker) {
-            startText = "var $oj_unused = (function(" + NSClassMethodsVariable + " : any, " + NSInstanceMethodsVariable + " : any) { ";
+            startText = "var $ns_unused = (function(" + NSClassMethodsVariable + " : any, " + NSInstanceMethodsVariable + " : any) { ";
             endText = "});";
         }
 
@@ -746,9 +746,9 @@ generate()
         let isSelf = (name == "self");
 
         if (name[0] === "$") {
-            if (name.indexOf("$oj") == 0) {
+            if (name.indexOf("$ns") == 0) {
                 if (name[3] == "$" || name[3] == "_") {
-                    Utils.throwError(NSError.DollarNSIsReserved, "Identifiers may not start with \"$oj_\" or \"$oj$\"", node);
+                    Utils.throwError(NSError.DollarNSIsReserved, "Identifiers may not start with \"$ns_\" or \"$ns$\"", node);
                 }
             }
 
@@ -1026,8 +1026,8 @@ generate()
                 object = node.left.name;
             }
 
-            modifier.from(node).to(node.right).replace("for (" + object + " = $oj_$AtEachGetMember(");
-            modifier.from(node.right).to(node.body).replace(") ; $oj_$AtEachTest() ; ) ");
+            modifier.from(node).to(node.right).replace("for (" + object + " = $ns_$AtEachGetMember(");
+            modifier.from(node.right).to(node.body).replace(") ; $ns_$AtEachTest() ; ) ");
 
         } else {
             let i      = makeTemporaryVariable(false);
@@ -1182,7 +1182,7 @@ generate()
                 result += param.name + "? : " + type + ", ";
             }
 
-            result += "...$oj_rest)";
+            result += "...$ns_rest)";
 
             if (node.annotation) {
                 result += ": " + symbolTyper.toTypecheckerType(node.annotation.value);
