@@ -329,13 +329,15 @@ All valid Objective-C attributes may be used on a declared property:
 
     @property (nontomic,copy,getter=myStringGetter) String myString;
 
-However, some are ignored due to differences between JavaScript and Objective-C.
+However, some are not supported due to differences between JavaScript and Objective-C.
 
 | Attribute          | Description                                                      
 |--------------------|------------------------------------------------------------------
-| `nonatomic`, `atomic` | Ignored since JavaScript is single-threaded
-| `unsafe_unretained`, `weak`, `strong`, `retain` | Ignored since Javascript objects are garbage collected
-| `nonnull`, `nullable`, `null_resettable`, `null_unspecified` | Currently ignored
+| `nonatomic`, `atomic` | Not supported since JavaScript is single-threaded
+| `unsafe_unretained`, `weak`, `strong`, `retain` | Not supported since Javascript objects are garbage collected
+| `nonnull`, `nullable`, `null_resettable`, `null_unspecified` | Currently not supported
+| `class` | Currently not supported
+|--------------------|------------------------------------------------------------------
 | `getter=` | Changes the name of the getter/accessor
 | `setter=` | Changes the name of the setter/mutator
 | `copy`, `struct`  | Creates a copy (See below)

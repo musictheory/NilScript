@@ -16,6 +16,7 @@ NSError.DuplicateMethodDefinition      = "NilScriptDuplicateMethodDefinitionErro
 NSError.DuplicateIvarDefinition        = "NilScriptDuplicateIvarDefinitionError";
 NSError.DuplicateEnumDefinition        = "NilScriptDuplicateEnumDefinition";
 NSError.UnknownProperty                = "NilScriptUnknownPropertyError";
+NSError.UnknownPropertyAttribute     = "NilScriptUnknownPropertyAttributeError";
 NSError.DuplicateJavascriptFunction    = "NilScriptDuplicateJavascriptFunctionError";
 NSError.PropertyAlreadySynthesized     = "NilScriptPropertyAlreadySynthesizedError";
 NSError.PropertyAlreadyDynamic         = "NilScriptPropertyAlreadyDynamicError";

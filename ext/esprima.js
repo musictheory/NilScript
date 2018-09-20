@@ -5458,31 +5458,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	        var startToken = this.lookahead;
 	        var name = this.parseVariableIdentifier().name;
 	        var selector = null;
-	        // See ParseObjc.cpp in LLVM clang
-	        var allowedNames = [
-	            'assign',
-	            'atomic',
-	            'class',
-	            'copy',
-	            'nonatomic',
-	            'nonnull',
-	            'null_resettable',
-	            'null_unspecified',
-	            'nullable',
-	            'readonly',
-	            'readwrite',
-	            'retain',
-	            'strong',
-	            'struct',
-	            'unsafe_unretained',
-	            'weak'
-	        ];
 	        if (name == 'getter' || name == 'setter') {
 	            this.expect('=');
 	            selector = this.ns_parseSelector(true);
-	        }
-	        else if (allowedNames.indexOf(name) < 0) {
-	            this.throwUnexpectedToken(startToken);
 	        }
 	        return this.finalize(node, new Node.NSPropertyAttribute(name, selector));
 	    };
