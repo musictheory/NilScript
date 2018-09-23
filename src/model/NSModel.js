@@ -46,12 +46,12 @@ constructor()
         this._declarationMap[name] = true;
     });
 
-    _.each([ "boolean", "BOOL", "Bool", "bool" ], name => {
+    _.each([ "boolean", "BOOL" ], name => {
         this.types[name] = new NSType.makeAlias(name, "Boolean");
         this._declarationMap[name] = true;
     });
 
-    _.each([ "number", "double", "float", "int", "char", "short", "long" ], name => {
+    _.each([ "number" ], name => {
         this.types[name] = new NSType.makeAlias(name, "Number");
         this._declarationMap[name] = true;
     });
