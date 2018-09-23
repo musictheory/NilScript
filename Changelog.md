@@ -5,11 +5,22 @@ CHANGELOG
 3.0.0
 
 3.x is a backwards incompatible release, with a focus on simplifying the language and improving
-syntax consistency. This is the first major release under the new name (NilScript); as such,
+syntax consistency.
+
+This is the first major release under the new language name (NilScript); as such,
 runtime APIs and generated code use "ns"/"NS"/"nilscript" rather than "oj"/"OJ".
 
-Language Changes:
- - '@implementation' is now '@class'
+Major Language Changes:
+ - '@implementation' is now '@class' (#140)
+ - Property and ivar syntax now uses TypeScript-style type annotations rather than C-style.
+ - Removed `@squeeze` directive (#137)
+ - Removed `@forward` directive (#138)
+ - Removed C++ style syntax for '@cast' (#147)
+ - Removed 'nonatomic' and 'atomic' property attributes (#148)
+ - Removed 'assign', 'retain', 'strong', 'unsafe_unretained', and 'weak' property attributes (#148)
+ - Removed 'nonnull', 'null_resettable', 'null_unspecified', and 'nullable' property attributes (#148)
+ - Removed 'double', 'float', 'int', 'char', 'short', and 'long' types (#152)
+ - Removed 'Bool' and 'bool' types (#152)
 
 ---
 
