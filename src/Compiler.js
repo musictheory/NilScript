@@ -66,8 +66,6 @@ const sPublicOptions = [
     "strict-object-literals",    // Boolean, enforce TypeScript object literals
 
     // Warnings
-    "warn-debugger",             // Boolean, warn about use of 'debugger' statement
-    "warn-empty-array-element",  // Boolean, warn about empty array element
     "warn-global-no-type",       // Boolean, warn about missing type annotations on @globals
     "warn-this-in-methods",      // Boolean, warn about usage of 'this' in ns methods
     "warn-self-in-non-methods",  // Boolean, warn about usage of 'self' in non-methods
