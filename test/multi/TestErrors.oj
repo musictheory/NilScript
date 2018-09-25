@@ -412,22 +412,6 @@ function test() {
 
 
 // --------------------------------------------------------------------
-// @name Warn Debugger
-// @opts { "warn-debugger": true  }
-
-function foo() {
-    debugger;  //@warning NilScriptUseOfDebuggerWarning
-}
-
-
-// --------------------------------------------------------------------
-// @name Warn Empty Array
-// @opts { "warn-empty-array-element": true  }
-
-var arr = [,,,,];  //@warning NilScriptUseOfEmptyArrayElementWarning
-
-
-// --------------------------------------------------------------------
 // @name Warn Unused Ivars
 // @opts { "warn-unused-ivars": true  }
 

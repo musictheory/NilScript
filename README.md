@@ -900,8 +900,6 @@ no-implicit-returns       | Boolean  | Disallow implicit returns (`tsc --noImpli
 no-unreachable-code       | Boolean  | Disallow unreachable code (inverse of `tsc --allowUnreachableCode`)
 strict-functions          | Boolean  | Enforce TypeScript-style functions
 strict-object-literals    | Boolean  | Enforce TypeScript object literals
-warn-debugger             | Boolean  | Warn about use of 'debugger' statement
-warn-empty-array-element  | Boolean  | Warn about empty array element
 warn-global-no-type       | Boolean  | Warn about missing type annotations on @globals
 warn-this-in-methods      | Boolean  | Warn about usage of 'this' in NilScript methods
 warn-self-in-non-methods  | Boolean  | Warn about usage of 'self' in non-NilScript methods

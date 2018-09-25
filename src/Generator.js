@@ -116,8 +116,6 @@ generate()
 
     let methodUsesSelfVar = false;
 
-    let optionWarnDebugger            = options["warn-debugger"];
-    let optionWarnEmptyArrayElement   = options["warn-empty-array-element"];
     let optionWarnGlobalNoType        = options["warn-global-no-type"];
     let optionWarnThisInMethods       = options["warn-this-in-methods"];
     let optionWarnSelfInNonMethod     = options["warn-self-in-non-methods"];
@@ -1360,21 +1358,6 @@ generate()
 
         } else if (type === Syntax.Property) {
             handleProperty(node);
-
-        // Additional warnings
-        } else if (type === Syntax.ArrayExpression) {
-            if (optionWarnEmptyArrayElement) {
-                _.each(node.elements, element => {
-                    if (element === null) {
-                        warnings.push(Utils.makeError(NSWarning.UseOfEmptyArrayElement, "Use of empty array element", node));
-                    }
-                });
-            }
-
-        } else if (type === Syntax.DebuggerStatement) {
-            if (optionWarnDebugger) {
-                warnings.push(Utils.makeError(NSWarning.UseOfDebugger, "Use of debugger statement", node));
-            }
         }
 
     }, function(node, parent) {

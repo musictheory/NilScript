@@ -40,8 +40,6 @@ let opt = getopt.create([
     [ "",  "strict-functions",          "type checker: enforce TypeScript-style functions" ],
     [ "",  "strict-object-literals",    "type checker: enforce TypeScript object literals" ],
 
-    [ "",  "warn-debugger",             "warn about use of 'debugger' statement"   ],
-    [ "",  "warn-empty-array-element",  "warn about empty array element"           ],
     [ "",  "warn-global-no-type",       "warn about missing type annotations on @globals" ],
     [ "",  "warn-this-in-methods",      "warn about usage of 'this' in NilScript methods" ],
     [ "",  "warn-self-in-non-methods",  "warn about usage of 'self' in non-methods" ],
