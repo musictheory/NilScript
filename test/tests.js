@@ -10,8 +10,8 @@ const path   = require("path");
 
 const NSError   = require("../src/Errors.js").NSError;
 const NSWarning = require("../src/Errors.js").NSWarning;
-const ojc       = require("../lib/api");
-const oj        = require("../lib/runtime");
+const nsc       = require("../lib/api");
+const nilscript = require("../lib/runtime");
 
 
 class TestCase {
@@ -119,7 +119,7 @@ _checkResults(err, result)
     checkMaps(this.expectedTypecheckMap, actualTypecheckMap, "type check");
 
     if (canRun) {
-        oj._reset();
+        nilscript._reset();
         let r = eval(result.code);
         assert(r, "Test returned " + r);
     }
@@ -131,14 +131,14 @@ run()
     let options = { };
 
     _.extend(options, this.options);
-    options.files = [ { path: "test.oj", contents: this.lines.join("\n") } ];
+    options.files = [ { path: "test.ns", contents: this.lines.join("\n") } ];
 
     let name = this.name;
     if (options.squeeze) name += " +squeeze";
 
     test(name, done => {
         try {
-            ojc.compile(options, (err, result) => {
+            nsc.compile(options, (err, result) => {
                 try {
                     this._checkResults(err, result);
                     done();

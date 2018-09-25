@@ -179,7 +179,7 @@ check(model, defs, files, callback)
         ts.getPreEmitDiagnostics(program)
     );
 
-    let debugTmp = "/tmp/ojc.typechecker";
+    let debugTmp = "/tmp/nilscript.typechecker";
     let debugFilesToWrite = { };
 
     let warnings = (new DiagnosticParser(model)).getWarnings(diagnostics, filePath => {
