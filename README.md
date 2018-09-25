@@ -907,7 +907,6 @@ warn-this-in-methods      | Boolean  | Warn about usage of 'this' in NilScript m
 warn-self-in-non-methods  | Boolean  | Warn about usage of 'self' in non-NilScript methods
 warn-unknown-ivars        | Boolean  | Warn about unknown ivars
 warn-unknown-selectors    | Boolean  | Warn about usage of unknown selectors
-warn-unknown-superclasses | Boolean  | Warn about usage of unknown selectors
 warn-unused-ivars         | Boolean  | Warn about unused ivars
 
 Valid properties for each `file` or `defs` object:

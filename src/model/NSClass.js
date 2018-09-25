@@ -42,6 +42,7 @@ constructor(location, name, superclassName, protocolNames)
 
     // Warnings during the prepare() phase
     this.prepareWarnings = [ ];
+    this.superclass      = null;
 
     // All selectors the class responds to (inherited + synthesized). *not archived*
     this._knownSelectors = null;
@@ -184,20 +185,24 @@ _doAutomaticSynthesis()
 }
 
 
-_checkForCircularHierarchy(model)
+_checkHierarchy(model)
 {
     let visited = [ this.name ];
-    let superclass = this.superclassName ? model.classes[this.superclassName] : null;
+    let superclassName = this.superclassName;
 
-    while (superclass) {
-        if (visited.indexOf(superclass.name) >= 0) {
-             this.prepareWarnings.push(Utils.makeError(NSWarning.CircularClassHierarchy, "Circular class hierarchy detected: '" + visited.join(",") + "'", this.location));
-             break;
+    if (superclassName && (!this.superclass || this.superclass.placeholder)) {
+        throw Utils.makeError(NSError.UnknownSuperclass, "Unknown superclass: '" + this.superclassName + "'", this.location);
+    }
+
+    let currentSuperclass = this.superclass;
+    while (currentSuperclass) {
+        if (visited.indexOf(currentSuperclass.name) >= 0) {
+             throw Utils.makeError(NSError.CircularClassHierarchy, "Circular class hierarchy detected: '" + visited.join("', '") + "'");
         }
 
-        visited.push(superclass.name);
+        visited.push(currentSuperclass.name);
 
-        superclass = model.classes[superclass.superclassName];
+        currentSuperclass = model.classes[currentSuperclass.superclassName];
     }
 }
 
@@ -237,8 +242,10 @@ prepare(model)
 
     this.prepareWarnings = [ ];
 
+    this.superclass = this.superclassName ? model.classes[this.superclassName] : null;
+    this._checkHierarchy(model);
+
     this._doAutomaticSynthesis();
-    this._checkForCircularHierarchy(model);
 
     this._knownSelectors = { };
 

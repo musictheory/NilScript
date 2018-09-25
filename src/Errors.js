@@ -33,11 +33,11 @@ NSError.VariableAlreadyDeclared        = "NilScriptVariableAlreadyDeclaredError"
 NSError.VariableNotYetDeclared         = "NilScriptVariableNotYetDeclaredError";
 NSError.RestrictedUsage                = "NilScriptRestrictedUsageError";
 NSError.APIMisuse                      = "NilScriptAPIMisuseError";
+NSError.CircularClassHierarchy         = "NilScriptCircularClassHierarchyError";
+NSError.UnknownSuperclass              = "NilScriptUnknownSuperclassError";
 
 const NSWarning = { };
 
-NSWarning.CircularClassHierarchy       = "NilScriptCircularClassHierarchyWarning";
-NSWarning.UnknownSuperclass            = "NilScriptUnknownSuperclassWarning";
 NSWarning.UnknownSelector              = "NilScriptUnknownSelectorWarning";
 NSWarning.UseOfThisInMethod            = "NilScriptUseOfThisInMethodWarning";
 NSWarning.UseOfSelfInNonMethod         = "NilScriptUseOfSelfInNonMethodWarning";

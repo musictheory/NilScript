@@ -318,27 +318,29 @@ function test() {
 
 // --------------------------------------------------------------------
 // @name Circular Class 1
+// @error-no-line NilScriptCircularClassHierarchyError
 
-@class CircularClassA : CircularClassB //@warning NilScriptCircularClassHierarchyWarning
+@class CircularClassA : CircularClassB
 @end
 
 
-@class CircularClassB : CircularClassA //@warning NilScriptCircularClassHierarchyWarning
+@class CircularClassB : CircularClassA
 @end
 
 // --------------------------------------------------------------------
 // @name Circular Class 2
+// @error-no-line NilScriptCircularClassHierarchyError
 
-@class CircularClassA : CircularClassB //@warning NilScriptCircularClassHierarchyWarning
+@class CircularClassA : CircularClassB
 @end
 
-@class CircularClassB : CircularClassC //@warning NilScriptCircularClassHierarchyWarning
+@class CircularClassB : CircularClassC
 @end
 
-@class CircularClassC : CircularClassD //@warning NilScriptCircularClassHierarchyWarning
+@class CircularClassC : CircularClassD
 @end
 
-@class CircularClassD : CircularClassA //@warning NilScriptCircularClassHierarchyWarning
+@class CircularClassD : CircularClassA
 @end
 
 // --------------------------------------------------------------------
@@ -456,10 +458,9 @@ var arr = [,,,,];  //@warning NilScriptUseOfEmptyArrayElementWarning
 
 
 // --------------------------------------------------------------------
-// @name Unknown Class
-// @opts { "warn-unknown-superclasses": true  }
+// @name Unknown Super Class
 
-@class Foo : NonExistantSuperClass //@warning NilScriptUnknownSuperclassWarning
+@class Foo : NonExistantSuperClass //@error NilScriptUnknownSuperclassError
 
 @end
 
