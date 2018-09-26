@@ -1,0 +1,30 @@
+@class TestIssue153Animal
+@property String name;
+- (void) makeSound { console.log("???"); }
+@end
+
+@class TestIssue153Cat : TestIssue153Animal
+- (void) makeSound { console.log("meow"); }
+@end
+
+
+
+@class TestIssue153A {
+    String _theIvar;
+}
+@property TestIssue153Animal animal;
+@end
+
+
+@class TestIssue153B : TestIssue153A {
+
+}
+
+@property TestIssue153Cat animal;
+
+@dynamic animal;
+
+@end
+
+
+true;

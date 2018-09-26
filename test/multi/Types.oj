@@ -10,7 +10,7 @@ true;
 // @name Duplicate Type - OK
 
 @type Rect = Array;
-@type Rect = Array;    //@error NilScriptDuplicateDeclarationError
+@type Rect = Array;    //@error NilScriptDuplicateTypeError
 
 true;
 

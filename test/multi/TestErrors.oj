@@ -160,7 +160,7 @@ function usesSelf() {
 
 - (void) test
 {
-    var $ns_foo = "foo"; //@error NilScriptDollarNSIsReservedError
+    var $ns_foo = "foo"; //@error NilScriptReservedIdentifierError
 }
 
 @end
@@ -170,7 +170,7 @@ function usesSelf() {
 // @name $ns Reserved 2
 
 function test() {
-    var $ns_foo;   //@error NilScriptDollarNSIsReservedError
+    var $ns_foo;   //@error NilScriptReservedIdentifierError
 }
 
 
@@ -260,12 +260,71 @@ function test() {
 
 
 // --------------------------------------------------------------------
+// @name Duplicate Ivar
+
+@class DuplicateInstanceVariable {
+    String _foo;
+    String _foo; //@error NilScriptDuplicateInstanceVariableError
+}
+
+@end
+
+
+
+// --------------------------------------------------------------------
+// @name Duplicate Ivar 2
+
+@class DuplicateInstanceVariableSuperclass {
+    String _foo;
+}
+
+@end
+
+
+@class DuplicateInstanceVariable : DuplicateInstanceVariableSuperclass {
+    String _foo; //@error NilScriptDuplicateInstanceVariableError
+}
+
+@end
+
+
+// --------------------------------------------------------------------
+// @name Property Needs Explicit Dynamic
+
+@class DuplicateInstanceVariableSuperclass {
+    String _foo;
+}
+
+@end
+
+
+@class DuplicateInstanceVariable : DuplicateInstanceVariableSuperclass
+@property String foo; //@warning NilScriptNeedsExplicitDynamicWarning
+@end
+
+
+// --------------------------------------------------------------------
+// @name Property Using Inherited
+
+@class DuplicateInstanceVariableSuperclass
+@property String foo;
+@synthesize foo = mFoo;
+@end
+
+
+@class DuplicateInstanceVariable : DuplicateInstanceVariableSuperclass
+@property String foo2;  //@warning NilScriptPropertyUsingInheritedWarning
+@synthesize foo2 = mFoo;
+@end
+
+
+// --------------------------------------------------------------------
 // @name Duplicate Property
 
 @class DuplicateProperty
 
 @property id foo;
-@property id foo;   //@error NilScriptDuplicatePropertyDefinitionError
+@property id foo;   //@error NilScriptDuplicatePropertyError
 
 @end
 
@@ -276,7 +335,7 @@ function test() {
 @class DuplicateClass
 @end
 
-@class DuplicateClass //@error NilScriptDuplicateDeclarationError
+@class DuplicateClass //@error NilScriptDuplicateClassError
 @end
 
 
@@ -286,7 +345,7 @@ function test() {
 @class DuplicateMethod
 
 - (void) foo { }
-- (void) foo { }    //@error NilScriptDuplicateMethodDefinitionError
+- (void) foo { }    //@error NilScriptDuplicateMethodError
 
 @end
 
@@ -295,7 +354,7 @@ function test() {
 // @name Duplicate Enum Name
 
 @enum Foo { Foo1, Foo2 }
-@enum Foo { Bar1, Bar2 } //@error NilScriptDuplicateDeclarationError
+@enum Foo { Bar1, Bar2 } //@error NilScriptDuplicateEnumError
 
 
 // --------------------------------------------------------------------

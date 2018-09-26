@@ -6,49 +6,60 @@
 
 "use strict";
 
-const NSError = { };
+const NSError = {
+    ParseError:                     "NilScriptParseError",
+    NotYetSupported:                "NilScriptNotYetSupportedError",
 
-NSError.ParseError                     = "NilScriptParseError";
-NSError.NotYetSupported                = "NilScriptNotYetSupportedError";
-NSError.DuplicateDeclaration           = "NilScriptDuplicateDeclarationError";
-NSError.DuplicatePropertyDefinition    = "NilScriptDuplicatePropertyDefinitionError";
-NSError.DuplicateMethodDefinition      = "NilScriptDuplicateMethodDefinitionError";
-NSError.DuplicateIvarDefinition        = "NilScriptDuplicateIvarDefinitionError";
-NSError.DuplicateEnumDefinition        = "NilScriptDuplicateEnumDefinition";
-NSError.UnknownProperty                = "NilScriptUnknownPropertyError";
-NSError.UnknownPropertyAttribute       = "NilScriptUnknownPropertyAttributeError";
-NSError.DuplicateJavascriptFunction    = "NilScriptDuplicateJavascriptFunctionError";
-NSError.PropertyAlreadySynthesized     = "NilScriptPropertyAlreadySynthesizedError";
-NSError.PropertyAlreadyDynamic         = "NilScriptPropertyAlreadyDynamicError";
-NSError.InstanceVariableAlreadyClaimed = "NilScriptInstanceVariableAlreadyClaimedError";
-NSError.NonLiteralConst                = "NilScriptNonLiteralConstError";
-NSError.NonLiteralEnum                 = "NilScriptNonLiteralEnumError";
-NSError.NonIntegerEnum                 = "NilScriptNonIntegerEnumError";
-NSError.SelfIsReserved                 = "NilScriptSelfIsReservedError";
-NSError.DollarNSIsReserved             = "NilScriptDollarNSIsReservedError";
-NSError.ReservedMethodName             = "NilScriptReservedMethodNameError";
-NSError.SqueezerReachedEndIndex        = "NilScriptSqueezerReachedEndIndexError";
-NSError.CircularTypeHierarchy          = "NilScriptCircularTypeHierarchyError";
-NSError.VariableAlreadyDeclared        = "NilScriptVariableAlreadyDeclaredError";
-NSError.VariableNotYetDeclared         = "NilScriptVariableNotYetDeclaredError";
-NSError.RestrictedUsage                = "NilScriptRestrictedUsageError";
-NSError.APIMisuse                      = "NilScriptAPIMisuseError";
-NSError.CircularClassHierarchy         = "NilScriptCircularClassHierarchyError";
-NSError.UnknownSuperclass              = "NilScriptUnknownSuperclassError";
+// Used for mixed types (@class Foo conflicts with @enum Foo)
+    DuplicateDeclaration:           "NilScriptDuplicateDeclarationError",
 
-const NSWarning = { };
+    DuplicateClass:                 "NilScriptDuplicateClassError",
+    DuplicateEnum:                  "NilScriptDuplicateEnumError",
+    DuplicateInstanceVariable:      "NilScriptDuplicateInstanceVariableError",
+    DuplicateJavascriptFunction:    "NilScriptDuplicateJavascriptFunctionError",
+    DuplicateMethod:                "NilScriptDuplicateMethodError",
+    DuplicateProperty:              "NilScriptDuplicatePropertyError",
+    DuplicateProtocol:              "NilScriptDuplicateProtocolError",
+    DuplicateType:                  "NilScriptDuplicateTypeError",
 
-NSWarning.UnknownSelector              = "NilScriptUnknownSelectorWarning";
-NSWarning.UseOfThisInMethod            = "NilScriptUseOfThisInMethodWarning";
-NSWarning.UseOfSelfInNonMethod         = "NilScriptUseOfSelfInNonMethodWarning";
-NSWarning.UseOfDebugger                = "NilScriptUseOfDebuggerWarning";
-NSWarning.UseOfEmptyArrayElement       = "NilScriptUseOfEmptyArrayElementWarning";
-NSWarning.UnusedInstanceVariable       = "NilScriptUnusedInstanceVariableWarning";
-NSWarning.UnassignedInstanceVariable   = "NilScriptUnassignedInstanceVariableWarning";
-NSWarning.UndeclaredInstanceVariable   = "NilScriptUndeclaredInstanceVariableWarning";
-NSWarning.MissingTypeAnnotation        = "NilScriptMissingTypeAnnotationWarning";
-NSWarning.OnCompileFunction            = "NilScriptOnCompileFunctionWarning";
-NSWarning.Typechecker                  = "NilScriptTypecheckerWarning";
+    UnknownProperty:                "NilScriptUnknownPropertyError",
+    UnknownPropertyAttribute:       "NilScriptUnknownPropertyAttributeError",
+    PropertyAlreadySynthesized:     "NilScriptPropertyAlreadySynthesizedError",
+    PropertyAlreadyDynamic:         "NilScriptPropertyAlreadyDynamicError",
+    InstanceVariableAlreadyClaimed: "NilScriptInstanceVariableAlreadyClaimedError",
+    NonLiteralConst:                "NilScriptNonLiteralConstError",
+    NonLiteralEnum:                 "NilScriptNonLiteralEnumError",
+    NonIntegerEnum:                 "NilScriptNonIntegerEnumError",
+    SelfIsReserved:                 "NilScriptSelfIsReservedError",
+    ReservedIdentifier:             "NilScriptReservedIdentifierError",
+    ReservedMethodName:             "NilScriptReservedMethodNameError",
+    SqueezerReachedEndIndex:        "NilScriptSqueezerReachedEndIndexError",
+    CircularTypeHierarchy:          "NilScriptCircularTypeHierarchyError",
+    VariableAlreadyDeclared:        "NilScriptVariableAlreadyDeclaredError",
+    VariableNotYetDeclared:         "NilScriptVariableNotYetDeclaredError",
+    RestrictedUsage:                "NilScriptRestrictedUsageError",
+    APIMisuse:                      "NilScriptAPIMisuseError",
+    CircularClassHierarchy:         "NilScriptCircularClassHierarchyError",
+    UnknownSuperclass:              "NilScriptUnknownSuperclassError"
+};
+
+
+const NSWarning = {
+    MissingTypeAnnotation:        "NilScriptMissingTypeAnnotationWarning",
+    PropertyUsingInherited:       "NilScriptPropertyUsingInheritedWarning",
+    NeedsExplicitDynamic:         "NilScriptNeedsExplicitDynamicWarning",
+    OnCompileFunction:            "NilScriptOnCompileFunctionWarning",
+    Typechecker:                  "NilScriptTypecheckerWarning",
+    UnassignedInstanceVariable:   "NilScriptUnassignedInstanceVariableWarning",
+    UndeclaredInstanceVariable:   "NilScriptUndeclaredInstanceVariableWarning",
+    UnknownSelector:              "NilScriptUnknownSelectorWarning",
+    UnusedInstanceVariable:       "NilScriptUnusedInstanceVariableWarning",
+    UseOfDebugger:                "NilScriptUseOfDebuggerWarning",
+    UseOfEmptyArrayElement:       "NilScriptUseOfEmptyArrayElementWarning",
+    UseOfSelfInNonMethod:         "NilScriptUseOfSelfInNonMethodWarning",
+    UseOfThisInMethod:            "NilScriptUseOfThisInMethodWarning"
+};
+
 
 module.exports = {
     NSError:   NSError,

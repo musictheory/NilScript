@@ -737,7 +737,7 @@ generate()
         if (name[0] === "$") {
             if (name.indexOf("$ns") == 0) {
                 if (name[3] == "$" || name[3] == "_") {
-                    Utils.throwError(NSError.DollarNSIsReserved, "Identifiers may not start with \"$ns_\" or \"$ns$\"", node);
+                    Utils.throwError(NSError.ReservedIdentifier, "Identifiers may not start with \"$ns_\" or \"$ns$\"", node);
                 }
             }
 

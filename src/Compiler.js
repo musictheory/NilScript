@@ -715,8 +715,8 @@ compile(options, callback)
                 throw err;
             }
 
-            _.each(errors, function(error) {
-                if (!error.name.startsWith("NilScript")) {
+            _.each(errors, error => {
+                if (!error.name || !error.name.startsWith("NilScript")) {
                     throw error;
                 }
             });

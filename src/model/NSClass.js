@@ -107,11 +107,26 @@ saveState()
 }
 
 
-_doAutomaticSynthesis()
+_doAutomaticSynthesis(model)
 {
     if (this.didSynthesis) {
         return;
     }
+
+    let myIvarNames = this.getAllIvarNames();
+    let usedIvarNameMap = { };
+
+     _.each(this._getClassHierarchy(model), cls => {
+        _.each(cls.getAllIvarNames(), name => {
+            usedIvarNameMap[name] = true;
+        });
+    });
+
+    _.each(this._ivarMap, (ivar, name) => {
+        if (usedIvarNameMap[name]) {
+            throw Utils.makeError(NSError.DuplicateInstanceVariable, "Instance variable '" + name + "' declared in superclass", ivar.location);
+        }
+    });
 
     let properties = _.values(this._propertyMap);
     let backingIvarToPropertyNameMap = { };
@@ -132,6 +147,17 @@ _doAutomaticSynthesis()
         if (!ivarName) {
             ivarName = "_" + name;
             property.ivar = ivarName;
+
+            if (usedIvarNameMap[ivarName]) {
+                let message = `Auto property synthesis for '${name}' will use an inherited instance variable. use @dynamic to acknowledge intention.`;
+                this.prepareWarnings.push(Utils.makeError(NSWarning.NeedsExplicitDynamic, message, property.location));
+            }
+
+        } else {
+            if (usedIvarNameMap[ivarName]) {
+                let message = `Property '${name}' will use an inherited instance variable due to @synthesize.`;
+                this.prepareWarnings.push(Utils.makeError(NSWarning.PropertyUsingInherited, message, property.location));
+            }            
         }
 
         let ivar         = ivarName ? this._ivarMap[ivarName]         : null;
@@ -185,25 +211,41 @@ _doAutomaticSynthesis()
 }
 
 
-_checkHierarchy(model)
+_getClassHierarchy(model, includeThis)
+{
+    let visited = [ this.name ];
+    let result  = includeThis ? [ this ] : [ ];
+
+    let currentSuperclass = model.classes[this.superclassName];
+    while (currentSuperclass) {
+
+        if (visited.indexOf(currentSuperclass.name) >= 0) {
+            throw Utils.makeError(NSError.CircularClassHierarchy, "Circular class hierarchy detected: '" + visited.join("', '") + "'");
+        }
+
+        visited.push(currentSuperclass.name);
+        result.push(currentSuperclass);
+
+        currentSuperclass = model.classes[currentSuperclass.superclassName];
+    }
+
+    return result;
+}
+
+
+_checkClassHierarchy(model)
 {
     let visited = [ this.name ];
     let superclassName = this.superclassName;
+
+    let currentSuperclass = this.superclass;
 
     if (superclassName && (!this.superclass || this.superclass.placeholder)) {
         throw Utils.makeError(NSError.UnknownSuperclass, "Unknown superclass: '" + this.superclassName + "'", this.location);
     }
 
-    let currentSuperclass = this.superclass;
-    while (currentSuperclass) {
-        if (visited.indexOf(currentSuperclass.name) >= 0) {
-             throw Utils.makeError(NSError.CircularClassHierarchy, "Circular class hierarchy detected: '" + visited.join("', '") + "'");
-        }
-
-        visited.push(currentSuperclass.name);
-
-        currentSuperclass = model.classes[currentSuperclass.superclassName];
-    }
+    // _getClassHierarchy() performs our circular check for safety
+    this._getClassHierarchy(model);
 }
 
 
@@ -240,12 +282,8 @@ prepare(model)
     if (this.prepared) return;
     this.prepared = true;
 
-    this.prepareWarnings = [ ];
-
-    this.superclass = this.superclassName ? model.classes[this.superclassName] : null;
-    this._checkHierarchy(model);
-
-    this._doAutomaticSynthesis();
+    let superclass = this.superclassName ? model.classes[this.superclassName] : null;
+    this.superclass = superclass;
 
     this._knownSelectors = { };
 
@@ -253,12 +291,15 @@ prepare(model)
         this._knownSelectors[selectorName] = 1;
     });
 
-    let superclass = this.superclassName ? model.classes[this.superclassName] : null;
-
     if (superclass) {
         superclass.prepare(model);
         this._knownSelectors = _.merge(this._knownSelectors, superclass._knownSelectors || { });
     }
+
+    this.prepareWarnings = [ ];
+
+    this._checkClassHierarchy(model);
+    this._doAutomaticSynthesis(model);
 
     this._checkObservers();
 }
@@ -344,7 +385,7 @@ addIvar(ivar)
     let name = ivar.name;
 
     if (this._ivarMap[name]) {
-        Utils.throwError(NSError.DuplicateIvarDefinition, "Instance variable " + name + " has previous declaration");
+        Utils.throwError(NSError.DuplicateInstanceVariable, "Instance variable " + name + " has previous declaration");
     }
 
     this._ivarMap[name] = ivar;    
@@ -356,7 +397,7 @@ addProperty(nsProperty)
     let name = nsProperty.name;
 
     if (this._propertyMap[name]) {
-        Utils.throwError(NSError.DuplicatePropertyDefinition, "Property " + name + " has previous declaration");
+        Utils.throwError(NSError.DuplicateProperty, "Property " + name + " has previous declaration");
     }
 
     this._propertyMap[name] = nsProperty;
@@ -430,7 +471,7 @@ addMethod(method)
     }
 
     if (map[selectorName]) {
-        Utils.throwError(NSError.DuplicateMethodDefinition, "Duplicate declaration of method '" + selectorName + "'");
+        Utils.throwError(NSError.DuplicateMethod, "Duplicate declaration of method '" + selectorName + "'");
     }
 
     map[selectorName] = method;
@@ -449,11 +490,17 @@ getAllIvars()
 }
 
 
-getAllIvarNamesWithoutProperties()
+getAllIvarNames()
 {
-    let names = _.map(this.getAllIvars(), function(ivar) {
+    return _.map(this.getAllIvars(), ivar => {
         return ivar.name;
     });
+}
+
+
+getAllIvarNamesWithoutProperties()
+{
+    let names = this.getAllIvarNames();
 
     let toRemove = _.map(_.values(this._propertyMap), function(property) {
         return property.ivar;
