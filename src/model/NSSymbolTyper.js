@@ -21,7 +21,6 @@ const NSProtocolPrefix          = "N$_p_";
 const NSMethodPrefix            = "N$_f_";
 const NSIvarPrefix              = "N$_i_";
 
-const NSKindofClassPrefix       = "N$_k_";   // Typechecker only
 const NSStaticClassPrefix       = "N$_C_";   // Typechecker only
 const NSStaticProtocolPrefix    = "N$_P_";   // Typechecker only
 const NSEnumPrefix              = "N$_e_";   // Typechecker only
@@ -302,7 +301,7 @@ toTypecheckerType(rawInType, location)
             result = "any[]";
 
         } else if (part == "SEL") {
-            result = "N$_SEL";
+            result = "N$_Selector";
 
         } else if (part == "Object" || part == "Class" || part == "any") {
             result = "any";
