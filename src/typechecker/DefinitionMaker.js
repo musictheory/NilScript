@@ -134,8 +134,8 @@ _appendClass(lines, nsClass, classSymbol, staticSymbol)
     _.each(classMethodDeclarations,    decl => {  lines.push("static " + decl);  });
     _.each(instanceMethodDeclarations, decl => {  lines.push(            decl);  });
 
-    _.each(nsClass.getAllIvars(), nsIvar => {
-        lines.push(symbolTyper.getSymbolForIvar(nsIvar) + " : " +  symbolTyper.toTypecheckerType(nsIvar.type) + ";");
+    _.each(nsClass.getAllIvars(), ivar => {
+        lines.push(symbolTyper.getSymbolForIvarName(ivar.name) + " : " +  symbolTyper.toTypecheckerType(ivar.type) + ";");
     });
 
     lines.push(

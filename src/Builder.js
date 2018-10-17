@@ -175,7 +175,7 @@ build()
 
         for (let i = 0, length = node.ivars.length; i < length; i++) {
             let name = node.ivars[i].name;
-            currentClass.addIvar(new Model.NSIvar(makeLocation(node), name, currentClass.name, type));
+            currentClass.addIvar(new Model.NSIvar(makeLocation(node), name, type));
         }
     }
 

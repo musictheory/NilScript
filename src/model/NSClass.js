@@ -65,7 +65,7 @@ loadState(state)
     this.didSynthesis    = state.didSynthesis;
 
     _.each(state.ivars, i => {
-        this.addIvar(new NSIvar(i.location, i.name, i.className, i.type));
+        this.addIvar(new NSIvar(i.location, i.name, i.type));
     });
 
     _.each(state.properties, p => {
@@ -189,7 +189,7 @@ _doAutomaticSynthesis(model)
 
         // Generate backing ivar
         if (generateBackingIvar) {
-            ivar = new NSIvar(_.clone(location), ivarName, this.name, property.type);
+            ivar = new NSIvar(_.clone(location), ivarName, property.type);
             ivar.synthesized = true;
             this._ivarMap[ivarName] = ivar;
         }
@@ -490,9 +490,7 @@ getAllIvars()
 
 getAllIvarNames()
 {
-    return _.map(this.getAllIvars(), ivar => {
-        return ivar.name;
-    });
+    return _.map(this.getAllIvars(), ivar => ivar.name);
 }
 
 
@@ -500,9 +498,7 @@ getAllIvarNamesWithoutProperties()
 {
     let names = this.getAllIvarNames();
 
-    let toRemove = _.map(_.values(this._propertyMap), function(property) {
-        return property.ivar;
-    });
+    let toRemove = _.map(_.values(this._propertyMap), property => property.ivar);
 
     toRemove.unshift(names);
     names = _.without.apply(names, toRemove);

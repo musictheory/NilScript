@@ -11,11 +11,10 @@
 module.exports = class NSIvar {
 
 
-constructor(location, name, className, type)
+constructor(location, name, type)
 {
     this.location    = location;
     this.name        = name;
-    this.className   = className;
     this.type        = type;
     this.synthesized = false;
 }

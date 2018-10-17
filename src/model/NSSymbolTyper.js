@@ -481,18 +481,13 @@ getSymbolForIdentifierName(name)
 }
 
 
-getSymbolForClassNameAndIvarName(className, ivarName)
+getSymbolForIvarName(ivarName)
 {
-    let result = NSIvarPrefix + className + "$" + ivarName;
+    let result = NSIvarPrefix + ivarName;
     if (this._squeeze) result = this._getSqueezedSymbol(result, true);
     return result;
 }
 
-
-getSymbolForIvar(ivar)
-{
-    return this.getSymbolForClassNameAndIvarName(ivar.className, ivar.name);
-}
 
 
 getAllSymbolsMap()

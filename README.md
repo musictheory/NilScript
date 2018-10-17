@@ -226,7 +226,7 @@ Messages to an object are simply JavaScript function calls wrapped in a falsey c
      
 becomes the equivalent of:
 
-     let result = anObject && anObject.doSomethingWithString_andNumber_("Hello", 0);
+     let result = anObject && anObject.N$_f_doSomethingWithString_andNumber_("Hello", 0);
      
 The compiler will produce slightly different output depending on:
 
@@ -382,7 +382,7 @@ Unlike other parts of the NilScript runtime, properties and instance variables a
 
 The compiler currently uses a JavaScript property on the instance with the follow name:
 
-    N$_i_{{CLASS NAME}}_{{IVAR NAME}}
+    N$_i_{{IVAR NAME}}
 
 
 Hence, the following NilScript code:
@@ -408,13 +408,31 @@ nilscript.makeClass(…, function(…) {
 … // Compiler generates -setCounter: and -counter here
 
 ….incrementCounter = function() {
-    this.N$_i_TheClass__counter++;
+    this.N$_i__counter++;
 }
 
 });
 ```
 
+To make debugging easier, the `--simple-ivars` compiler flag may be used. This uses a JavaScript property with the same name as the ivar.
 
+Hence, the above example would compile into:
+
+```
+nilscript.makeClass(…, function(…) {
+    
+… // Compiler generates -setCounter: and -counter here
+
+….incrementCounter = function() {
+    this._counter++;
+}
+
+});
+```
+
+As long as ivars are prefixed (either the default `_theIvarName` or the non-standard prefixes such as `m_theIvarName` or `mTheIvarName`), this should be safe. You may run into issues if you use this flag and also use an ivar name which conflicts with an `Object.prototype` property. Examples include: `constructor`, `hasOwnProperty`, `toString`, `valueOf`, etc.
+
+`--simple-ivars` has no effect when the squeezer is enabled.
 
 ---
 ## <a name="observers"></a>Property Observers
@@ -1069,7 +1087,7 @@ Type                     | Humand-readable name  | Internal Identifier
 ------------------------ | -------- | ---
 Class                    | `TheClass` | `N$_c_TheClass`
 Protocol                 | `TheProtocol` | `N$_p_TheProtocol`
-Instance variable        | `_theIvar` | `N$_i_TheClass__theIvar`
+Instance variable        | `_theIvar` | `N$_i__theIvar`
 Method                   | `-doSomethingWithFoo:bar:baz:` | `N$_f_doSomethingWithFoo_bar_baz_`
 
 Since these identifiers can be quite long (and aid in competitor's reverse-engineering efforts), NilScript features a code minifier/compressor/obfuscator called the squeezer. 
@@ -1085,8 +1103,8 @@ The `--squeeze` compiler option adds a `squeeze` property to the compiler result
 {
     "N$a": "N$_c_TheClass",
     "N$b": "N$_f_initWithFoo_"
-    "N$c": "N$_i_TheClass__firstIvar",
-    "N$d": "N$_i_TheClass__secondIvar",
+    "N$c": "N$_i__firstIvar",
+    "N$d": "N$_i__secondIvar",
     "N$e": "N$_f_doSomethingWithFoo_bar_baz_",
     …
 }

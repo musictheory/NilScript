@@ -124,6 +124,7 @@ generate()
     let optionWarnUnusedIvars         = options["warn-unused-ivars"];
     let optionStrictFunctions         = options["strict-functions"];
     let optionStrictObjectLiterals    = options["strict-object-literals"];
+    let optionSimpleIvars             = options["simple-ivars"];
 
     let optionSqueeze = this._squeeze;
     let symbolTyper   = model.getSymbolTyper();
@@ -134,6 +135,8 @@ generate()
 
     let usedIvarMap = null;
     let assignedIvarMap = null;
+
+    let usesSimpleIvars = optionSimpleIvars && !optionSqueeze && (language !== LanguageTypechecker);
 
     let warnings = [ ];
 
@@ -189,9 +192,11 @@ generate()
         }
     }
 
-    function generateThisIvar(className, ivarName, useSelf)
+    function generateThisIvar(ivarName, useSelf)
     {
-        return (useSelf ? "self" : "this") + "." + symbolTyper.getSymbolForClassNameAndIvarName(className, ivarName);
+        let symbol = usesSimpleIvars ? ivarName : symbolTyper.getSymbolForIvarName(ivarName);
+
+        return (useSelf ? "self" : "this") + "." + symbol;
     }
 
     function generateIvarAssignments(nsClass)
@@ -222,7 +227,7 @@ generate()
 
         if (objectIvars.length) {
             for (let i = 0, length = objectIvars.length; i < length; i++) {
-                result += "this." + symbolTyper.getSymbolForClassNameAndIvarName(nsClass.name, objectIvars[i]) + "="
+                result += generateThisIvar(objectIvars[i]) + "="
             }
 
             result += "null;"
@@ -230,7 +235,7 @@ generate()
 
         if (numericIvars.length) {
             for (let i = 0, length = numericIvars.length; i < length; i++) {
-                result += "this." + symbolTyper.getSymbolForClassNameAndIvarName(nsClass.name, numericIvars[i]) + "="
+                result += generateThisIvar(numericIvars[i]) + "="
             }
 
             result += "0;"
@@ -238,7 +243,7 @@ generate()
 
         if (booleanIvars.length) {
             for (let i = 0, length = booleanIvars.length; i < length; i++) {
-                result += "this." + symbolTyper.getSymbolForClassNameAndIvarName(nsClass.name, booleanIvars[i]) + "="
+                result += generateThisIvar(booleanIvars[i]) + "="
             }
 
             result += "false;"
@@ -412,7 +417,7 @@ generate()
                 return;
 
             } else if (currentClass.isIvar(receiver.name)) {
-                let ivar = generateThisIvar(currentClass.name, receiver.name, usesSelf);
+                let ivar = generateThisIvar(receiver.name, usesSelf);
 
                 if (language === LanguageTypechecker) {
                     doCommonReplacement("(" + ivar + "." + methodName + "(", "))");
@@ -760,7 +765,7 @@ generate()
                 if (isSelf) {
                     replacement = usesSelf ? "self" : "this";
                 } else {
-                    replacement = generateThisIvar(currentClass.name, name, usesSelf);
+                    replacement = generateThisIvar(name, usesSelf);
                     usedIvarMap[name] = true;
 
                     if (parent.type === Syntax.AssignmentExpression && 
@@ -822,7 +827,7 @@ generate()
             if (language === LanguageEcmascript5) {
                 let observers = currentClass.getObserversWithName(name) || [ ];
                 let s = [ ];
-                let ivar = generateThisIvar(currentClass.name, property.ivar, false);
+                let ivar = generateThisIvar(property.ivar, false);
 
                 let hasObservers    = observers.length > 0;
                 let changeObservers = [ ];
@@ -883,9 +888,9 @@ generate()
                 result += generateMethodDeclaration(false, property.getter);
 
                 if (property.copyOnRead) {
-                    result += " = function() { return " + NSRootVariable + ".makeCopy(" + generateThisIvar(currentClass.name, property.ivar, false) + "); } ; ";
+                    result += " = function() { return " + NSRootVariable + ".makeCopy(" + generateThisIvar(property.ivar, false) + "); } ; ";
                 } else {
-                    result += " = function() { return " + generateThisIvar(currentClass.name, property.ivar, false) + "; } ; ";
+                    result += " = function() { return " + generateThisIvar(property.ivar, false) + "; } ; ";
                 }
             }
         }
