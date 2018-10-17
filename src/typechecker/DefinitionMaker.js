@@ -40,39 +40,7 @@ _getProtocolList(verb, isStatic, rawProtocolNames)
 }
 
 
-_getInstancetypeMethods(inClass)
-{
-    let model = this._model;
-
-    let declaredMethods = { };
-    let toReturn = [ ];
-    let nsClass = inClass;
-
-    while (nsClass) {
-        let methods = nsClass.getAllMethods();
-
-        _.each(methods, m => {
-            let name = m.selectorType + m.selectorName;
-
-            if (m.returnType == "instancetype") {
-                if (!declaredMethods[name]) {
-                    declaredMethods[name] = true;
-
-                    if (nsClass != inClass) {
-                        toReturn.push(m);
-                    }
-                }
-            }
-        });
-
-        nsClass = model.classes[nsClass.superclassName];
-    }
-
-    return toReturn;
-}
-
-
-_getDeclarationForMethod(method, nsClass)
+_getDeclarationForMethod(method)
 {
     let symbolTyper = this._symbolTyper;
     let methodName  = symbolTyper.getSymbolForSelectorName(method.selectorName);
@@ -85,17 +53,17 @@ _getDeclarationForMethod(method, nsClass)
         parameters.push(variableName + " : " + parameterType);
     }
 
-    let returnType = symbolTyper.toTypecheckerType(method.returnType, Location.DeclarationReturn, nsClass);
+    let returnType = symbolTyper.toTypecheckerType(method.returnType, Location.DeclarationReturn);
 
     return methodName + (method.optional ? "?" : "") + "(" + parameters.join(", ") + ") : " + returnType + ";";
 }
 
 
-_siftMethodDeclarations(allMethods, classMethodDeclarations, instanceMethodDeclarations, nsClass)
+_siftMethodDeclarations(methods, classMethodDeclarations, instanceMethodDeclarations)
 {
-   _.each(allMethods, method => {
+    _.each(methods, method => {
         let arr = (method.selectorType == "+") ? classMethodDeclarations : instanceMethodDeclarations;
-        arr.push(this._getDeclarationForMethod(method, nsClass));
+        arr.push(this._getDeclarationForMethod(method));
     });
 }
 
@@ -107,18 +75,61 @@ _appendClass(lines, nsClass, classSymbol, staticSymbol)
     let superSymbol       = nsClass.superclassName ? symbolTyper.getSymbolForClassName(nsClass.superclassName, false) : TypecheckerSymbols.Base;
     let superStaticSymbol = nsClass.superclassName ? symbolTyper.getSymbolForClassName(nsClass.superclassName, true)  : TypecheckerSymbols.StaticBase;
 
+    let declaredMethodNames = { };
+    let methods = [ ];
+
+    function addMethod(method) {
+        if (!method) return;
+
+        let name = method.selectorType + method.selectorName;
+        if (declaredMethodNames[name]) return;
+
+        if (method.returnType == "instancetype") {
+            method = method.copy();
+            method.returnType = nsClass.name;
+        }
+
+        declaredMethodNames[name] = true;
+        methods.push(method);
+    }
+
+    // Add all methods defined by this class
+    _.each(nsClass.getAllMethods(), method => {
+        addMethod(method)
+    });
+
+    // Add properties at this level, if needed
+    _.each(nsClass.getAllProperties(), property => {
+        addMethod(property.generateGetterMethod());
+        addMethod(property.generateSetterMethod());
+    });
+
+    // Walk hierarchy and add any method with a returnType of "instancetype"
+    {
+        let superclass = nsClass.superclass;
+
+        while (superclass) {
+            _.each(superclass.getAllMethods(), method => {
+                if (method.returnType == "instancetype") {
+                    addMethod(method);
+                }
+            });
+
+            superclass = superclass.superclass;
+        }
+    }
+
+    let classMethodDeclarations    = [ ];
+    let instanceMethodDeclarations = [ ];
+
+    this._siftMethodDeclarations(methods, classMethodDeclarations, instanceMethodDeclarations);
+
     lines.push(
         "declare class " + classSymbol +
             " extends " + superSymbol +
             this._getProtocolList("implements", false, nsClass.protocolNames) +
             " {"
     );
-
-    let methods = [ ].concat(nsClass.getAllMethods(), this._getInstancetypeMethods(nsClass));
-    let classMethodDeclarations    = [ ];
-    let instanceMethodDeclarations = [ ];
-
-    this._siftMethodDeclarations(methods, classMethodDeclarations, instanceMethodDeclarations, nsClass);
 
     _.each(classMethodDeclarations,    decl => {  lines.push("static " + decl);  });
     _.each(instanceMethodDeclarations, decl => {  lines.push(            decl);  });
@@ -132,8 +143,8 @@ _appendClass(lines, nsClass, classSymbol, staticSymbol)
         "class() : " + staticSymbol + ";",
         "static class() : " + staticSymbol + ";",
         "init()  : " + classSymbol + ";",
-        "$ns_super() : " + superSymbol + ";",
-        "static $ns_super() : " + superStaticSymbol + ";",
+        "N$_super() : " + superSymbol + ";",
+        "static N$_super() : " + superStaticSymbol + ";",
         "}"
     );
 
@@ -149,10 +160,9 @@ _appendClass(lines, nsClass, classSymbol, staticSymbol)
     lines.push(
         "alloc() : " + classSymbol  + ";",
         "class() : " + staticSymbol + ";",
-        "$ns_super() : " + superStaticSymbol + ";",
+        "N$_super() : " + superStaticSymbol + ";",
         "}"
     );
-
 }
 
 

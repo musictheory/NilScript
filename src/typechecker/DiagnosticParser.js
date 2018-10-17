@@ -114,25 +114,25 @@ getWarnings(diagnostics, fileCallback)
                 let i = 0;
 
                 (object.messageText || object).replace(/'(.*?)'/g, function(a0, a1) {
-                    if (a1.match(/^\$ns_C_/)) {
+                    if (a1.match(/^N\$_C_/)) {
                         sawStatic = true;
                         sawClass = true;
 
-                    } else if (a1.match(/\$ns_P_/)) {
+                    } else if (a1.match(/N\$_P_/)) {
                         sawStatic = true;
                         sawProtocol = true;
 
-                    } else if (a1.match(/typeof \$ns_c_/)) {
+                    } else if (a1.match(/typeof N\$_c_/)) {
                         sawClass = true;
                         sawStatic = true;
 
-                    } else if (a1.match(/\$ns_c_/)) {
+                    } else if (a1.match(/N\$_c_/)) {
                         sawClass = true;
 
-                    } else if (a1.match(/\$ns_p_/)) {
+                    } else if (a1.match(/N\$_p_/)) {
                         sawProtocol = true;
 
-                    } else if (a1.match(/\$ns_f_/)) {
+                    } else if (a1.match(/N\$_f_/)) {
                         sawMethod = true;
                     }
 

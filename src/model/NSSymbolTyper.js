@@ -16,28 +16,28 @@ const NSProtocol  = require("./NSProtocol");
 const NSMethod    = require("./NSMethod");
 const NSEnum      = require("./NSEnum");
 
-const NSClassPrefix             = "$ns_c_";
-const NSProtocolPrefix          = "$ns_p_";
-const NSMethodPrefix            = "$ns_f_";
-const NSIvarPrefix              = "$ns_i_";
+const NSClassPrefix             = "N$_c_";
+const NSProtocolPrefix          = "N$_p_";
+const NSMethodPrefix            = "N$_f_";
+const NSIvarPrefix              = "N$_i_";
 
-const NSKindofClassPrefix       = "$ns_k_";   // Typechecker only
-const NSStaticClassPrefix       = "$ns_C_";   // Typechecker only
-const NSStaticProtocolPrefix    = "$ns_P_";   // Typechecker only
-const NSEnumPrefix              = "$ns_e_";   // Typechecker only
+const NSKindofClassPrefix       = "N$_k_";   // Typechecker only
+const NSStaticClassPrefix       = "N$_C_";   // Typechecker only
+const NSStaticProtocolPrefix    = "N$_P_";   // Typechecker only
+const NSEnumPrefix              = "N$_e_";   // Typechecker only
 
 
 const TypecheckerSymbols = {
-    Combined:       "$ns_$Combined",
-    StaticCombined: "$ns_$StaticCombined",
+    Combined:       "N$_Combined",
+    StaticCombined: "N$_StaticCombined",
 
-    Base:           "$ns_$Base",
-    StaticBase:     "$ns_$StaticBase",
+    Base:           "N$_Base",
+    StaticBase:     "N$_StaticBase",
 
-    IdIntersection: "$ns_$id_intersection",
-    IdUnion:        "$ns_$id_union",
+    IdIntersection: "N$_IdIntersection",
+    IdUnion:        "N$_IdUnion",
 
-    GlobalType:     "$ns_$Globals"
+    GlobalType:     "N$_Globals"
 };
 
 const Location = {
@@ -68,12 +68,12 @@ function sToBase52(index)
 
 function sSymbolicate(string, fromSqueezedMap)
 {
-    return string.replace(/\$ns[_$][A-Za-z0-9_$]+/g, function(symbol) {
-        if (fromSqueezedMap && symbol.indexOf("$ns$") === 0) {
-            return fromSqueezedMap[symbol];
-
-        } else if (symbol.match(/^\$ns_[cCpPi]_/)) {
+    return string.replace(/^N\$[A-Za-z0-9_$]+/g, function(symbol) {
+        if (symbol.match(/^N\$_[cCpPi]_/)) {
             return symbol.substr(NSClassPrefix.length);
+
+        } else if (fromSqueezedMap && symbol.indexOf("N$") === 0) {
+            return fromSqueezedMap[symbol];
 
         } else if (symbol.indexOf(NSMethodPrefix) === 0) {
             symbol = symbol.substr(NSMethodPrefix.length);
@@ -151,7 +151,7 @@ _getSqueezedSymbol(readableName, add)
 
     if (!hasName && add) {
         while (!squeezedName) {
-            let nameToTry = "$ns$" + sToBase52(this._squeezerId);
+            let nameToTry = "N$" + sToBase52(this._squeezerId);
             if (!fromMap[nameToTry]) {
                 squeezedName = nameToTry;
             }
@@ -236,7 +236,7 @@ enrollForSqueezing(name)
 
 
 
-toTypecheckerType(rawInType, location, currentClass)
+toTypecheckerType(rawInType, location)
 {
     if (!rawInType) return "any";
 
@@ -302,7 +302,7 @@ toTypecheckerType(rawInType, location, currentClass)
             result = "any[]";
 
         } else if (part == "SEL") {
-            result = "$ns_$SEL";
+            result = "N$_SEL";
 
         } else if (part == "Object" || part == "Class" || part == "any") {
             result = "any";
@@ -342,11 +342,7 @@ toTypecheckerType(rawInType, location, currentClass)
             addToReverseMap = false;
 
         } else if (part == "instancetype") {
-            if (currentClass && currentClass.name) {
-                result = _handleParts([ currentClass.name ]);
-            } else {
-                result = "any";
-            }
+            result = "any";
 
             addToForwardMap = false;
             addToReverseMap = false;
@@ -407,7 +403,7 @@ fromTypecheckerType(rawInType)
         } else if (m = inType.match(/\{\[(.*?):string\]\:(.*)\}$/)) {
             outType = "Object<" + this.fromTypecheckerType(m[2]) + ">";
 
-        } else if (m = rawInType.match(/^typeof\s+(\$ns_[cCpPi]_.*?\b)/)) {
+        } else if (m = rawInType.match(/^typeof\s+(N\$_[cCpPi]_.*?\b)/)) {
             outType = this.fromTypecheckerType(m[1]);
 
         } else {

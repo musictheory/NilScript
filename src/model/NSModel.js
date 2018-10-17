@@ -402,7 +402,7 @@ addEnum(nsEnum)
         }
 
     } else {
-        name = "$NSAnonymousEnum" + _.size(this.enums);
+        name = "N$_anonymousEnum" + _.size(this.enums);
 
         nsEnum.name = name;
         nsEnum.anonymous = true;

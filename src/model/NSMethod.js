@@ -24,4 +24,18 @@ constructor(location, selectorName, selectorType, returnType, parameterTypes, va
 }
 
 
+copy()
+{
+    return new NSMethod(
+        this.location,
+        this.selectorName,
+        this.selectorType,
+        this.returnType,
+        this.parameterTypes,
+        this.variableNames,
+        this.optional
+    );
+}
+
+
 }

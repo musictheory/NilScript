@@ -118,8 +118,8 @@ check(model, defs, files, callback)
     const defsSuffix      = "defs.d.ts";
     const codeSuffix      = "code.ts";
 
-    const runtimeFileName = "$ns-runtime" + path.sep + defsSuffix;
-    const globalFileName  = "$ns-global"  + path.sep + defsSuffix;
+    const runtimeFileName = "N$-runtime" + path.sep + defsSuffix;
+    const globalFileName  = "N$-global"  + path.sep + defsSuffix;
 
     _.each(files, nsFile => {
         let codeKey = path.normalize(nsFile.path) + path.sep + codeSuffix;

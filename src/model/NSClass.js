@@ -195,13 +195,13 @@ _doAutomaticSynthesis(model)
         }
 
         if (getter && !getterMethod) {
-            getterMethod = new NSMethod(_.clone(location), getter, "-", property.type, [ ]);
+            getterMethod = property.generateGetterMethod();
             getterMethod.synthesized = true;
             this._instanceMethodMap[getter] = getterMethod;
         }
 
         if (setter && !setterMethod) {
-            setterMethod = new NSMethod(_.clone(location), setter, "-", "void", [ property.type ]);
+            setterMethod = property.generateSetterMethod();
             setterMethod.synthesized = true;
             this._instanceMethodMap[setter] = setterMethod;
         }
@@ -444,9 +444,7 @@ makePropertyDynamic(name)
         Utils.throwError(NSError.PropertyAlreadySynthesized, "Property " + name + " already synthesized to " + property.ivar);
     }
 
-    property.ivar   = NSDynamicProperty;
-    property.setter = null;
-    property.getter = null;
+    property.ivar = NSDynamicProperty;
 }
 
 
@@ -510,6 +508,20 @@ getAllIvarNamesWithoutProperties()
     names = _.without.apply(names, toRemove);
 
     return names;
+}
+
+
+getAllProperties()
+{
+    return _.values(this._propertyMap);
+}
+
+
+getAllDynamicProperties()
+{
+    return _.filter(this.getAllProperties(), property => {
+        return property.ivar == NSDynamicProperty;
+    });
 }
 
 

@@ -6,79 +6,79 @@
 */
 
 
-interface $ns_$SEL   { }
+interface N$_SEL   { }
 
-interface $ns_$Runtime {
-    _g : $ns_$Globals;
-    noConflict() : $ns_$Runtime;
+interface N$_Runtime {
+    _g : N$_Globals;
+    noConflict() : N$_Runtime;
 
-    getClassList() : Array<$ns_$StaticBase>;
-    getSubclassesOfClass(cls : $ns_$StaticBase) : Array<$ns_$StaticBase>;
-    getSuperclass(cls : $ns_$StaticBase) : $ns_$StaticBase;
+    getClassList() : Array<N$_StaticBase>;
+    getSubclassesOfClass(cls : N$_StaticBase) : Array<N$_StaticBase>;
+    getSuperclass(cls : N$_StaticBase) : N$_StaticBase;
     isObject(object : any) : boolean;
-    sel_getName(aSelector : $ns_$SEL) : string;
-    sel_isEqual(aSelector : $ns_$SEL, bSelector : $ns_$SEL) : boolean;
-    class_getName(cls : $ns_$StaticBase) : string;
-    class_getSuperclass(cls : $ns_$StaticBase) : $ns_$StaticBase;
-    class_isSubclassOf(cls : $ns_$StaticBase, superclass : $ns_$StaticBase) : boolean;
-    class_respondsToSelector(cls : $ns_$StaticBase, selector : $ns_$SEL) : boolean;
-    object_getClass(object : $ns_$Base) : $ns_$StaticBase;
-    msgSend(receiver : any, selector : $ns_$SEL, ...args : any[]) : any;
+    sel_getName(aSelector : N$_SEL) : string;
+    sel_isEqual(aSelector : N$_SEL, bSelector : N$_SEL) : boolean;
+    class_getName(cls : N$_StaticBase) : string;
+    class_getSuperclass(cls : N$_StaticBase) : N$_StaticBase;
+    class_isSubclassOf(cls : N$_StaticBase, superclass : N$_StaticBase) : boolean;
+    class_respondsToSelector(cls : N$_StaticBase, selector : N$_SEL) : boolean;
+    object_getClass(object : N$_Base) : N$_StaticBase;
+    msgSend(receiver : any, selector : N$_SEL, ...args : any[]) : any;
 }
 
-declare class $ns_MethodMap {
+declare class N$_MethodMap {
     [ s : string ] : Function;
 }
 
-declare class $ns_AnyMap {
+declare class N$_AnyMap {
     [ s : string ] : any;
 }
 
-declare class $ns_$Base {
-    static alloc() : $ns_$Base;
-    static superclass() : $ns_$StaticBase;
+declare class N$_Base {
+    static alloc() : N$_Base;
+    static superclass() : N$_StaticBase;
     static className() : string;
-    static class() : $ns_$StaticBase;
-    static respondsToSelector_(aSelector : $ns_$SEL) : boolean;
-    static instancesRespondToSelector_(aSelector : $ns_$SEL) : boolean;
-    static isKindOfClass_(cls : $ns_$StaticBase) : boolean;
-    static isMemberOfClass_(cls : $ns_$StaticBase) : boolean;
-    static isSubclassOfClass_(cls : $ns_$StaticBase) : boolean;
-    static isEqual_(other : $ns_$Base) : boolean;
+    static class() : N$_StaticBase;
+    static respondsToSelector_(aSelector : N$_SEL) : boolean;
+    static instancesRespondToSelector_(aSelector : N$_SEL) : boolean;
+    static isKindOfClass_(cls : N$_StaticBase) : boolean;
+    static isMemberOfClass_(cls : N$_StaticBase) : boolean;
+    static isSubclassOfClass_(cls : N$_StaticBase) : boolean;
+    static isEqual_(other : N$_Base) : boolean;
         
-    init() : $ns_$Base;
+    init() : N$_Base;
     copy() : any;
-    superclass() : $ns_$StaticBase;
-    class() : $ns_$StaticBase;
+    superclass() : N$_StaticBase;
+    class() : N$_StaticBase;
     className() : string;
-    respondsToSelector_(aSelector : $ns_$SEL) : boolean;
-    performSelector_(aSelector : $ns_$SEL) : any;
-    performSelector_withObject_(aSelector : $ns_$SEL, object : any) : any;
-    performSelector_withObject_withObject_(aSelector : $ns_$SEL, o1 : any, o2 : any) : any;
+    respondsToSelector_(aSelector : N$_SEL) : boolean;
+    performSelector_(aSelector : N$_SEL) : any;
+    performSelector_withObject_(aSelector : N$_SEL, object : any) : any;
+    performSelector_withObject_withObject_(aSelector : N$_SEL, o1 : any, o2 : any) : any;
     description() : string;
     toString() : string;
-    isKindOfClass_(cls : $ns_$StaticBase) : boolean;
-    isMemberOfClass_(cls : $ns_$StaticBase) : boolean;
+    isKindOfClass_(cls : N$_StaticBase) : boolean;
+    isMemberOfClass_(cls : N$_StaticBase) : boolean;
     isEqual_(other : any) : boolean;
 }
 
-declare class $ns_$StaticBase extends Function {
-    alloc() : $ns_$Base;
-    class() : $ns_$StaticBase;
-    superclass() : $ns_$StaticBase;
+declare class N$_StaticBase extends Function {
+    alloc() : N$_Base;
+    class() : N$_StaticBase;
+    superclass() : N$_StaticBase;
     className() : string;
-    respondsToSelector_(aSelector : $ns_$SEL) : boolean;
-    instancesRespondToSelector_(aSelector : $ns_$SEL) : boolean;
-    isKindOfClass_(cls : $ns_$StaticBase) : boolean;
-    isMemberOfClass_(cls : $ns_$StaticBase) : boolean;
-    isSubclassOfClass_(cls : $ns_$StaticBase) : boolean;
+    respondsToSelector_(aSelector : N$_SEL) : boolean;
+    instancesRespondToSelector_(aSelector : N$_SEL) : boolean;
+    isKindOfClass_(cls : N$_StaticBase) : boolean;
+    isMemberOfClass_(cls : N$_StaticBase) : boolean;
+    isSubclassOfClass_(cls : N$_StaticBase) : boolean;
     isEqual_(other : any) : boolean;
 }
 
-declare var $ns_ns    : $ns_$Runtime;
-declare var nilscript : $ns_$Runtime;
+declare var N$_nilscript : N$_Runtime;
+declare var nilscript    : N$_Runtime;
 
-declare function $ns_$AtEachGetMember<T>(arg : T[]) : T;
-declare function $ns_$AtEachGetMember(arg : any) : any;
-declare function $ns_$AtEachTest() : boolean;
+declare function N$_atEachGetMember<T>(arg : T[]) : T;
+declare function N$_atEachGetMember(arg : any) : any;
+declare function N$_atEachTest() : boolean;
 

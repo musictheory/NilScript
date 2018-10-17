@@ -7,6 +7,9 @@
 
 "use strict";
 
+const _        = require("lodash");
+const NSMethod = require("./NSMethod");
+
 
 module.exports = class NSProperty {
 
@@ -23,6 +26,20 @@ constructor(location, name, type, writable, copyOnRead, copyOnWrite, getter, set
     this.setter      = setter;
     this.ivar        = ivar;
     this.optional    = optional;
+}
+
+
+generateGetterMethod()
+{
+    let getter = this.getter;
+    return getter ? new NSMethod(_.clone(this.location), getter, "-", this.type, [ ]) : null;
+}
+
+
+generateSetterMethod()
+{
+    let setter = this.setter;
+    return setter ? new NSMethod(_.clone(this.location), setter, "-", "void", [ this.type ]) : null;
 }
 
 

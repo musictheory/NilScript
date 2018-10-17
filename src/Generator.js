@@ -21,11 +21,11 @@ const NSWarning  = require("./Errors").NSWarning;
 
 const Location = require("./model/NSSymbolTyper").Location;
 
-const NSRootVariable            = "$ns_ns";
-const NSClassMethodsVariable    = "$ns_s";
-const NSInstanceMethodsVariable = "$ns_m";
-const NSTemporaryVariablePrefix = "$ns_t_";
-const NSSuperVariable           = "$ns_super";
+const NSRootVariable            = "N$_nilscript";
+const NSClassMethodsVariable    = "N$_s";
+const NSInstanceMethodsVariable = "N$_m";
+const NSTemporaryVariablePrefix = "N$_t_";
+const NSSuperVariable           = "N$_super";
 
 const NSRootWithGlobalPrefix = NSRootVariable + "._g."
 const NSRootWithClassPrefix  = NSRootVariable + "._cls.";
@@ -376,7 +376,7 @@ generate()
                         cast = "<" + symbolTyper.toTypecheckerType(currentClass.name) + ">";
                     }
 
-                    doCommonReplacement(cast + selfOrThis + ".$ns_super()." + methodName + "(", ")");
+                    doCommonReplacement(cast + selfOrThis + ".N$_super()." + methodName + "(", ")");
                 }
                 return;
 
@@ -548,13 +548,13 @@ generate()
                 constructorCallSuper +
                 constructorSetIvars  +
                 "this.constructor = " + classSymbol + ";" +
-                "this.$ns_id = ++" + NSRootVariable + "._id;" +
+                "this.N$_id = ++" + NSRootVariable + "._id;" +
                 "}";
 
             endText = "return " + classSymbol + ";});";
         
         } else if (language === LanguageTypechecker) {
-            startText = "var $ns_unused = (function(" + NSClassMethodsVariable + " : any, " + NSInstanceMethodsVariable + " : any) { ";
+            startText = "var N$_unused = (function(" + NSClassMethodsVariable + " : any, " + NSInstanceMethodsVariable + " : any) { ";
             endText = "});";
         }
 
@@ -631,8 +631,8 @@ generate()
 
         if (language === LanguageTypechecker) {
             let returnType = getCurrentMethodInModel().returnType;
-            returnType = symbolTyper.toTypecheckerType(returnType, Location.ImplementationReturn, currentClass);
-            definition += ": " + returnType;
+            if (returnType == "instancetype") returnType = currentClass.name;
+            definition += ": " + symbolTyper.toTypecheckerType(returnType, Location.ImplementationReturn);
         }
 
         modifier.from(node).to(node.body).replace(definition);
@@ -704,7 +704,7 @@ generate()
             }
 
         } else {
-            Utils.throwError(NSError.DollarNSIsReserved, 'Unknown identifier: "' + name + '"');
+            Utils.throwError(NSError.ParseError, 'Unknown identifier: "' + name + '"');
         }
     }
 
@@ -734,12 +734,8 @@ generate()
         let name   = node.name;
         let isSelf = (name == "self");
 
-        if (name[0] === "$") {
-            if (name.indexOf("$ns") == 0) {
-                if (name[3] == "$" || name[3] == "_") {
-                    Utils.throwError(NSError.ReservedIdentifier, "Identifiers may not start with \"$ns_\" or \"$ns$\"", node);
-                }
-            }
+        if (name[0] === "N" && name[1] === "$") {
+            Utils.throwError(NSError.ReservedIdentifier, "Identifiers may not start with \"N$\"", node);
 
         } else if (name[0] === "@") {
             handleNSPredefinedMacro(node);
@@ -1015,8 +1011,8 @@ generate()
                 object = node.left.name;
             }
 
-            modifier.from(node).to(node.right).replace("for (" + object + " = $ns_$AtEachGetMember(");
-            modifier.from(node.right).to(node.body).replace(") ; $ns_$AtEachTest() ; ) ");
+            modifier.from(node).to(node.right).replace("for (" + object + " = N$_atEachGetMember(");
+            modifier.from(node.right).to(node.body).replace(") ; N$_atEachTest() ; ) ");
 
         } else {
             let i      = makeTemporaryVariable(false);
@@ -1171,7 +1167,7 @@ generate()
                 result += param.name + "? : " + type + ", ";
             }
 
-            result += "...$ns_rest)";
+            result += "...N$_rest)";
 
             if (node.annotation) {
                 result += ": " + symbolTyper.toTypecheckerType(node.annotation.value);

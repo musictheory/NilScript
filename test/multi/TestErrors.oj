@@ -154,23 +154,23 @@ function usesSelf() {
 
 
 // --------------------------------------------------------------------
-// @name $ns Reserved
+// @name N$ Reserved
 
 @class TestReservedWord
 
 - (void) test
 {
-    var $ns_foo = "foo"; //@error NilScriptReservedIdentifierError
+    var N$foo = "foo"; //@error NilScriptReservedIdentifierError
 }
 
 @end
 
 
 // --------------------------------------------------------------------
-// @name $ns Reserved 2
+// @name N$ Reserved 2
 
 function test() {
-    var $ns_foo;   //@error NilScriptReservedIdentifierError
+    var N$foo;   //@error NilScriptReservedIdentifierError
 }
 
 

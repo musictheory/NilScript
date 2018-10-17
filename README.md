@@ -214,7 +214,7 @@ Hence:
 becomes the equivalent of:
 
 ```
-TheClass.prototype.$oj_f_doSomethingWithString_andNumber_ = function(string, number)
+TheClass.prototype.N$_f_doSomethingWithString_andNumber_ = function(string, number)
 {
     return string + "-" + number;    
 }
@@ -236,7 +236,7 @@ The compiler will produce slightly different output depending on:
  - if the message receiver is `self`
  - if the message receiver is `super`
 
-Sometimes the compiler will choose to use `oj.msgSend()` rather than a direct function call.
+Sometimes the compiler will choose to use `nilscript.msgSend()` rather than a direct function call.
 
 ---
 ## <a name="property"></a>Properties and Instance Variables
@@ -343,9 +343,9 @@ However, some are not supported due to differences between JavaScript and Object
 | `copy`, `struct`  | Creates a copy (See below)
 | `readonly`, `readwrite` | Default is readwrite, readonly suppresses the generation of a setter
 
-`copy` uses `oj.makeCopy` in the setter.
+`copy` uses `nilscript.makeCopy` in the setter.
 
-`struct` uses `oj.makeCopy` in both the setter and the getter.  It is intended to assist the porting of C `struct`s, which are pass-by-value rather than pass-by-reference.
+`struct` uses `nilscript.makeCopy` in both the setter and the getter.  It is intended to assist the porting of C `struct`s, which are pass-by-value rather than pass-by-reference.
 
 ```
 @property (copy) Foo foo;
@@ -354,11 +354,11 @@ However, some are not supported due to differences between JavaScript and Object
 
 // Synthesized methods:
 
-- (void) setFoo:(Foo)foo { _foo = oj.makeCopy(foo); }
+- (void) setFoo:(Foo)foo { _foo = nilscript.makeCopy(foo); }
 - (Foo) foo { return _foo; }
 
-- (void) setBar:(Bar)bar { _bar = oj.makeCopy(bar); }
-- (Bar) bar { return oj.makeCopy(_bar); }
+- (void) setBar:(Bar)bar { _bar = nilscript.makeCopy(bar); }
+- (Bar) bar { return nilscript.makeCopy(_bar); }
 
 - (void) setBaz:(Bar)bar { _baz = baz; }
 - (Baz) baz { return _baz; }
@@ -382,7 +382,7 @@ Unlike other parts of the NilScript runtime, properties and instance variables a
 
 The compiler currently uses a JavaScript property on the instance with the follow name:
 
-    $oj_i_{{CLASS NAME}}_{{IVAR NAME}}
+    N$_i_{{CLASS NAME}}_{{IVAR NAME}}
 
 
 Hence, the following NilScript code:
@@ -403,12 +403,12 @@ Hence, the following NilScript code:
 would compile into:
 
 ```
-oj.makeClass(…, function(…) {
+nilscript.makeClass(…, function(…) {
     
 … // Compiler generates -setCounter: and -counter here
 
 ….incrementCounter = function() {
-    this.$oj_i_TheClass__counter++;
+    this.N$_i_TheClass__counter++;
 }
 
 });
@@ -530,7 +530,7 @@ NilScript handles the binding for you.  No additional code is needed to access i
 In order to support  [consistent property names](https://developers.google.com/closure/compiler/docs/api-tutorial3#propnames), 
 selectors are not encoded as strings (as in Objective-C and Objective-J).  Instead, they use an object literal syntax:
 
-    @selector(foo:bar:baz:) -> { $oj_f_foo_bar_baz_: 1 }
+    @selector(foo:bar:baz:) -> { N$_f_foo_bar_baz_: 1 }
 
 Thus, a call such as:
     
@@ -538,7 +538,7 @@ Thus, a call such as:
     
 May (depending on optimizations) be turned into:
 
-    oj.msg_send(object, { $oj_f_foo_bar_baz_: 1 }, 7, 8, 9)
+    nilscript.msg_send(object, { N$_f_foo_bar_baz_: 1 }, 7, 8, 9)
 
 
 ---
@@ -610,12 +610,12 @@ To mimic C APIs such as CoreGraphics, NilScript has the ability to declare globa
 Which transforms into the equivalent of:
 
 ```
-$oj_oj._g.CGRectMake = function(x, y, width, height) {
+nilscript._g.CGRectMake = function(x, y, width, height) {
     return { origin: { x, y }, size: { width, height } };
 }
     
-$oj_oj._g.CGRectZero = $oj_oj._g.CGRectMake(0, 0, 0, 0);
-$oj_oj._g.CGRectNull = $oj_oj._g.CGRectMake(Infinity, Infinity, 0, 0);
+nilscript._g.CGRectZero = nilscript._g.CGRectMake(0, 0, 0, 0);
+nilscript._g.CGRectNull = nilscript._g.CGRectMake(Infinity, Infinity, 0, 0);
 ```
 
 Unlike inlined enums and consts, globals are assigned at runtime.  Hence, in the above code example, care must be given that `CGRectMake()` isn't used for initializing `CGRectZero` until after the `@global function CGRectMake` line.  This limitation should not affect globals used from within NilScript methods (as the global will already be declared by that time).
@@ -652,7 +652,7 @@ Protocol conformance is enforced by the [typechecker](#typechecker).
 ## <a name="runtime"></a>Runtime
 
 **nilscript.noConflict()**  
-Restores the `oj` global variable to its previous value.
+Restores the `nilscript` global variable to its previous value.
 
 
 **nilscript.getClassList()**  
@@ -822,11 +822,11 @@ NilScript tries to convert TypeScript error messages back into NilScript syntax.
 ---
 ## <a name="restrictions"></a>Restrictions
 
-All identifiers that start with `$ns_` or `$ns$` are classified as Reserved Words.
+All identifiers that start with `N$` (including `N$` itself) are classified as Reserved Words and may not be used.
 
-Inside an NilScript method declaration, `self` is added to the list of Reserved Words.  Hence, it may not be used as a variable name.
+Inside an NilScript method declaration, `self` is added to the list of Reserved Words and may not be used as a variable name.
 
-The NilScript compiler uses the global variable `$ns_ns` to access the runtime.  You should not use `$ns_ns` directly or modify it in your source code.  In a web browser environment, runtime.js also defines the global variable `ns` for the runtime.  You may use `nilscript.noConflict()` to restore the previous value of `nilscript`.  If you are using a linter or obfuscator, add both `$ns_ns` and `nilscript` as global variable names.
+The NilScript compiler uses the global variable `N$_nilscript` to access the runtime. In a web browser environment, runtime.js also defines the global variable `nilscript` for the runtime.  You may use `nilscript.noConflict()` to restore the previous value of `nilscript`.  If you are using a linter or obfuscator, add both `N$_nilscript` and `nilscript` as global variable names.
 
 In order to support compiler optimizations, the following method names are reserved and may not be overridden/implemented in subclasses:
 
@@ -995,7 +995,7 @@ Note: `options.state` and `result.state` are private objects and the format/cont
 
 --
 
-NilScript 2.x also adds the `symbolicate` function as API.  This converts an internal NilScript identifier such as `$oj_f_stringWithString_` to a human-readable string (`"stringWithString:"`).  See [Squeezing and Symbolication](#squeeze) below.
+NilScript 2.x also adds the `symbolicate` function as API.  This converts an internal NilScript identifier such as `N$_f_stringWithString_` to a human-readable string (`"stringWithString:"`).  See [Squeezing and Symbolication](#squeeze) below.
 
 ---
 ## <a name="compiler-projects"></a>Compiling Projects
@@ -1063,18 +1063,19 @@ We've found it best to run a separate typecheck pass in parallel with the `core.
 ---
 ## <a name="squeeze"></a>Squeezing and Symbolication
 
-As mentioned in previous sections, NilScript uses internal identifier names for classes, methods, and ivars.  These identifiers are always prefixed with `$oj_…`:
+As mentioned in previous sections, NilScript uses internal identifier names for classes, methods, and ivars.  These identifiers are always prefixed with `N$_…`:
 
 Type                     | Humand-readable name  | Internal Identifier
 ------------------------ | -------- | ---
-Class                    | `TheClass` | `$oj_c_TheClass`
-Protocol                 | `TheProtocol` | `$oj_p_TheProtocol`
-Instance variable        | `_theIvar` | `$oj_i_TheClass__theIvar`
-Method                   | `-doSomethingWithFoo:bar:baz:` | `$oj_f_doSomethingWithFoo_bar_baz_`
+Class                    | `TheClass` | `N$_c_TheClass`
+Protocol                 | `TheProtocol` | `N$_p_TheProtocol`
+Instance variable        | `_theIvar` | `N$_i_TheClass__theIvar`
+Method                   | `-doSomethingWithFoo:bar:baz:` | `N$_f_doSomethingWithFoo_bar_baz_`
 
 Since these identifiers can be quite long (and aid in competitor's reverse-engineering efforts), NilScript features a code minifier/compressor/obfuscator called the squeezer. 
 
-When the `--squeeze` option is passed to the compiler, each `$oj_…` identifier is replaced with a shortened "squeezed" version (prefixed with `$oj$…`).  For example, all occurrences of `$oj_c_Foo` might be replaced with `$oj$a`, all occurrences of `$oj_f_initWithFoo_` with `$oj$b`, etc.  `@global`s are also replaced in this manner.
+When the `--squeeze` option is passed to the compiler, each `N$_…` identifier is replaced with a shortened "squeezed" version. These identifiers match the regular expression
+`N\$[A-Za-z0-9]+` (`N$` followed by one or more alphanumeric characters).  For example, all occurrences of `N$_c_Foo` might be replaced with `N$a`, all occurrences of `N$_f_initWithFoo_` with `N$b`, etc.  `@global`s are also replaced in this manner.
 
 This is a safe transformation as long as all files are squeezed together (or state is persisted via `--output-state` and `--input-state`).
 
@@ -1082,11 +1083,11 @@ The `--squeeze` compiler option adds a `squeeze` property to the compiler result
 
 ```javascript
 {
-    "$oj$a": "$oj_c_TheClass",
-    "$oj$b": "$oj_f_initWithFoo_"
-    "$oj$c": "$oj_i_TheClass__firstIvar",
-    "$oj$d": "$oj_i_TheClass__secondIvar",
-    "$oj$e": "$oj_f_doSomethingWithFoo_bar_baz_",
+    "N$a": "N$_c_TheClass",
+    "N$b": "N$_f_initWithFoo_"
+    "N$c": "N$_i_TheClass__firstIvar",
+    "N$d": "N$_i_TheClass__secondIvar",
+    "N$e": "N$_f_doSomethingWithFoo_bar_baz_",
     …
 }
 ```
@@ -1095,20 +1096,20 @@ The `--squeeze` compiler option adds a `squeeze` property to the compiler result
 
 Symbolication is the process of transforming an internal identifier (either squeezed or unsqueezed) into a human-readable name.  This is frequently used for stack traces in crash reports.
 
-NilScript 2.x adds `symbolicate(str, squeezeMap)` as API.  This function replaces all `$oj_…` identifiers in a string with the human-readable name.  If the optional `squeezeMap` parameter is
-provided, squeezed `$oj$…` identifiers are also transformed:
+NilScript 2.x adds `symbolicate(str, squeezeMap)` as API.  This function replaces all `N$`-prefixed identifiers in a string with the human-readable name.  If the optional `squeezeMap` parameter is
+provided, squeezed identifiers are also transformed:
 
 ```javascript
 let nsc = require("nilscript");
 
-let a = nsc.symbolicate("$oj_c_Foo, $oj_c_Bar");                 // "Foo, Bar"
-let a = nsc.symbolicate("$oj_p_TheProtocol");                    // "TheProtocol"
-let b = nsc.symbolicate("Exception in $oj_f_stringWithString_"); // "Exception in stringWithString:"
-let c = nsc.symbolicate("$oj_i__anIvar");                        // "_anIvar"
+let a = nsc.symbolicate("N$_c_Foo, N$_c_Bar");                 // "Foo, Bar"
+let a = nsc.symbolicate("N$_p_TheProtocol");                    // "TheProtocol"
+let b = nsc.symbolicate("Exception in N$_f_stringWithString_"); // "Exception in stringWithString:"
+let c = nsc.symbolicate("N$_i__anIvar");                        // "_anIvar"
 
 // Normally, the 'squeeze' property on the compiler result object would be used for squeezeMap
-let squeezeMap = { "$oj$a": "$oj_f_stringWithString_" };
-let e = nsc.symbolicate("Exception in $oj$a", squeezeMap); // "Exception in stringWithString:"
+let squeezeMap = { "N$a": "N$_f_stringWithString_" };
+let e = nsc.symbolicate("Exception in N$a", squeezeMap); // "Exception in stringWithString:"
 ```
 
 ---
