@@ -325,18 +325,11 @@ To access any instance variable, simply use its name.  No `this.` or `self.` pre
 
 ### <a name="property-attributes"></a>Property Attributes
 
-All valid Objective-C attributes may be used on a declared property:
+NilScript supports property attributes similar to Objective-C:
 
-    @property (nontomic,copy,getter=myStringGetter) String myString;
-
-However, some are not supported due to differences between JavaScript and Objective-C.
+    @property (nontomic, copy, getter=myStringGetter) String myString;
 
 | Attribute          | Description                                                      
-|--------------------|------------------------------------------------------------------
-| `nonatomic`, `atomic` | Not supported since JavaScript is single-threaded
-| `unsafe_unretained`, `weak`, `strong`, `retain` | Not supported since Javascript objects are garbage collected
-| `nonnull`, `nullable`, `null_resettable`, `null_unspecified` | Currently not supported
-| `class` | Currently not supported
 |--------------------|------------------------------------------------------------------
 | `getter=` | Changes the name of the getter/accessor
 | `setter=` | Changes the name of the setter/mutator
@@ -364,6 +357,15 @@ However, some are not supported due to differences between JavaScript and Object
 - (Baz) baz { return _baz; }
 ```
 
+Due to differences between JavaScript and Objective-C, the following attributes are not supported:
+
+| Attribute          | Description                                                      
+|--------------------|------------------------------------------------------------------
+| `nonatomic`, `atomic` | Not supported since JavaScript is single-threaded
+| `unsafe_unretained`, `weak`, `strong`, `retain` | Not supported since Javascript objects are garbage collected
+| `nonnull`, `nullable`, `null_resettable`, `null_unspecified` | Currently not supported
+| `class` | Currently not supported
+
 
 ### <a name="property-init"></a>Initialization
 
@@ -380,7 +382,7 @@ This allows Number instance variables to be used in math operations  without the
 
 Unlike other parts of the NilScript runtime, properties and instance variables aren't intended to be accessed from non-NilScript JavaScript (they should be private to the subclass which defines them).  However, they may need to be accessed in the debugger.
 
-The compiler currently uses a JavaScript property on the instance with the follow name:
+The compiler uses a JavaScript property on the instance object with the follow name:
 
     N$_i_{{IVAR NAME}}
 
@@ -414,9 +416,11 @@ nilscript.makeClass(…, function(…) {
 });
 ```
 
-To make debugging easier, the `--simple-ivars` compiler flag may be used. This uses a JavaScript property with the same name as the ivar.
+### <a name="simple-ivars"></a>Simple Ivars
 
-Hence, the above example would compile into:
+To make debugging easier, the `--simple-ivars` compiler flag may be used. This uses the exact ivar name as the JavaScript property.
+
+Hence, the previous example would compile into:
 
 ```
 nilscript.makeClass(…, function(…) {
@@ -556,7 +560,7 @@ Thus, a call such as:
     
 May (depending on optimizations) be turned into:
 
-    nilscript.msg_send(object, { N$_f_foo_bar_baz_: 1 }, 7, 8, 9)
+    nilscript.msgSend(object, { N$_f_foo_bar_baz_: 1 }, 7, 8, 9)
 
 
 ---
@@ -901,6 +905,7 @@ prepend                   | String   | Content to prepend, not compiled or typec
 append                    | String   | Content to append, not compiled or typechecked
 state                     | Private  | Input compiler state, corresponds to contents of `--input-state`
 output-language           | String   | If 'none', disable source code output
+simple-ivars              | Boolean  | If true, uses [simple naming for ivars](#simple-ivars)
 include-map               | Boolean  | If true, include `map` key in results object
 include-state             | Boolean  | If true, include `state` key in results object
 source-map-file           | String   | Output source map file name

@@ -119,6 +119,7 @@ generate()
     let optionWarnGlobalNoType        = options["warn-global-no-type"];
     let optionWarnThisInMethods       = options["warn-this-in-methods"];
     let optionWarnSelfInNonMethod     = options["warn-self-in-non-methods"];
+    let optionWarnInheritedIvars      = options["warn-inherited-ivars"];
     let optionWarnUnknownIvars        = options["warn-unknown-ivars"];
     let optionWarnUnknownSelectors    = options["warn-unknown-selectors"];
     let optionWarnUnusedIvars         = options["warn-unused-ivars"];
@@ -137,6 +138,7 @@ generate()
     let assignedIvarMap = null;
 
     let usesSimpleIvars = optionSimpleIvars && !optionSqueeze && (language !== LanguageTypechecker);
+
 
     let warnings = [ ];
 
@@ -289,7 +291,7 @@ generate()
         if (!isIdentifierTransformable(node)) return;
 
         if (currentMethodNode && currentClass) {
-            if (currentClass && currentClass.isIvar(name)) {
+            if (currentClass && currentClass.isIvarName(name, true)) {
                 Utils.throwError(NSError.RestrictedUsage, "Cannot use instance variable \"" + name + "\" here.", node);
             }
         }
@@ -416,7 +418,7 @@ generate()
                 doCommonReplacement(selfOrThis + "." + methodName + "(", ")");
                 return;
 
-            } else if (currentClass.isIvar(receiver.name)) {
+            } else if (currentClass.isIvarName(receiver.name, true)) {
                 let ivar = generateThisIvar(receiver.name, usesSelf);
 
                 if (language === LanguageTypechecker) {
@@ -759,7 +761,11 @@ generate()
             return;
 
         } else if (currentMethodNode && currentClass) {
-            if (currentClass.isIvar(name) || name == "self") {
+            if (currentClass.isIvarName(name, true) || name == "self") {
+                if (optionWarnInheritedIvars && name != "self" && !currentClass.isIvarName(name, false)) {
+                    warnings.push(Utils.makeError(NSWarning.InheritedInstanceVariable, "Use of inherited instance variable " + node.name, node));
+                }
+
                 let usesSelf = currentMethodNode && (methodUsesSelfVar || (language === LanguageTypechecker));
 
                 if (isSelf) {
@@ -1035,7 +1041,7 @@ generate()
 
             // The left side is just an identifier
             } else if (node.left.type == Syntax.Identifier) {
-                if (currentClass && currentClass.isIvar(node.left.name)) {
+                if (currentClass && currentClass.isIvarName(node.left.name, true)) {
                     Utils.throwError(NSError.RestrictedUsage, "Cannot use ivar \"" + node.left.name + "\" on left-hand side of @each", node);
                 }
 
@@ -1043,7 +1049,7 @@ generate()
             }
 
             // The right side is a simple identifier
-            if (node.right.type == Syntax.Identifier && currentClass && !currentClass.isIvar(node.right.name)) {
+            if (node.right.type == Syntax.Identifier && currentClass && !currentClass.isIvarName(node.right.name, true)) {
                 array = node.right.name;
 
             // The right side is an expression, we need an additional variable

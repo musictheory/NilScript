@@ -45,6 +45,7 @@ let opt = getopt.create([
     [ "",  "warn-this-in-methods",      "warn about usage of 'this' in NilScript methods" ],
     [ "",  "warn-self-in-non-methods",  "warn about usage of 'self' in non-methods" ],
 
+    [ "",  "warn-inherited-ivars",      "warn about usage of inherited ivars"      ],
     [ "",  "warn-unknown-ivars",        "warn about unknown ivars"                 ],
     [ "",  "warn-unknown-selectors",    "warn about usage of unknown selectors"    ],
     [ "",  "warn-unknown-superclasses", "warn about usage of unknown superclasses" ],

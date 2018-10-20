@@ -471,6 +471,24 @@ function test() {
 
 
 // --------------------------------------------------------------------
+// @name Warn Inherited Ivars
+// @opts { "warn-inherited-ivars": true  }
+
+@class Foo {
+    Number _n;
+}
+
+@end
+
+@class Bar : Foo
+
+- (void) foo {
+    _n = 1; //@warning NilScriptInheritedInstanceVariableWarning
+}
+
+@end
+
+// --------------------------------------------------------------------
 // @name Warn Unused Ivars
 // @opts { "warn-unused-ivars": true  }
 

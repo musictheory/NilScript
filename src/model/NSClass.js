@@ -47,6 +47,9 @@ constructor(location, name, superclassName, protocolNames)
     // All selectors the class responds to (inherited + synthesized). *not archived*
     this._knownSelectors = null;
 
+    this._myIvarNames    = null;  // Only my ivar names
+    this._knownIvarNames = null;  // My ivars + inherited ivar names
+
     this._ivarMap           = { };
     this._propertyMap       = { };
     this._observerMap       = { };
@@ -113,17 +116,16 @@ _doAutomaticSynthesis(model)
         return;
     }
 
-    let myIvarNames = this.getAllIvarNames();
-    let usedIvarNameMap = { };
+    let inheritedIvarNames = { };
 
      _.each(this._getClassHierarchy(model), cls => {
-        _.each(cls.getAllIvarNames(), name => {
-            usedIvarNameMap[name] = true;
+        _.each(cls.getAllIvars(), ivar => {
+            inheritedIvarNames[ivar.name] = true;
         });
     });
 
     _.each(this._ivarMap, (ivar, name) => {
-        if (usedIvarNameMap[name]) {
+        if (inheritedIvarNames[name]) {
             throw Utils.makeError(NSError.DuplicateInstanceVariable, "Instance variable '" + name + "' declared in superclass", ivar.location);
         }
     });
@@ -148,13 +150,13 @@ _doAutomaticSynthesis(model)
             ivarName = "_" + name;
             property.ivar = ivarName;
 
-            if (usedIvarNameMap[ivarName]) {
+            if (inheritedIvarNames[ivarName]) {
                 let message = `Auto property synthesis for '${name}' will use an inherited instance variable. use @dynamic to acknowledge intention.`;
                 this.prepareWarnings.push(Utils.makeError(NSWarning.NeedsExplicitDynamic, message, property.location));
             }
 
         } else {
-            if (usedIvarNameMap[ivarName]) {
+            if (inheritedIvarNames[ivarName]) {
                 let message = `Property '${name}' will use an inherited instance variable due to @synthesize.`;
                 this.prepareWarnings.push(Utils.makeError(NSWarning.PropertyUsingInherited, message, property.location));
             }            
@@ -285,15 +287,8 @@ prepare(model)
     let superclass = this.superclassName ? model.classes[this.superclassName] : null;
     this.superclass = superclass;
 
-    this._knownSelectors = { };
-
-    _.each(_.keys(this._instanceMethodMap), selectorName => {
-        this._knownSelectors[selectorName] = 1;
-    });
-
     if (superclass) {
         superclass.prepare(model);
-        this._knownSelectors = _.merge(this._knownSelectors, superclass._knownSelectors || { });
     }
 
     this.prepareWarnings = [ ];
@@ -301,51 +296,36 @@ prepare(model)
     this._checkClassHierarchy(model);
     this._doAutomaticSynthesis(model);
 
+    this._myIvarNames    = { };
+    this._knownSelectors = { };
+    this._knownIvarNames = { };
+
+    _.each(_.keys(this._instanceMethodMap), selectorName => {
+        this._knownSelectors[selectorName] = 1;
+    });
+
+    _.each(this._ivarMap, ivar => {
+        let name = ivar.name;
+        this._myIvarNames[name] = this._knownIvarNames[name] = 1;
+    })
+
+    if (superclass) {
+        this._knownSelectors = _.merge(this._knownSelectors, superclass._knownSelectors || { });
+        this._knownIvarNames = _.merge(this._knownIvarNames, superclass._knownIvarNames || { });
+    }
+
     this._checkObservers();
 }
 
 
-isIvar(ivarName)
+// Returns 
+isIdentifierAnIvar(id)
 {
+
+
     return !!this._ivarMap[ivarName];
 }
 
-
-getIvarNameForPropertyName(propertyName)
-{
-    let property = this._propertyMap[propertyName];
-    if (!propertyName) return null;
-
-    if (property.ivar == NSDynamicProperty) {
-        return null;
-    }
-
-    return property.ivar;
-}
-
-
-shouldSynthesizeIvarForPropertyName(propertyName)
-{
-    let property = this._propertyMap[propertyName];
-    if (!property) return false;
-
-    if (property.ivar == NSDynamicProperty) return false;
-
-    let hasGetter = property.getter ? this.hasInstanceMethod(property.getter) : false;
-    let hasSetter = property.setter ? this.hasInstanceMethod(property.setter) : false;
-
-    // If property is readwrite and both a getter and setter are manually defined
-    if (property.writable && hasGetter && hasSetter) {
-        return false;
-    }
-
-    // If property is readonly and a getter is manually defined
-    if (!property.writable && hasGetter) {
-        return false;
-    }
-
-    return true;
-}
 
 
 shouldGenerateGetterImplementationForPropertyName(propertyName)
@@ -476,9 +456,12 @@ addMethod(method)
 }
 
 
-respondsToSelector(selectorName)
+
+// Returns true if the identifier belongs to an ivar name or inherited ivar name
+isIvarName(ivarName, allowInherited)
 {
-    return !!_knownSelectors[selectorName];
+    let names = allowInherited ? this._knownIvarNames : this._myIvarNames;
+    return !!names[ivarName];
 }
 
 
@@ -488,22 +471,23 @@ getAllIvars()
 }
 
 
-getAllIvarNames()
-{
-    return _.map(this.getAllIvars(), ivar => ivar.name);
-}
-
-
 getAllIvarNamesWithoutProperties()
 {
-    let names = this.getAllIvarNames();
+    let result = [ ];
 
-    let toRemove = _.map(_.values(this._propertyMap), property => property.ivar);
+    let propertyIvarNames = { };
+    _.each(this._propertyMap, property => {
+        propertyIvarNames[property.ivar] = true;
+    });
 
-    toRemove.unshift(names);
-    names = _.without.apply(names, toRemove);
+    _.each(this._ivarMap, ivar => {
+        let name = ivar.name;
+        if (!propertyIvarNames[name]) {
+            result.push(name);
+        }
+    });
 
-    return names;
+    return result;
 }
 
 

@@ -52,6 +52,7 @@ const NSWarning = {
     Typechecker:                  "NilScriptTypecheckerWarning",
     UnassignedInstanceVariable:   "NilScriptUnassignedInstanceVariableWarning",
     UndeclaredInstanceVariable:   "NilScriptUndeclaredInstanceVariableWarning",
+    InheritedInstanceVariable:    "NilScriptInheritedInstanceVariableWarning",
     UnknownSelector:              "NilScriptUnknownSelectorWarning",
     UnusedInstanceVariable:       "NilScriptUnusedInstanceVariableWarning",
     UseOfDebugger:                "NilScriptUseOfDebuggerWarning",

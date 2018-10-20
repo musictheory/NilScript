@@ -13,6 +13,7 @@ runtime APIs and generated code use "ns"/"NS"/"nilscript" rather than "oj"/"OJ".
 Major Language Changes:
  - '@implementation' is now '@class' (#140)
  - Property and ivar syntax now uses TypeScript-style type annotations rather than C-style.
+ - Reworked ivars (ADD DETAILS)
  - Removed `@squeeze` directive (#137)
  - Removed `@forward` directive (#138)
  - Removed C++ style syntax for '@cast' (#147)

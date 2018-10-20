@@ -97,5 +97,54 @@ var assert = require("assert");
 
 @end
 
+
+@class IvarAndPropertiesSubClass : IvarAndPropertiesClass
+
+- (BOOL) runTests2
+{
+    // _ivar1_shouldBeNull is at the superclass's level and should be accessible
+    assert.strictEqual(_ivar1_shouldBeNull, nil);
+
+    return YES;
+}
+
+@end
+
+
+@class IvarAndPropertiesClass (IvarAndPropertiesCategory)
+
+- (BOOL) runTests3
+{
+    // _ivar1_shouldBeNull is at this level and should be accessible in a category
+    assert.strictEqual(_ivar1_shouldBeNull, nil);
+
+    return YES;
+}
+
+@end
+
+
+
+@class IvarAndPropertiesSubClass (IvarAndPropertiesCategory)
+
+- (BOOL) runTests4
+{
+    // _ivar1_shouldBeNull is at the superclass's level and should be accessible in a category
+    assert.strictEqual(_ivar1_shouldBeNull, nil);
+
+    return YES;
+}
+
+@end
+
+
 var instance = [[IvarAndPropertiesClass alloc] init];
 [instance runTests];
+
+
+var instance2 = [[IvarAndPropertiesSubClass alloc] init];
+[instance2 runTests2];
+
+[instance runTests3];
+[instance2 runTests4];
+

@@ -73,6 +73,7 @@ const sPublicOptions = [
     "warn-unknown-ivars",        // Boolean, warn about unknown ivars
     "warn-unknown-selectors",    // Boolean, warn about usage of unknown selectors
     "warn-unused-ivars",         // Boolean, warn about unused ivars
+    "warn-inherited-ivars",      // Boolean, warn about usage of inherited ivars
 
     // Private / Development
     "dev-dump-tmp",              // Boolean, dump debug info to /tmp
