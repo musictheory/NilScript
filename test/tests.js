@@ -199,9 +199,9 @@ function gatherTestCases(dir)
 {
     let nameLinesArray = [ ];
 
-    // Suck up all *.oj files, split on long hyphen lines, save as nameLinesArray
+    // Suck up all *.ns files, split on long hyphen lines, save as nameLinesArray
     _.each(walkSync(dir), file => {
-        if (!file.match(/\.oj$/)) return;
+        if (!file.match(/\.ns$/)) return;
 
         let count     = 0;
         let dir       = file.split(path.sep).slice(-2).shift();

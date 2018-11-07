@@ -169,14 +169,11 @@ build()
         currentProtocol.addMethod(method);
     }
 
-    function handleInstanceVariableDeclaration(node)
+    function handleInstanceVariableDeclarations(node)
     {
-        let type = node.parameterType ? node.parameterType.value : null;
-
-        for (let i = 0, length = node.ivars.length; i < length; i++) {
-            let name = node.ivars[i].name;
-            currentClass.addIvar(new Model.NSIvar(makeLocation(node), name, type));
-        }
+        _.each(node.declarations, declaration => {
+            currentClass.addIvar(new Model.NSIvar(makeLocation(declaration), declaration.name, declaration.annotation.value));
+        });
     }
 
     function handleNSPropertyDirective(node)
@@ -486,8 +483,8 @@ build()
             } else if (type === Syntax.NSProtocolDefinition) {
                 handleNSProtocolDefinition(node);
 
-            } else if (type === Syntax.NSInstanceVariableDeclaration) {
-                handleInstanceVariableDeclaration(node);
+            } else if (type === Syntax.NSInstanceVariableDeclarations) {
+                handleInstanceVariableDeclarations(node);
 
             } else if (type === Syntax.NSPropertyDirective) {
                 handleNSPropertyDirective(node);

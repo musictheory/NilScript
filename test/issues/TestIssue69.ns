@@ -1,7 +1,7 @@
 @const Hundred = "100";
 
 @class Issue69Class {
-    String _foo;
+    _foo: String;
 }
 
 

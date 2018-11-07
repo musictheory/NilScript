@@ -4,19 +4,19 @@
 @class Issue34Class {
 }
 
-@property (readonly) String getter;
+@property (readonly) getter: String;
 @synthesize getter = mGetter;
 
-@property String setter;
+@property setter: String;
 @synthesize setter = mSetter;
 
-@property String both;
+@property both: String;
 @synthesize both = mBoth;
 
-@property String foo;
+@property foo: String;
 @synthesize foo = mFoo;
 
-@property String oldStyle;
+@property oldStyle: String;
 @synthesize oldStyle;
 
 - (String) getter { return mGetter; }

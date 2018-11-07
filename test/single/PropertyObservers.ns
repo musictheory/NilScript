@@ -3,12 +3,12 @@
 var assert = require("assert");
 
 @class PropertyObserversClass {
-    Array<String> _log;
+    _log: Array<String>;
 }
 
 
-@property Number propertyNoArgs;
-@property Number propertyArgs;
+@property propertyNoArgs: Number;
+@property propertyArgs: Number;
 
 @observe (after=_observeNoArgsChange) propertyNoArgs;
 @observe (before=_observeArgsBeforeChange:,after=_observeArgsAfterChange:)  propertyArgs;

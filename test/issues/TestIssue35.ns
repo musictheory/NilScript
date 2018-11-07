@@ -4,12 +4,12 @@
 @class Issue35Class {
 }
 
-@property Number foo1;
+@property foo1: Number;
 
-@property Number foo2;
+@property foo2: Number;
 @dynamic foo2;
 
-@property Number foo3
+@property foo3: Number
 
 - (Number) check
 {

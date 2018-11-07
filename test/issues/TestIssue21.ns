@@ -7,10 +7,10 @@ var assert = require("assert");
 }
 
 @class Issue21Class {
-    Issue21Enum _a;
+    _a: Issue21Enum;
 }
 
-@property Issue21Enum b;
+@property b: Issue21Enum;
 
 - (void) check
 {

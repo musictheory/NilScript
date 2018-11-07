@@ -4,10 +4,10 @@ var assert = require("assert");
 
 }
 
-@property Number myDynamicNumber;
+@property myDynamicNumber: Number;
 @dynamic myDynamicNumber;
 
-@property String myDynamicString;
+@property myDynamicString: String;
 @dynamic myDynamicString;
 
 - (Number) myDynamicNumber {

@@ -1,5 +1,5 @@
 @class TestIssue153Animal
-@property String name;
+@property name: String;
 - (void) makeSound { console.log("???"); }
 @end
 
@@ -10,9 +10,9 @@
 
 
 @class TestIssue153A {
-    String _theIvar;
+    _theIvar: String;
 }
-@property TestIssue153Animal animal;
+@property animal: TestIssue153Animal;
 @end
 
 
@@ -20,7 +20,7 @@
 
 }
 
-@property TestIssue153Cat animal;
+@property animal: TestIssue153Cat;
 
 @dynamic animal;
 

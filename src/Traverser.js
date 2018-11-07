@@ -24,7 +24,6 @@ const NSVisitorKeys = {
     [ Syntax.NSSelector                     ]: [ ],
     [ Syntax.NSParameterType                ]: [ ],
     [ Syntax.NSInstanceVariableDeclarations ]: [ "declarations" ],
-    [ Syntax.NSInstanceVariableDeclaration  ]: [ "parameterType", "ivars" ],
     [ Syntax.NSPropertyDirective            ]: [ "attributes", "id" ],
     [ Syntax.NSPropertyAttribute            ]: [ ],
     [ Syntax.NSObserveDirective             ]: [ "attributes", "ids" ],

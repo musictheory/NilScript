@@ -30,8 +30,8 @@ const TypecheckerSymbols = {
     Combined:       "N$_Combined",
     StaticCombined: "N$_StaticCombined",
 
-    Base:           "N$_Base",
-    StaticBase:     "N$_StaticBase",
+    Base:           "N$_BaseClass",
+    StaticBase:     "N$_StaticBaseClass",
 
     IdIntersection: "N$_IdIntersection",
     IdUnion:        "N$_IdUnion",
@@ -176,20 +176,37 @@ _setupTypecheckerMaps()
     let toMap     = { };
     let fromMap   = { };
     let classes   = _.values(this._model.classes);
+    let protocols = _.values(this._model.protocols);
     let enums     = _.values(this._model.enums);
 
+    function addClassOrProtocol(name, instanceSymbol, staticSymbol) {
+        toMap[name]             = instanceSymbol;
+        toMap[instanceSymbol]   = instanceSymbol;
+        toMap[staticSymbol]     = staticSymbol;
+
+        fromMap[name]           = name;
+        fromMap[instanceSymbol] = name;
+        fromMap[staticSymbol]   = name;
+    }
+
     for (let i = 0, length = classes.length; i < length; i++) {
-        let className      = classes[i].name;
-        let instanceSymbol = this.getSymbolForClassName(className, false);
-        let staticSymbol   = this.getSymbolForClassName(className, true);
+        let name = classes[i].name;
 
-        toMap[className]      = instanceSymbol;
-        toMap[instanceSymbol] = instanceSymbol;
-        toMap[staticSymbol]   = staticSymbol;
+        addClassOrProtocol(
+            name, 
+            this.getSymbolForClassName(name, false),
+            this.getSymbolForClassName(name, true)
+        );
+    }
 
-        fromMap[className]      = className;
-        fromMap[instanceSymbol] = className;
-        fromMap[staticSymbol]   = className;
+    for (let i = 0, length = protocols.length; i < length; i++) {
+        let name = protocols[i].name;
+
+        addClassOrProtocol(
+            name, 
+            this.getSymbolForProtocolName(name, false),
+            this.getSymbolForProtocolName(name, true)
+        );
     }
 
     for (let i = 0, length = enums.length; i < length; i++) {
@@ -269,15 +286,6 @@ toTypecheckerType(rawInType, location)
 
             } else if (part == "Object" && (rest.length > 0)) {
                 result = "{[i:string ]:" + _handleParts(rest) + "}";
-
-            } else if (part == "id" && (rest.length > 0)) {
-                let protocolSymbols = [ TypecheckerSymbols.Base ];
-
-                _.each(rest[0].split(","), function(protocol) {
-                    protocolSymbols.push(self.getSymbolForProtocolName(protocol));
-                });
-
-                result = "(" + protocolSymbols.join("&") + ")";
 
             } else {
                 Utils.throwError(NSError.ParseError, "Cannot parse type '" + rawInType + "'");

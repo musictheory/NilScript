@@ -1,7 +1,7 @@
 var assert = require("assert");
 
 @class Issue1Class {
-    Number _index;
+    _index: Number;
 }
 
 - (BOOL) runTests

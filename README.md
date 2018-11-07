@@ -656,7 +656,7 @@ Like Objective-C, NilScript includes support for protocols.  Both `@required` an
 @end
 
 @class Controller
-@property id<ControllerDelegate> delegate
+@property ControllerDelegate delegate
 …
 @end
 
@@ -766,7 +766,7 @@ NilScript uses an Objective-C inspired syntax for types, which is automatically 
 | `TheType`          | The JavaScript type (as defined by the `lib.d.ts` TypeScript file) or an instance of an NilScript class
 | `Array<TheType>`   | A typed array, corresponds to the `TheType[]` TypeScript type.
 | `Object<TheType>`  | A JavaScript object used as a string-to-TheType map. corresponds to the `{ [i:string]: TheType }` TypeScript type
-| `id<ProtocolName>` | An object which conforms to the specified protocol name(s)
+| `ProtocolName`     | An object which conforms to the specified protocol name(s)
 | `id`               | A special aggregate type containing all known instance methods definitions.
 | `Class`            | A special aggregate type containing all known class methods definitions.
 | `SEL`              | A special type that represents a selector

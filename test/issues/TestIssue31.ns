@@ -2,15 +2,15 @@ var assert = require("assert");
 
 @class Issue31Class {
     // Ivars
-    id<Foo>       _a;
-    id<Foo, Bar>  _b;
-    Array<String> _c;
+    _a: id<Foo>;
+    _b: id<Foo,Bar>;
+    _c: Array<String>;
 }
 
 // Properties
-@property id<Foo> _a;
-@property id<Foo, Bar> _b;
-@property Array<String> _c;
+@property _a: Foo;
+@property _b: id<Foo,Bar>;
+@property _c: Array<String>;
 
 // Return types
 - (id<Foo>)       resultA { return nil; }

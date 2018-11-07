@@ -365,7 +365,7 @@ addIvar(ivar)
     let name = ivar.name;
 
     if (this._ivarMap[name]) {
-        Utils.throwError(NSError.DuplicateInstanceVariable, "Instance variable " + name + " has previous declaration");
+        Utils.throwError(NSError.DuplicateInstanceVariable, "Instance variable " + name + " has previous declaration", ivar.location);
     }
 
     this._ivarMap[name] = ivar;    

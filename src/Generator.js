@@ -586,11 +586,10 @@ generate()
         _.each(node.declarations, declaration => {
             let replacement = "";
 
-            let parameterType = declaration.parameterType;
-            let value = parameterType && parameterType.value;
+            let annotation = declaration.annotation && declaration.annotation.value;
 
-            if (value) {
-                replacement = "<" + symbolTyper.toTypecheckerType(value) + "> null;"
+            if (annotation) {
+                replacement = "<" + symbolTyper.toTypecheckerType(annotation) + "> null;"
             }
 
             modifier.select(declaration).replace(replacement);

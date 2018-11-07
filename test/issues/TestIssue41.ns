@@ -2,7 +2,7 @@
 (function() { "use strict";
 
 @class Issue41Class {
-    Array _array;
+    _array: Array;
 }
 
 - (Number) check

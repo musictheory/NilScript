@@ -1,6 +1,6 @@
 @protocol Foo
 - (void) method;
-@property id foo;
+@property foo: id;
 @end
 
 true;

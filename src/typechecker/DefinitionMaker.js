@@ -32,6 +32,8 @@ _getProtocolList(verb, isStatic, rawProtocolNames)
         return symbolTyper.getSymbolForProtocolName(protocolName, isStatic);
     });
 
+    symbols.unshift(isStatic ? "N$_StaticBaseProtocol" : "N$_BaseProtocol");
+
     if (symbols.length) {
         return " " + verb + " " + symbols.join(",");
     }

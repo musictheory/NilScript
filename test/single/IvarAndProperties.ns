@@ -3,46 +3,46 @@
 var assert = require("assert");
 
 @class IvarAndPropertiesClass {
-    any     _ivar1_shouldBeNull;
-    Number  _ivar2_shouldBeZero;
-    String  _ivar3_shouldBeNull;
-    id      _ivar4_shouldBeNull;
-    BOOL    _ivar5_shouldBeFalse;
-    Boolean _ivar6_shouldBeFalse;
-    Number  _ivar7_shouldBeZero;
-    Boolean _ivarsOnALine, _ivarsOnALine2, _ivarsOnALine3;
-    Boolean _ivarsWithoutSemicolon
-    Boolean _ivarsWithoutSemicolon2
+    _ivar1_shouldBeNull: any;
+    _ivar2_shouldBeZero: Number;
+    _ivar3_shouldBeNull: String;
+    _ivar4_shouldBeNull: id;
+    _ivar5_shouldBeFalse: BOOL;
+    _ivar6_shouldBeFalse: Boolean;
+    _ivar7_shouldBeZero: Number;
+    _ivarsOnALine: Boolean, _ivarsOnALine2: Boolean, _ivarsOnALine3: Boolean;
+    _ivarsWithoutSemicolon: Boolean
+    _ivarsWithoutSemicolon2: Boolean
 }
 
-@property id      property1_shouldBeNull;
-@property Number  property2_shouldBeZero;
-@property String  property3_shouldBeNull;
-@property id      property4_shouldBeNull;
-@property BOOL    property5_shouldBeFalse;
-@property Boolean property6_shouldBeFalse;
-@property Number  property7_shouldBeZero;
-@property Boolean propertyWithoutSemicolon
-@property Boolean propertyWithoutSemicolon2
+@property property1_shouldBeNull: id;
+@property property2_shouldBeZero: Number;
+@property property3_shouldBeNull: String;
+@property property4_shouldBeNull: id;
+@property property5_shouldBeFalse: BOOL;
+@property property6_shouldBeFalse: Boolean;
+@property property7_shouldBeZero: Number;
+@property propertyWithoutSemicolon: Boolean
+@property propertyWithoutSemicolon2: Boolean
 
-@property (getter=propertyWithGetter) Boolean propertyWithGetterRaw
+@property (getter=propertyWithGetter) propertyWithGetterRaw: Boolean
 
-@property Number synthesizeTest0;
+@property synthesizeTest0: Number;
 // Use default synthesize
 
-@property Number synthesizeTest1;
+@property synthesizeTest1: Number;
 @synthesize synthesizeTest1=_foo;
 
-@property Number synthesizeTest2;
+@property synthesizeTest2: Number;
 @synthesize synthesizeTest2;
 
-@property Number synthesizeTest3;
+@property synthesizeTest3: Number;
 @synthesize synthesizeTest3 = _synthesizeTest3;
 
-@property Number withoutSemicolon
+@property withoutSemicolon: Number
 @synthesize withoutSemicolon
 
-@property Number withoutSemicolon2
+@property withoutSemicolon2: Number
 @dynamic withoutSemicolon2
 
 - (BOOL) runTests
