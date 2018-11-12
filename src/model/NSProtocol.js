@@ -62,7 +62,7 @@ addMethod(nsMethod)
     let map = (nsMethod.selectorType == "+") ? this._classMethodMap : this._instanceMethodMap;
 
     if (map[selectorName]) {
-        Utils.throwError(NSError.DuplicateMethod, "Duplicate declaration of method '" + selectorName + "'");
+        Utils.throwError(NSError.DuplicateMethod, `Duplicate declaration of method "${selectorName}"`);
     }
 
     map[selectorName] = nsMethod;
@@ -74,7 +74,7 @@ addProperty(nsProperty)
     let name = nsProperty.name;
 
     if (this._propertyMap[name]) {
-        Utils.throwError(NSError.DuplicateProperty, "Property " + name + " has previous declaration");
+        Utils.throwError(NSError.DuplicateProperty, `Property "${name}" has previous declaration`);
     }
 
     this._propertyMap[name] = nsProperty;

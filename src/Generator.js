@@ -292,12 +292,12 @@ generate()
 
         if (currentMethodNode && currentClass) {
             if (currentClass && currentClass.isIvarName(name, true)) {
-                Utils.throwError(NSError.RestrictedUsage, "Cannot use instance variable \"" + name + "\" here.", node);
+                Utils.throwError(NSError.RestrictedUsage, `Cannot use instance variable "${name}" here`, node);
             }
         }
 
         if (inlines[name] || model.globals[name]) {
-            Utils.throwError(NSError.RestrictedUsage, "Cannot use compiler-inlined \"" + name + "\" here.", node);
+            Utils.throwError(NSError.RestrictedUsage, `Cannot use compiler-inlined "${name}" here`, node);
         }
     }
 
@@ -310,7 +310,7 @@ generate()
         let firstSelector, lastSelector;
 
         if (knownSelectors && !knownSelectors[node.selectorName]) {
-            warnings.push(Utils.makeError(NSWarning.UnknownSelector, "Use of unknown selector '" + node.selectorName + "'", node));
+            warnings.push(Utils.makeError(NSWarning.UnknownSelector, `Use of unknown selector "${node.selectorName}"`, node));
         }
 
         for (let i = 0, length = node.messageSelectors.length; i < length; i++) {
@@ -608,7 +608,11 @@ generate()
         makeScope(node);
 
         if (Utils.isReservedSelectorName(node.selectorName)) {
-            Utils.throwError(NSError.ReservedMethodName, "The method name \"" + node.selectorName + "\" is reserved by the runtime and may not be overridden.", node);
+            Utils.throwError(
+                NSError.ReservedMethodName,
+                `The method name "${node.selectorName}" is reserved by the runtime and may not be overridden`,
+                node
+            );
         }
 
         if (language === LanguageTypechecker) {
@@ -706,11 +710,11 @@ generate()
             if (replacement) {
                 modifier.select(node).replace(replacement);
             } else {
-                Utils.throwError(NSError.ParseError, 'Cannot use ' + name + ' outside of a method definition');
+                Utils.throwError(NSError.ParseError, `Cannot use "${name}" outside of a method definition`);
             }
 
         } else {
-            Utils.throwError(NSError.ParseError, 'Unknown identifier: "' + name + '"');
+            Utils.throwError(NSError.ParseError, `Unknown identifier: "${name}"`);
         }
     }
 
@@ -741,7 +745,7 @@ generate()
         let isSelf = (name == "self");
 
         if (name[0] === "N" && name[1] === "$") {
-            Utils.throwError(NSError.ReservedIdentifier, "Identifiers may not start with \"N$\"", node);
+            Utils.throwError(NSError.ReservedIdentifier, `Identifiers may not start with "N$"`, node);
 
         } else if (name[0] === "@") {
             handleNSPredefinedMacro(node);
@@ -762,7 +766,11 @@ generate()
         } else if (currentMethodNode && currentClass) {
             if (currentClass.isIvarName(name, true) || name == "self") {
                 if (optionWarnInheritedIvars && name != "self" && !currentClass.isIvarName(name, false)) {
-                    warnings.push(Utils.makeError(NSWarning.InheritedInstanceVariable, "Use of inherited instance variable " + node.name, node));
+                    warnings.push(Utils.makeError(
+                        NSWarning.InheritedInstanceVariable,
+                        `Use of inherited instance variable "${node.name}"`,
+                        node
+                    ));
                 }
 
                 let usesSelf = currentMethodNode && (methodUsesSelfVar || (language === LanguageTypechecker));
@@ -785,12 +793,12 @@ generate()
 
             } else {
                 if (name[0] == "_" && optionWarnUnknownIvars && (name.length > 1)) {
-                    warnings.push(Utils.makeError(NSWarning.UndeclaredInstanceVariable, "Use of undeclared instance variable " + node.name, node));
+                    warnings.push(Utils.makeError(NSWarning.UndeclaredInstanceVariable, `Use of undeclared instance variable "${node.name}"`, node));
                 }
             } 
 
         } else if (isSelf && optionWarnSelfInNonMethod && !currentMethodNode) {
-            warnings.push(Utils.makeError(NSWarning.UseOfSelfInNonMethod, "Use of 'self' in non-method", node));
+            warnings.push(Utils.makeError(NSWarning.UseOfSelfInNonMethod, `Use of "self" in non-method`, node));
         }
 
         if (inlines) {
@@ -916,7 +924,7 @@ generate()
         let name = symbolTyper.getSymbolForSelectorName(node.name);
 
         if (knownSelectors && !knownSelectors[node.name]) {
-            warnings.push(Utils.makeError(NSWarning.UnknownSelector, "Use of unknown selector '" + node.name + "'", node));
+            warnings.push(Utils.makeError(NSWarning.UnknownSelector, `Use of unknown selector "${node.name}"`, node));
         }
 
         modifier.select(node).replace("{ " + name + ": 1 }");
@@ -1041,7 +1049,7 @@ generate()
             // The left side is just an identifier
             } else if (node.left.type == Syntax.Identifier) {
                 if (currentClass && currentClass.isIvarName(node.left.name, true)) {
-                    Utils.throwError(NSError.RestrictedUsage, "Cannot use ivar \"" + node.left.name + "\" on left-hand side of @each", node);
+                    Utils.throwError(NSError.RestrictedUsage, `Cannot use ivar "${node.left.name}" on left-hand side of @each`, node);
                 }
 
                 object = node.left.name;
@@ -1373,10 +1381,10 @@ generate()
             if (optionWarnUnusedIvars) {
                 _.each(currentClass.getAllIvarNamesWithoutProperties(), ivarName => {
                     if (!usedIvarMap[ivarName]) {
-                        warnings.push(Utils.makeError(NSWarning.UnusedInstanceVariable, "Unused instance variable '" + ivarName + "'", node));
+                        warnings.push(Utils.makeError(NSWarning.UnusedInstanceVariable, `Unused instance variable "${ivarName}"`, node));
 
                     } else if (!assignedIvarMap[ivarName]) {
-                        warnings.push(Utils.makeError(NSWarning.UnassignedInstanceVariable, "Instance variable '" + ivarName + "' used but never assigned", node));
+                        warnings.push(Utils.makeError(NSWarning.UnassignedInstanceVariable, `Instance variable "${ivarName}" used but never assigned`, node));
                     }
                 });
             }

@@ -209,7 +209,7 @@ prepare()
                 }
 
                 if (visitedNames.indexOf(currentName) >= 0) {
-                    Utils.throwError(NSError.CircularTypeHierarchy, "Circular @type hierarchy detected: '" + visitedNames.join("' -> '") + "'");
+                    Utils.throwError(NSError.CircularTypeHierarchy, "Circular @type hierarchy detected: \"" + visitedNames.join("\" -> \"") + "\"");
                 }
 
                 visitedNames.push(currentName);
@@ -376,7 +376,7 @@ registerDeclaration(name, node)
     let existing = this._declarationMap[name];
 
     if (existing) {
-        Utils.throwError(NSError.DuplicateDeclaration, "Duplicate declaration of '" + name + "'.", node)
+        Utils.throwError(NSError.DuplicateDeclaration, `Duplicate declaration of "${name}"`, node)
     }
 
     this._declarationMap[name] = true;
@@ -398,7 +398,7 @@ addEnum(nsEnum)
 
     if (name) {
         if (this.enums[name]) {
-            Utils.throwError(NSError.DuplicateEnum, "Duplicate declaration of enum '" + name + "'");
+            Utils.throwError(NSError.DuplicateEnum, `Duplicate declaration of enum "${name}"`);
         }
 
     } else {
@@ -431,7 +431,7 @@ addClass(nsClass)
 
     // We have an existing non-placeholder and a new non-placeholder
     if (existing && !existing.placeholder && !nsClass.placeholder) {
-        Utils.throwError(NSError.DuplicateClass, "Duplicate declaration of class '" + name + "'");
+        Utils.throwError(NSError.DuplicateClass, `Duplicate declaration of class "${name}"`);
     } 
 
     // Register a non-placeholder
@@ -446,7 +446,7 @@ addProtocol(nsProtocol)
     let name = nsProtocol.name;
 
     if (this.protocols[name]) {
-        Utils.throwError(NSError.DuplicateProtocol, "Duplicate declaration of protocol '" + name + "'");
+        Utils.throwError(NSError.DuplicateProtocol, `Duplicate declaration of protocol "${name}"`);
     }
 
     this.protocols[name] = nsProtocol;
@@ -458,7 +458,7 @@ addType(nsType)
     let name = nsType.name;
 
     if (this.types[name]) {
-        Utils.throwError(NSError.DuplicateType, "Duplicate declaration of type '" + name + "'");
+        Utils.throwError(NSError.DuplicateType, `Duplicate declaration of type "${name}"`);
     }
 
     this.types[name] = nsType;

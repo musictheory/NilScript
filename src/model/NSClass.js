@@ -126,7 +126,7 @@ _doAutomaticSynthesis(model)
 
     _.each(this._ivarMap, (ivar, name) => {
         if (inheritedIvarNames[name]) {
-            throw Utils.makeError(NSError.DuplicateInstanceVariable, "Instance variable '" + name + "' declared in superclass", ivar.location);
+            throw Utils.makeError(NSError.DuplicateInstanceVariable, `Instance variable "${name}" declared in superclass`, ivar.location);
         }
     });
 
@@ -151,13 +151,13 @@ _doAutomaticSynthesis(model)
             property.ivar = ivarName;
 
             if (inheritedIvarNames[ivarName]) {
-                let message = `Auto property synthesis for '${name}' will use an inherited instance variable. use @dynamic to acknowledge intention.`;
+                let message = `Auto property synthesis for "${name}" will use an inherited instance variable. use @dynamic to acknowledge intention.`;
                 this.prepareWarnings.push(Utils.makeError(NSWarning.NeedsExplicitDynamic, message, property.location));
             }
 
         } else {
             if (inheritedIvarNames[ivarName]) {
-                let message = `Property '${name}' will use an inherited instance variable due to @synthesize.`;
+                let message = `Property "${name}" will use an inherited instance variable due to @synthesize.`;
                 this.prepareWarnings.push(Utils.makeError(NSWarning.PropertyUsingInherited, message, property.location));
             }            
         }
@@ -184,7 +184,13 @@ _doAutomaticSynthesis(model)
         }
 
         if (backingIvarToPropertyNameMap[ivarName]) {
-            Utils.throwError(NSError.InstanceVariableAlreadyClaimed, "Synthesized properties '" +  backingIvarToPropertyNameMap[ivarName] + "' and '" + name + "' both claim instance variable '" + ivarName + "'");
+            let propertyName = backingIvarToPropertyNameMap[ivarName];
+
+            Utils.throwError(
+                NSError.InstanceVariableAlreadyClaimed,
+                `Synthesized properties "${propertyName}" and "${name}" both claim instance variable "${ivarName}"`
+            );
+
         } else {
             backingIvarToPropertyNameMap[ivarName] = name;
         }
@@ -243,7 +249,7 @@ _checkClassHierarchy(model)
     let currentSuperclass = this.superclass;
 
     if (superclassName && (!this.superclass || this.superclass.placeholder)) {
-        throw Utils.makeError(NSError.UnknownSuperclass, "Unknown superclass: '" + this.superclassName + "'", this.location);
+        throw Utils.makeError(NSError.UnknownSuperclass, `Unknown superclass: "${this.superclassName}"`, this.location);
     }
 
     // _getClassHierarchy() performs our circular check for safety
@@ -261,18 +267,18 @@ _checkObservers()
             let after  = observer.after;
 
             if (before && !knownSelectors[before]) {
-                this.prepareWarnings.push(Utils.makeError(NSWarning.UnknownSelector, "Unknown selector: '" + before + "'", observer.location));
+                this.prepareWarnings.push(Utils.makeError(NSWarning.UnknownSelector, `Unknown selector: "${before}"`, observer.location));
             }
 
             if (after && !knownSelectors[after]) {
-                this.prepareWarnings.push(Utils.makeError(NSWarning.UnknownSelector, "Unknown selector: '" + after + "'", observer.location));
+                this.prepareWarnings.push(Utils.makeError(NSWarning.UnknownSelector, `Unknown selector: "${after}"`, observer.location));
             }
 
             let name = observer.name;
             let property = this._propertyMap[name];
 
             if (!property) {
-                this.prepareWarnings.push(Utils.makeError(NSWarning.UnknownProperty, "Unknown property: '" + name + "'", observer.location));
+                this.prepareWarnings.push(Utils.makeError(NSWarning.UnknownProperty, `Unknown property: "${name}"`, observer.location));
             }
         });
     });
@@ -365,7 +371,7 @@ addIvar(ivar)
     let name = ivar.name;
 
     if (this._ivarMap[name]) {
-        Utils.throwError(NSError.DuplicateInstanceVariable, "Instance variable " + name + " has previous declaration", ivar.location);
+        Utils.throwError(NSError.DuplicateInstanceVariable, `Instance variable "${name}" has previous declaration`, ivar.location);
     }
 
     this._ivarMap[name] = ivar;    
@@ -377,7 +383,7 @@ addProperty(nsProperty)
     let name = nsProperty.name;
 
     if (this._propertyMap[name]) {
-        Utils.throwError(NSError.DuplicateProperty, "Property " + name + " has previous declaration");
+        Utils.throwError(NSError.DuplicateProperty, `Property "${name}" has previous declaration`);
     }
 
     this._propertyMap[name] = nsProperty;
@@ -402,11 +408,11 @@ makePropertySynthesized(name, backing)
 {
     let property = this._propertyMap[name];
     if (!property) {
-        Utils.throwError(NSError.UnknownProperty, "Unknown property: " + name);
+        Utils.throwError(NSError.UnknownProperty, `Unknown property: "${name}"`);
     } else if (property.ivar == NSDynamicProperty) {
-        Utils.throwError(NSError.PropertyAlreadyDynamic, "Property " + name + " already declared dynamic");
+        Utils.throwError(NSError.PropertyAlreadyDynamic, `Property "${name}" already declared dynamic`);
     } else if (property.ivar) {
-        Utils.throwError(NSError.PropertyAlreadySynthesized, "Property " + name + " already synthesized to " + property.ivar);
+        Utils.throwError(NSError.PropertyAlreadySynthesized, `Property "${name}" already synthesized to "${property.ivar}"`);
     }
 
     property.ivar = backing;
@@ -417,11 +423,11 @@ makePropertyDynamic(name)
 {
     let property = this._propertyMap[name];
     if (!property) {
-        Utils.throwError(NSError.UnknownProperty, "Unknown property: " + name);
+        Utils.throwError(NSError.UnknownProperty, `Unknown property: "${name}"`);
     } else if (property.ivar == NSDynamicProperty) {
-        Utils.throwError(NSError.PropertyAlreadyDynamic, "Property " + name + " already declared dynamic");
+        Utils.throwError(NSError.PropertyAlreadyDynamic, `Property "${name}" already declared dynamic`);
     } else if (property.ivar) {
-        Utils.throwError(NSError.PropertyAlreadySynthesized, "Property " + name + " already synthesized to " + property.ivar);
+        Utils.throwError(NSError.PropertyAlreadySynthesized, `Property "${name}" already synthesized to "${property.ivar}"`);
     }
 
     property.ivar = NSDynamicProperty;
@@ -449,7 +455,7 @@ addMethod(method)
     }
 
     if (map[selectorName]) {
-        Utils.throwError(NSError.DuplicateMethod, "Duplicate declaration of method '" + selectorName + "'");
+        Utils.throwError(NSError.DuplicateMethod, `Duplicate declaration of method "${selectorName}"`);
     }
 
     map[selectorName] = method;

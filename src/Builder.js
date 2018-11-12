@@ -212,7 +212,7 @@ build()
                 Utils.throwError(NSError.NotYetSupported, "@property 'class' attribute is not supported", node);
 
             } else {
-                Utils.throwError(NSError.UnknownPropertyAttribute, "Unknown property attribute: '" + attributeName + "'", node);
+                Utils.throwError(NSError.UnknownPropertyAttribute, `Unknown property attribute: "${attributeName}"`, node);
             }
         }
 
