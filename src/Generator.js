@@ -487,8 +487,11 @@ generate()
 
     function handleNSClassImplementation(node)
     {
-        let superName     = (node.superClass && node.superClass.name);
-        let classSymbol   = symbolTyper.getSymbolForClassName(node.id.name);
+        let name = node.id.name;
+        let cls  = model.classes[name];
+
+        let superName     = cls.superclass ? cls.superclass.name : null;
+        let classSymbol   = symbolTyper.getSymbolForClassName(name);
         let classSelector = "{" + classSymbol + ":1}";
  
         // Only allow whitelisted children inside of an implementation block

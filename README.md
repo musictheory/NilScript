@@ -645,7 +645,11 @@ Unlike inlined enums and consts, globals are assigned at runtime.  Hence, in the
 ---
 ## <a name="protocols"></a>Protocols
 
-Like Objective-C, NilScript includes support for protocols.  Both `@required` and `@optional` methods may be specified:
+Similar to Objective-C, NilScript includes support for protocols.
+
+Protocol conformance is enforced by the [typechecker](#typechecker). Due to the underlying use of TypeScript, NilScript uses [structural typing](https://en.wikipedia.org/wiki/Structural_type_system) rather than nominal typing.
+
+Hence, declaring protocol conformance is optional. In this example, `TheClass` conforms to `ControllerDelegate` automatically, due to implementing all of the required methods:
 
 ```
 @protocol ControllerDelegate
@@ -655,20 +659,30 @@ Like Objective-C, NilScript includes support for protocols.  Both `@required` an
 - (BOOL) controller:(Controller)controller shouldPerformAction:(String)action;
 @end
 
-@class Controller
-@property ControllerDelegate delegate
+@class TheClass
+- (void) controller:(Controller)controller didPerformAction:(String)action { … }
+@end
+```
+
+While not required, classes may explicitly declare protocol conformance. To do so, list the protocols after the superclass (or in lieu of a superclass). Protocols may explicitly conform to other protocols using a similar syntax.
+
+```
+@class TheClassA : TheSuperClass, ProtocolA, ProtocolB
 …
 @end
 
-@class TheClass <ControllerDelegate, TabBarDelegate>
-- (void) controller:(Controller)controller didPerformAction:(String)action { … }
+@class TheClassB : ProtocolA, ProtocolB
+…
+@end
+
+@protocol ProtocolC : ProtocolA, ProtocolB
 …
 @end
 ```
 
-Unlike Objective-C, there is no `NSObject` protocol.  Instead, all protocols extend a built-in base protocol, which has identical methods to the [built-in base class](#base-class).
-    
-Protocol conformance is enforced by the [typechecker](#typechecker).
+There is no `NSObject` protocol.  Instead, all protocols extend a built-in base protocol, which has identical methods to the [built-in base class](#base-class).
+
+NilScript uses `TheProtocol` rather than `id<TheProtocol>` for protocol type annotations. 
 
 ---
 ## <a name="runtime"></a>Runtime

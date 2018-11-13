@@ -40,7 +40,7 @@ const NSError = {
     RestrictedUsage:                "NilScriptRestrictedUsageError",
     APIMisuse:                      "NilScriptAPIMisuseError",
     CircularClassHierarchy:         "NilScriptCircularClassHierarchyError",
-    UnknownSuperclass:              "NilScriptUnknownSuperclassError"
+    InheritanceError:               "NilScriptInheritanceError"
 };
 
 

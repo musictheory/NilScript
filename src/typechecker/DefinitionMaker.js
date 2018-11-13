@@ -74,8 +74,10 @@ _appendClass(lines, nsClass, classSymbol, staticSymbol)
 {
     let symbolTyper = this._symbolTyper;
 
-    let superSymbol       = nsClass.superclassName ? symbolTyper.getSymbolForClassName(nsClass.superclassName, false) : TypecheckerSymbols.Base;
-    let superStaticSymbol = nsClass.superclassName ? symbolTyper.getSymbolForClassName(nsClass.superclassName, true)  : TypecheckerSymbols.StaticBase;
+    let superclassName = nsClass.superclass ? nsClass.superclass.name : null;
+
+    let superSymbol       = superclassName ? symbolTyper.getSymbolForClassName(superclassName, false) : TypecheckerSymbols.Base;
+    let superStaticSymbol = superclassName ? symbolTyper.getSymbolForClassName(superclassName, true)  : TypecheckerSymbols.StaticBase;
 
     let declaredMethodNames = { };
     let methods = [ ];

@@ -11,9 +11,18 @@ This is the first major release under the new language name (NilScript); as such
 runtime APIs and generated code use "ns"/"NS"/"nilscript" rather than "oj"/"OJ".
 
 Major Language Changes:
- - '@implementation' is now '@class' (#140)
- - Property and ivar syntax now uses TypeScript-style type annotations rather than C-style.
- - Reworked ivars (ADD DETAILS)
+ - `@implementation` is now `@class` (#140)
+ - Reworked instance variables (#153)
+   * Instance variables are now uniqued by name rather than by class+name. 
+     Hence, TheClass and TheSuperclass may not both define `_foo`
+   * Added the `--simple-ivars` compiler flag. When set, this 
+     uses the instance variable name (`_foo`) for the JavaScript property name
+     (`this._foo`), rather than `this.N$_i__foo`.
+   * Added the `--warn-inherited-ivars` compiler flag. This warns if
+     an ivar declared in a superclass is used in an inherited context.
+ - Unified syntax for inheritance and protocol conformance (#156)
+ - Property and ivar syntax now uses TypeScript-style type annotations rather than C-style (#145)
+ - Protocol type annotations are now 'TheProtocol' instead of 'id<TheProtocol>' (#139)
  - Removed `@squeeze` directive (#137)
  - Removed `@forward` directive (#138)
  - Removed C++ style syntax for '@cast' (#147)

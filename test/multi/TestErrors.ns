@@ -521,7 +521,7 @@ function test() {
 // --------------------------------------------------------------------
 // @name Unknown Super Class
 
-@class Foo : NonExistantSuperClass //@error NilScriptUnknownSuperclassError
+@class Foo : NonExistantSuperClass //@error NilScriptInheritanceError
 
 @end
 

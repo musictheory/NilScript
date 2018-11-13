@@ -18,7 +18,7 @@ const NSVisitorKeys = {
     [ Syntax.NSMessageReceiver              ]: [ "value" ],
     [ Syntax.NSMessageSelector              ]: [ "name", "argument", "arguments" ],
     [ Syntax.NSMethodNameSegment            ]: [ ],
-    [ Syntax.NSClassImplementation          ]: [ "id", "superclass", "ivarDeclarations", "body" ],
+    [ Syntax.NSClassImplementation          ]: [ "id", "ivarDeclarations", "body" ],
     [ Syntax.NSMethodDefinition             ]: [ "returnType", "methodSelectors", "body" ],
     [ Syntax.NSMethodSelector               ]: [ "name", "variableName" ],
     [ Syntax.NSSelector                     ]: [ ],

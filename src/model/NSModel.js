@@ -164,36 +164,52 @@ prepare()
 
     _.each(this.classes, nsClass => {
         nsClass.prepared = false;
+        nsClass.inherit(this);
     });
 
-    _.each(this.classes, nsClass => {
-        nsClass.prepare(this);
+    // Check inheritance
+    _.each(_.map(this.classes, cls => cls.name).sort(), name => {
+        let currentClass = this.classes[name];
+        let visited = [ ];
 
-        let methods = nsClass.getAllMethods();
-        for (let i = 0, length = methods.length; i < length; i++) {
-            selectorMap[methods[i].selectorName] = true;
+        while (currentClass) {
+            let currentName = currentClass.name;
+
+            if (visited.indexOf(currentName) >= 0) {
+                throw Utils.makeError(NSError.CircularClassHierarchy, "Circular class hierarchy detected: " + JSON.stringify(visited));
+            }
+
+            visited.push(currentName);
+
+            currentClass = currentClass.superclass;
         }
     });
 
-    _.each(this.protocols, nsProtocol => {
-        let methods = nsProtocol.getAllMethods();
+    _.each(this.classes, cls => {
+        cls.prepare(this);
 
-        for (let i = 0, length = methods.length; i < length; i++) {
-            selectorMap[methods[i].selectorName] = true;
-        }
+        _.each(cls.getAllMethods(), method => {
+            selectorMap[method.selectorName] = true;
+        });
     });
 
-    let baseObjectSelectors = Utils.getBaseObjectSelectorNames();
-    for (let i = 0, length = baseObjectSelectors.length; i < length; i++) {
-        selectorMap[baseObjectSelectors[i]] = true;
-    }
+
+    _.each(this.protocols, protocol => {
+        _.each(protocol.getAllMethods(), method => {
+            selectorMap[method.selectorName] = true;
+        });
+    });
+
+    _.each(Utils.getBaseObjectSelectorNames(), selectorName => {
+        selectorMap[selectorName] = true;
+    });
 
     _.each(this.enums, nsEnum => {
         numericMap[nsEnum.name] = true;
     });
 
-    _.each(this.types, nsType => {
-        let currentType  = nsType;
+    _.each(this.types, type => {
+        let currentType  = type;
         let currentName  = currentType.name;
         let originalName = currentName;
         let visitedNames = [ currentName ];

@@ -412,6 +412,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    NSMessageSelector: 'NSMessageSelector',
 	    NSMethodNameSegment: 'NSMethodNameSegment',
 	    NSClassImplementation: 'NSClassImplementation',
+	    NSInheritanceList: 'NSInheritanceList',
 	    NSMethodDefinition: 'NSMethodDefinition',
 	    NSMethodSelector: 'NSMethodSelector',
 	    NSSelector: 'NSSelector',
@@ -426,7 +427,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	    NSConstDeclaration: 'NSConstDeclaration',
 	    NSEnumDeclaration: 'NSEnumDeclaration',
 	    NSProtocolDefinition: 'NSProtocolDefinition',
-	    NSProtocolList: 'NSProtocolList',
 	    NSMethodDeclaration: 'NSMethodDeclaration',
 	    NSAnyExpression: 'NSAnyExpression',
 	    NSCastExpression: 'NSCastExpression',
@@ -1898,19 +1898,25 @@ return /******/ (function(modules) { // webpackBootstrap
 	}());
 	exports.NSMethodNameSegment = NSMethodNameSegment;
 	var NSClassImplementation = (function () {
-	    function NSClassImplementation(id, superClass, category, extension, protocolList, ivarDeclarations, body) {
+	    function NSClassImplementation(id, inheritanceList, category, ivarDeclarations, body) {
 	        this.type = syntax_1.Syntax.NSClassImplementation;
 	        this.id = id;
 	        this.body = body;
-	        this.superClass = superClass;
+	        this.inheritanceList = inheritanceList;
 	        this.category = category;
-	        this.extension = extension;
-	        this.protocolList = protocolList;
 	        this.ivarDeclarations = ivarDeclarations;
 	    }
 	    return NSClassImplementation;
 	}());
 	exports.NSClassImplementation = NSClassImplementation;
+	var NSInheritanceList = (function () {
+	    function NSInheritanceList(ids) {
+	        this.type = syntax_1.Syntax.NSInheritanceList;
+	        this.ids = ids;
+	    }
+	    return NSInheritanceList;
+	}());
+	exports.NSInheritanceList = NSInheritanceList;
 	var NSMethodDefinition = (function () {
 	    function NSMethodDefinition(selectorType, selectorName, returnType, methodSelectors, body) {
 	        this.type = syntax_1.Syntax.NSMethodDefinition;
@@ -2043,19 +2049,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	    return NSEnumDeclaration;
 	}());
 	exports.NSEnumDeclaration = NSEnumDeclaration;
-	var NSProtocolList = (function () {
-	    function NSProtocolList(protocols) {
-	        this.type = syntax_1.Syntax.NSProtocolList;
-	        this.protocols = protocols;
-	    }
-	    return NSProtocolList;
-	}());
-	exports.NSProtocolList = NSProtocolList;
 	var NSProtocolDefinition = (function () {
-	    function NSProtocolDefinition(id, protocolList, body) {
+	    function NSProtocolDefinition(id, inheritanceList, body) {
 	        this.type = syntax_1.Syntax.NSProtocolDefinition;
 	        this.id = id;
-	        this.protocolList = protocolList;
+	        this.inheritanceList = inheritanceList;
 	        this.body = body;
 	    }
 	    return NSProtocolDefinition;
@@ -5750,10 +5748,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    };
 	    Parser.prototype.ns_parseClassImplementationDefinition = function () {
 	        var node = this.createNode();
-	        var superClass = null;
+	        var inheritanceList = null;
 	        var extension = false;
 	        var category = null;
-	        var protocolList = null;
 	        var ivarDeclarations = null;
 	        if (this.context.ns_inImplementation) {
 	            this.throwError(messages_1.Messages.NSCannotNestImplementations);
@@ -5764,23 +5761,15 @@ return /******/ (function(modules) { // webpackBootstrap
 	        this.context.strict = true;
 	        this.expectKeyword('@class');
 	        var id = this.parseVariableIdentifier();
-	        // Has superclass
+	        // Has inheritance list
 	        if (this.match(':')) {
-	            this.expect(':');
-	            superClass = this.parseVariableIdentifier();
+	            inheritanceList = this.ns_parseInheritanceList();
+	            // Category on existing class
 	        }
-	        if (this.match('(')) {
+	        else if (this.match('(')) {
 	            this.expect('(');
-	            if (this.match(')')) {
-	                extension = true;
-	            }
-	            else {
-	                category = this.parseVariableIdentifier();
-	            }
+	            category = this.parseVariableIdentifier();
 	            this.expect(')');
-	        }
-	        if (this.match('<')) {
-	            protocolList = this.ns_parseProtocolReferenceList();
 	        }
 	        // Has ivar declarations
 	        if (this.match('{')) {
@@ -5793,24 +5782,18 @@ return /******/ (function(modules) { // webpackBootstrap
 	        this.context.strict = previousStrict;
 	        this.context.ns_inImplementation = false;
 	        this.context.labelSet = oldLabelSet;
-	        return this.finalize(node, new Node.NSClassImplementation(id, superClass, category, extension, protocolList, ivarDeclarations, body));
+	        return this.finalize(node, new Node.NSClassImplementation(id, inheritanceList, category, ivarDeclarations, body));
 	    };
-	    Parser.prototype.ns_parseProtocolReferenceList = function () {
-	        var protocolList;
-	        this.expect('<');
-	        protocolList = this.ns_parseProtocolList();
-	        this.expect('>');
-	        return protocolList;
-	    };
-	    Parser.prototype.ns_parseProtocolList = function () {
+	    Parser.prototype.ns_parseInheritanceList = function () {
 	        var node = this.createNode();
-	        var protocols = [];
-	        protocols.push(this.parseVariableIdentifier());
+	        var ids = [];
+	        this.expect(':');
+	        ids.push(this.parseVariableIdentifier());
 	        while (this.match(',')) {
 	            this.expect(',');
-	            protocols.push(this.parseVariableIdentifier());
+	            ids.push(this.parseVariableIdentifier());
 	        }
-	        return this.finalize(node, new Node.NSProtocolList(protocols));
+	        return this.finalize(node, new Node.NSInheritanceList(ids));
 	    };
 	    Parser.prototype.ns_parseProtocolDefinitionBody = function () {
 	        var node = this.createNode();
@@ -5849,7 +5832,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    };
 	    Parser.prototype.ns_parseProtocolDefinition = function () {
 	        var node = this.createNode();
-	        var protocolList = null;
+	        var inheritanceList = null;
 	        if (this.context.ns_inImplementation) {
 	            this.throwError(messages_1.Messages.NSCannotNestImplementations);
 	        }
@@ -5859,15 +5842,15 @@ return /******/ (function(modules) { // webpackBootstrap
 	        this.context.ns_inImplementation = true;
 	        this.expectKeyword('@protocol');
 	        var id = this.parseVariableIdentifier();
-	        if (this.match('<')) {
-	            protocolList = this.ns_parseProtocolReferenceList();
+	        if (this.match(':')) {
+	            inheritanceList = this.ns_parseInheritanceList();
 	        }
 	        var body = this.ns_parseProtocolDefinitionBody();
 	        this.expectKeyword('@end');
 	        this.context.strict = previousStrict;
 	        this.context.ns_inImplementation = false;
 	        this.context.labelSet = oldLabelSet;
-	        return this.finalize(node, new Node.NSProtocolDefinition(id, protocolList, body));
+	        return this.finalize(node, new Node.NSProtocolDefinition(id, inheritanceList, body));
 	    };
 	    Parser.prototype.ns_parseCastExpression = function () {
 	        var node = this.createNode();

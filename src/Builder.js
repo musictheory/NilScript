@@ -94,21 +94,13 @@ build()
 
     function handleNSClassImplementation(node)
     {
-        let className      = node.id.name;
-        let superclassName = node.superClass && node.superClass.name;
-        let categoryName   = node.category;
-        let protocolNames  = [ ];
+        let className    = node.id.name;
+        let categoryName = node.category;
         let result;
 
-        if (node.extension) {
-            Utils.throwError(NSError.NotYetSupported, "Class extensions are not yet supported", node);
-        }
-
-        if (node.protocolList) {
-            _.each(node.protocolList.protocols, function(protocol) {
-                protocolNames.push(protocol.name);
-            });
-        }
+        let inheritedNames = node.inheritanceList ?
+            _.map(node.inheritanceList.ids, id => id.name) :
+            [ ];
 
         let nsClass;
         if (categoryName) {
@@ -121,14 +113,8 @@ build()
             }
 
         } else {
-            nsClass = new Model.NSClass(makeLocation(node), className, superclassName, protocolNames);
+            nsClass = new Model.NSClass(makeLocation(node), className, inheritedNames);
             model.addClass(nsClass);
-        }
-
-        if (superclassName) {
-            let superclass = new Model.NSClass(null, superclassName);
-            superclass.placeholder = true;
-            model.addClass(superclass);
         }
 
         currentClass = nsClass;
@@ -140,15 +126,12 @@ build()
     function handleNSProtocolDefinition(node)
     {
         let name = node.id.name;
-        let parentProtocolNames  = [ ];
 
-        if (node.protocolList) {
-            _.each(node.protocolList.protocols, function(protocol) {
-                parentProtocolNames.push(protocol.name);
-            });
-        }
+        let inheritedNames = node.inheritanceList ?
+            _.map(node.inheritanceList.ids, id => id.name) :
+            [ ];
 
-        let nsProtocol = new Model.NSProtocol(makeLocation(node), name, parentProtocolNames);
+        let nsProtocol = new Model.NSProtocol(makeLocation(node), name, inheritedNames);
         model.addProtocol(nsProtocol);
 
         currentProtocol = nsProtocol;

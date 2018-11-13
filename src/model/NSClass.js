@@ -23,12 +23,11 @@ const NSDynamicProperty = " NSDynamicProperty ";
 module.exports = class NSClass {
 
 
-constructor(location, name, superclassName, protocolNames)
+constructor(location, name, inheritedNames)
 {
     this.location       = location;
     this.name           = name;
-    this.superclassName = superclassName;
-    this.protocolNames  = protocolNames || [ ];
+    this.inheritedNames = inheritedNames || [ ];
 
     // For category definitions that appear before the implementation
     // Also used when a class defines a superclass that hasn't been traversed yet
@@ -62,8 +61,7 @@ loadState(state)
 {
     this.location        = state.location;
     this.name            = state.name;
-    this.superclassName  = state.superclassName;
-    this.protocolNames   = state.protocolNames || [ ];
+    this.inheritedNames  = state.inheritedNames || [ ];
     this.placeholder     = state.placeholder;
     this.didSynthesis    = state.didSynthesis;
 
@@ -90,8 +88,7 @@ saveState()
     return {
         location:        this.location,
         name:            this.name,
-        superclassName:  this.superclassName,
-        protocolNames:   this.protocolNames,
+        inheritedNames:  this.inheritedNames,
         didSynthesis:  !!this.didSynthesis,
         placeholder:     this.placeholder,
 
@@ -224,36 +221,13 @@ _getClassHierarchy(model, includeThis)
     let visited = [ this.name ];
     let result  = includeThis ? [ this ] : [ ];
 
-    let currentSuperclass = model.classes[this.superclassName];
+    let currentSuperclass = this.superclass;
     while (currentSuperclass) {
-
-        if (visited.indexOf(currentSuperclass.name) >= 0) {
-            throw Utils.makeError(NSError.CircularClassHierarchy, "Circular class hierarchy detected: '" + visited.join("', '") + "'");
-        }
-
-        visited.push(currentSuperclass.name);
         result.push(currentSuperclass);
-
-        currentSuperclass = model.classes[currentSuperclass.superclassName];
+        currentSuperclass = currentSuperclass.superclass;
     }
 
     return result;
-}
-
-
-_checkClassHierarchy(model)
-{
-    let visited = [ this.name ];
-    let superclassName = this.superclassName;
-
-    let currentSuperclass = this.superclass;
-
-    if (superclassName && (!this.superclass || this.superclass.placeholder)) {
-        throw Utils.makeError(NSError.UnknownSuperclass, `Unknown superclass: "${this.superclassName}"`, this.location);
-    }
-
-    // _getClassHierarchy() performs our circular check for safety
-    this._getClassHierarchy(model);
 }
 
 
@@ -285,13 +259,45 @@ _checkObservers()
 }
 
 
+inherit(model)
+{
+    let mySuperclass = null;
+    let myProtocols  = [ ];
+
+    let location = this.location;
+
+    _.each(this.inheritedNames, name => {
+        let cls      = model.classes[name];
+        let protocol = model.protocols[name];
+
+        if (cls) {
+            if (mySuperclass) {
+                throw Utils.makeError(NSError.InheritanceError, `Cannot inherit from both "${name}" and "${mySuperclass.name}"`, location);
+            } else if (cls.placeholder) {
+                throw Utils.makeError(NSError.InheritanceError, `Cannot find non-category implementation of "${name}"`, location);
+            } else {
+                mySuperclass = cls;
+            }
+          
+        } else if (protocol) {
+            myProtocols.push(protocol);
+
+        } else {
+            throw Utils.makeError(NSError.InheritanceError, `Unknown class or protocol: "${name}"`, location);
+        }
+    });
+
+    this.superclass = mySuperclass;
+    this.protocols  = myProtocols;
+}
+
+
 prepare(model)
 {
     if (this.prepared) return;
     this.prepared = true;
 
-    let superclass = this.superclassName ? model.classes[this.superclassName] : null;
-    this.superclass = superclass;
+    let superclass = this.superclass;
 
     if (superclass) {
         superclass.prepare(model);
@@ -299,7 +305,6 @@ prepare(model)
 
     this.prepareWarnings = [ ];
 
-    this._checkClassHierarchy(model);
     this._doAutomaticSynthesis(model);
 
     this._myIvarNames    = { };
@@ -322,16 +327,6 @@ prepare(model)
 
     this._checkObservers();
 }
-
-
-// Returns 
-isIdentifierAnIvar(id)
-{
-
-
-    return !!this._ivarMap[ivarName];
-}
-
 
 
 shouldGenerateGetterImplementationForPropertyName(propertyName)
@@ -551,5 +546,6 @@ getPropertyWithName(propertyName)
 {
     return this._propertyMap[propertyName];
 }
+
 
 }
