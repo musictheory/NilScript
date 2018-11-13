@@ -76,16 +76,18 @@ To inherit from a superclass, use a colon followed by the superclass name:
 @end
 ```
 
-Additional [instance variables](#ivar) can be added by using a block after class name (or superclass name):
+Additional [instance variables](#ivar) can be added by using a block after class name (or superclass name).
+
+Note: While C-based languages prefix the variable name(s) with the type (`TheType theVariable`), NilScript uses TypeScript-style (`theVariable: TheType`).
 
 ```
 @class TheClass {
-    String _myStringInstanceVariable;    
+    _myStringInstanceVariable: String;
 }
 @end
 
 @class TheSubClass : TheSuperClass {
-    String _myStringInstanceVariable;    
+    _myStringInstanceVariable: String;
 }
 @end
 ```
@@ -150,7 +152,7 @@ The root base class provides the following methods:
 - (BOOL) isEqual:(id)anotherObject
 ```
 
-While NilScript 0.x supported `+load` and `+initialize`, this feature was removed in NilScript 1.x to optimize runtime performance.  Note: `+className` and `-className` are intended for debugging purposes only.  When `--squeeze` is passed into the compiler, class names will be obfuscated/shortened.
+Note: `+className` and `-className` are intended for debugging purposes only.  When `--squeeze` is passed into the compiler, class names will be obfuscated/shortened.
 
 ---
 ### <a name="method"></a>Methods
@@ -249,10 +251,10 @@ A class that uses a property, private ivar, and accesses them in a method may lo
 
 ```
 @class TheClass {
-    Number _privateNumberIvar;
+    _privateNumberIvar: Number;
 }
     
-@property Number publicNumberProperty; // Generates publicNumberProperty ivar
+@property publicNumberProperty: Number; // Generates publicNumberProperty ivar
 
 - (Number) addPublicAndPrivateNumbers
 {
@@ -268,7 +270,7 @@ Properties are defined using the `@property` keyword in an `@class` block:
 
 ```
 @class TheClass
-@property String myStringProperty;
+@property myStringProperty: String;
 @end
 ```
 
@@ -278,7 +280,7 @@ If a different backing instance variable is desired, the `@synthesize` directive
 
 ```
 @class TheClass
-@property String myStringProperty;
+@property myStringProperty: String;
     
 // Maps myStringProperty property to m_myStringProperty instance variable
 @synthesize myStringProperty=m_MyStringProperty;
@@ -289,7 +291,7 @@ As in Objective-C, `@synthesize` without an `=` results in the same name being u
 
 ```
 @class TheClass
-@property String myStringProperty;
+@property myStringProperty: String;
     
 // Maps myStringProperty property to myStringProperty instance variable
 @synthesize myStringProperty;
@@ -300,7 +302,7 @@ The `@dynamic` directive suppresses the generation of both the backing instance 
 
 ```
 @class TheClass
-@property String myStringProperty;
+@property myStringProperty: String;
 @dynamic myStringProperty; // No instance variable, getter, nor setter is synthesized
 @end
 ```
@@ -327,7 +329,7 @@ To access any instance variable, simply use its name.  No `this.` or `self.` pre
 
 NilScript supports property attributes similar to Objective-C:
 
-    @property (nontomic, copy, getter=myStringGetter) String myString;
+    @property (getter=isChecked) checked: BOOL;
 
 | Attribute          | Description                                                      
 |--------------------|------------------------------------------------------------------
@@ -341,9 +343,9 @@ NilScript supports property attributes similar to Objective-C:
 `struct` uses `nilscript.makeCopy` in both the setter and the getter.  It is intended to assist the porting of C `struct`s, which are pass-by-value rather than pass-by-reference.
 
 ```
-@property (copy) Foo foo;
-@property (struct) Bar bar;
-@property Baz baz;
+@property (copy) foo: Foo;
+@property (struct) bar: Bar;
+@property baz: Baz;
 
 // Synthesized methods:
 
@@ -382,7 +384,7 @@ This allows Number instance variables to be used in math operations  without the
 
 Unlike other parts of the NilScript runtime, properties and instance variables aren't intended to be accessed from non-NilScript JavaScript (they should be private to the subclass which defines them).  However, they may need to be accessed in the debugger.
 
-The compiler uses a JavaScript property on the instance object with the follow name:
+By default, the compiler uses a JavaScript property on the instance object with the follow name:
 
     N$_i_{{IVAR NAME}}
 
@@ -390,9 +392,9 @@ The compiler uses a JavaScript property on the instance object with the follow n
 Hence, the following NilScript code:
 
 ```
-@interface TheClass
+@class TheClass
 
-@property (Number) counter;
+@property counter: Number;
 
 - (void) incrementCounter
 {
@@ -449,7 +451,7 @@ property change.  For example, our Button class has a custom corner radius prope
 
 …
 
-@property Number cornerRadius;
+@property cornerRadius: Number;
 
 …
 
@@ -468,9 +470,9 @@ Often, every property in these classes needs a custom setter, resulting in a lot
 Property observers simplify this:
 
 ```
-@property String backgroundColor;
-@property Number cornerRadius;
-@property String title;
+@property backgroundColor: String;
+@property cornerRadius: Number;
+@property title: String;
 
 @observe (change, after=setNeedsDisplay) backgroundColor, cornerRadius, title;
 ```
@@ -491,7 +493,7 @@ are passed the old value as an optional parameter.
 For example:
 
 ```
-@property Number foo;
+@property foo: Number;
 @observe (change, before=_handleFooWillChange:, after=_handleFooDidChange:) foo;
 @observe (set,    before=_handleFooWillSet:,    after=_handleFooDidSet:)    foo;
 
@@ -741,7 +743,7 @@ When the `--warn-unknown-ivars` option is specified, NilScript checks all JavaSc
 ```
 @class TheClass
     
-@property String foo;
+@property foo: String;
     
 - (void) checkFoo {
     if (_foi) {  // Warns, likely typo
@@ -755,7 +757,7 @@ When the `--warn-unused-ivars` option is specified, NilScript warns about ivar d
 
 ```
 @class TheClass {
-    id _unused; // Warns
+    _unused: id; // Warns
 }
 @end
 ```
@@ -788,7 +790,7 @@ NilScript uses an Objective-C inspired syntax for types, which is automatically 
 Most NilScript method declarations will have type information and should behave exactly as their Objective-C counterparts.  However, JavaScript functions need to be annotated via type annotations, similar to ActionScript and TypeScript:
 
 ```
-function getStringWithNumber(a : String, b : Number) : String {
+function getStringWithNumber(a: String, b: Number): String {
     return a + "-" + b;
 }
 ```
@@ -798,8 +800,8 @@ TypeScript infers variables automatically; however, sometimes an explicit annota
 ```
 function getNumber() { … }
 
-function doSometingWithNumber() : void {
-    let num : Number = getNumber(); // Annotation needed since getNumber() is not annotated
+function doSometingWithNumber(): void {
+    let num: Number = getNumber(); // Annotation needed since getNumber() is not annotated
     …
 }
 ```    
