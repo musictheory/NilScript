@@ -1,10 +1,12 @@
 # NilScript
 
-NilScript is a superset of the JavaScript language inspired by the latest versions of Objective-C.  It features a fast, simple runtime without a dynamic messaging overhead. 
+NilScript is a superset of the JavaScript language inspired by Objective-C.  It features a fast, simple runtime without a dynamic messaging overhead. 
 
 NilScript is designed to ease the pain of syncing class interfaces (not necessarily implementations) between Objective-C projects and their web counterparts.
 
 In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) with the [musictheory.net exercises](http://www.musictheory.net/exercises), and [Theory Lessons](http://musictheory.net/buy/lessons) with the [musictheory.net lessons](http://www.musictheory.net/lessons).
+
+NilScript was formerly known as oj.
 
 ### Installation
 
@@ -43,17 +45,22 @@ In our case, we use it to sync [Tenuto](http://www.musictheory.net/buy/tenuto) w
 - [License](#license)
 
 
-### Differences from Objective-J
+### Design, Features, and Goals
 
-In contrast to [Objective-J](http://en.wikipedia.org/wiki/Objective-J): 
+- NilScript derives its syntax from Objective-C, JavaScript, TypeScript, and a tiny bit of Swift.  While it should be easy to port a file to/from Objective-C, direct source compatibility is not a goal.
 
-  - NilScript always uses [consistent property names](https://developers.google.com/closure/compiler/docs/api-tutorial3#propnames).
-   This allows the resulting JavaScript code to be optimized using Closure Compiler's ADVANCED_OPTIMIZATIONS.
-  - NilScript uses the native JavaScript runtime to call methods rather than imitating the Objective-C runtime (see below).
-  - NilScript focuses on being a language, not a framework.  The only requirement at runtime is the `runtime.js` file.
-  - NilScript has full support of @property and the default synthesis of ivars/getters/setters.
-  - NilScript includes a [built-in obfuscator](#squeeze) which hides method and class names in compiled code.
+Syntax-wise: Objective-C is part of the C family; NilScript is part of the JavaScript family. That said, several concepts from Objective-C are borrowed: the relationship between properties and instance variables, nil-messaging, method syntax, C-style enums, etc.
 
+- NilScript uses the native JavaScript runtime to call methods rather than imitating the dynamic nature of the Objective-C runtime. Implementing concepts such as message forwarding is a non-goal.
+
+- The NilScript compiler is designed for monolithic compilation. While multiple modules may be specified, the compiler should have access to all source files at build time. This allows for several types of optimizations.
+
+- NilScript focuses on being a language, not a framework. The only requirement at runtime is the `runtime.js` file.
+
+- NilScript includes a [type checker](#typechecking) which utilizes TypeScript.
+
+- NilScript includes a [built-in obfuscator](#squeeze) which hides method and class names in compiled code.
+ 
 ---
 
 ## <a name="class"></a>Classes
@@ -551,10 +558,9 @@ NilScript handles the binding for you.  No additional code is needed to access i
 ---
 ## <a name="selector"></a>Selectors
 
-In order to support  [consistent property names](https://developers.google.com/closure/compiler/docs/api-tutorial3#propnames), 
-selectors are not encoded as strings (as in Objective-C and Objective-J).  Instead, they use an object literal syntax:
+Like Objective-C, selectors are encoded as strings. However, NilScript adds a private prefix and replaces colons with underscores:
 
-    @selector(foo:bar:baz:) -> { N$_f_foo_bar_baz_: 1 }
+    @selector(foo:bar:baz:) -> "N$_f_foo_bar_baz_"
 
 Thus, a call such as:
     
@@ -562,7 +568,7 @@ Thus, a call such as:
     
 May (depending on optimizations) be turned into:
 
-    nilscript.msgSend(object, { N$_f_foo_bar_baz_: 1 }, 7, 8, 9)
+    nilscript.msgSend(object, "N$_f_foo_bar_baz_", 7, 8, 9)
 
 
 ---
@@ -1037,7 +1043,7 @@ Note: `options.state` and `result.state` are private objects and the format/cont
 NilScript 2.x also adds the `symbolicate` function as API.  This converts an internal NilScript identifier such as `N$_f_stringWithString_` to a human-readable string (`"stringWithString:"`).  See [Squeezing and Symbolication](#squeeze) below.
 
 ---
-## <a name="compiler-projects"></a>Compiling Projects
+## <a name="compiling-projects"></a>Compiling Projects
 
 The easiest way to use NilScript is to pass all `.ns` and `.js` files in your project into `nsc` and produce a single `.js` output file.  In general: the more files you compile at the same time, the easier your life will be.  However, there are specific situations where a more-complex pipeline is needed.
 

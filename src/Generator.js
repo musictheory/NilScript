@@ -479,9 +479,7 @@ generate()
             modifier.select(receiver).replace(getClassAsRuntimeVariable(receiver.name));
         }
 
-        let selector = "{ " + methodName + ": 1 }";
-
-        modifier.from(receiver).to(firstSelector).replace("," + selector + (hasArguments ? "," : ""));
+        modifier.from(receiver).to(firstSelector).replace(",'" + methodName + "'" + (hasArguments ? "," : ""));
         modifier.from(lastSelector).to(node).replace(")");
     }
 
@@ -490,9 +488,8 @@ generate()
         let name = node.id.name;
         let cls  = model.classes[name];
 
-        let superName     = cls.superclass ? cls.superclass.name : null;
-        let classSymbol   = symbolTyper.getSymbolForClassName(name);
-        let classSelector = "{" + classSymbol + ":1}";
+        let superName   = cls.superclass ? cls.superclass.name : null;
+        let classSymbol = symbolTyper.getSymbolForClassName(name);
  
         // Only allow whitelisted children inside of an implementation block
         _.each(node.body.body, child => {
@@ -526,11 +523,11 @@ generate()
         makeScope(node);
 
         let constructorCallSuper = "";
-        let superSelector = null;
+        let superSymbol = null;
 
         if (superName) {
             constructorCallSuper = getClassAsRuntimeVariable(superName) + ".call(this);";
-            superSelector        = "{" + symbolTyper.getSymbolForClassName(superName) + ":1}";
+            superSymbol          = symbolTyper.getSymbolForClassName(superName);
         }
 
         let constructorSetIvars = generateIvarAssignments(currentClass);
@@ -539,20 +536,16 @@ generate()
         let endText;
 
         if (language === LanguageEcmascript5) {
+            let classSymbolAsString = classSymbol ? `"${classSymbol}"` : null;
+            let superSymbolAsString = superSymbol ? `"${superSymbol}"` : null;
+
             if (node.category) {
-                let categorySelector = "{" + symbolTyper.getSymbolForClassName(node.category) + ":1}";
-
-                startText = NSRootVariable + "._registerCategory(" +
-                    classSelector + ", ";
-
+                startText = `${NSRootVariable}._registerCategory(${classSymbolAsString},`;
             } else {
-                startText = NSRootVariable + "._registerClass(" +
-                    classSelector + ", " +
-                    (superSelector || "null") + ", ";
+                startText = `${NSRootVariable}._registerClass(${classSymbolAsString},${superSymbolAsString},`;
             }
 
             startText = startText +
-               
                 "function(" + NSClassMethodsVariable + ", " + NSInstanceMethodsVariable + ") { " +
                 "function " + classSymbol + "() { " +
                 constructorCallSuper +
@@ -930,7 +923,7 @@ generate()
             warnings.push(Utils.makeError(NSWarning.UnknownSelector, `Use of unknown selector "${node.name}"`, node));
         }
 
-        modifier.select(node).replace("{ " + name + ": 1 }");
+        modifier.select(node).replace(`"${name}"`);
     }
 
     function handleNSEnumDeclaration(node)

@@ -6,7 +6,7 @@
 */
 
 
-interface N$_Selector   { }
+type N$_Selector = string;
 
 interface N$_Runtime {
     _g : N$_Globals;
