@@ -923,7 +923,9 @@ generate()
             warnings.push(Utils.makeError(NSWarning.UnknownSelector, `Use of unknown selector "${node.name}"`, node));
         }
 
-        modifier.select(node).replace(`"${name}"`);
+        modifier.select(node).replace(
+            language === LanguageTypechecker ? `{ N$_Selector: "${name}" }` : `"${name}"`
+        );
     }
 
     function handleNSEnumDeclaration(node)
