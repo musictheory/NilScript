@@ -6020,14 +6020,21 @@ return /******/ (function(modules) { // webpackBootstrap
 	        var kind = '';
 	        this.expectKeyword('@type');
 	        var name = this.parseVariableIdentifier().name;
-	        this.expect("=");
+	        if (this.match('=')) {
+	            this.expect('=');
+	        }
 	        if (this.match('{')) {
 	            kind = 'object';
 	            this.expect('{');
 	            while (!this.match('}')) {
 	                params.push(this.ns_parseIdentifierWithAnnotation({ allowOptional: true }));
 	                if (!this.match('}')) {
-	                    this.expect(",");
+	                    if (this.match(';')) {
+	                        this.expect(';');
+	                    }
+	                    else {
+	                        this.expect(",");
+	                    }
 	                }
 	            }
 	            this.expect('}');

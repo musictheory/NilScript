@@ -21,14 +21,14 @@ const NSWarning  = require("./Errors").NSWarning;
 
 const Location = require("./model/NSSymbolTyper").Location;
 
-const NSRootVariable            = "N$_nilscript";
+const NSRootVariable            = "N$$_";
 const NSClassMethodsVariable    = "N$_s";
 const NSInstanceMethodsVariable = "N$_m";
 const NSTemporaryVariablePrefix = "N$_t_";
 const NSSuperVariable           = "N$_super";
 
-const NSRootWithGlobalPrefix = NSRootVariable + "._g."
-const NSRootWithClassPrefix  = NSRootVariable + "._cls.";
+const NSRootWithGlobalPrefix = NSRootVariable + "._g.";
+const NSRootWithClassPrefix  = NSRootVariable + "._c.";
 
 const LanguageEcmascript5 = "ecmascript5";
 const LanguageTypechecker = "typechecker";

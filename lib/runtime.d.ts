@@ -99,8 +99,8 @@ declare class N$_StaticBaseClass extends Function implements N$_StaticBaseProtoc
     isEqual_(other : any) : boolean;
 }
 
-declare var N$_nilscript : N$_Runtime;
-declare var nilscript    : N$_Runtime;
+declare var N$$_      : N$_Runtime;
+declare var nilscript : N$_Runtime;
 
 declare function N$_atEachGetMember<T>(arg : T[]) : T;
 declare function N$_atEachGetMember(arg : any) : any;

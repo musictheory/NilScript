@@ -78,8 +78,8 @@ function sSymbolicate(string, fromSqueezedMap)
             symbol = symbol.substr(NSMethodPrefix.length);
             symbol = symbol.replace(/_([^_])/g, ":$1");
             symbol = symbol.replace(/_$/g,      ":");
-            symbol = symbol.replace(/__/g,    "_");
-            symbol = symbol.replace(/^\:/g,   "_");
+            symbol = symbol.replace(/__/g,      "_");
+            symbol = symbol.replace(/^\:/g,     "_");
 
             return symbol;
 

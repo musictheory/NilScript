@@ -878,11 +878,14 @@ In order to support compiler optimizations, the following method names are reser
     class
     className
     instancesRespondToSelector:
-    respondsToSelector:
-    superclass
-    isSubclassOfClass:
     isKindOfClass:
     isMemberOfClass:
+    isSubclassOfClass:
+    performSelector:
+    performSelector:withObject:
+    performSelector:withObject:withObject:
+    respondsToSelector:
+    superclass
 
 ---
 ## <a name="api"></a>API
