@@ -1,4 +1,4 @@
-//@opts = { "output-language": "none", "check-types": true }
+//@opts = { "output-language": "none", "typescript-lib": "es2015", "check-types": true }
 
 @class Singleton
 + (instancetype) sharedInstance { return null; }
@@ -41,6 +41,22 @@
 - (Object<Foo>) returnsFooMap {
     var a = [ ];
     return a;       //@typecheck 2322,Array,Object<Foo>
+}
+
+
+
+- (Map<Number, Number>) returnsNumberMap {
+    var map = new Map();
+
+    map.set(4, 4);
+
+    return map;
+}
+
+- (Promise<String>) returnsStringPromise {
+    return new Promise(function(resolve, reject) {
+        resolve("foo");
+    });
 }
 
 @end

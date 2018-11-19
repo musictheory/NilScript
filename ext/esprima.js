@@ -3017,7 +3017,20 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	    };
 	    Parser.prototype.parseGroupExpression = function () {
+	        var _this = this;
 	        var expr;
+	        //!ns: Start changes
+	        var colonToken = null;
+	        var parseAssignmentExpressionAndMaybeAnnotation = function () {
+	            var expr = _this.inheritCoverGrammar(_this.parseAssignmentExpression);
+	            if (expr.type === syntax_1.Syntax.Identifier && _this.match(':')) {
+	                if (!colonToken)
+	                    colonToken = _this.lookahead;
+	                expr.annotation = _this.ns_parseTypeAnnotation();
+	            }
+	            return expr;
+	        };
+	        //!ns: End changes
 	        this.expect('(');
 	        if (this.match(')')) {
 	            this.nextToken();
@@ -3048,7 +3061,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	            else {
 	                var arrow = false;
 	                this.context.isBindingElement = true;
-	                expr = this.inheritCoverGrammar(this.parseAssignmentExpression);
+	                expr = parseAssignmentExpressionAndMaybeAnnotation(); //!ns: Change to our local function
 	                if (this.match(',')) {
 	                    var expressions = [];
 	                    this.context.isAssignmentTarget = false;
@@ -3091,7 +3104,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                            };
 	                        }
 	                        else {
-	                            expressions.push(this.inheritCoverGrammar(this.parseAssignmentExpression));
+	                            expressions.push(parseAssignmentExpressionAndMaybeAnnotation()); //!ns: Change to our local function
 	                        }
 	                        if (arrow) {
 	                            break;
@@ -3136,6 +3149,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	                }
 	            }
 	        }
+	        if (expr.type !== ArrowParameterPlaceHolder && colonToken)
+	            this.throwUnexpectedToken(colonToken); //!ns: Throw if not => placeholder
 	        return expr;
 	    };
 	    // https://tc39.github.io/ecma262/#sec-left-hand-side-expressions

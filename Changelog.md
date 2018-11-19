@@ -21,6 +21,7 @@ Major Language Changes:
    * Added the `--warn-inherited-ivars` compiler flag. This warns if
      an ivar declared in a superclass is used in an inherited context.
  - Unified syntax for inheritance and protocol conformance (#156).
+ - Added `iterator` to the reserved selector name list (#151).
  - Removed runtime `nilscript.getSubclassesOfClass` API (#158).
  - Removed requirement for consistent property names (#157). This should only affect users
    using Google's Closure Compiler with "advanced optimizations" turned on.

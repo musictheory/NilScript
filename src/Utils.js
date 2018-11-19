@@ -26,12 +26,17 @@ const sBaseObjectSelectors = {
     "respondsToSelector:": 1,
     "superclass": 1,
 
+    // Reserved for https://github.com/musictheory/NilScript/issues/151
+    "iterator": 1,
+
     // Subclasses may override these
-    "copy": 2,
+    "copy":        2,
     "description": 2,
-    "init": 2,
-    "isEqual:": 2,
-    "toString": 2
+    "init":        2,
+    "isEqual:":    2,
+    "toString":    2,
+    "toJSON":      2,
+    "valueOf":     2
 };
 
 
@@ -50,12 +55,6 @@ function isBaseObjectSelectorName(name)
 function getBaseObjectSelectorNames()
 {
     return _.keys(sBaseObjectSelectors);
-}
-
-
-function isBaseObjectClass(name)
-{
-    return name == "BaseObject";
 }
 
 
@@ -160,7 +159,6 @@ module.exports = {
     isReservedSelectorName:     isReservedSelectorName,
     isBaseObjectSelectorName:   isBaseObjectSelectorName,
     getBaseObjectSelectorNames: getBaseObjectSelectorNames,
-    isBaseObjectClass:          isBaseObjectClass,
     makeError:                  makeError,
     throwError:                 throwError,
     addNodeToError:             addNodeToError,

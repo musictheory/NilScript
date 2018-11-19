@@ -383,7 +383,7 @@ generate()
                         cast = "<" + symbolTyper.toTypecheckerType(currentClass.name) + ">";
                     }
 
-                    doCommonReplacement(cast + selfOrThis + ".N$_super()." + methodName + "(", ")");
+                    doCommonReplacement(cast + selfOrThis + "." + NSSuperVariable + "()." + methodName + "(", ")");
                 }
                 return;
 
@@ -1183,7 +1183,7 @@ generate()
                 result += param.name + "? : " + type + ", ";
             }
 
-            result += "...N$_rest)";
+            result += "...N$_rest: any[])";
 
             if (node.annotation) {
                 result += ": " + symbolTyper.toTypecheckerType(node.annotation.value);

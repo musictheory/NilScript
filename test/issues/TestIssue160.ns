@@ -1,0 +1,7 @@
+var foo = (a: String, b: String) => {
+    return parseInt(a, 10) + parseInt(b, 10);
+}
+
+assert.equal(foo("2", "3"), 5);
+
+true;

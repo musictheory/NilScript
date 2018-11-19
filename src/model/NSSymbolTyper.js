@@ -251,6 +251,61 @@ enrollForSqueezing(name)
 
 
 
+_parseTypeString(inString)
+{
+    let tokens = inString.match(/[A-Za-z0-9$_]+|[<>,]/g);
+    let next   = tokens[0];
+
+    function lex() {
+        let result = tokens.shift();
+        next = tokens[0];
+        return result;
+    }
+
+    function err() {
+        throw new Error();
+    }
+
+    function parse() {
+        let args = null;
+
+        let name = lex();
+        if (name == "async" || name == "kindof") {
+            name = "-" + name;
+            args = [ parse() ];
+
+        } else if (name && name.match(/^[A-Za-z0-9$_]+/)) {
+            if (next == "<") {
+                lex();
+                args = [ ];
+
+                while (next) {
+                    args.push(parse());
+
+                    if (next == ",") {
+                        lex();
+                    } else {
+                        break;
+                    }
+                }
+
+                if (next == ">") {
+                    lex();
+                } else {
+                    err();
+                }
+            }
+
+        } else {
+            throw new Error();
+        }
+
+        return { name, args };
+    }
+
+    return parse();
+}
+
 
 toTypecheckerType(rawInType, location)
 {
@@ -264,124 +319,134 @@ toTypecheckerType(rawInType, location)
     let model = this._model;
     let toTypecheckerMap = this._toTypecheckerMap;
 
-    let inType  = rawInType.replace(/kindof\s+/, "kindof-").replace(/\s+/g, ""); // Remove whitespace
-    let outType = toTypecheckerMap[inType];
-
+    // Check raw type string
+    let outType = toTypecheckerMap[rawInType];
     if (outType) return outType;
 
-    // "Array<Array<String>>"" becomes [ "Array", "Array", "String" ]
-    let inParts  = inType.replace(/\>/g, "").split("<");
+    // Check normalized type string
+    let inType = rawInType.replace(/(kindof|async)\s+/g, "$1-").replace(/\s+/g, ""); // Remove whitespace
+    outType = toTypecheckerMap[inType];
+    if (outType) return outType;
+
     let addToForwardMap = true;
     let addToReverseMap = true;
 
-    let _handleParts = (parts) => {
-        let part = parts[0];
-        let rest = parts.slice(1);
-        let result;
+    function convert(node) {
+        let name       = node.name;
+        let args       = node.args || [ ];
+        let argsLength = args.length;
         let tmp;
 
-        if (rest.length > 0) {
-            if (part == "Array") {
-                result = _handleParts(rest) + "[]";
+        if (name == "Array") {
+            if (argsLength > 1) {
+                throw new Error();
 
-            } else if (part == "Object" && (rest.length > 0)) {
-                result = "{[i:string ]:" + _handleParts(rest) + "}";
+            } else if (argsLength == 1) {
+                return convert(args[0]) + "[]";
 
-            } else {
-                Utils.throwError(NSError.ParseError, "Cannot parse type '" + rawInType + "'");
+            } else if (argsLength == 0) {
+                return "any[]";
             }
 
-        } else if (part == "String" || part == "string") {
-            result = "string";
+        } else if (name == "Object") {
+            if (argsLength > 1) {
+                throw new Error();
 
-        } else if ((tmp = toTypecheckerMap[part])) {
-            result = tmp;
+            } else if (argsLength == 1) {
+                return "{[i:string ]:" + convert(args[0]) + "}";
 
-        } else if (model.isNumericType(part)) {
-            result = "number";
-            addToReverseMap = false;
-
-        } else if (model.isBooleanType(part)) {
-            result = "boolean";
-            addToReverseMap = false;
-
-        } else if (part == "Array") {
-            result = "any[]";
-
-        } else if (part == "SEL") {
-            result = "N$_Selector";
-
-        } else if (part == "Object" || part == "Class" || part == "any") {
-            result = "any";
-
-        } else if (part == "void") {
-            result = "void";
-
-        } else if (part == "id") {
-            if ((location == Location.DeclarationReturn) || (location == Location.ImplementationParameter)) {
-                result = TypecheckerSymbols.IdIntersection;
-
-            } else if ((location == Location.DeclarationParameter) || (location == Location.ImplementationReturn)) {
-                result = TypecheckerSymbols.IdUnion;
-
-            } else {
-                result = "any";
+            } else if (argsLength == 0) {
+                return "any";
             }
 
+        } else if (name == "-kindof") {
             addToForwardMap = false;
             addToReverseMap = false;
-
-        } else if (part.indexOf("kindof-") == 0) {
-            part = part.split("-")[1];
 
             if ((location === Location.DeclarationReturn) || (location === Location.DefinitionParameter)) {
                 // To fully support kindof, this should be replaced by an aggregate class
-                result = TypecheckerSymbols.IdIntersection;
+                return TypecheckerSymbols.IdIntersection;
 
             } else if ((location === Location.DeclarationParameter) || (location === Location.DefinitionReturn)) {
-                result = _handleParts([ part ]);
+                return convert(args[0]);
 
             } else {
-                result = "any";
+                return "any";
+            }
+
+        } else if (argsLength > 0) {
+            return name + "<" + _.map(args, arg => convert(arg)).join(",") + ">";
+
+        } else if (name == "id") {
+            if (argsLength > 0) {
+                throw new Error();
             }
 
             addToForwardMap = false;
             addToReverseMap = false;
 
-        } else if (part == "instancetype") {
-            result = "any";
+            if ((location == Location.DeclarationReturn) || (location == Location.ImplementationParameter)) {
+                return TypecheckerSymbols.IdIntersection;
 
+            } else if ((location == Location.DeclarationParameter) || (location == Location.ImplementationReturn)) {
+                return TypecheckerSymbols.IdUnion;
+
+            } else {
+                return "any";
+            }
+
+        } else if (name == "instancetype") {
             addToForwardMap = false;
             addToReverseMap = false;
 
-        // } else if ((tmp = model.types[part])) {
-        //     console.log("HERE FOR " + part);
-        //     if (tmp == part) {
-        //         result = tmp;
-        //     } else {
-        //         result = this.toTypecheckerType(tmp, location);
-        //         addToReverseMap = false;
-        //     }
+            return "any";
+
+        } else if (name == "String" || name == "string") {
+            return "string";
+
+        } else if ((tmp = toTypecheckerMap[name])) {
+            return tmp;
+
+        } else if (model.isNumericType(name)) {
+            addToReverseMap = false;
+            return "number";
+            
+        } else if (model.isBooleanType(name)) {
+            addToReverseMap = false;
+            return "boolean";
+
+        } else if (name == "SEL") {
+            return "N$_Selector";
+
+        } else if (name == "Class" || name == "any") {
+            return "any";
+
+        } else if (name == "void") {
+            return "void";
 
         } else {
-            result = part;
+            return name;
         }
-        
-        return result;
     }
 
-    outType = _handleParts(inParts);
-    outType = outType.replace(/\s+/g, ""); // Remove whitespace
-
-    if (addToForwardMap && outType) {
-        this._toTypecheckerMap[inType] = outType;
+    try {
+        outType = convert(this._parseTypeString(inType));
+    } catch (e) {
+        console.log(rawInType, inType)
+        Utils.throwError(NSError.ParseError, "Cannot parse type '" + rawInType + "'");
     }
 
-    if (addToReverseMap && outType) {
-        let outTypeNoParenthesis = outType.replace(/[()]/g, ""); // Remove parenthesis
+    if (outType) {
+        if (addToForwardMap) {
+            this._toTypecheckerMap[inType] = outType;
+        }
 
-        if (!this._fromTypecheckerMap[outTypeNoParenthesis]) {
-            this._fromTypecheckerMap[outTypeNoParenthesis] = inType;
+        if (addToReverseMap) {
+            let outTypeNoParenthesis = outType.replace(/[()]/g, ""); // Remove parenthesis
+
+            if (!this._fromTypecheckerMap[outTypeNoParenthesis]) {
+                this._fromTypecheckerMap[outTypeNoParenthesis] = inType;
+            }
         }
     }
 
@@ -394,7 +459,6 @@ fromTypecheckerType(rawInType)
     if (!this._fromTypecheckerMap) {
         this._setupTypecheckerMaps();
     }
-
 
     let inType  = rawInType.replace(/[\s;]+/g, ""); // Remove whitespace and semicolon
     let outType = this._fromTypecheckerMap[inType];
@@ -434,12 +498,10 @@ getSymbolForClassName(className, isTypecheckerStatic)
 
     if (!className) return;
 
-    if (!Utils.isBaseObjectClass(className)) {
-        if (this._squeeze) {
-            return this._getSqueezedSymbol(prefix + className, true);
-        } else {
-            return prefix + className;
-        }
+    if (this._squeeze) {
+        return this._getSqueezedSymbol(prefix + className, true);
+    } else {
+        return prefix + className;
     }
 
     return className;
