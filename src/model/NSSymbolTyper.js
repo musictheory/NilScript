@@ -67,12 +67,9 @@ function sToBase52(index)
 
 function sSymbolicate(string, fromSqueezedMap)
 {
-    return string.replace(/^N\$[A-Za-z0-9_$]+/g, function(symbol) {
+    return string.replace(/N\$[A-Za-z0-9_$]+/g, function(symbol) {
         if (symbol.match(/^N\$_[cCpPi]_/)) {
             return symbol.substr(NSClassPrefix.length);
-
-        } else if (fromSqueezedMap && symbol.indexOf("N$") === 0) {
-            return fromSqueezedMap[symbol];
 
         } else if (symbol.indexOf(NSMethodPrefix) === 0) {
             symbol = symbol.substr(NSMethodPrefix.length);
@@ -82,6 +79,9 @@ function sSymbolicate(string, fromSqueezedMap)
             symbol = symbol.replace(/^\:/g,     "_");
 
             return symbol;
+
+        } else if (fromSqueezedMap && symbol.match(/^N\$[A-Za-z0-9]+/)) {
+            return fromSqueezedMap[symbol];
 
         } else {
             return symbol;
