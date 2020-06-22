@@ -838,32 +838,9 @@ generate()
                 let s = [ ];
                 let ivar = generateThisIvar(property.ivar, false);
 
-                let hasObservers    = observers.length > 0;
-                let changeObservers = [ ];
-                let setObservers    = [ ];
-
-                if (hasObservers) {
-                    _.each(observers, observer => {
-                        if (observer.change) {
-                            changeObservers.push(observer);
-                        } else {
-                            setObservers.push(observer);
-                        }
-                    });
-
+                if (observers.length > 0) {
                     s.push( "var old = " + ivar + ";" );
-
-                    _.each(setObservers, observer => {
-                        let before = observer.before && symbolTyper.getSymbolForSelectorName(observer.before);
-                        if (before) s.push( "this." + before + "(arg);" );
-                    });
-
                     s.push("if (old !== arg) {");
-
-                    _.each(changeObservers, observer => {
-                        let before = observer.before && symbolTyper.getSymbolForSelectorName(observer.before);
-                        if (before) s.push( "this." + before + "(arg);" );
-                    });
                 }
 
                 if (property.copyOnWrite) {
@@ -872,20 +849,13 @@ generate()
                     s.push(ivar + " = arg;");
                 }
 
-                if (hasObservers) {
-                    _.each(changeObservers, observer => {
+                if (observers.length > 0) {
+                    _.each(observers, observer => {
                         let after = observer.after && symbolTyper.getSymbolForSelectorName(observer.after);
                         if (after) s.push( "this." + after + "(old);" );
                     });
 
-                    if (observers.length) {
-                        s.push("}");
-                    }
-
-                    _.each(setObservers, observer => {
-                        let after = observer.after && symbolTyper.getSymbolForSelectorName(observer.after);
-                        if (after) s.push( "this." + after + "(old);" );
-                    });
+                    s.push("}");
                 }
 
                 result += generateMethodDeclaration(false, property.setter) + " = function(arg) { " + s.join(" ")  + "} ;"; 

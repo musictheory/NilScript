@@ -74,7 +74,7 @@ loadState(state)
     });
 
     _.each(state.observers, o => {
-        this.addObserver(new NSObserver(o.location, o.name, o.change, o.before, o.after));
+        this.addObserver(new NSObserver(o.location, o.name, o.after));
     });
 
     _.each(state.methods, m => {
@@ -237,12 +237,7 @@ _checkObservers()
 
     _.each(_.values(this._observerMap), observers => {
         _.each(observers, observer => {
-            let before = observer.before;
             let after  = observer.after;
-
-            if (before && !knownSelectors[before]) {
-                this.prepareWarnings.push(Utils.makeError(NSWarning.UnknownSelector, `Unknown selector: "${before}"`, observer.location));
-            }
 
             if (after && !knownSelectors[after]) {
                 this.prepareWarnings.push(Utils.makeError(NSWarning.UnknownSelector, `Unknown selector: "${after}"`, observer.location));

@@ -213,37 +213,23 @@ build()
 
     function handleNSObserveDirective(node)
     {
-        let hasSet    = false;
-        let hasChange = false;
-        let before    = null;
-        let after     = null;
+        let after = null;
 
         for (let i = 0, length = node.attributes.length; i < length; i++) {
             let attribute = node.attributes[i];
-            let attributeName = attribute.name;
 
-            if (attributeName == "before") {
-                before = attribute.selector.selectorName;
-            } else if (attributeName == "after") {
+            if (attribute.name == "after") {
                 after = attribute.selector.selectorName;
-            } else if (attributeName == "change") {
-                hasChange = true;
-            } else if (attributeName == "set") {
-                hasSet = true;
             }
-        }
-
-        if (hasSet && hasChange) {
-            Utils.throwError(NSError.NotYetSupported, "@observe 'change' and 'set' attributes are mutually exclusive", node);
         }
 
         for (let i = 0, length = node.ids.length; i < length; i++) {
             let name = node.ids[i].name;
 
-            let observer = new Model.NSObserver(makeLocation(node), name, !hasSet, before, after);
+            let observer = new Model.NSObserver(makeLocation(node), name, after);
             if (currentClass) currentClass.addObserver(observer);
         }
-    }           
+    }
 
     function handleNSSynthesizeDirective(node) {
         let pairs = node.pairs;

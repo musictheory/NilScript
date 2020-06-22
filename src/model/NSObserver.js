@@ -11,12 +11,10 @@
 module.exports = class NSObserver {
 
 
-constructor(location, name, change, before, after)
+constructor(location, name, after)
 {
     this.location = location;
     this.name     = name;
-    this.change   = change;
-    this.before   = before;
     this.after    = after;
 }
 
