@@ -51,7 +51,7 @@ loadState(state)
     });
 
     _.each(state.properties, function(p) {
-        propertyMap[p.name] = new NSProperty(p.location, p.name, p.type, p.writable, p.copyOnRead, p.copyOnWrite, p.getter, p.setter, p.ivar, p.optional);
+        propertyMap[p.name] = new NSProperty(p.location, p.name, p.type, p.ivar, p.getter, p.setter, p.optional);
     });
 }
 
@@ -103,15 +103,15 @@ getAllMethods()
         let type     = nsProperty.type;
         let optional = nsProperty.optional;
 
-        if (nsProperty.writable && setter) {
+        if (setter) {
             if (!this._instanceMethodMap[setter]) {
-                results.push(new NSMethod(null, setter, "-", "void", [ type ], optional));
+                results.push(nsProperty.generateSetterMethod());
             }
         }
 
         if (getter) {
             if (!this._instanceMethodMap[getter]) {
-                results.push(new NSMethod(null, getter, "-", type, [ ], optional));
+                results.push(nsProperty.generateGetterMethod());
             }
         }
     });
@@ -120,13 +120,13 @@ getAllMethods()
 }
 
 
-getImplementedClassMethods()
+getClassMethods()
 {
     return _.values(this._classMethodMap);
 }
 
 
-getImplementedInstanceMethods()
+getInstanceMethods()
 {
     return _.values(this._instanceMethodMap);
 }

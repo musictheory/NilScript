@@ -250,87 +250,56 @@ Sometimes the compiler will choose to use `nilscript.msgSend()` rather than a di
 ---
 ## <a name="property"></a>Properties and Instance Variables
 
-NilScript uses the Objective-C 2.0 `@property` syntax which originally appeared in Mac OS X 10.5 Leopard.  It also supports the concept of default property synthesis added in Xcode 4.4.
-
-In addition, NilScript allows storage for additional instance variables (ivars) to be defined on a class.
-
-A class that uses a property, private ivar, and accesses them in a method may look like this:
+Like Objective-C, NilScript uses the `@property` directive to define object properties. Getter
+and setter methods are automatically created.
 
 ```
 @class TheClass {
-    _privateNumberIvar: Number;
+@property theProperty: String;
 }
-    
-@property publicNumberProperty: Number; // Generates publicNumberProperty ivar
 
-- (Number) addPublicAndPrivateNumbers
+let theInstance = [[TheClass alloc] init];
+[theInstance setTheProperty:"Hello"];
+console.log([theInstance theProperty]); // Logs "Hello"
+```
+
+NilScript also uses the concept of instance variables to allow a class to "shortcut"
+the getter method and directly access the property.
+
+Instance variables may be accessed inside of `@class` method definitions by using the
+property name prefixed with `_`.  No `this.` or `self.` prefix is needed.
+
+
+```
+@class TheClass {
+
+@property theProperty: String;
+
+- (void) logTheProperty
 {
-    return _privateNumberIvar + _publicNumberIvar;
+    console.log(_theProperty);
 }
-    
-@end
-```
 
-### <a name="property-synthesis"></a>Synthesis 
-
-Properties are defined using the `@property` keyword in an `@class` block:
-
-```
-@class TheClass
-@property myStringProperty: String;
-@end
-```
-
-In the above example, the compiler will automatically synthesize a backing instance variable `_myStringProperty` for `myStringProperty`.  It will also create an accessor method pair: `-setMyStringProperty:` and `-myStringProperty`.
-
-If a different backing instance variable is desired, the `@synthesize` directive is used:
-
-```
-@class TheClass
-@property myStringProperty: String;
-    
-// Maps myStringProperty property to m_myStringProperty instance variable
-@synthesize myStringProperty=m_MyStringProperty;
-@end
-```
-
-As in Objective-C, `@synthesize` without an `=` results in the same name being used for the backing instance variable:
-
-```
-@class TheClass
-@property myStringProperty: String;
-    
-// Maps myStringProperty property to myStringProperty instance variable
-@synthesize myStringProperty;
-@end
-```
-
-The `@dynamic` directive suppresses the generation of both the backing instance variable and the setter/getter pair.
-
-```
-@class TheClass
-@property myStringProperty: String;
-@dynamic myStringProperty; // No instance variable, getter, nor setter is synthesized
-@end
-```
-
-In addition, multiple properties may be specified in `@synthesize` and `@dynamic`:
-
-```
-@synthesize prop1, prop2, prop3=m_prop3;
-@dynamic dynamic1,dynamic2;
-```
-
-### <a name="property-using"></a>Using
-
-To access any instance variable, simply use its name.  No `this.` or `self.` prefix is needed:
-
-```
-- (void) logSheepCount
-{
-    console.log(_numberOfSheep);
 }
 ```
+
+Unlike Objective-C:
+
+- NilScript always generates an instance variable for each property.
+The name of the instance variable is always a `_` followed by the
+property's name. There is no concept of `@synthesize` or `@dynamic`.
+
+- NilScript uses `@property` with a `private` attribute to define additional
+instance variables rather than seperate syntax.
+
+- NilScript has no concept of `@protected` or `@public` instance variables.
+You may not use an instance variable outside of the `@class` block in which
+the `@property` was defined.
+
+- By default, the implementation of each instance variable is a simple property
+on a JavaScript object. However, if an instance variable isn't directly used in 
+code, the NilScript compiler may remove it or use an alternate storage mechanism.
+
 
 ### <a name="property-attributes"></a>Property Attributes
 
@@ -340,10 +309,10 @@ NilScript supports property attributes similar to Objective-C:
 
 | Attribute          | Description                                                      
 |--------------------|------------------------------------------------------------------
-| `getter=` | Changes the name of the getter/accessor
-| `setter=` | Changes the name of the setter/mutator
+| `readonly`, `readwrite`, `private` | Default is `readwrite`. `readonly` suppresses the generation of a setter. `private` suppresses the generation of both a setter and getter.
+| `getter=` | Changes the name of the getter
+| `setter=` | Changes the name of the setter
 | `copy`, `struct`  | Creates a copy (See below)
-| `readonly`, `readwrite` | Default is readwrite, readonly suppresses the generation of a setter
 
 `copy` uses `nilscript.makeCopy` in the setter.
 
@@ -378,13 +347,13 @@ Due to differences between JavaScript and Objective-C, the following attributes 
 
 ### <a name="property-init"></a>Initialization
 
-During `+alloc`, NilScript initializes all instance variables to one of the following values based on its type:
+During `+alloc`, NilScript initializes all properties to one of the following values based on its type:
 
     Boolean         -> false
     Number          -> 0
     everything else -> null
 
-This allows Number instance variables to be used in math operations  without the fear of `undefined` being converted to `NaN` by the JavaScript engine.
+This allows Number instance variables to be used in math operations without the fear of `undefined` being converted to `NaN` by the JavaScript engine.
 
 
 ### <a name="property-compiler"></a>Behind the Scenes (Properties/ivars)
@@ -759,7 +728,8 @@ When the `--warn-unknown-ivars` option is specified, NilScript checks all JavaSc
 @end
 ```
 
-When the `--warn-unused-ivars` option is specified, NilScript warns about ivar declarations that are unused within an implementation.
+When the `--warn-unused-privates` option is specified, NilScript warns about `@property (private)` declarations that
+are unused within an implementation.
 
 ```
 @class TheClass {
@@ -953,7 +923,7 @@ warn-this-in-methods      | Boolean  | Warn about usage of 'this' in NilScript m
 warn-self-in-non-methods  | Boolean  | Warn about usage of 'self' in non-NilScript methods
 warn-unknown-ivars        | Boolean  | Warn about unknown ivars
 warn-unknown-selectors    | Boolean  | Warn about usage of unknown selectors
-warn-unused-ivars         | Boolean  | Warn about unused ivars
+warn-unused-privates      | Boolean  | Warn about unused private properties
 
 Valid properties for each `file` or `defs` object:
 

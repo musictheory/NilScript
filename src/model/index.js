@@ -15,7 +15,6 @@ module.exports = {
     NSProperty: require("./NSProperty"),
     NSObserver: require("./NSObserver"),
     NSMethod:   require("./NSMethod"),
-    NSIvar:     require("./NSIvar"),
     NSConst:    require("./NSConst"),
     NSEnum:     require("./NSEnum"),
     NSGlobal:   require("./NSGlobal"),

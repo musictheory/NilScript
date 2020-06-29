@@ -4,33 +4,6 @@
 
 @class UndeclaredInstanceVariable
 
-@property foo: id;
-
-- (void) setFoo:(id)foo { _foo = foo; } //@warning NilScriptUndeclaredInstanceVariableWarning
-- (id) foo { return _foo; }             //@warning NilScriptUndeclaredInstanceVariableWarning
-
-@end
-
-
-// --------------------------------------------------------------------
-// @name unknown-ivars 2
-// @opts { "warn-unknown-ivars": true  }
-
-@class UndeclaredInstanceVariable
-
-@property (readonly) foo: id;
-
-- (id) foo { return _foo; } //@warning NilScriptUndeclaredInstanceVariableWarning
-
-@end
-
-
-// --------------------------------------------------------------------
-// @name unknown-ivars 3
-// @opts { "warn-unknown-ivars": true  }
-
-@class UndeclaredInstanceVariable
-
 - (void) testCheckIvar
 {
      _moo;  //@warning NilScriptUndeclaredInstanceVariableWarning
@@ -174,70 +147,6 @@ function test() {
 }
 
 
-// --------------------------------------------------------------------
-// @name Ivar Claimed
-// @error-no-line NilScriptInstanceVariableAlreadyClaimedError
-
-@class InstanceVariableAlreadyClaimed
-
-@property foo  : id;
-@property foo2 : id;
-
-@synthesize foo=_bar;
-@synthesize foo2=_bar;
-
-@end
-
-
-// --------------------------------------------------------------------
-// @name Ivar Claimed 2
-// @error-no-line NilScriptInstanceVariableAlreadyClaimedError
-
-@class InstanceVariableAlreadyClaimed2
-
-@property foo  : id;
-@property foo2 : id;
-
-@synthesize foo2=_foo;
-
-@end
-
-
-// --------------------------------------------------------------------
-// @name Property Already Dynamic
-
-@class PropertyAlreadyDynamic
-
-@property foo: id;
-@dynamic foo;
-@synthesize foo=_bar;   //@error NilScriptPropertyAlreadyDynamicError
-
-@end
-
-
-// --------------------------------------------------------------------
-// @name Property Already Dynamic 2
-
-@class PropertyAlreadyDynamic
-
-@property foo: id;
-@dynamic foo;
-@dynamic foo;       //@error NilScriptPropertyAlreadyDynamicError
-
-@end
-
-
-// --------------------------------------------------------------------
-// @name Property Already Synthesized
-
-@class PropertyAlreadySynthesized
-
-@property foo: id;
-@synthesize foo=_foo;
-@synthesize foo=_bar;   //@error NilScriptPropertyAlreadySynthesizedError
-
-@end
-
 
 // --------------------------------------------------------------------
 // @name Reserved Method Name
@@ -260,65 +169,6 @@ function test() {
 
 
 // --------------------------------------------------------------------
-// @name Duplicate Ivar
-
-@class DuplicateInstanceVariable {
-    _foo: String;
-    _foo: String; //@error NilScriptDuplicateInstanceVariableError
-}
-
-@end
-
-
-
-// --------------------------------------------------------------------
-// @name Duplicate Ivar 2
-
-@class DuplicateInstanceVariableSuperclass {
-    _foo: String;
-}
-
-@end
-
-
-@class DuplicateInstanceVariable : DuplicateInstanceVariableSuperclass {
-    _foo: String; //@error NilScriptDuplicateInstanceVariableError
-}
-
-@end
-
-
-// --------------------------------------------------------------------
-// @name Property Needs Explicit Dynamic
-
-@class DuplicateInstanceVariableSuperclass {
-    _foo: String;
-}
-
-@end
-
-
-@class DuplicateInstanceVariable : DuplicateInstanceVariableSuperclass
-@property foo: String; //@warning NilScriptNeedsExplicitDynamicWarning
-@end
-
-
-// --------------------------------------------------------------------
-// @name Property Using Inherited
-
-@class DuplicateInstanceVariableSuperclass
-@property foo: String;
-@synthesize foo = mFoo;
-@end
-
-
-@class DuplicateInstanceVariable : DuplicateInstanceVariableSuperclass
-@property foo2: String;  //@warning NilScriptPropertyUsingInheritedWarning
-@synthesize foo2 = mFoo;
-@end
-
-
-// --------------------------------------------------------------------
 // @name Duplicate Property
 
 @class DuplicateProperty
@@ -326,6 +176,18 @@ function test() {
 @property foo: id;
 @property foo: id;   //@error NilScriptDuplicatePropertyError
 
+@end
+
+
+// --------------------------------------------------------------------
+// @name Duplicate Property 2
+
+@class DuplicatePropertyA
+@property foo: id;
+@end
+
+@class DuplicatePropertyB : DuplicatePropertyA
+@property foo: id;   //@error NilScriptDuplicatePropertyError
 @end
 
 
@@ -386,6 +248,7 @@ function test() {
 @class CircularClassB : CircularClassA
 @end
 
+
 // --------------------------------------------------------------------
 // @name Circular Class 2
 // @error-no-line NilScriptCircularClassHierarchyError
@@ -402,15 +265,16 @@ function test() {
 @class CircularClassD : CircularClassA
 @end
 
+
 // --------------------------------------------------------------------
 // @name Restricted Usage 1
 
-@class RestrictedUsageClass {
-    ivar1: id;
-}
+@class RestrictedUsageClass
+
+@property (private) ivar1: String;
 
 - (void) foo {
-    (function(ivar1) {      //@error NilScriptRestrictedUsageError
+    (function(_ivar1) {      //@error NilScriptRestrictedUsageError
     });
 }
 
@@ -420,32 +284,25 @@ function test() {
 // --------------------------------------------------------------------
 // @name Restricted Usage 2
 
-@class FooClass
-@end
+@class RestrictedUsageClass
 
-@class RestrictedUsageClass {
-    ivar1: id;
-}
+@property (private) ivar1: String;
 
 - (void) foo {
-    var ivar1; //@error NilScriptRestrictedUsageError
+    var _ivar1; //@error NilScriptRestrictedUsageError
 }
 
 @end
-
 
 
 // --------------------------------------------------------------------
 // @name Restricted Usage 3
 
-@class FooClass
-@end
+@class RestrictedUsageClass
 
-@class RestrictedUsageClass {
-    ivar1: id;
-}
+@property (private) ivar1: String;
 
-- (void) foo:(id)ivar1 {  //@error NilScriptRestrictedUsageError
+- (void) foo:(id)_ivar1 {  //@error NilScriptRestrictedUsageError
 
 }
 
@@ -471,42 +328,21 @@ function test() {
 
 
 // --------------------------------------------------------------------
-// @name Warn Inherited Ivars
-// @opts { "warn-inherited-ivars": true  }
+// @name Warn Unused Privates
+// @opts { "warn-unused-privates": true  }
 
-@class Foo {
-    _n: Number;
-}
-
+@class Foo
+@property (private) bar: id; //@warning NilScriptUnusedPrivatePropertyWarning
 @end
-
-@class Bar : Foo
-
-- (void) foo {
-    _n = 1; //@warning NilScriptInheritedInstanceVariableWarning
-}
-
-@end
-
-// --------------------------------------------------------------------
-// @name Warn Unused Ivars
-// @opts { "warn-unused-ivars": true  }
-
-@class Foo { //@warning NilScriptUnusedInstanceVariableWarning
-    _bar: id;
-}
-
-@end
-
 
 
 // --------------------------------------------------------------------
-// @name Warn Unused Ivars 2
-// @opts { "warn-unused-ivars": true  }
+// @name Warn Unused Privates 2
+// @opts { "warn-unused-privates": true  }
 
-@class Foo { //@warning NilScriptUnassignedInstanceVariableWarning
-    _bar: id;
-}
+@class Foo
+
+@property (private) bar: id; //@warning NilScriptUnassignedPrivatePropertyWarning
 
 - (void) doSomethingWithBar
 {
@@ -516,6 +352,39 @@ function test() {
 @end
 
 
+// --------------------------------------------------------------------
+// @name Cannot Use Instance Variable
+
+@class Foo
+@property theProperty: id;
+@end
+
+@class Bar : Foo
+
+- (void) doSomethingWithTheProperty
+{
+    [_theProperty doSomething]; //@error NilScriptCannotUseInstanceVariableError
+}
+
+@end
+
+
+
+// --------------------------------------------------------------------
+// @name Cannot Use Instance Variable 2
+
+@class Foo
+@property theProperty: id;
+@end
+
+@class Foo (TheCategory)
+
+- (void) doSomethingWithTheProperty
+{
+    [_theProperty doSomething]; //@error NilScriptCannotUseInstanceVariableError
+}
+
+@end
 
 
 // --------------------------------------------------------------------

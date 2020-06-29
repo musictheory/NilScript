@@ -14,32 +14,30 @@ const NSMethod = require("./NSMethod");
 module.exports = class NSProperty {
 
 
-constructor(location, name, type, writable, copyOnRead, copyOnWrite, getter, setter, ivar, optional)
+constructor(location, name, type, ivar, getter, setter, optional)
 {
-    this.location    = location;
-    this.name        = name;
-    this.type        = type;
-    this.writable    = writable;
-    this.copyOnRead  = copyOnRead;
-    this.copyOnWrite = copyOnWrite;
-    this.getter      = getter;
-    this.setter      = setter;
-    this.ivar        = ivar;
-    this.optional    = optional;
+    this.location = location;
+    this.name     = name;
+    this.type     = type;
+    this.ivar     = ivar;
+    this.getter   = getter;
+    this.setter   = setter;
+    this.optional = optional;
+    this.needsBacking = false;
 }
 
 
 generateGetterMethod()
 {
     let getter = this.getter;
-    return getter ? new NSMethod(_.clone(this.location), getter, "-", this.type, [ ]) : null;
+    return getter ? new NSMethod(_.clone(this.location), getter.name, "-", this.type, [ ]) : null;
 }
 
 
 generateSetterMethod()
 {
     let setter = this.setter;
-    return setter ? new NSMethod(_.clone(this.location), setter, "-", "void", [ this.type ]) : null;
+    return setter ? new NSMethod(_.clone(this.location), setter.name, "-", "void", [ this.type ]) : null;
 }
 
 

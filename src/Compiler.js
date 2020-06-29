@@ -72,8 +72,7 @@ const sPublicOptions = [
     "warn-self-in-non-methods",  // Boolean, warn about usage of 'self' in non-methods
     "warn-unknown-ivars",        // Boolean, warn about unknown ivars
     "warn-unknown-selectors",    // Boolean, warn about usage of unknown selectors
-    "warn-unused-ivars",         // Boolean, warn about unused ivars
-    "warn-inherited-ivars",      // Boolean, warn about usage of inherited ivars
+    "warn-unused-privates",      // Boolean, warn about unused ivars
 
     // Private / Development
     "dev-dump-tmp",              // Boolean, dump debug info to /tmp

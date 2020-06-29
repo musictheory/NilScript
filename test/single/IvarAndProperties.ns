@@ -2,18 +2,7 @@
 
 var assert = require("assert");
 
-@class IvarAndPropertiesClass {
-    _ivar1_shouldBeNull: any;
-    _ivar2_shouldBeZero: Number;
-    _ivar3_shouldBeNull: String;
-    _ivar4_shouldBeNull: id;
-    _ivar5_shouldBeFalse: BOOL;
-    _ivar6_shouldBeFalse: Boolean;
-    _ivar7_shouldBeZero: Number;
-    _ivarsOnALine: Boolean, _ivarsOnALine2: Boolean, _ivarsOnALine3: Boolean;
-    _ivarsWithoutSemicolon: Boolean
-    _ivarsWithoutSemicolon2: Boolean
-}
+@class IvarAndPropertiesClass
 
 @property property1_shouldBeNull: id;
 @property property2_shouldBeZero: Number;
@@ -27,40 +16,13 @@ var assert = require("assert");
 
 @property (getter=propertyWithGetter) propertyWithGetterRaw: Boolean
 
-@property synthesizeTest0: Number;
-// Use default synthesize
-
-@property synthesizeTest1: Number;
-@synthesize synthesizeTest1=_foo;
-
-@property synthesizeTest2: Number;
-@synthesize synthesizeTest2;
-
-@property synthesizeTest3: Number;
-@synthesize synthesizeTest3 = _synthesizeTest3;
+@property synthesizeTest: Number;
 
 @property withoutSemicolon: Number
-@synthesize withoutSemicolon
-
 @property withoutSemicolon2: Number
-@dynamic withoutSemicolon2
 
 - (BOOL) runTests
 {
-    assert.strictEqual(_ivar1_shouldBeNull,  nil,  "_ivar1_shouldBeNull is not null");
-    assert.strictEqual(_ivar2_shouldBeZero,  0,    "_ivar2_shouldBeZero is not 0"  );
-    assert.strictEqual(_ivar3_shouldBeNull,  nil,  "_ivar3_shouldBeNull is not null");
-    assert.strictEqual(_ivar4_shouldBeNull,  nil,  "_ivar4_shouldBeNull is not null");
-    assert.strictEqual(_ivar5_shouldBeFalse, false,"_ivar5_shouldBeFalse is not false");
-    assert.strictEqual(_ivar6_shouldBeFalse, false,"_ivar6_shouldBeFalse is not false");
-    assert.strictEqual(_ivar7_shouldBeZero,  0,    "_ivar7_shouldBeZero is not 0");
-
-    assert.strictEqual(_ivarsOnALine,           NO);
-    assert.strictEqual(_ivarsOnALine2,          NO);
-    assert.strictEqual(_ivarsOnALine3,          NO);
-    assert.strictEqual(_ivarsWithoutSemicolon,  NO);
-    assert.strictEqual(_ivarsWithoutSemicolon2, NO);
-
     assert.strictEqual(_property1_shouldBeNull,  nil,   "_property1_shouldBeNull is not null");
     assert.strictEqual(_property2_shouldBeZero,  0,     "_property2_shouldBeZero is not 0"  );
     assert.strictEqual(_property3_shouldBeNull,  nil,   "_property3_shouldBeNull is not null");
@@ -72,79 +34,15 @@ var assert = require("assert");
     assert.strictEqual(_propertyWithoutSemicolon,  NO);
     assert.strictEqual(_propertyWithoutSemicolon2, NO);
 
-    assert.strictEqual(_foo,             0);
-    assert.strictEqual(synthesizeTest2,  0);
-    assert.strictEqual(_synthesizeTest3, 0);
-
-    [self setSynthesizeTest0:40];
-    assert.strictEqual([self synthesizeTest0], 40);
-    assert.strictEqual(_synthesizeTest0,       40);
-
-    [self setSynthesizeTest1:41];
-    assert.strictEqual([self synthesizeTest1], 41);
-    assert.strictEqual(_foo,                   41);
-
-    [self setSynthesizeTest2:42];
-    assert.strictEqual([self synthesizeTest2], 42);
-    assert.strictEqual(synthesizeTest2,        42);
-
-    [self setSynthesizeTest3:43];
-    assert.strictEqual([self synthesizeTest3], 43);
-    assert.strictEqual(_synthesizeTest3,       43);
+    [self setSynthesizeTest:40];
+    assert.strictEqual([self synthesizeTest], 40);
+    assert.strictEqual(_synthesizeTest,       40);
 
     return YES;
 }
 
 @end
-
-
-@class IvarAndPropertiesSubClass : IvarAndPropertiesClass
-
-- (BOOL) runTests2
-{
-    // _ivar1_shouldBeNull is at the superclass's level and should be accessible
-    assert.strictEqual(_ivar1_shouldBeNull, nil);
-
-    return YES;
-}
-
-@end
-
-
-@class IvarAndPropertiesClass (IvarAndPropertiesCategory)
-
-- (BOOL) runTests3
-{
-    // _ivar1_shouldBeNull is at this level and should be accessible in a category
-    assert.strictEqual(_ivar1_shouldBeNull, nil);
-
-    return YES;
-}
-
-@end
-
-
-
-@class IvarAndPropertiesSubClass (IvarAndPropertiesCategory)
-
-- (BOOL) runTests4
-{
-    // _ivar1_shouldBeNull is at the superclass's level and should be accessible in a category
-    assert.strictEqual(_ivar1_shouldBeNull, nil);
-
-    return YES;
-}
-
-@end
-
 
 var instance = [[IvarAndPropertiesClass alloc] init];
 [instance runTests];
-
-
-var instance2 = [[IvarAndPropertiesSubClass alloc] init];
-[instance2 runTests2];
-
-[instance runTests3];
-[instance2 runTests4];
 

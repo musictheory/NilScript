@@ -15,8 +15,6 @@ const NSError = {
 
     DuplicateClass:                 "NilScriptDuplicateClassError",
     DuplicateEnum:                  "NilScriptDuplicateEnumError",
-    DuplicateInstanceVariable:      "NilScriptDuplicateInstanceVariableError",
-    DuplicateJavascriptFunction:    "NilScriptDuplicateJavascriptFunctionError",
     DuplicateMethod:                "NilScriptDuplicateMethodError",
     DuplicateProperty:              "NilScriptDuplicatePropertyError",
     DuplicateProtocol:              "NilScriptDuplicateProtocolError",
@@ -24,9 +22,9 @@ const NSError = {
 
     UnknownProperty:                "NilScriptUnknownPropertyError",
     UnknownPropertyAttribute:       "NilScriptUnknownPropertyAttributeError",
-    PropertyAlreadySynthesized:     "NilScriptPropertyAlreadySynthesizedError",
-    PropertyAlreadyDynamic:         "NilScriptPropertyAlreadyDynamicError",
-    InstanceVariableAlreadyClaimed: "NilScriptInstanceVariableAlreadyClaimedError",
+
+    CannotUseInstanceVariable:      "NilScriptCannotUseInstanceVariableError",
+
     NonLiteralConst:                "NilScriptNonLiteralConstError",
     NonLiteralEnum:                 "NilScriptNonLiteralEnumError",
     NonIntegerEnum:                 "NilScriptNonIntegerEnumError",
@@ -50,11 +48,10 @@ const NSWarning = {
     NeedsExplicitDynamic:         "NilScriptNeedsExplicitDynamicWarning",
     OnCompileFunction:            "NilScriptOnCompileFunctionWarning",
     Typechecker:                  "NilScriptTypecheckerWarning",
-    UnassignedInstanceVariable:   "NilScriptUnassignedInstanceVariableWarning",
+    UnassignedPrivateProperty:    "NilScriptUnassignedPrivatePropertyWarning",
     UndeclaredInstanceVariable:   "NilScriptUndeclaredInstanceVariableWarning",
-    InheritedInstanceVariable:    "NilScriptInheritedInstanceVariableWarning",
     UnknownSelector:              "NilScriptUnknownSelectorWarning",
-    UnusedInstanceVariable:       "NilScriptUnusedInstanceVariableWarning",
+    UnusedPrivateProperty:        "NilScriptUnusedPrivatePropertyWarning",
     UseOfDebugger:                "NilScriptUseOfDebuggerWarning",
     UseOfEmptyArrayElement:       "NilScriptUseOfEmptyArrayElementWarning",
     UseOfSelfInNonMethod:         "NilScriptUseOfSelfInNonMethodWarning",

@@ -375,9 +375,9 @@ getAggregateClass()
     let classMap    = { };
 
     _.each(this.classes, nsClass => {
-        extractMethodsIntoMap(nsClass.getImplementedClassMethods(),    classMap);
-        extractMethodsIntoMap(nsClass.getImplementedClassMethods(),    instanceMap);   // 'id' should also cover 'Class'
-        extractMethodsIntoMap(nsClass.getImplementedInstanceMethods(), instanceMap);
+        extractMethodsIntoMap(nsClass.getClassMethods(),    classMap);
+        extractMethodsIntoMap(nsClass.getClassMethods(),    instanceMap);   // 'id' should also cover 'Class'
+        extractMethodsIntoMap(nsClass.getInstanceMethods(), instanceMap);
     });
 
     addMethodsWithMap(classMap,    "+");

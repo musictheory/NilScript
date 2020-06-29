@@ -420,9 +420,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	    NSInstanceVariableDeclarations: 'NSInstanceVariableDeclarations',
 	    NSPropertyDirective: 'NSPropertyDirective',
 	    NSPropertyAttribute: 'NSPropertyAttribute',
-	    NSSynthesizeDirective: 'NSSynthesizeDirective',
-	    NSSynthesizePair: 'NSSynthesizePair',
-	    NSDynamicDirective: 'NSDynamicDirective',
 	    NSSelectorDirective: 'NSSelectorDirective',
 	    NSConstDeclaration: 'NSConstDeclaration',
 	    NSEnumDeclaration: 'NSEnumDeclaration',
@@ -1999,31 +1996,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	    return NSObserveAttribute;
 	}());
 	exports.NSObserveAttribute = NSObserveAttribute;
-	var NSSynthesizeDirective = (function () {
-	    function NSSynthesizeDirective(pairs) {
-	        this.type = syntax_1.Syntax.NSSynthesizeDirective;
-	        this.pairs = pairs;
-	    }
-	    return NSSynthesizeDirective;
-	}());
-	exports.NSSynthesizeDirective = NSSynthesizeDirective;
-	var NSSynthesizePair = (function () {
-	    function NSSynthesizePair(id, backing) {
-	        this.type = syntax_1.Syntax.NSSynthesizePair;
-	        this.id = id;
-	        this.backing = backing;
-	    }
-	    return NSSynthesizePair;
-	}());
-	exports.NSSynthesizePair = NSSynthesizePair;
-	var NSDynamicDirective = (function () {
-	    function NSDynamicDirective(ids) {
-	        this.type = syntax_1.Syntax.NSDynamicDirective;
-	        this.ids = ids;
-	    }
-	    return NSDynamicDirective;
-	}());
-	exports.NSDynamicDirective = NSDynamicDirective;
 	var NSSelectorDirective = (function () {
 	    function NSSelectorDirective(name) {
 	        this.type = syntax_1.Syntax.NSSelectorDirective;
@@ -5460,7 +5432,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    Parser.prototype.ns_parsePropertyAttribute = function () {
 	        var node = this.createNode();
 	        var startToken = this.lookahead;
-	        var name = this.parseVariableIdentifier().name;
+	        var name = this.parseIdentifierName().name;
 	        var selector = null;
 	        if (name == 'getter' || name == 'setter') {
 	            this.expect('=');
@@ -5519,40 +5491,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	        this.consumeSemicolon();
 	        return this.finalize(node, new Node.NSObserveDirective(ids, attributes));
-	    };
-	    Parser.prototype.ns_parseSynthesizePair = function () {
-	        var node = this.createNode();
-	        var id = this.parseVariableIdentifier();
-	        var backing = null;
-	        if (this.match('=')) {
-	            this.expect('=');
-	            backing = this.parseVariableIdentifier();
-	        }
-	        return this.finalize(node, new Node.NSSynthesizePair(id, backing));
-	    };
-	    Parser.prototype.ns_parseSynthesizeDirective = function () {
-	        var node = this.createNode();
-	        var pairs = [];
-	        this.expectKeyword('@synthesize');
-	        pairs.push(this.ns_parseSynthesizePair());
-	        while (this.match(',')) {
-	            this.expect(',');
-	            pairs.push(this.ns_parseSynthesizePair());
-	        }
-	        this.consumeSemicolon();
-	        return this.finalize(node, new Node.NSSynthesizeDirective(pairs));
-	    };
-	    Parser.prototype.ns_parseDynamicDirective = function () {
-	        var node = this.createNode();
-	        var ids = [];
-	        this.expectKeyword('@dynamic');
-	        ids.push(this.parseVariableIdentifier());
-	        while (this.match(',')) {
-	            this.expect(',');
-	            ids.push(this.parseVariableIdentifier());
-	        }
-	        this.consumeSemicolon();
-	        return this.finalize(node, new Node.NSDynamicDirective(ids));
 	    };
 	    // This should be called when lookahead is a '<' token.
 	    Parser.prototype.ns_parseTypeAngleSuffix = function () {
@@ -5721,12 +5659,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	                        break;
 	                    case '@observe':
 	                        sourceElement = this.ns_parseObserveDirective();
-	                        break;
-	                    case '@synthesize':
-	                        sourceElement = this.ns_parseSynthesizeDirective();
-	                        break;
-	                    case '@dynamic':
-	                        sourceElement = this.ns_parseDynamicDirective();
 	                        break;
 	                    default:
 	                        sourceElement = this.parseStatementListItem();
@@ -6639,9 +6571,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                (id === '@optional') ||
 	                (id === '@required') ||
 	                (id === '@property') ||
-	                (id === '@synthesize') ||
 	                (id === '@selector') ||
-	                (id === '@dynamic') ||
 	                (id === '@enum') ||
 	                (id === '@const') ||
 	                (id === '@cast') ||

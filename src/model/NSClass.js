@@ -11,13 +11,9 @@ const _           = require("lodash");
 const NSError     = require("../Errors").NSError;
 const NSWarning   = require("../Errors").NSWarning;
 const Utils       = require("../Utils");
-const NSIvar      = require("./NSIvar");
 const NSProperty  = require("./NSProperty");
 const NSMethod    = require("./NSMethod");
 const NSObserver  = require("./NSObserver");
-
-
-const NSDynamicProperty = " NSDynamicProperty ";
 
 
 module.exports = class NSClass {
@@ -46,14 +42,14 @@ constructor(location, name, inheritedNames)
     // All selectors the class responds to (inherited + synthesized). *not archived*
     this._knownSelectors = null;
 
-    this._myIvarNames    = null;  // Only my ivar names
-    this._knownIvarNames = null;  // My ivars + inherited ivar names
+    this._myIvars    = null;  // Only my ivar names
+    this._knownIvars = null;  // My ivars + inherited ivar names
 
-    this._ivarMap           = { };
     this._propertyMap       = { };
     this._observerMap       = { };
     this._classMethodMap    = { };
     this._instanceMethodMap = { };
+    this._usedIvarMap       = { };
 }
 
 
@@ -65,12 +61,8 @@ loadState(state)
     this.placeholder     = state.placeholder;
     this.didSynthesis    = state.didSynthesis;
 
-    _.each(state.ivars, i => {
-        this.addIvar(new NSIvar(i.location, i.name, i.type));
-    });
-
     _.each(state.properties, p => {
-        this.addProperty(new NSProperty(p.location, p.name, p.type, p.writable, p.copyOnRead, p.copyOnWrite, p.getter, p.setter, p.ivar, false));
+        this.addProperty(new NSProperty(p.location, p.name, p.type, p.ivar, p.getter, p.setter, false));
     });
 
     _.each(state.observers, o => {
@@ -92,7 +84,6 @@ saveState()
         didSynthesis:  !!this.didSynthesis,
         placeholder:     this.placeholder,
 
-        ivars:      _.values(this._ivarMap),
         properties: _.values(this._propertyMap),
 
         observers: _.flatten(
@@ -113,103 +104,52 @@ _doAutomaticSynthesis(model)
         return;
     }
 
-    let inheritedIvarNames = { };
+    let inheritedPropertyNames = { };
 
      _.each(this._getClassHierarchy(model), cls => {
-        _.each(cls.getAllIvars(), ivar => {
-            inheritedIvarNames[ivar.name] = true;
+        _.each(cls.getAllProperties(), property => {
+            inheritedPropertyNames[property.name] = true;
         });
     });
 
-    _.each(this._ivarMap, (ivar, name) => {
-        if (inheritedIvarNames[name]) {
-            throw Utils.makeError(NSError.DuplicateInstanceVariable, `Instance variable "${name}" declared in superclass`, ivar.location);
-        }
-    });
-
     let properties = _.values(this._propertyMap);
-    let backingIvarToPropertyNameMap = { };
 
     for (let i = 0, length = properties.length; i < length; i++) {
         let property = properties[i];
 
         let location = property.location;
         let name     = property.name;
-        let ivarName = property.ivar;
+        let ivar     = property.ivar;
         let getter   = property.getter;
         let setter   = property.setter;
 
-        if (ivarName == NSDynamicProperty) continue;
-
-        let hadExplicitlySynthesizedIvarName = !!ivarName;
-
-        if (!ivarName) {
-            ivarName = "_" + name;
-            property.ivar = ivarName;
-
-            if (inheritedIvarNames[ivarName]) {
-                let message = `Auto property synthesis for "${name}" will use an inherited instance variable. use @dynamic to acknowledge intention.`;
-                this.prepareWarnings.push(Utils.makeError(NSWarning.NeedsExplicitDynamic, message, property.location));
-            }
-
-        } else {
-            if (inheritedIvarNames[ivarName]) {
-                let message = `Property "${name}" will use an inherited instance variable due to @synthesize.`;
-                this.prepareWarnings.push(Utils.makeError(NSWarning.PropertyUsingInherited, message, property.location));
-            }            
+        if (inheritedPropertyNames[name]) {
+            throw Utils.makeError(NSError.DuplicateProperty, `Property "${name}" declared in superclass`, location);
         }
 
-        let ivar         = ivarName ? this._ivarMap[ivarName]         : null;
-        let getterMethod = getter   ? this._instanceMethodMap[getter] : null;
-        let setterMethod = setter   ? this._instanceMethodMap[setter] : null;
+        let getterName = getter ? getter.name : null;
+        let setterName = setter ? setter.name : null;
 
-        let generateBackingIvar = !ivar;
+        let getterMethod = getterName ? this._instanceMethodMap[getterName] : null;
+        let setterMethod = setterName ? this._instanceMethodMap[setterName] : null;
 
-        // If backing is nil, there was no explicit @synthesize, and we should only make the
-        // backing ivar unless: 
-        //
-        // 1) readwrite property and both -setFoo: and -foo are defined
-        //    or
-        // 2) readonly property and -foo is defined
-        //
-        if (!hadExplicitlySynthesizedIvarName) {
-            if (property.writable && getterMethod && setterMethod) {
-                generateBackingIvar = false;
-            } else if (!property.writable && getterMethod) {
-                generateBackingIvar = false;
-            }
-        }
+        let needsBacking = !!this._usedIvarMap[ivar];
 
-        if (backingIvarToPropertyNameMap[ivarName]) {
-            let propertyName = backingIvarToPropertyNameMap[ivarName];
-
-            Utils.throwError(
-                NSError.InstanceVariableAlreadyClaimed,
-                `Synthesized properties "${propertyName}" and "${name}" both claim instance variable "${ivarName}"`
-            );
-
-        } else {
-            backingIvarToPropertyNameMap[ivarName] = name;
-        }
-
-        // Generate backing ivar
-        if (generateBackingIvar) {
-            ivar = new NSIvar(_.clone(location), ivarName, property.type);
-            ivar.synthesized = true;
-            this._ivarMap[ivarName] = ivar;
-        }
-
-        if (getter && !getterMethod) {
+        if (getterName && !getterMethod) {
             getterMethod = property.generateGetterMethod();
             getterMethod.synthesized = true;
-            this._instanceMethodMap[getter] = getterMethod;
+            this._instanceMethodMap[getterName] = getterMethod;
+            needsBacking = true;
         }
 
-        if (setter && !setterMethod) {
+        if (setterName && !setterMethod) {
             setterMethod = property.generateSetterMethod();
             setterMethod.synthesized = true;
-            this._instanceMethodMap[setter] = setterMethod;
+            this._instanceMethodMap[setterName] = setterMethod;
+            needsBacking = true;
         }
+
+        property.needsBacking = needsBacking;
     }
 
     this.didSynthesis = true;
@@ -302,69 +242,27 @@ prepare(model)
 
     this._doAutomaticSynthesis(model);
 
-    this._myIvarNames    = { };
     this._knownSelectors = { };
-    this._knownIvarNames = { };
 
     _.each(_.keys(this._instanceMethodMap), selectorName => {
         this._knownSelectors[selectorName] = 1;
     });
 
-    _.each(this._ivarMap, ivar => {
-        let name = ivar.name;
-        this._myIvarNames[name] = this._knownIvarNames[name] = 1;
-    })
+
+    this._myIvars    = { };
+    this._knownIvars = { };
+
+    _.each(_.values(this._propertyMap), property => {
+        let ivar = property.ivar;
+        this._myIvars[ivar] = this._knownIvars[ivar] = true;
+    });
 
     if (superclass) {
         this._knownSelectors = _.merge(this._knownSelectors, superclass._knownSelectors || { });
-        this._knownIvarNames = _.merge(this._knownIvarNames, superclass._knownIvarNames || { });
+        this._knownIvars     = _.merge(this._knownIvars,     superclass._knownIvars     || { });
     }
 
     this._checkObservers();
-}
-
-
-shouldGenerateGetterImplementationForPropertyName(propertyName)
-{
-    let property = this._propertyMap[propertyName];
-    if (!property) return false;
-
-    if (property.ivar == NSDynamicProperty) return false;
-
-    if (property.getter) {
-        let method = this._instanceMethodMap[property.getter];
-        return method && method.synthesized;
-    }
-
-    return false;
-}
-
-
-shouldGenerateSetterImplementationForPropertyName(propertyName)
-{
-    let property = this._propertyMap[propertyName];
-    if (!property) return false;
-
-    if (property.ivar == NSDynamicProperty) return false;
-
-    if (property.setter) {
-        let method = this._instanceMethodMap[property.setter];
-        return method && method.synthesized;
-    }
-
-    return false;
-}
-
-
-addIvar(ivar)
-{
-    let name = ivar.name;
-
-    if (this._ivarMap[name]) {
-        Utils.throwError(NSError.DuplicateInstanceVariable, `Instance variable "${name}" has previous declaration`, ivar.location);
-    }
-
-    this._ivarMap[name] = ivar;    
 }
 
 
@@ -391,36 +289,6 @@ addObserver(nsObserver)
     }
 
     existing.push(nsObserver);
-}
-
-
-makePropertySynthesized(name, backing)
-{
-    let property = this._propertyMap[name];
-    if (!property) {
-        Utils.throwError(NSError.UnknownProperty, `Unknown property: "${name}"`);
-    } else if (property.ivar == NSDynamicProperty) {
-        Utils.throwError(NSError.PropertyAlreadyDynamic, `Property "${name}" already declared dynamic`);
-    } else if (property.ivar) {
-        Utils.throwError(NSError.PropertyAlreadySynthesized, `Property "${name}" already synthesized to "${property.ivar}"`);
-    }
-
-    property.ivar = backing;
-}
-
-
-makePropertyDynamic(name)
-{
-    let property = this._propertyMap[name];
-    if (!property) {
-        Utils.throwError(NSError.UnknownProperty, `Unknown property: "${name}"`);
-    } else if (property.ivar == NSDynamicProperty) {
-        Utils.throwError(NSError.PropertyAlreadyDynamic, `Property "${name}" already declared dynamic`);
-    } else if (property.ivar) {
-        Utils.throwError(NSError.PropertyAlreadySynthesized, `Property "${name}" already synthesized to "${property.ivar}"`);
-    }
-
-    property.ivar = NSDynamicProperty;
 }
 
 
@@ -453,51 +321,23 @@ addMethod(method)
 
 
 
+markUsedIvar(ivar)
+{
+    this._usedIvarMap[ivar] = true;
+}
+
+
 // Returns true if the identifier belongs to an ivar name or inherited ivar name
-isIvarName(ivarName, allowInherited)
+isIvar(ivar, allowInherited)
 {
-    let names = allowInherited ? this._knownIvarNames : this._myIvarNames;
-    return !!names[ivarName];
-}
-
-
-getAllIvars()
-{
-    return _.values(this._ivarMap);
-}
-
-
-getAllIvarNamesWithoutProperties()
-{
-    let result = [ ];
-
-    let propertyIvarNames = { };
-    _.each(this._propertyMap, property => {
-        propertyIvarNames[property.ivar] = true;
-    });
-
-    _.each(this._ivarMap, ivar => {
-        let name = ivar.name;
-        if (!propertyIvarNames[name]) {
-            result.push(name);
-        }
-    });
-
-    return result;
+    let map = allowInherited ? this._knownIvars : this._myIvars;
+    return !!map[ivar];
 }
 
 
 getAllProperties()
 {
     return _.values(this._propertyMap);
-}
-
-
-getAllDynamicProperties()
-{
-    return _.filter(this.getAllProperties(), property => {
-        return property.ivar == NSDynamicProperty;
-    });
 }
 
 
@@ -513,27 +353,27 @@ getAllMethods()
 }
 
 
-getImplementedClassMethods()
+getClassMethods()
 {
     return _.values(this._classMethodMap);
 }
 
 
-getImplementedInstanceMethods()
+getInstanceMethods()
 {
     return _.values(this._instanceMethodMap);
 }
 
 
-getImplementedInstanceMethodWithName(selectorName)
+getInstanceMethodWithName(selectorName)
 {
-    return this._instanceMethodMap[selectorName];
+    return selectorName ? this._instanceMethodMap[selectorName] : null;
 }
 
 
-getImplementedClassMethodWithName(selectorName)
+getClassMethodWithName(selectorName)
 {
-    return this._classMethodMap[selectorName];
+    return selectorName ? this._classMethodMap[selectorName] : null;
 }
 
 

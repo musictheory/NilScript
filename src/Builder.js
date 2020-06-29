@@ -91,6 +91,35 @@ build()
         return new Model.NSMethod(makeLocation(node), selectorName, selectorType, returnType, parameterTypes, variableNames, optional);
     }
 
+    function isIdentifierTransformable(node)
+    {
+        let parent = node.ns_parent;
+
+        if (parent.type === Syntax.MemberExpression) {
+            // identifier.x -> true
+            if (parent.object === node) {
+                return true;
+
+            // x[identifier] =  computed = true
+            // x.identifier  = !computed = false
+            } else {
+                return parent.computed;
+            }
+
+        } else if (parent.type === Syntax.Property) {
+            // { x: identifier }
+            if (parent.value === node) {
+                return true;
+
+            // { [identifier]: x } =  computed = true
+            // {  identifier : x } = !computed = false
+            } else {
+                return parent.computed;
+            }
+        }
+
+        return true;   
+    }
 
     function handleNSClassImplementation(node)
     {
@@ -152,23 +181,36 @@ build()
         currentProtocol.addMethod(method);
     }
 
+
     function handleInstanceVariableDeclarations(node)
     {
         _.each(node.declarations, declaration => {
-            currentClass.addIvar(new Model.NSIvar(makeLocation(declaration), declaration.name, declaration.annotation.value));
+            let name = declaration.name;
+            let type = declaration.annotation.value;
+
+            let property = new Model.NSProperty(makeLocation(declaration), name.slice(1), type, name, null, null);
+
+            if (currentClass) {
+                currentClass.addProperty(property);
+            } else if (currentProtocol) {
+                currentProtocol.addProperty(property);
+            }
         });
     }
 
     function handleNSPropertyDirective(node)
     {
-        let name = node.id.name;
 
-        let type        = node.id.annotation.value;
-        let writable    = true;
-        let getter      = name;
-        let setter      = "set" + name.substr(0,1).toUpperCase() + name.substr(1, name.length) + ":";
-        let copyOnRead  = false;
-        let copyOnWrite = false;
+        let accessAttribute = null;
+        let copyAttribute   = null;
+
+        let getterName    = null;
+        let getterEnabled = true;
+        let getterCopies  = false;
+
+        let setterName    = null;
+        let setterEnabled = true;
+        let setterCopies  = false;
 
         if (currentCategoryName) {
             Utils.throwError(NSError.NotYetSupported, "@property is not yet supported in a category's implementation", node);
@@ -179,31 +221,55 @@ build()
             let attributeName = attribute.name;
 
             if (attributeName == "readonly") {
-                writable = false;
-            } else if (attribute.name == "readwrite") {
-                writable = true;
-            } else if (attributeName == "getter") {
-                getter = attribute.selector.selectorName;
-            } else if (attributeName == "setter") {
-                setter = attribute.selector.selectorName;
+                getterEnabled = true;
+                setterEnabled = false; 
+
+            } else if (attributeName == "readwrite") {
+                getterEnabled = true;
+                setterEnabled = true; 
+               
+            } else if (attributeName == "private") {
+                getterEnabled = false;
+                setterEnabled = false; 
+
             } else if (attributeName == "copy") {
-                copyOnWrite = true;
+                getterCopies = false;
+                setterCopies = true;
+
             } else if (attributeName == "struct") {
-                copyOnWrite = true;
-                copyOnRead  = true;
+                getterCopies = true;
+                setterCopies = true;
+
+            } else if (attributeName == "getter") {
+                getterName = attribute.selector.selectorName;
+
+            } else if (attributeName == "setter") {
+                setterName = attribute.selector.selectorName;
+
             } else if (attributeName == "class") {
-                Utils.throwError(NSError.NotYetSupported, "@property 'class' attribute is not supported", node);
+                Utils.throwError(NSError.NotYetSupported, "'class' attribute is not supported", node);
 
             } else {
                 Utils.throwError(NSError.UnknownPropertyAttribute, `Unknown property attribute: "${attributeName}"`, node);
             }
         }
 
-        if (!writable) {
-            setter = null;
-        }
 
-        let property = new Model.NSProperty(makeLocation(node), name, type, writable, copyOnRead, copyOnWrite, getter, setter, null);
+        let type = node.id.annotation.value;
+        let name = node.id.name;
+
+        let getter = getterEnabled ? {
+            name: getterName || name,
+            copies: getterCopies
+        } : null;
+
+        let setter = setterEnabled ? {
+            name: setterName || ("set" + name[0].toUpperCase() + name.slice(1) + ":"),
+            copies: setterCopies
+        } : null;
+
+        let property = new Model.NSProperty(makeLocation(node), name, type, "_" + name, getter, setter);
+
         if (currentClass) {
             currentClass.addProperty(property);
         } else if (currentProtocol) {
@@ -228,35 +294,6 @@ build()
 
             let observer = new Model.NSObserver(makeLocation(node), name, after);
             if (currentClass) currentClass.addObserver(observer);
-        }
-    }
-
-    function handleNSSynthesizeDirective(node) {
-        let pairs = node.pairs;
-
-        if (currentCategoryName) {
-            Utils.throwError(NSError.NotYetSupported, "@synthesize is not allowed in a category's implementation", node);
-        }
-
-        for (let i = 0, length = pairs.length; i < length; i++) {
-            let pair    = pairs[i];
-            let name    = pair.id.name;
-            let backing = pair.backing ? pair.backing.name : name;
-
-            currentClass.makePropertySynthesized(name, backing);
-        }        
-    }
-
-    function handleNSDynamicDirective(node) {
-        let ids = node.ids;
-
-        if (currentCategoryName) {
-            Utils.throwError(NSError.NotYetSupported, "@dynamic is not yet supported in a category's implementation", node);
-        }
-
-        for (let i = 0, length = ids.length; i < length; i++) {
-            let name = ids[i].name;
-            currentClass.makePropertyDynamic(name);
         }
     }
 
@@ -418,6 +455,18 @@ build()
         }
     }
 
+    function handleIdentifier(node)
+    {
+        let name = node.name;
+        let transformable = isIdentifierTransformable(node);
+
+        if (transformable && (name[0] == "_") && (name.length > 0) && currentMethod && currentClass) {
+            currentClass.markUsedIvar(name);
+        }
+
+        node.ns_transformable = transformable;
+    }
+
     function handleVariableDeclarator(node)
     {
         if (node.id.name == "self" && currentMethod) {
@@ -461,12 +510,6 @@ build()
             } else if (type === Syntax.NSObserveDirective) {
                 handleNSObserveDirective(node);
 
-            } else if (type === Syntax.NSSynthesizeDirective) {
-                handleNSSynthesizeDirective(node);
-
-            } else if (type === Syntax.NSDynamicDirective) {
-                handleNSDynamicDirective(node);
-
             } else if (type === Syntax.NSTypeDefinition) {
                 handleNSTypeDefinition(node);
 
@@ -484,6 +527,9 @@ build()
 
             } else if (type === Syntax.NSGlobalDeclaration) {
                 handleNSGlobalDeclaration(node);
+
+            } else if (type === Syntax.Identifier) {
+                handleIdentifier(node);
 
             } else if (type === Syntax.VariableDeclarator) {
                 handleVariableDeclarator(node);

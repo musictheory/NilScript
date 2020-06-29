@@ -111,7 +111,9 @@ generate()
 
     let methodNodes = [ ];
     let methodNodeClasses = [ ];
+
     let currentClass;
+    let currentCategoryName;
     let currentMethodNode;
 
     let methodUsesSelfVar = false;
@@ -119,10 +121,9 @@ generate()
     let optionWarnGlobalNoType        = options["warn-global-no-type"];
     let optionWarnThisInMethods       = options["warn-this-in-methods"];
     let optionWarnSelfInNonMethod     = options["warn-self-in-non-methods"];
-    let optionWarnInheritedIvars      = options["warn-inherited-ivars"];
     let optionWarnUnknownIvars        = options["warn-unknown-ivars"];
     let optionWarnUnknownSelectors    = options["warn-unknown-selectors"];
-    let optionWarnUnusedIvars         = options["warn-unused-ivars"];
+    let optionWarnUnusedPrivates      = options["warn-unused-privates"];
     let optionStrictFunctions         = options["strict-functions"];
     let optionStrictObjectLiterals    = options["strict-object-literals"];
     let optionSimpleIvars             = options["simple-ivars"];
@@ -180,9 +181,9 @@ generate()
         let selectorName = currentMethodNode.selectorName;
 
         if (selectorType == "+") {
-            return currentClass.getImplementedClassMethodWithName(selectorName);
+            return currentClass.getClassMethodWithName(selectorName);
         } else {
-            return currentClass.getImplementedInstanceMethodWithName(selectorName);
+            return currentClass.getInstanceMethodWithName(selectorName);
         }
     }
 
@@ -207,17 +208,21 @@ generate()
         let numericIvars = [ ];
         let objectIvars  = [ ];
 
-        let ivars = nsClass.getAllIvars();
+        let properties = nsClass.getAllProperties();
 
-        for (let i = 0, length = ivars.length; i < length; i++) {
-            let ivar = ivars[i];
+        for (let i = 0, length = properties.length; i < length; i++) {
+            let property = properties[i];
 
-            if (model.isNumericType(ivar.type)) {
-                numericIvars.push(ivar.name);
-            } else if (model.isBooleanType(ivar.type)) {
-                booleanIvars.push(ivar.name);
-            } else {
-                objectIvars.push(ivar.name);
+            if (property.needsBacking) {
+                let ivar = property.ivar;
+
+                if (model.isNumericType(property.type)) {
+                    numericIvars.push(ivar);
+                } else if (model.isBooleanType(property.type)) {
+                    booleanIvars.push(ivar);
+                } else {
+                    objectIvars.push(ivar);
+                }
             }
         }
 
@@ -254,44 +259,33 @@ generate()
         return result;
     }
 
-    function isIdentifierTransformable(node)
+    function checkIvarAccess(node)
     {
-        let parent = node.ns_parent;
-
-        if (parent.type === Syntax.MemberExpression) {
-            // identifier.x -> true
-            if (parent.object === node) {
-                return true;
-
-            // x[identifier] =  computed = true
-            // x.identifier  = !computed = false
-            } else {
-                return parent.computed;
-            }
-
-        } else if (parent.type === Syntax.Property) {
-            // { x: identifier }
-            if (parent.value === node) {
-                return true;
-
-            // { [identifier]: x } =  computed = true
-            // {  identifier : x } = !computed = false
-            } else {
-                return parent.computed;
-            }
+        if (!currentClass.isIvar(node.name, false)) {
+            Utils.throwError(
+                NSError.CannotUseInstanceVariable,
+                `Use of instance variable "${node.name}" declared by superclass`,
+                node
+            );
         }
 
-        return true;   
+        if (currentCategoryName) {
+            Utils.throwError(
+                NSError.CannotUseInstanceVariable,
+                `Use of instance variable "${node.name}" inside of category`,
+                node
+            );
+        }
     }
 
     function checkRestrictedUsage(node)
     {
         let name = node.name;
 
-        if (!isIdentifierTransformable(node)) return;
+        if (!node.ns_transformable) return;
 
         if (currentMethodNode && currentClass) {
-            if (currentClass && currentClass.isIvarName(name, true)) {
+            if (currentClass.isIvar(name, true)) {
                 Utils.throwError(NSError.RestrictedUsage, `Cannot use instance variable "${name}" here`, node);
             }
         }
@@ -418,7 +412,9 @@ generate()
                 doCommonReplacement(selfOrThis + "." + methodName + "(", ")");
                 return;
 
-            } else if (currentClass.isIvarName(receiver.name, true)) {
+            } else if (currentClass.isIvar(receiver.name, true)) {
+                checkIvarAccess(receiver);
+
                 let ivar = generateThisIvar(receiver.name, usesSelf);
 
                 if (language === LanguageTypechecker) {
@@ -500,9 +496,7 @@ generate()
                 type !== Syntax.VariableDeclaration   &&
                 type !== Syntax.NSMethodDefinition    &&
                 type !== Syntax.NSPropertyDirective   &&
-                type !== Syntax.NSObserveDirective    &&
-                type !== Syntax.NSDynamicDirective    &&
-                type !== Syntax.NSSynthesizeDirective)
+                type !== Syntax.NSObserveDirective)
             {
                 Utils.throwError(NSError.ParseError, 'Unexpected implementation child.', child);
             }
@@ -735,6 +729,7 @@ generate()
         }
     }
 
+
     function handleIdentifier(node, parent)
     {
         let name   = node.name;
@@ -748,7 +743,7 @@ generate()
             return;
         }
 
-        if (!isIdentifierTransformable(node)) return;
+        if (!node.ns_transformable) return;
 
         let ojGlobal = model.globals[name];
         let replacement;
@@ -760,13 +755,9 @@ generate()
             return;
 
         } else if (currentMethodNode && currentClass) {
-            if (currentClass.isIvarName(name, true) || name == "self") {
-                if (optionWarnInheritedIvars && name != "self" && !currentClass.isIvarName(name, false)) {
-                    warnings.push(Utils.makeError(
-                        NSWarning.InheritedInstanceVariable,
-                        `Use of inherited instance variable "${node.name}"`,
-                        node
-                    ));
+            if (currentClass.isIvar(name, true) || name == "self") {
+                if (name != "self") {
+                    checkIvarAccess(node);
                 }
 
                 let usesSelf = currentMethodNode && (methodUsesSelfVar || (language === LanguageTypechecker));
@@ -827,23 +818,24 @@ generate()
     {
         let name = node.id.name;
 
-        let makeGetter = currentClass.shouldGenerateGetterImplementationForPropertyName(name);
-        let makeSetter = currentClass.shouldGenerateSetterImplementationForPropertyName(name);
-        let property   = currentClass.getPropertyWithName(name);
+        let property = currentClass.getPropertyWithName(name);
+        let ivar = generateThisIvar(property.ivar, false);
+
+        let getterMethod = currentClass.getInstanceMethodWithName(property.getter?.name);
+        let setterMethod = currentClass.getInstanceMethodWithName(property.setter?.name);
 
         let result = "";
-        if (makeSetter) {
+        if (setterMethod?.synthesized) {
             if (language === LanguageEcmascript5) {
                 let observers = currentClass.getObserversWithName(name) || [ ];
                 let s = [ ];
-                let ivar = generateThisIvar(property.ivar, false);
 
                 if (observers.length > 0) {
                     s.push( "var old = " + ivar + ";" );
                     s.push("if (old !== arg) {");
                 }
 
-                if (property.copyOnWrite) {
+                if (property.setter.copies) {
                     s.push(ivar + " = " + NSRootVariable + ".makeCopy(arg);");
                 } else {
                     s.push(ivar + " = arg;");
@@ -858,18 +850,18 @@ generate()
                     s.push("}");
                 }
 
-                result += generateMethodDeclaration(false, property.setter) + " = function(arg) { " + s.join(" ")  + "} ;"; 
+                result += generateMethodDeclaration(false, property.setter.name) + " = function(arg) { " + s.join(" ")  + "} ;"; 
             }
         }
 
-        if (makeGetter) {
+        if (getterMethod?.synthesized) {
             if (language === LanguageEcmascript5) {
-                result += generateMethodDeclaration(false, property.getter);
+                result += generateMethodDeclaration(false, property.getter.name);
 
-                if (property.copyOnRead) {
-                    result += " = function() { return " + NSRootVariable + ".makeCopy(" + generateThisIvar(property.ivar, false) + "); } ; ";
+                if (property.getter.copies) {
+                    result += " = function() { return " + NSRootVariable + ".makeCopy(" + ivar + "); } ; ";
                 } else {
-                    result += " = function() { return " + generateThisIvar(property.ivar, false) + "; } ; ";
+                    result += " = function() { return " + ivar + "; } ; ";
                 }
             }
         }
@@ -1016,7 +1008,7 @@ generate()
 
             // The left side is just an identifier
             } else if (node.left.type == Syntax.Identifier) {
-                if (currentClass && currentClass.isIvarName(node.left.name, true)) {
+                if (currentClass && currentClass.isIvar(node.left.name, true)) {
                     Utils.throwError(NSError.RestrictedUsage, `Cannot use ivar "${node.left.name}" on left-hand side of @each`, node);
                 }
 
@@ -1024,7 +1016,7 @@ generate()
             }
 
             // The right side is a simple identifier
-            if (node.right.type == Syntax.Identifier && currentClass && !currentClass.isIvarName(node.right.name, true)) {
+            if (node.right.type == Syntax.Identifier && currentClass && !currentClass.isIvar(node.right.name, true)) {
                 array = node.right.name;
 
             // The right side is an expression, we need an additional variable
@@ -1231,8 +1223,6 @@ generate()
 
         if (type === Syntax.NSProtocolDefinition                 ||
             type === Syntax.NSObserveDirective                   ||
-            type === Syntax.NSSynthesizeDirective                ||
-            type === Syntax.NSDynamicDirective                   ||
             type === Syntax.NSEnumDeclaration                    ||
             type === Syntax.NSConstDeclaration
         ) {
@@ -1244,6 +1234,7 @@ generate()
 
         } else if (type === Syntax.NSClassImplementation) {
             currentClass = model.classes[node.id.name];
+            currentCategoryName = node.category;
 
             _.each(currentClass.prepareWarnings, warning => {
                 warnings.push(warning);
@@ -1346,18 +1337,23 @@ generate()
         let type = node.type;
 
         if (type === Syntax.NSClassImplementation && !node.category) {
-            if (optionWarnUnusedIvars) {
-                _.each(currentClass.getAllIvarNamesWithoutProperties(), ivarName => {
-                    if (!usedIvarMap[ivarName]) {
-                        warnings.push(Utils.makeError(NSWarning.UnusedInstanceVariable, `Unused instance variable "${ivarName}"`, node));
+            if (optionWarnUnusedPrivates) {
+                _.each(currentClass.getAllProperties(), property => {
+                    let { name, location, ivar, getter, setter } = property;
 
-                    } else if (!assignedIvarMap[ivarName]) {
-                        warnings.push(Utils.makeError(NSWarning.UnassignedInstanceVariable, `Instance variable "${ivarName}" used but never assigned`, node));
+                    if (getter || setter) return;
+
+                    if (!usedIvarMap[ivar]) {
+                        warnings.push(Utils.makeError(NSWarning.UnusedPrivateProperty, `Unused private property "${name}"`, location));
+
+                    } else if (!assignedIvarMap[ivar]) {
+                        warnings.push(Utils.makeError(NSWarning.UnassignedPrivateProperty, `Private property "${name}" used but never assigned`, location));
                     }
                 });
             }
 
             currentClass = null;
+            currentCategoryName = null;
 
         } else if (type === Syntax.NSMethodDefinition) {
             finishScope(scope, methodUsesSelfVar);

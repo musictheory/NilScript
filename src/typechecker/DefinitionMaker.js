@@ -138,8 +138,10 @@ _appendClass(lines, nsClass, classSymbol, staticSymbol)
     _.each(classMethodDeclarations,    decl => {  lines.push("static " + decl);  });
     _.each(instanceMethodDeclarations, decl => {  lines.push(            decl);  });
 
-    _.each(nsClass.getAllIvars(), ivar => {
-        lines.push(symbolTyper.getSymbolForIvarName(ivar.name) + " : " +  symbolTyper.toTypecheckerType(ivar.type) + ";");
+    _.each(nsClass.getAllProperties(), property => {
+        if (property.needsBacking) {
+            lines.push(symbolTyper.getSymbolForIvarName(property.ivar) + " : " +  symbolTyper.toTypecheckerType(property.type) + ";");
+        }
     });
 
     lines.push(
