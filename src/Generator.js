@@ -60,8 +60,6 @@ constructor(nsFile, model, forTypechecker, options)
     if (forTypechecker || (this._language == LanguageTypechecker)) {
         this._language = LanguageTypechecker;
         forTypechecker = true;
-
-        this._strictFunctions = options["strict-functions"];
     }
 
     _.each(model.enums, nsEnum => {
@@ -124,16 +122,12 @@ generate()
     let optionWarnUnknownIvars        = options["warn-unknown-ivars"];
     let optionWarnUnknownSelectors    = options["warn-unknown-selectors"];
     let optionWarnUnusedPrivates      = options["warn-unused-privates"];
-    let optionStrictFunctions         = options["strict-functions"];
-    let optionStrictObjectLiterals    = options["strict-object-literals"];
     let optionSimpleIvars             = options["simple-ivars"];
 
     let optionSqueeze = this._squeeze;
     let symbolTyper   = model.getSymbolTyper();
 
     let knownSelectors = optionWarnUnknownSelectors ? model.selectors : null;
-
-    let rewriteFunctionParameters = (language === LanguageTypechecker) && !optionStrictFunctions;
 
     let usedIvarMap = null;
     let assignedIvarMap = null;
@@ -1081,18 +1075,6 @@ generate()
         }
     }
 
-    function handleObjectExpression_typeCheckerOnly(node)
-    {
-        if (language !== LanguageTypechecker) return;
-        if (optionStrictObjectLiterals) return;
-
-        if (node.properties.length == 0) {
-            modifier.select(node).replace("<any>{}");
-        } else {
-            modifier.from(node).to(node.properties[0]).replace("<any>{");
-        }
-    }
-
     function handleFunctionDeclarationOrExpression(node)
     {
         makeScope(node);
@@ -1100,36 +1082,6 @@ generate()
         _.each(node.params, param => {
             checkRestrictedUsage(param);
         });
-
-        // Unlike JavaScript, TypeScript assumes every parameter to a function is required.
-        // This results in many false positives for our JavaScript code
-        //
-        // Disable this by rewriting the parameter list
-        //
-        if (rewriteFunctionParameters) {
-            let result = "function " + (node.id ? node.id.name : "") + "(";
-
-            for (let i = 0, length = node.params.length; i < length; i++) {
-                let param = node.params[i];
-
-                let type = "any";
-                if (param.annotation) {
-                    type = symbolTyper.toTypecheckerType(param.annotation.value);
-                    param.annotation.oj_skip = true;
-                }
-
-                result += param.name + "? : " + type + ", ";
-            }
-
-            result += "...N$_rest: any[])";
-
-            if (node.annotation) {
-                result += ": " + symbolTyper.toTypecheckerType(node.annotation.value);
-                node.annotation.oj_skip = true;
-            }
-
-            modifier.from(node).to(node.body).replace(result);
-        }
     }
 
     function handleProperty(node) 
@@ -1285,11 +1237,6 @@ generate()
                 node.left.name == "self")
             {
                 methodUsesSelfVar = true;
-            }
-
-        } else if (type === Syntax.ObjectExpression) {
-            if (language === LanguageTypechecker) {
-                handleObjectExpression_typeCheckerOnly(node);
             }
 
         } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression || type === Syntax.ArrowFunctionExpression) {

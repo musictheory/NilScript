@@ -62,9 +62,6 @@ const sPublicOptions = [
     "no-implicit-any",           // Boolean, disallow implicit any
     "no-implicit-returns",       // Boolean, disallow implicit returns
     "no-unreachable-code",       // Boolean, inverts tsc's "--allowUnreachableCode" option
-    
-    "strict-functions",          // Boolean, enforce TypeScript-style functions
-    "strict-object-literals",    // Boolean, enforce TypeScript object literals
 
     // Warnings
     "warn-global-no-type",       // Boolean, warn about missing type annotations on @globals

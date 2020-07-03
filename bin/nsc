@@ -38,8 +38,6 @@ let opt = getopt.create([
     [ "",  "no-implicit-any",           "type checker: disallow implicit any"              ],
     [ "",  "no-implicit-returns",       "type checker: warn about implicit returns"        ],
     [ "",  "no-unreachable-code",       "type checker: warn about unreachable code"        ],
-    [ "",  "strict-functions",          "type checker: enforce TypeScript-style functions" ],
-    [ "",  "strict-object-literals",    "type checker: enforce TypeScript object literals" ],
 
     [ "",  "warn-global-no-type",       "warn about missing type annotations on @globals" ],
     [ "",  "warn-this-in-methods",      "warn about usage of 'this' in NilScript methods" ],
