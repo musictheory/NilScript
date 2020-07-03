@@ -1,8 +1,8 @@
 var assert = require("assert");
 
-@class Issue1Class {
-    _index: Number;
-}
+@class Issue1Class
+
+@property (private) index: Number;
 
 - (BOOL) runTests
 {

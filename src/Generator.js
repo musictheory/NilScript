@@ -564,30 +564,6 @@ generate()
         }
     }
 
-    function handleNSInstanceVariableDeclarations_typeCheckerOnly(node)
-    {
-        if (!node.declarations.length) {
-            modifier.select(node).remove();
-            return;
-        }
-
-        modifier.from(node).to(node.declarations[0]).replace("");
-
-        _.each(node.declarations, declaration => {
-            let replacement = "";
-
-            let annotation = declaration.annotation && declaration.annotation.value;
-
-            if (annotation) {
-                replacement = "<" + symbolTyper.toTypecheckerType(annotation) + "> null;"
-            }
-
-            modifier.select(declaration).replace(replacement);
-        });
-
-        modifier.from(_.last(node.declarations)).to(node).replace("");
-    }
-
     function handleMethodDefinition(node)
     {
         let methodName = symbolTyper.getSymbolForSelectorName(node.selectorName);
@@ -1244,15 +1220,6 @@ generate()
             assignedIvarMap = { }
 
             handleNSClassImplementation(node);
-
-        } else if (type === Syntax.NSInstanceVariableDeclarations) {
-            if (language === LanguageTypechecker) {
-                handleNSInstanceVariableDeclarations_typeCheckerOnly(node);
-            } else {
-                modifier.select(node).remove();
-            }
-
-            return Traverser.SkipNode;
 
         } else if (type === Syntax.NSMethodDefinition) {
             currentMethodNode = node;

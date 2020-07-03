@@ -1,9 +1,9 @@
 
 (function() { "use strict";
 
-@class Issue59Class {
-    _array: Array;
-}
+@class Issue59Class
+
+@property (private) array: Array;
 
 - (Number) check
 {

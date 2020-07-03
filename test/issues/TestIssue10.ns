@@ -18,9 +18,7 @@ var assert = require("assert");
 @end
 
 
-@class Issue10Class {
-
-}
+@class Issue10Class
 
 - (BOOL) testUnused
 {

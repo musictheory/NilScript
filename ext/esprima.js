@@ -417,7 +417,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	    NSMethodSelector: 'NSMethodSelector',
 	    NSSelector: 'NSSelector',
 	    NSParameterType: 'NSParameterType',
-	    NSInstanceVariableDeclarations: 'NSInstanceVariableDeclarations',
 	    NSPropertyDirective: 'NSPropertyDirective',
 	    NSPropertyAttribute: 'NSPropertyAttribute',
 	    NSSelectorDirective: 'NSSelectorDirective',
@@ -1895,13 +1894,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	}());
 	exports.NSMethodNameSegment = NSMethodNameSegment;
 	var NSClassImplementation = (function () {
-	    function NSClassImplementation(id, inheritanceList, category, ivarDeclarations, body) {
+	    function NSClassImplementation(id, inheritanceList, category, body) {
 	        this.type = syntax_1.Syntax.NSClassImplementation;
 	        this.id = id;
 	        this.body = body;
 	        this.inheritanceList = inheritanceList;
 	        this.category = category;
-	        this.ivarDeclarations = ivarDeclarations;
 	    }
 	    return NSClassImplementation;
 	}());
@@ -1952,14 +1950,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	    return NSParameterType;
 	}());
 	exports.NSParameterType = NSParameterType;
-	var NSInstanceVariableDeclarations = (function () {
-	    function NSInstanceVariableDeclarations(declarations) {
-	        this.type = syntax_1.Syntax.NSInstanceVariableDeclarations;
-	        this.declarations = declarations;
-	    }
-	    return NSInstanceVariableDeclarations;
-	}());
-	exports.NSInstanceVariableDeclarations = NSInstanceVariableDeclarations;
 	var NSPropertyDirective = (function () {
 	    function NSPropertyDirective(id, attributes) {
 	        this.type = syntax_1.Syntax.NSPropertyDirective;
@@ -5678,27 +5668,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	        return this.finalize(node, new Node.BlockStatement(sourceElements));
 	    };
-	    Parser.prototype.ns_parseInstanceVariableDeclarations = function () {
-	        var node = this.createNode();
-	        var declarations = [];
-	        this.expect('{');
-	        while (!this.match('}')) {
-	            declarations.push(this.ns_parseIdentifierWithAnnotation());
-	            if (this.match(',')) {
-	                this.expect(',');
-	                continue;
-	            }
-	            this.consumeSemicolon();
-	        }
-	        this.expect('}');
-	        return this.finalize(node, new Node.NSInstanceVariableDeclarations(declarations));
-	    };
 	    Parser.prototype.ns_parseClassImplementationDefinition = function () {
 	        var node = this.createNode();
 	        var inheritanceList = null;
 	        var extension = false;
 	        var category = null;
-	        var ivarDeclarations = null;
 	        if (this.context.ns_inImplementation) {
 	            this.throwError(messages_1.Messages.NSCannotNestImplementations);
 	        }
@@ -5718,18 +5692,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	            category = this.parseVariableIdentifier();
 	            this.expect(')');
 	        }
-	        // Has ivar declarations
-	        if (this.match('{')) {
-	            if (category)
-	                this.throwUnexpectedToken();
-	            ivarDeclarations = this.ns_parseInstanceVariableDeclarations();
-	        }
 	        var body = this.ns_parseClassImplementationBody();
 	        this.expectKeyword('@end');
 	        this.context.strict = previousStrict;
 	        this.context.ns_inImplementation = false;
 	        this.context.labelSet = oldLabelSet;
-	        return this.finalize(node, new Node.NSClassImplementation(id, inheritanceList, category, ivarDeclarations, body));
+	        return this.finalize(node, new Node.NSClassImplementation(id, inheritanceList, category, body));
 	    };
 	    Parser.prototype.ns_parseInheritanceList = function () {
 	        var node = this.createNode();

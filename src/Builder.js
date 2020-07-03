@@ -149,7 +149,9 @@ build()
         currentClass = nsClass;
         currentCategoryName = categoryName;
 
-        declaredClasses.push(nsClass.name)
+        if (!categoryName) {
+            declaredClasses.push(nsClass.name)
+        }
     }
 
     function handleNSProtocolDefinition(node)
@@ -179,23 +181,6 @@ build()
     {
         let method = makeNSMethodNode(node);
         currentProtocol.addMethod(method);
-    }
-
-
-    function handleInstanceVariableDeclarations(node)
-    {
-        _.each(node.declarations, declaration => {
-            let name = declaration.name;
-            let type = declaration.annotation.value;
-
-            let property = new Model.NSProperty(makeLocation(declaration), name.slice(1), type, name, null, null);
-
-            if (currentClass) {
-                currentClass.addProperty(property);
-            } else if (currentProtocol) {
-                currentProtocol.addProperty(property);
-            }
-        });
     }
 
     function handleNSPropertyDirective(node)
@@ -500,9 +485,6 @@ build()
 
             } else if (type === Syntax.NSProtocolDefinition) {
                 handleNSProtocolDefinition(node);
-
-            } else if (type === Syntax.NSInstanceVariableDeclarations) {
-                handleInstanceVariableDeclarations(node);
 
             } else if (type === Syntax.NSPropertyDirective) {
                 handleNSPropertyDirective(node);

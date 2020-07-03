@@ -6,10 +6,9 @@ var assert = require("assert");
     Issue21Enum_Baz
 }
 
-@class Issue21Class {
-    _a: Issue21Enum;
-}
+@class Issue21Class
 
+@property (private) a: Issue21Enum;
 @property b: Issue21Enum;
 
 - (void) check

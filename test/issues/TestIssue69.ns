@@ -1,9 +1,8 @@
 @const Hundred = "100";
 
-@class Issue69Class {
-    _foo: String;
-}
+@class Issue69Class
 
+@property (private) foo: String;
 
 - (void) testIvar
 {

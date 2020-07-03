@@ -3,9 +3,9 @@
 var assert = require("assert");
 
 
-@class EachIteratorTests {
-    _arrayAccessCount: Number;
-}
+@class EachIteratorTests
+
+@property (private) arrayAccessCount: Number;
 
 - (Array) testArray
 {
