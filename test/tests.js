@@ -56,7 +56,7 @@ _parseLines()
 }
 
 
-_checkResults(err, result)
+_checkResults(result)
 {
     function checkMaps(expectedMap, actualMap, noun) {
         let lineNumbers = _.uniq([].concat(
@@ -136,19 +136,8 @@ run()
     let name = this.name;
     if (options.squeeze) name += " +squeeze";
 
-    test(name, done => {
-        try {
-            nsc.compile(options, (err, result) => {
-                try {
-                    this._checkResults(err, result);
-                    done();
-                } catch (e) {
-                    done(e);
-                }
-            });
-        } catch (e) {
-            done(e);
-        }
+    test(name, async () => {
+        this._checkResults(await nsc.compile(options));
     });
 }
 

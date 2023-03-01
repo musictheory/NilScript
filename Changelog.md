@@ -10,6 +10,9 @@ syntax consistency.
 This is the first major release under the new language name (NilScript); as such,
 runtime APIs and generated code use "ns"/"NS"/"nilscript" rather than "oj"/"OJ".
 
+API Changes:
+ - All API functions are expected to use Promises (#167).
+
 Major Language Changes:
  - `@implementation` is now `@class` (#140).
  - JavaScript functions and variables may no longer be used inside of a `@class` (#166).

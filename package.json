@@ -6,8 +6,8 @@
     "bin": {
         "nsc": "./bin/nsc"
     },
-    "version": "2.1.0",
-    "engines": { "node": ">=6.0" },
+    "version": "3.0.0",
+    "engines": { "node": ">=18.0" },
     "maintainers": [{
         "name": "Ricci Adams",
         "email": "npm@ricciadams.com",
@@ -22,10 +22,8 @@
         "mocha": "*"
     },
     "dependencies": {
-        "async":       "1.x",
         "estraverse":  "4.x",
         "lodash":      "4.x",
-        "mkdirp":      "0.5.x",
         "node-getopt": "0.2.x",
         "source-map":  "0.5.x",
         "typescript":  "3.9.x"

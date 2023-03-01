@@ -360,9 +360,9 @@ This allows Number instance variables to be used in math operations without the 
 
 Unlike other parts of the NilScript runtime, properties and instance variables aren't intended to be accessed from non-NilScript JavaScript (they should be private to the subclass which defines them).  However, they may need to be accessed in the debugger.
 
-By default, the compiler uses a JavaScript property on the instance object with the follow name:
+The compiler uses a JavaScript property on the instance object with an underscore prefix:
 
-    N$_i_{{IVAR NAME}}
+    _{{IVAR NAME}}
 
 
 Hence, the following NilScript code:
@@ -388,33 +388,11 @@ nilscript.makeClass(…, function(…) {
 … // Compiler generates -setCounter: and -counter here
 
 ….incrementCounter = function() {
-    this.N$_i__counter++;
-}
-
-});
-```
-
-### <a name="simple-ivars"></a>Simple Ivars
-
-To make debugging easier, the `--simple-ivars` compiler flag may be used. This uses the exact ivar name as the JavaScript property.
-
-Hence, the previous example would compile into:
-
-```
-nilscript.makeClass(…, function(…) {
-    
-… // Compiler generates -setCounter: and -counter here
-
-….incrementCounter = function() {
     this._counter++;
 }
 
 });
 ```
-
-As long as ivars are prefixed (either the default `_theIvarName` or the non-standard prefixes such as `m_theIvarName` or `mTheIvarName`), this should be safe. You may run into issues if you use this flag and also use an ivar name which conflicts with an `Object.prototype` property. Examples include: `constructor`, `hasOwnProperty`, `toString`, `valueOf`, etc.
-
-`--simple-ivars` has no effect when the squeezer is enabled.
 
 ---
 ## <a name="observers"></a>Property Observers
@@ -861,10 +839,12 @@ Traditionally, NilScript's API consisted of a single `compile` method:
 ```javascript
 let nsc = require("nilscript");
 let options = { … };
-    
-nsc.compile(options, function(err, results) {
-    
-});
+
+async function doCompile() {
+    let results = await nsc.compile(options);
+
+    … // Do something with results
+}
 ```
 
 To allow for fast incremental compiles, NilScript 2.x adds a `Compiler` constructor:
@@ -878,10 +858,10 @@ let compiler = new nsc.Compiler();
 let options = { … };
 
 // Call doCompile() each time one of the files specified by options.files changes
-function doCompile(callback) {
-    compiler.compile(options, function(err, results) {
-        callback(err, results);
-    });
+async function doCompile() {
+    let results = compiler.compile(options);
+
+    … // Do something with results
 }
 ```
 
@@ -944,7 +924,7 @@ The callback must return a Promise. When this callback is invoked, a file's cont
 
 ```javascript
 // Simple preprocessor example.  Strips out #pragma lines and logs to console
-options["before-compile"] = async (file) => {
+options["before-compile"] = async file => {
     let inLines = file.getContents().split("\n");
     let outLines = [ ];
 
@@ -964,7 +944,7 @@ options["before-compile"] = async (file) => {
 };
 
 // ESLint example
-options["after-compile"] = async (file) => {
+options["after-compile"] = async file => {
     if (!linter) linter = require("eslint").linter;
 
     // file.getContents() returns the generated source as a String
@@ -975,7 +955,7 @@ options["after-compile"] = async (file) => {
 };
 
 // Babel example
-options["after-compile"] = async (file) => {
+options["after-compile"] = async file => {
     if (!babel) babel = require("babel-core");
     
     // retainLines must be true or NilScript's output source map will be useless

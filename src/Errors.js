@@ -36,7 +36,6 @@ const NSError = {
     VariableAlreadyDeclared:        "NilScriptVariableAlreadyDeclaredError",
     VariableNotYetDeclared:         "NilScriptVariableNotYetDeclaredError",
     RestrictedUsage:                "NilScriptRestrictedUsageError",
-    APIMisuse:                      "NilScriptAPIMisuseError",
     CircularClassHierarchy:         "NilScriptCircularClassHierarchyError",
     InheritanceError:               "NilScriptInheritanceError"
 };

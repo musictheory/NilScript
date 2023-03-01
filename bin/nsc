@@ -172,8 +172,16 @@ if (outputSymbolsFile) {
 }
 
 
+function compile(options, callback)
+{
+    nilscript.compile(options)
+        .then(result => callback(null, result))
+        .catch(err => callback(err));
+}
+
+
 try {
-    nilscript.compile(options, function(err, result) {
+    compile(options, function(err, result) {
         if (err) {
             print_error(err);
             process.exit(1);

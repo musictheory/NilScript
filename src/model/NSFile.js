@@ -7,10 +7,12 @@
 
 "use strict";
 
-const fs = require("fs");
+const fs    = require("fs");
+const Utils = require("../Utils");
 
 
 module.exports = class NSFile {
+
 
 
 constructor(path)
@@ -56,9 +58,7 @@ needsAll()
 
 needsParse()
 {
-    this.ast        = null;
-    this.parseError = null;
-
+    this.ast = null;
     this.needsBuild();
 }
 
@@ -67,7 +67,6 @@ needsBuild()
 {
     this.usage        = null;
     this.declarations = null;
-    this.buildError   = null;
 
     this.needsGenerate();
     this.needsTypecheck();
@@ -78,7 +77,6 @@ needsGenerate()
 {
     this.generatorLines    = null;
     this.generatorWarnings = null;
-    this.generatorError    = null;
 }
 
 
@@ -86,16 +84,19 @@ needsTypecheck()
 {
     this.typecheckerCode  = null;
     this.typecheckerDefs  = null;
-    this.typecheckerError = null;
 }
 
 
-getError()
+set error(err)
 {
-    return this.parseError     ||
-           this.buildError     ||
-           this.generatorError ||
-           this.typecheckerError;
+    if (err) Utils.addFilePathToError(this.path, err);
+    this._error = err;
+}
+
+
+get error()
+{
+    return this._error;
 }
 
 

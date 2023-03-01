@@ -150,23 +150,23 @@ function rmrf(dir)
 
 function mkdirAndWriteFile(file, contents)
 {
-    mkdirp.sync(path.dirname(file));
+    fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, contents);
 }
 
 
 module.exports = {
-    isReservedSelectorName:     isReservedSelectorName,
-    isBaseObjectSelectorName:   isBaseObjectSelectorName,
-    getBaseObjectSelectorNames: getBaseObjectSelectorNames,
-    makeError:                  makeError,
-    throwError:                 throwError,
-    addNodeToError:             addNodeToError,
-    addFilePathToError:         addFilePathToError,
+    isReservedSelectorName,
+    isBaseObjectSelectorName,
+    getBaseObjectSelectorNames,
+    makeError,
+    throwError,
+    addNodeToError,
+    addFilePathToError,
 
-    enableLog: enableLog,
-    log: log,
+    enableLog,
+    log,
 
-    rmrf:                       rmrf,
-    mkdirAndWriteFile:          mkdirAndWriteFile
+    rmrf,
+    mkdirAndWriteFile
 };

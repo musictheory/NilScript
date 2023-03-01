@@ -97,7 +97,7 @@ _getLibraryFilePaths(libString)
 }
 
 
-check(model, defs, files, callback)
+async check(model, defs, files)
 {
     let options         = this._options;
     let development     = options["dev-dump-tmp"];
@@ -228,7 +228,7 @@ check(model, defs, files, callback)
 
     this._program = program;
 
-    callback(null, warnings);
+    return warnings;
 }
 
 }

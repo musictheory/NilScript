@@ -9,7 +9,6 @@
 const _               = require("lodash");
 const fs              = require("fs");
 const path            = require("path");
-const async           = require("async");
 
 const esprima         = require("../ext/esprima");
 
@@ -22,7 +21,6 @@ const Utils           = require("./Utils");
 const Log             = Utils.log;
 
 const NSError         = require("./Errors").NSError;
-const NSWarning       = require("./Errors").NSWarning;
 const NSModel         = require("./model").NSModel;
 const NSFile          = require("./model").NSFile;
 
@@ -134,7 +132,7 @@ _extractFilesFromOptions(optionsFiles, previousFiles)
     });
 
     if (!_.isArray(optionsFiles)) {
-        Utils.throwError(NSError.APIMisuse, "options.files must be an array");
+        throw new Error("options.files must be an array");
     }
 
     // The 'files' option can either be an Array of String file paths, or
@@ -155,11 +153,11 @@ _extractFilesFromOptions(optionsFiles, previousFiles)
             time     = f.time || Date.now()
 
         } else {
-            Utils.throwError(NSError.APIMisuse, "Each member of options.files must be a string or object");
+            throw new Error("Each member of options.files must be a string or object");
         }
 
         if (!path) {
-            Utils.throwError(NSError.APIMisuse, "No 'path' key in " + f);
+            throw new Error("No 'path' key in " + f);
         }
 
         nsFile = existingMap[path] || new NSFile(path);
@@ -177,65 +175,55 @@ _extractFilesFromOptions(optionsFiles, previousFiles)
 }
 
 
-_runBeforeCompileCallback(beforeCompileCallback, nsFile, doneCallback)
+_throwErrorInFiles(files)
 {
-    let lines    = nsFile.contents.split("\n");
-    let warnings = [ ];
-
-    let callbackFile = new NSCompileCallbackFile(nsFile.path, lines, warnings)
-
-    beforeCompileCallback(callbackFile, (error) => {
-        if (error) {
-            Utils.addFilePathToError(nsFile.path, error);
-
-            Log(`${nsFile.path} needsPreprocess due to error: '${error}'`);
-            nsFile.needsPreprocess = true;
-
-        } else {
-            nsFile.contents = callbackFile._lines.join("\n");
-            nsFile.needsPreprocess = false;
+    _.each(files, nsFile => {
+        if (nsFile.error) {
+            throw nsFile.error;
         }
-
-        doneCallback(error);
     });
 }
 
 
-_preprocessFiles(files, options, callback)
+async _preprocessFiles(files, options)
 {
-    let err = null;
     let beforeCompileCallback = options["before-compile"];
 
-    async.each(files, (nsFile, callback) => {
-        if (nsFile.needsPreprocess) {
-            if (beforeCompileCallback) {
-                try { 
-                    this._runBeforeCompileCallback(beforeCompileCallback, nsFile, callback);
-                } catch (e) {
-                    if (!err) err = e;
-                    callback();
-                }
+    files = _.filter(files, nsFile => nsFile.needsPreprocess);
 
-            } else {
-                nsFile.needsPreprocess = false;
-                callback();
-            }
+    if (!beforeCompileCallback) {
+        _.map(files, nsFile => {
+            nsFile.needsPreprocess = false;
+        });
 
-        } else {
-            callback();
+        return;
+    }
+
+    await Promise.all(_.map(files, async nsFile => {
+        let lines    = nsFile.contents.split("\n");
+        let warnings = [ ];
+
+        let callbackFile = new NSCompileCallbackFile(nsFile.path, lines, warnings);
+
+        try {
+            await beforeCompileCallback(callbackFile);
+            nsFile.contents = callbackFile._lines.join("\n");
+
+            nsFile.needsPreprocess = false;
+
+        } catch (err) {
+            Log(`${nsFile.path} needsPreprocess due to error: '${err}'`);
+            nsFile.error = err;
         }
+    }));
 
-    }, (e) => {
-        callback(err || e);
-    });
+    this._throwErrorInFiles(files);
 }
 
 
-_parseFiles(files, options, callback)
+async _parseFiles(files, options)
 {
-    let err = null;
-
-    async.each(files, (nsFile, callback) => {
+    return Promise.all(_.map(files, async nsFile => {
         if (!nsFile.ast) {
             Log(`Parsing ${nsFile.path}`);
 
@@ -243,7 +231,6 @@ _parseFiles(files, options, callback)
                 let sourceType = options["parser-source-type"] || "script";
                 nsFile.ast = esprima.parse(nsFile.contents, { loc: true, sourceType: sourceType });
 
-                nsFile.parseError = null;
                 nsFile.needsGenerate();
                 nsFile.needsTypecheck();
 
@@ -260,177 +247,97 @@ _parseFiles(files, options, callback)
                 outError.reason = message;
 
                 nsFile.needsParse();
-                nsFile.parseError = outError;
-                if (!err) err = outError;
+                nsFile.error = outError;
             }
         }
+    }));
 
-        callback();
-
-    }, () => {
-        callback(err);
-    });
+    this._throwErrorInFiles(files);
 }
 
 
-_buildFiles(files, model, options, callback)
+async _buildFiles(files, model, options)
 {
-    let err = null;
-
-    async.each(files, (nsFile, callback) => {
+    await Promise.all(_.map(files, async nsFile => {
         try { 
             let builder = new Builder(nsFile, model, options);
             builder.build();
-            nsFile.buildError = null;
 
-        } catch (e) {
-            Utils.addFilePathToError(nsFile.path, e);
+        } catch (err) {
             nsFile.needsParse();
-            nsFile.buildError = e;
-            if (!err) err = e;
+            nsFile.error = err;
         }
+    }));
 
-        callback();
+    this._throwErrorInFiles(files);
 
-    }, () => {
-        if (err) {
-            callback(err);
-        } else {
-            try {
-                model.prepare();
-            } catch (e) {
-                callback(e);
-            }
-
-            callback();
-        }
-    });
+    model.prepare();
 }
 
 
-_runAfterCompileCallback(afterCompileCallback, nsFile, doneCallback)
+async _generateJavaScript(files, model, options)
 {
-    let callbackFile = new NSCompileCallbackFile(nsFile.path, nsFile.generatorLines, nsFile.generatorWarnings);
-
-    afterCompileCallback(callbackFile, (error) => {
-        if (error) {
-            Utils.addFilePathToError(nsFile.path, error);
-
-            Log(`${nsFile.path} needsGenerate due to error: '${error}'`);
-            nsFile.needsGenerate();
-            nsFile.generatorError = error;
-
-        } else {
-            nsFile.generatorError    = null;
-            nsFile.generatorLines    = callbackFile._lines;
-            nsFile.generatorWarnings = callbackFile._warnings;
-        }
-
-        doneCallback(error);
-    });
-}
-
-
-_generateJavaScript(files, model, options, callback)
-{
-    let err = null;
-
     let afterCompileCallback = options["after-compile"];
 
-    async.each(files, (nsFile, callback) => {
-        if (!nsFile.generatorLines) {
-            async.series([
-                callback => {
-                    try {
-                        Log(`Generating ${nsFile.path}`);
+    await Promise.all(_.map(files, async nsFile => {
+        try {
+            if (!nsFile.generatorLines) {
+                Log(`Generating ${nsFile.path}`);
 
-                        let generator = new Generator(nsFile, model, false, options);
-                        let result    = generator.generate();
+                let generator = new Generator(nsFile, model, false, options);
+                let result    = generator.generate();
 
-                        nsFile.generatorError    = null;
-                        nsFile.generatorLines    = result.lines;
-                        nsFile.generatorWarnings = result.warnings || [ ];
+                nsFile.generatorLines    = result.lines;
+                nsFile.generatorWarnings = result.warnings || [ ];
+            }
 
-                    } catch (e) {
-                        Utils.addFilePathToError(nsFile.path, e);
+            if (afterCompileCallback) {
+                let callbackFile = new NSCompileCallbackFile(nsFile.path, nsFile.generatorLines, nsFile.generatorWarnings);
 
-                        Log(`${nsFile.path} needsGenerate due to error: '${e}'`);
-                        nsFile.needsGenerate();
-                        nsFile.generatorError = e;
+                await afterCompileCallback(callbackFile);
 
-                        if (!err) err = e;
-                    }
+                nsFile.generatorLines    = callbackFile._lines;
+                nsFile.generatorWarnings = callbackFile._warnings;
+            }
 
-                    callback();
-                },
+        } catch (err) {
+            Log(`${nsFile.path} needsGenerate due to error: '${err}'`);
 
-                callback => {
-                    if (afterCompileCallback) {
-                        try {
-                            this._runAfterCompileCallback(afterCompileCallback, nsFile, callback);
-                        } catch (e) {
-                            if (!err) err = e;
-                            callback();
-                        }
-
-                    } else {
-                        callback();
-                    }
-                }
-
-            ], callback);
-
-        } else {
-            callback();
+            nsFile.needsGenerate();
+            nsFile.error = err;
         }
+    }));
 
-    }, () => {
-        callback(err);
-    });
+    this._throwErrorInFiles(files);
 }
 
 
-_runTypechecker(typechecker, defs, files, model, options, callback)
+async _runTypechecker(typechecker, defs, files, model, options)
 {
     let err = null;
 
-    async.each(files, (nsFile, callback) => {
+    await Promise.all(_.map(files, async nsFile => {
         if (!nsFile.typecheckerCode) {
             try {
                 let generator = new Generator(nsFile, model, true, options);
                 let result = generator.generate();
 
-                nsFile.typecheckerError = null;
                 nsFile.typecheckerCode  = result.lines.join("\n");
 
             } catch (e) {
-                Utils.addFilePathToError(nsFile.path, e);
                 nsFile.needsTypecheck();
-                nsFile.typecheckerError = e;
-                if (!err) err = e;
+                nsFile.error = e;
             }
         }
+    }));
 
-        callback();
+    this._throwErrorInFiles(files);
 
-    }, () => {
-        if (err) {
-            callback(err)
-        } else {
-            try {
-                typechecker.check(model, defs, files, (err, warnings, defs, code) => {
-                    callback(null, warnings);
-                });
-
-            } catch (e) {
-                callback(e, null);
-            }
-        }
-    });
+    return typechecker.check(model, defs, files);
 }
 
 
-_finish(files, options, callback)
+async _finish(files, options)
 {
     function getLines(arrayOrString) {
         if (_.isArray(arrayOrString)) {
@@ -442,60 +349,55 @@ _finish(files, options, callback)
         }
     }
 
-    try {
-        let prependLines = getLines( options["prepend"] );
-        let appendLines  = getLines( options["append"] );
+    let prependLines = getLines( options["prepend"] );
+    let appendLines  = getLines( options["append"] );
 
-        let outputSourceMap   = null;
-        let outputFunctionMap = null;
+    let outputSourceMap   = null;
+    let outputFunctionMap = null;
 
-        if (options["include-map"]) {
-            let mapper = new SourceMapper(options["source-map-file"], options["source-map-root"]);
+    if (options["include-map"]) {
+        let mapper = new SourceMapper(options["source-map-file"], options["source-map-root"]);
 
-            mapper.add(null, prependLines);
+        mapper.add(null, prependLines);
 
-            _.each(files, nsFile => {
-                mapper.add(nsFile.path, nsFile.generatorLines);
-            });
-            
-            mapper.add(null, appendLines);
+        _.each(files, nsFile => {
+            mapper.add(nsFile.path, nsFile.generatorLines);
+        });
+        
+        mapper.add(null, appendLines);
 
-            outputSourceMap = mapper.getSourceMap();
-        }
+        outputSourceMap = mapper.getSourceMap();
+    }
 
-        if (options["include-function-map"]) {
-            let functionMaps = { };
+    if (options["include-function-map"]) {
+        let functionMaps = { };
 
-            _.each(files, nsFile => {
-                let mapper = new FunctionMapper(nsFile);
-                functionMaps[nsFile.path] = mapper.map();
-            });
-
-            outputFunctionMap = functionMaps;
-        }
-
-        let outputCode = null;
-        {
-            let linesArray = [ ];   // Array<Array<String>>
-
-            linesArray.push(prependLines);
-            _.each(files, nsFile => {
-                linesArray.push(nsFile.generatorLines);
-            });
-            linesArray.push(appendLines);
-
-            outputCode = Array.prototype.concat.apply([ ], linesArray).join("\n");
-        }
-
-        callback(null, {
-            code: outputCode,
-            map:  outputSourceMap,
-            functionMap: outputFunctionMap
+        _.each(files, nsFile => {
+            let mapper = new FunctionMapper(nsFile);
+            functionMaps[nsFile.path] = mapper.map();
         });
 
-    } catch (err) {
-        callback(err);
+        outputFunctionMap = functionMaps;
     }
+
+    let outputCode = null;
+    {
+        let linesArray = [ ];   // Array<Array<String>>
+
+        linesArray.push(prependLines);
+        _.each(files, nsFile => {
+            linesArray.push(nsFile.generatorLines);
+        });
+        linesArray.push(appendLines);
+
+        outputCode = Array.prototype.concat.apply([ ], linesArray).join("\n");
+    }
+
+    return {
+        code: outputCode,
+        map:  outputSourceMap,
+        functionMap: outputFunctionMap
+    };
 }
 
 
@@ -506,7 +408,7 @@ uses(compiler)
 }
 
 
-compile(options, callback)
+async compile(options)
 {
     let previousFiles   = this._files;
     let previousDefs    = this._defs;
@@ -610,143 +512,120 @@ compile(options, callback)
     let outputFunctionMap   = null;
     let typecheckerWarnings = null;
 
-    async.waterfall([
+    let caughtError = null;
+
+    try {
+        // Clear errors from last compile
+        _.each(files, nsFile => {
+            nsFile.error = null;
+        });
+
         // Preprocess files
-        callback => {
-            this._preprocessFiles(files, options, callback);
-        },
+        await this._preprocessFiles(files, options);
 
         // Parse files
-        callback => {
-            this._parseFiles(files, options, callback);
-        },
+        await this._parseFiles(files, options);
 
         // Build model
-        callback => {
-            this._buildFiles(files, model, options, callback);
-        },
+        await this._buildFiles(files, model, options);
 
         // Perform model diff
-        callback => {
-            if (!previousModel || previousModel.hasGlobalChanges(model)) {
-                if (!previousModel) {
-                    Log("No previous model, all files need generate");
-                } else {
-                    Log("Model has global changes, all files need generate");
-                }
-
-                _.each(files, nsFile => {
-                    nsFile.needsGenerate();
-                    nsFile.needsTypecheck();
-                });
-
+        if (!previousModel || previousModel.hasGlobalChanges(model)) {
+            if (!previousModel) {
+                Log("No previous model, all files need generate");
             } else {
-                if (options["warn-unknown-selectors"]) {
-                    let changedSelectors = previousModel.getChangedSelectorMap(model);
-
-                    if (changedSelectors) {
-                        _.each(files, nsFile => {
-                            _.each(nsFile.uses.selectors, selectorName => {
-                                if (changedSelectors[selectorName]) {
-                                    Log(`${nsFile.path} needsGenerate due to selector: '${selectorName}'`);
-                                    nsFile.needsGenerate();
-                                }
-                            });
-                        });
-                    }
-                }
+                Log("Model has global changes, all files need generate");
             }
 
+            _.each(files, nsFile => {
+                nsFile.needsGenerate();
+                nsFile.needsTypecheck();
+            });
 
-            // If we get here, our current model is valid.  Save it for next time
-            this._model = model;
+        } else {
+            if (options["warn-unknown-selectors"]) {
+                let changedSelectors = previousModel.getChangedSelectorMap(model);
 
-            callback();
-        },
+                if (changedSelectors) {
+                    _.each(files, nsFile => {
+                        _.each(nsFile.uses.selectors, selectorName => {
+                            if (changedSelectors[selectorName]) {
+                                Log(`${nsFile.path} needsGenerate due to selector: '${selectorName}'`);
+                                nsFile.needsGenerate();
+                            }
+                        });
+                    });
+                }
+            }
+        }
+
+        // If we get here, our current model is valid.  Save it for next time
+        this._model = model;
 
         // Run generator
-        callback => {
-            if (optionsOutputLanguage != "none") {
-                this._generateJavaScript(files, model, options, callback);
-            } else {
-                callback();
-            }
-        },
+        if (optionsOutputLanguage != "none") {
+            await this._generateJavaScript(files, model, options);
+        }
 
         // Run typechecker
-        callback => {
-            if (optionsCheckTypes) {
-                this._runTypechecker(this._checker, defs, files, model, options, (err, warnings) => {
-                    typecheckerWarnings = warnings;
-                    callback(err);
-                });
-
-            } else {
-                callback();
-            }
-        },
+        if (optionsCheckTypes) {
+            typecheckerWarnings = await this._runTypechecker(this._checker, defs, files, model, options);
+        }
 
         // Concatenate and map output
-        callback => {
-            if (optionsOutputLanguage != "none") {
-                this._finish(files, finishOptions, (err, results) => {
-                    if (results) {
-                        outputCode        = results.code;
-                        outputSourceMap   = results.map;
-                        outputFunctionMap = results.functionMap;
-                    }
+        if (optionsOutputLanguage != "none") {
+            let results = await this._finish(files, finishOptions);
 
-                    callback(err);
-                });
-            } else {
-                callback();
+            if (results) {
+                outputCode        = results.code;
+                outputSourceMap   = results.map;
+                outputFunctionMap = results.functionMap;
             }
-        },
-
-    ], err => {
-        let errors = _.compact(_.map(files, nsFile => nsFile.getError()));
-
-        // If we have an internal error, throw it now
-        {
-            if (err && err.name && !err.name.startsWith("NilScript")) {
-                throw err;
-            }
-
-            _.each(errors, error => {
-                if (!error.name || !error.name.startsWith("NilScript")) {
-                    throw error;
-                }
-            });
         }
 
-        let warnings = _.map(files, nsFile => [
-            nsFile.generatorWarnings,
-        ]);
+    } catch (err) {
+        caughtError = err;
+    }
 
-        warnings.push(typecheckerWarnings);
+    let errors = _.compact(_.map(files, nsFile => nsFile.error));
 
-        let result = {
-            code:        outputCode,
-            map:         outputSourceMap,
-            functionMap: outputFunctionMap,
-            errors:      errors,
-            warnings:    _.compact(_.flattenDeep(warnings))
-        };
+    if (caughtError && !errors.includes(caughtError)) {
+        errors.unshift(caughtError);
+    }
 
-        if (optionsIncludeState) {
-            result.state = model.saveState();
+    _.each(errors, error => {
+        if (!error.name || !error.name.startsWith("NilScript")) {
+            throw error;
         }
-
-        if (options["squeeze"]) {
-            result.squeeze = model.getSqueezeMap();
-        }
-
-        if (optionsIncludeBridged) {
-            result.bridged = model.saveBridged();
-        }
-
-        callback(err, result);
     });
+
+    let warnings = _.map(files, nsFile => [
+        nsFile.generatorWarnings,
+    ]);
+
+    warnings.push(typecheckerWarnings);
+
+    let result = {
+        code:        outputCode,
+        map:         outputSourceMap,
+        functionMap: outputFunctionMap,
+        errors:      errors,
+        warnings:    _.compact(_.flattenDeep(warnings))
+    };
+
+    if (optionsIncludeState) {
+        result.state = model.saveState();
+    }
+
+    if (options["squeeze"]) {
+        result.squeeze = model.getSqueezeMap();
+    }
+
+    if (optionsIncludeBridged) {
+        result.bridged = model.saveBridged();
+    }
+
+    return result;
 }
 
 }
