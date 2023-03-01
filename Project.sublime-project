@@ -1,22 +1,31 @@
 {
+	"build_systems":
+	[
+		{
+			"cmd":
+			[
+				"${project_path}/node_modules/mocha/bin/mocha",
+				"-C"
+			],
+			"file_regex": "^([^:]*):([0-9]+):?([0-9]+)?:? (.*)$",
+			"name": "oj - Run Tests",
+			"path": "/usr/local/bin:$PATH",
+			"selector": "source.js",
+			"working_dir": "${project_path:${folder}}"
+		}
+	],
 	"folders":
 	[
 		{
-			"path": ".",
-            "folder_exclude_patterns": [ "node_modules" ],
-            "file_exclude_patterns":   [ "*.sublime-workspace" ]
+			"file_exclude_patterns":
+			[
+				"*.sublime-workspace"
+			],
+			"folder_exclude_patterns":
+			[
+				"node_modules"
+			],
+			"path": "."
 		}
-	],
-
-	"build_systems":
-	[
-        {
-            "name": "oj - Run Tests",
-            "cmd": ["${project_path}/node_modules/mocha/bin/mocha", "-C" ],
-            "file_regex": "^([^:]*):([0-9]+):?([0-9]+)?:? (.*)$",
-            "working_dir": "${project_path:${folder}}",
-            "selector": "source.js",
-            "path": "/usr/local/bin:$PATH"
-        }
-    ]
+	]
 }

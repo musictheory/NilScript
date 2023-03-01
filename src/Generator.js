@@ -374,18 +374,26 @@ generate()
                 }
                 return;
 
-            } else if (methodName == "class" && (language !== LanguageTypechecker)) {
-                if (model.classes[receiver.name]) {
-                    doCommonReplacement(getClassAsRuntimeVariable(receiver.name));
-                } else if (receiver.name == "self") {
-                    if (isInstance) {
-                        doCommonReplacement(selfOrThis + ".constructor");
-                    } else {
-                        doCommonReplacement(selfOrThis);
-                    }
+            } else if (methodName == "class") {
+                if (language === LanguageEcmascript5) {
+                    if (model.classes[receiver.name]) {
+                        doCommonReplacement(getClassAsRuntimeVariable(receiver.name));
+                    } else if (receiver.name == "self") {
+                        if (isInstance) {
+                            doCommonReplacement(selfOrThis + ".constructor");
+                        } else {
+                            doCommonReplacement(selfOrThis);
+                        }
 
+                    } else {
+                        doCommonReplacement("(" + receiver.name + " ? " + receiver.name + "['class'](", ") : null)");
+                    }
                 } else {
-                    doCommonReplacement("(" + receiver.name + " ? " + receiver.name + "['class'](", ") : null)");
+                    if (model.classes[receiver.name]) {
+                        doCommonReplacement(getClassAsRuntimeVariable(receiver.name));
+                    } else {
+                        doCommonReplacement("(" + receiver.name + " ? " + receiver.name + "['class'](", ") : null)");
+                    }                    
                 }
                 return;
 
@@ -484,11 +492,8 @@ generate()
         _.each(node.body.body, child => {
             let type = child.type;
             
-            if (type !== Syntax.EmptyStatement        &&
-                type !== Syntax.FunctionDeclaration   &&
-                type !== Syntax.VariableDeclaration   &&
-                type !== Syntax.NSMethodDefinition    &&
-                type !== Syntax.NSPropertyDirective   &&
+            if (type !== Syntax.NSMethodDefinition  &&
+                type !== Syntax.NSPropertyDirective &&
                 type !== Syntax.NSObserveDirective)
             {
                 Utils.throwError(NSError.ParseError, 'Unexpected implementation child.', child);
@@ -590,7 +595,7 @@ generate()
                 if (language === LanguageEcmascript5) {
                     args.push(name);
                 } else if (language === LanguageTypechecker) {
-                    let outputType = symbolTyper.toTypecheckerType(methodType && methodType.value, Location.ImplementationParameter);
+                    let outputType = symbolTyper.toTypecheckerType(methodType && methodType.value);
                     args.push(name + (methodType ? (" : " + outputType) : ""));
                 }
             }
@@ -601,7 +606,7 @@ generate()
         if (language === LanguageTypechecker) {
             let returnType = getCurrentMethodInModel().returnType;
             if (returnType == "instancetype") returnType = currentClass.name;
-            definition += ": " + symbolTyper.toTypecheckerType(returnType, Location.ImplementationReturn);
+            definition += ": " + symbolTyper.toTypecheckerType(returnType);
         }
 
         modifier.from(node).to(node.body).replace(definition);

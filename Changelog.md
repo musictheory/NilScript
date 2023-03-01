@@ -12,20 +12,14 @@ runtime APIs and generated code use "ns"/"NS"/"nilscript" rather than "oj"/"OJ".
 
 Major Language Changes:
  - `@implementation` is now `@class` (#140).
- - Reworked instance variables (#153).
-   * Instance variables are now uniqued by name rather than by class+name. 
-     Hence, TheClass and TheSuperclass may not both define `_foo`.
-   * Added the `--simple-ivars` compiler flag. When set, this uses the
-     instance variable name (`_foo`) for the JavaScript property name
-     (`this._foo`), rather than `this.N$_i__foo`.
-   * Added the `--warn-inherited-ivars` compiler flag. This warns if
-     an ivar declared in a superclass is used in an inherited context.
+ - JavaScript functions and variables may no longer be used inside of a `@class` (#166).
+ - Unified properties and instance variables (#153, #163).
  - Unified syntax for inheritance and protocol conformance (#156).
  - Added `iterator` to the reserved selector name list (#151).
  - Removed runtime `nilscript.getSubclassesOfClass` API (#158).
  - Removed requirement for consistent property names (#157). This should only affect users
    using Google's Closure Compiler with "advanced optimizations" turned on.
- - Property and ivar syntax now uses TypeScript-style type annotations rather than C-style (#145).
+ - Property syntax now uses TypeScript-style type annotations rather than C-style (#145).
  - Protocol type annotations are now 'TheProtocol' instead of 'id<TheProtocol>' (#139).
  - Removed `@squeeze` directive (#137).
  - Removed `@forward` directive (#138).

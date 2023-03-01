@@ -10,7 +10,6 @@
 const _ = require("lodash");
 
 const TypecheckerSymbols = require("../model/NSSymbolTyper").TypecheckerSymbols;
-const Location           = require("../model/NSSymbolTyper").Location;
 const NSType             = require("../model/NSType");
 
 
@@ -32,7 +31,7 @@ _getProtocolList(verb, isStatic, rawProtocolNames)
         return symbolTyper.getSymbolForProtocolName(protocolName, isStatic);
     });
 
-    symbols.unshift(isStatic ? "N$_StaticBaseProtocol" : "N$_BaseProtocol");
+    symbols.unshift(isStatic ? "typeof N$_BaseProtocol" : "N$_BaseProtocol");
 
     if (symbols.length) {
         return " " + verb + " " + symbols.join(",");
@@ -50,12 +49,12 @@ _getDeclarationForMethod(method)
 
     for (let i = 0, length = method.parameterTypes.length; i < length; i++) {
         let variableName  = method.variableNames[i] || ("a" + i);
-        let parameterType = symbolTyper.toTypecheckerType(method.parameterTypes[i], Location.DeclarationParameter);
+        let parameterType = symbolTyper.toTypecheckerType(method.parameterTypes[i]);
 
         parameters.push(variableName + " : " + parameterType);
     }
 
-    let returnType = symbolTyper.toTypecheckerType(method.returnType, Location.DeclarationReturn);
+    let returnType = symbolTyper.toTypecheckerType(method.returnType);
 
     return methodName + (method.optional ? "?" : "") + "(" + parameters.join(", ") + ") : " + returnType + ";";
 }
@@ -77,7 +76,7 @@ _appendClass(lines, nsClass, classSymbol, staticSymbol)
     let superclassName = nsClass.superclass ? nsClass.superclass.name : null;
 
     let superSymbol       = superclassName ? symbolTyper.getSymbolForClassName(superclassName, false) : TypecheckerSymbols.Base;
-    let superStaticSymbol = superclassName ? symbolTyper.getSymbolForClassName(superclassName, true)  : TypecheckerSymbols.StaticBase;
+    let superStaticSymbol = superclassName ? symbolTyper.getSymbolForClassName(superclassName, true)  : ("typeof " + TypecheckerSymbols.Base);
 
     let declaredMethodNames = { };
     let methods = [ ];
@@ -153,22 +152,6 @@ _appendClass(lines, nsClass, classSymbol, staticSymbol)
         "static N$_super() : " + superStaticSymbol + ";",
         "}"
     );
-
-    lines.push(
-        "declare class " + staticSymbol +
-            " extends " + superStaticSymbol +
-            this._getProtocolList("implements", true, nsClass.protocolNames) +
-            " {"
-    );
-
-    _.each(classMethodDeclarations, decl => lines.push(decl) );
-
-    lines.push(
-        "alloc() : " + classSymbol  + ";",
-        "class() : " + staticSymbol + ";",
-        "N$_super() : " + superStaticSymbol + ";",
-        "}"
-    );
 }
 
 
@@ -187,14 +170,6 @@ _appendProtocol(lines, nsProtocol)
     lines.push("declare interface " + protocolSymbol + this._getProtocolList("extends", false, nsProtocol.protocolNames) + " {");
 
     _.each(instanceMethodDeclarations, decl => {
-        lines.push(decl);
-    });
-
-    lines.push("}");
-
-    lines.push("declare interface " + staticSymbol + this._getProtocolList("extends", true, nsProtocol.protocolNames) + " {");
-
-    _.each(classMethodDeclarations, decl => {
         lines.push(decl);
     });
 
@@ -306,8 +281,6 @@ getGlobalDefinitions()
     let symbolTyper = this._symbolTyper;
 
     let classNames    = _.keys(model.classes);
-    let classSymbols  = _.map(classNames, name => symbolTyper.getSymbolForClassName(name, false));
-    let staticSymbols = _.map(classNames, name => symbolTyper.getSymbolForClassName(name, true ));
 
     lines.push("declare class " + TypecheckerSymbols.GlobalType + " {");
     _.each(model.globals, nsGlobal => {
@@ -331,15 +304,6 @@ getGlobalDefinitions()
         }
     });
     lines.push("}");
-
-    this._appendClass( lines, model.getAggregateClass(), TypecheckerSymbols.Combined, TypecheckerSymbols.StaticCombined );
-    classSymbols .unshift(TypecheckerSymbols.Combined);
-    staticSymbols.unshift(TypecheckerSymbols.StaticCombined)
-
-    let allSymbols = classSymbols.concat(staticSymbols);
-
-    lines.push("declare type " + TypecheckerSymbols.IdIntersection + " = " + allSymbols.join("&") + ";");
-    lines.push("declare type " + TypecheckerSymbols.IdUnion        + " = " + allSymbols.join("|") + ";");
 
     return lines.join("\n");
 }

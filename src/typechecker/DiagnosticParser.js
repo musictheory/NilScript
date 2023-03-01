@@ -149,12 +149,15 @@ getWarnings(diagnostics, fileCallback)
                 });
             }
 
-            let messageText = diagnostic.messageText;
-            while (messageText) {
-                parseMessageText(messageText);
-                messageText = messageText.next;
-                if (!next) next = messageText ? messageText.code : 0;
+            let arr = [ diagnostic.messageText ];
+            if (diagnostic.messageText.next) {
+                arr.push(...diagnostic.messageText.next);
             }
+
+            _.each(arr, messageText => {
+                parseMessageText(messageText);
+                if (!next) next = messageText ? messageText.code : 0;
+            });
         }
 
         // Now look up the friendlier reason string from the map

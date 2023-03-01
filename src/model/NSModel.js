@@ -333,60 +333,6 @@ getChangedSelectorMap(other)
 }
 
 
-getAggregateClass()
-{
-    let result = new NSClass(null, null, null, null);
-
-    function extractMethodsIntoMap(methods, map) {
-        _.each(methods, function(m) {
-            let selectorName = m.selectorName;
-            let selectorType = m.selectorType;
-
-            let types = _.clone(m.parameterTypes);
-            types.unshift(m.returnType);
-
-            let existing = map[selectorName];
-            if (!existing) {
-                map[selectorName] = types;
-            } else {
-                for (let i = 0, length = existing.length; i < length; i++) {
-                    if (existing[i] != types[i]) {
-                        existing[i] = "any";
-                    }
-                }
-            }
-        });
-    }
-
-    function addMethodsWithMap(map, selectorType) {
-        _.each(map, function(value, key) {
-            let returnType = value.shift();
-
-            let variableNames = [ ];
-            let index = 0;
-            _.each(value, function(v) { variableNames.push("a" + index++);  });
-
-            let m = new NSMethod(null, key, selectorType, returnType, value, variableNames);  
-            result.addMethod(m);
-        });
-    }
-
-    let instanceMap = { };
-    let classMap    = { };
-
-    _.each(this.classes, nsClass => {
-        extractMethodsIntoMap(nsClass.getClassMethods(),    classMap);
-        extractMethodsIntoMap(nsClass.getClassMethods(),    instanceMap);   // 'id' should also cover 'Class'
-        extractMethodsIntoMap(nsClass.getInstanceMethods(), instanceMap);
-    });
-
-    addMethodsWithMap(classMap,    "+");
-    addMethodsWithMap(instanceMap, "-");
-
-    return result;
-}
-
-
 registerDeclaration(name, node)
 {
     let existing = this._declarationMap[name];

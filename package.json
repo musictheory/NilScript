@@ -28,7 +28,7 @@
         "mkdirp":      "0.5.x",
         "node-getopt": "0.2.x",
         "source-map":  "0.5.x",
-        "typescript":  "3.1.x"
+        "typescript":  "3.9.x"
     },
     "scripts": {
         "test": "mocha --ui tdd"

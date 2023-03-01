@@ -754,14 +754,13 @@ NilScript uses an Objective-C inspired syntax for types, which is automatically 
 | `String`           | `string`
 | `Array<Number>`    | An array of numbers, corresponds to the `number[]` TypeScript type.
 | `Object<Number>`   | A JavaScript object used as a string-to-number map. corresponds to the `{ [i:string]: number }` TypeScript type
-| `Object`, `any`    | The `any` type (which effectively turns off typechecking)
 | `TheType`          | The JavaScript type (as defined by the `lib.d.ts` TypeScript file) or an instance of an NilScript class
 | `Array<TheType>`   | A typed array, corresponds to the `TheType[]` TypeScript type.
 | `Object<TheType>`  | A JavaScript object used as a string-to-TheType map. corresponds to the `{ [i:string]: TheType }` TypeScript type
 | `ProtocolName`     | An object which conforms to the specified protocol name(s)
-| `id`               | A special aggregate type containing all known instance methods definitions.
-| `Class`            | A special aggregate type containing all known class methods definitions.
 | `SEL`              | A special type that represents a selector
+| `Object`, `any`, `id`, `Class` | The `any` type (which effectively turns off typechecking)
+
 
 Most NilScript method declarations will have type information and should behave exactly as their Objective-C counterparts.  However, JavaScript functions need to be annotated via type annotations, similar to ActionScript and TypeScript:
 
@@ -798,23 +797,22 @@ Casting is performed via the `@cast` operator:
 
     let a : String = @cast(String, 3 + 4 + 6);
 
-Sometimes you may wish to disable type checking for a specific variable or expression.  While `@cast(any, …)` accomplishes this, you can also use the `@any` convinience operator:
-
-    let o = @any({ });
-
-For some projects and coding styles, the default TypeScript rules may be too strict.  For example, the following is an error in typescript:
+Sometimes you may wish to disable type checking for a specific variable or expression:
 
 ```
-function example() {
     let o = { };
     // This is an error in TypeScript, as 'foo' isn't a property on the '{}' type
     o.foo = "Foo";
-}
 ```
 
-By default, NilScript mitigates this by casting all objects literals to the `any` type.  However, this may cause issues with function overloading when using [external type definitions](http://definitelytyped.org).  Hence, you can revert to the original TypeScript behavior via the `--strict-object-literals` option.
+While `@cast(any, …)` accomplishes this, you can also use the `@any` convinience operator:
 
-TypeScript also requires function calls to strictly match the parameters of the definition.  The following is allowed in JavaScript but not in TypeScript:
+```
+    let o = @any({ });
+    o.foo = "Foo";
+```
+
+Note that TypeScript requires function calls to strictly match the parameters of the definition.  The following is allowed in JavaScript but not in TypeScript:
 
 ```
 function foo(a, b) {
@@ -824,8 +822,6 @@ function foo(a, b) {
 foo(1); // Error in TS: parameter b is required
 foo(1, 2, 3); // Error in TS
 ```
-
-By default, NilScript mitigates this by rewriting function definitions so that all parameters are optional.  You can revert to the original TypeScript behavior via the `--strict-functions` option.
 
 ---
 
@@ -900,7 +896,6 @@ prepend                   | String   | Content to prepend, not compiled or typec
 append                    | String   | Content to append, not compiled or typechecked
 state                     | Private  | Input compiler state, corresponds to contents of `--input-state`
 output-language           | String   | If 'none', disable source code output
-simple-ivars              | Boolean  | If true, uses [simple naming for ivars](#simple-ivars)
 include-map               | Boolean  | If true, include `map` key in results object
 include-state             | Boolean  | If true, include `state` key in results object
 source-map-file           | String   | Output source map file name
@@ -916,8 +911,6 @@ typescript-lib            | String   | Built-in type declarations (`tsc --lib`)
 no-implicit-any           | Boolean  | Disallow implicit any (`tsc --noImplicitAny`)
 no-implicit-returns       | Boolean  | Disallow implicit returns (`tsc --noImplicitReturns`)
 no-unreachable-code       | Boolean  | Disallow unreachable code (inverse of `tsc --allowUnreachableCode`)
-strict-functions          | Boolean  | Enforce TypeScript-style functions
-strict-object-literals    | Boolean  | Enforce TypeScript object literals
 warn-global-no-type       | Boolean  | Warn about missing type annotations on @globals
 warn-this-in-methods      | Boolean  | Warn about usage of 'this' in NilScript methods
 warn-self-in-non-methods  | Boolean  | Warn about usage of 'self' in non-NilScript methods
@@ -943,14 +936,15 @@ map     | String  | Source map (if `include-map` is true)
 squeeze | Object  | Map of squeezed identifiers to original identifiers.  See [Squeezing and Symbolication](#squeeze) below.
 
 
-The `before-compile` key specifies a callback which is called prior to the compiler's NilScript->js stage.  This allows you to preprocess files.  After this callback is invoked, a file's content must be valid NilScript or JavaScript.
+The `before-compile` key specifies a callback which is called prior to the compiler's NilScript->js stage.  This allows you to preprocess files.  The callback must return a Promise. Once the promise is resolved, a file's content must be valid NilScript or JavaScript.
 
-The `after-compile` key specifies a callback which is called each time the compiler generates JavaScript code for a file.  This allows you to run the generated JavaScript through a linter (such as [ESLint](http://eslint.org)), or allows further transformations via [Babel](https://babeljs.io).  When this callback is invoked, a file's content will be valid JavaScript.
+The `after-compile` key specifies a callback which is called each time the compiler generates JavaScript code for a file.  This allows you to run the generated JavaScript through a linter (such as [ESLint](http://eslint.org)), or allows further transformations via [Babel](https://babeljs.io).
+The callback must return a Promise. When this callback is invoked, a file's content will be valid JavaScript.
 
 
 ```javascript
 // Simple preprocessor example.  Strips out #pragma lines and logs to console
-options["before-compile"] = function(file, callback) {
+options["before-compile"] = async (file) => {
     let inLines = file.getContents().split("\n");
     let outLines = [ ];
 
@@ -967,12 +961,10 @@ options["before-compile"] = function(file, callback) {
     });
     
     file.setContents(outLines.join("\n"));
-    
-    callback();
-}
+};
 
 // ESLint example
-options["after-compile"] = function(file, callback) {
+options["after-compile"] = async (file) => {
     if (!linter) linter = require("eslint").linter;
 
     // file.getContents() returns the generated source as a String
@@ -980,13 +972,10 @@ options["after-compile"] = function(file, callback) {
         // file.addWarning(line, message) adds a warning at a specific line
         file.addWarning(warning.line, warning.message);
     });
-    
-    // linter#verify() is synchronous and doesn't produce errors, so just call callback()
-    callback();
 };
 
 // Babel example
-options["after-compile"] = function(file, callback) {
+options["after-compile"] = async (file) => {
     if (!babel) babel = require("babel-core");
     
     // retainLines must be true or NilScript's output source map will be useless
@@ -1002,9 +991,6 @@ options["after-compile"] = function(file, callback) {
     } catch (e) {
         file.addWarning(e.loc.line, e.message);
     }
-
-    // Babel's transform API is synchronous
-    callback();
 };
 ```
 

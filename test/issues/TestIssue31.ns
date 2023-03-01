@@ -23,10 +23,10 @@ var assert = require("assert");
 }
 
 // Some special cases to check '>>', '>>>' in token stream
-- (void) checkInsaneType1:(A<B<C<D,E<F>>>,G>)insaneType { };
-- (void) checkInsaneType2:(A<B<C,D<E>>,F>)insaneType { };
-- (void) checkInsaneType3:(A<B,C,D,E,F,G>)insaneType { };
-- (void) checkInsaneType4:(A<B<C,D>,E<F,G>>)insaneType { };
+- (void) checkInsaneType1:(A<B<C<D,E<F>>>,G>)insaneType { }
+- (void) checkInsaneType2:(A<B<C,D<E>>,F>)insaneType { }
+- (void) checkInsaneType3:(A<B,C,D,E,F,G>)insaneType { }
+- (void) checkInsaneType4:(A<B<C,D>,E<F,G>>)insaneType { }
 
 @end
 

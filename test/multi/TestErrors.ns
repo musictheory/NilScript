@@ -16,13 +16,9 @@
 // @name self-in-non-method
 // @opts { "warn-self-in-non-methods": true  }
 
-@class UseOfThisInMethod
-
 function usesSelf() {
     self; //@warning NilScriptUseOfSelfInNonMethodWarning
 }
-
-@end
 
 
 // --------------------------------------------------------------------

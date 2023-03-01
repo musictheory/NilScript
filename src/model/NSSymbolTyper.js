@@ -21,30 +21,13 @@ const NSProtocolPrefix          = "N$_p_";
 const NSMethodPrefix            = "N$_f_";
 const NSIvarPrefix              = "N$_i_";
 
-const NSStaticClassPrefix       = "N$_C_";   // Typechecker only
-const NSStaticProtocolPrefix    = "N$_P_";   // Typechecker only
 const NSEnumPrefix              = "N$_e_";   // Typechecker only
 
 
 const TypecheckerSymbols = {
-    Combined:       "N$_Combined",
-    StaticCombined: "N$_StaticCombined",
-
     Base:           "N$_BaseClass",
     StaticBase:     "N$_StaticBaseClass",
-
-    IdIntersection: "N$_IdIntersection",
-    IdUnion:        "N$_IdUnion",
-
     GlobalType:     "N$_Globals"
-};
-
-const Location = {
-    DeclarationReturn:    "DeclarationReturn",
-    DeclarationParameter: "DeclarationParameter",
-
-    ImplementationReturn:     "ImplementationReturn",
-    ImplementationParameter:  "ImplementationParameter"
 };
 
 
@@ -270,7 +253,7 @@ _parseTypeString(inString)
         let args = null;
 
         let name = lex();
-        if (name == "async" || name == "kindof") {
+        if (name == "async") {
             name = "-" + name;
             args = [ parse() ];
 
@@ -307,7 +290,7 @@ _parseTypeString(inString)
 }
 
 
-toTypecheckerType(rawInType, location)
+toTypecheckerType(rawInType)
 {
     if (!rawInType) return "any";
 
@@ -324,7 +307,7 @@ toTypecheckerType(rawInType, location)
     if (outType) return outType;
 
     // Check normalized type string
-    let inType = rawInType.replace(/(kindof|async)\s+/g, "$1-").replace(/\s+/g, ""); // Remove whitespace
+    let inType = rawInType.replace(/(async)\s+/g, "$1-").replace(/\s+/g, ""); // Remove whitespace
     outType = toTypecheckerMap[inType];
     if (outType) return outType;
 
@@ -359,21 +342,6 @@ toTypecheckerType(rawInType, location)
                 return "any";
             }
 
-        } else if (name == "-kindof") {
-            addToForwardMap = false;
-            addToReverseMap = false;
-
-            if ((location === Location.DeclarationReturn) || (location === Location.DefinitionParameter)) {
-                // To fully support kindof, this should be replaced by an aggregate class
-                return TypecheckerSymbols.IdIntersection;
-
-            } else if ((location === Location.DeclarationParameter) || (location === Location.DefinitionReturn)) {
-                return convert(args[0]);
-
-            } else {
-                return "any";
-            }
-
         } else if (argsLength > 0) {
             return name + "<" + _.map(args, arg => convert(arg)).join(",") + ">";
 
@@ -385,15 +353,7 @@ toTypecheckerType(rawInType, location)
             addToForwardMap = false;
             addToReverseMap = false;
 
-            if ((location == Location.DeclarationReturn) || (location == Location.ImplementationParameter)) {
-                return TypecheckerSymbols.IdIntersection;
-
-            } else if ((location == Location.DeclarationParameter) || (location == Location.ImplementationReturn)) {
-                return TypecheckerSymbols.IdUnion;
-
-            } else {
-                return "any";
-            }
+            return "any";
 
         } else if (name == "instancetype") {
             addToForwardMap = false;
@@ -465,10 +425,7 @@ fromTypecheckerType(rawInType)
     let m;
 
     if (!outType) {
-        if (inType.indexOf(TypecheckerSymbols.Combined) >= 0 || inType.indexOf(TypecheckerSymbols.StaticCombined) >= 0) {
-            outType = "id";
-
-        } else if (inType.match(/\[\]$/)) {
+        if (inType.match(/\[\]$/)) {
             outType = "Array<" + this.fromTypecheckerType(inType.slice(0, -2)) + ">";
 
         } else if (m = inType.match(/\{\[(.*?):string\]\:(.*)\}$/)) {
@@ -494,7 +451,7 @@ getSymbolicatedString(inString)
 
 getSymbolForClassName(className, isTypecheckerStatic)
 {
-    let prefix = isTypecheckerStatic ? NSStaticClassPrefix : NSClassPrefix;
+    let prefix = (isTypecheckerStatic ? "typeof " : "") + NSClassPrefix;
 
     if (!className) return;
 
@@ -516,8 +473,7 @@ getSymbolForEnumName(enumName)
 
 getSymbolForProtocolName(protocolName, isTypecheckerStatic)
 {
-    let prefix = isTypecheckerStatic ? NSStaticProtocolPrefix : NSProtocolPrefix;
-    return prefix + protocolName;
+    return (isTypecheckerStatic ? "typeof " : "") + NSProtocolPrefix + protocolName;
 }
 
 
@@ -569,7 +525,6 @@ getAllSymbolsMap()
 
 
 NSSymbolTyper.TypecheckerSymbols = TypecheckerSymbols;
-NSSymbolTyper.Location = Location;
 NSSymbolTyper.symbolicate = sSymbolicate;
 
 module.exports = NSSymbolTyper;
