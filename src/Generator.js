@@ -122,7 +122,6 @@ generate()
     let optionWarnUnknownIvars        = options["warn-unknown-ivars"];
     let optionWarnUnknownSelectors    = options["warn-unknown-selectors"];
     let optionWarnUnusedPrivates      = options["warn-unused-privates"];
-    let optionSimpleIvars             = options["simple-ivars"];
 
     let optionSqueeze = this._squeeze;
     let symbolTyper   = model.getSymbolTyper();
@@ -132,7 +131,7 @@ generate()
     let usedIvarMap = null;
     let assignedIvarMap = null;
 
-    let usesSimpleIvars = optionSimpleIvars && !optionSqueeze && (language !== LanguageTypechecker);
+    let usesSimpleIvars = !optionSqueeze && (language !== LanguageTypechecker);
 
 
     let warnings = [ ];

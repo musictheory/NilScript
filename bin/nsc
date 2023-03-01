@@ -30,7 +30,6 @@ let opt = getopt.create([
     [ "",  "squeeze-end-index",         "end index for squeezer" ],
 
     [ "",  "output-language=LANG",      "output language" ],
-    [ "",  "simple-ivars",              "Generate code using simple ivar names" ],
 
     [ "",  "check-types",               "use type checker (experimental)" ],
     [ "",  "typescript-lib=GROUPS",     "type checker: specify built-in type declarations" ],

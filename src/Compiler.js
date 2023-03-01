@@ -41,7 +41,6 @@ const sPublicOptions = [
 
     // Output options
     "output-language",           // Output language ('none' or 'es5' public, 'typechecker' for debugging only)
-    "simple-ivars",              // Boolean, use exact ivar name as property name
     "include-map",               // Boolean, include 'map' key in results object
     "include-state",             // Boolean, include 'state' key in results object
     "source-map-file",           // Output source map file name
