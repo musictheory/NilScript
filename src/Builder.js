@@ -310,11 +310,6 @@ build()
         let last    = node;
         let bridged = (parent.type === Syntax.NSBridgedDeclaration);
 
-        // From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isInteger
-        function isInteger(nVal) {
-            return typeof nVal === "number" && isFinite(nVal) && nVal > -9007199254740992 && nVal < 9007199254740992 && Math.floor(nVal) === nVal;
-        }
-
         function valueForInit(initNode) {
             let literalNode;
             let negative = false;
@@ -331,7 +326,7 @@ build()
             }
 
             let value = literalNode.value;
-            if (!isInteger(value)) {
+            if (!Number.isInteger(value)) {
                 Utils.throwError(NSError.NonIntegerEnum, "Use of non-integer value with @enum", literalNode || initNode);
             }
 
