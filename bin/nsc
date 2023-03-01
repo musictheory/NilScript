@@ -73,31 +73,31 @@ let options = opt.parsedOption.options;
 
 function print_error(err)
 {
-    function toString(e) {
-        let result  = "";
+    function toString(e) {
+        let result  = "";
 
-        let file   = e.file   || e.filename;
-        let line   = e.line   || e.lineNumber;
-        let column = e.column || e.columnNumber || e.col;
-        let reason = e.reason || e.description;
+        let file   = e.file   || e.filename;
+        let line   = e.line   || e.lineNumber;
+        let column = e.column || e.columnNumber || e.col;
+        let reason = e.reason || e.description;
 
-        if (file)   result += file;
-        if (line)   result += ":" + line;
-        if (column) result += ":" + column;
-        if (reason) result += " " + reason;
+        if (file)   result += file;
+        if (line)   result += ":" + line;
+        if (column) result += ":" + column;
+        if (reason) result += " " + reason;
 
-        return result;
-    }
+        return result;
+    }
 
     let strings;
-    if (_.isArray(err)) {
-        err = _.flatten(err);
-        strings = _.map(err, function(e) { return toString(e) });
-    } else {
-        strings = [ toString(err) ];
-    }
+    if (_.isArray(err)) {
+        err = _.flatten(err);
+        strings = _.map(err, function(e) { return toString(e) });
+    } else {
+        strings = [ toString(err) ];
+    }
 
-    console.error(_.uniq(strings).sort().join("\n"));        
+    console.error(_.uniq(strings).sort().join("\n"));        
 }
 
 
