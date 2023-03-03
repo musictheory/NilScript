@@ -34,7 +34,7 @@ build()
 
     let traverser = new Traverser(nsFile.ast);
 
-    let currentClass, currentMethod, currentCategoryName;
+    let currentClass, currentMethod;
     let currentProtocol;
 
     let usedSelectorMap   = { };
@@ -124,34 +124,18 @@ build()
     function handleNSClassImplementation(node)
     {
         let className    = node.id.name;
-        let categoryName = node.category;
         let result;
 
         let inheritedNames = node.inheritanceList ?
             _.map(node.inheritanceList.ids, id => id.name) :
             [ ];
 
-        let nsClass;
-        if (categoryName) {
-            nsClass = model.classes[className];
-
-            if (!nsClass) {
-                nsClass = new Model.NSClass(null, className);
-                nsClass.placeholder = true;
-                model.addClass(nsClass);
-            }
-
-        } else {
-            nsClass = new Model.NSClass(makeLocation(node), className, inheritedNames);
-            model.addClass(nsClass);
-        }
+        let nsClass = new Model.NSClass(makeLocation(node), className, inheritedNames);
+        model.addClass(nsClass);
 
         currentClass = nsClass;
-        currentCategoryName = categoryName;
 
-        if (!categoryName) {
-            declaredClasses.push(nsClass.name)
-        }
+        declaredClasses.push(nsClass.name)
     }
 
     function handleNSProtocolDefinition(node)
@@ -196,10 +180,6 @@ build()
         let setterName    = null;
         let setterEnabled = true;
         let setterCopies  = false;
-
-        if (currentCategoryName) {
-            Utils.throwError(NSError.NotYetSupported, "@property is not yet supported in a category's implementation", node);
-        }
 
         for (let i = 0, length = node.attributes.length; i < length; i++) {
             let attribute = node.attributes[i];
@@ -542,7 +522,6 @@ build()
         if (type === Syntax.NSClassImplementation) {
             currentClass  = null;
             currentMethod = null;
-            currentCategoryName = null;
 
         } else if (type === Syntax.NSProtocolDefinition) {
             currentProtocol = null;

@@ -25,10 +25,6 @@ constructor(location, name, inheritedNames)
     this.name           = name;
     this.inheritedNames = inheritedNames || [ ];
 
-    // For category definitions that appear before the implementation
-    // Also used when a class defines a superclass that hasn't been traversed yet
-    this.placeholder = false;
- 
     // Is this class in the current compilation unit?  *not archived*
     this.local = true;
 
@@ -58,7 +54,6 @@ loadState(state)
     this.location        = state.location;
     this.name            = state.name;
     this.inheritedNames  = state.inheritedNames || [ ];
-    this.placeholder     = state.placeholder;
     this.didSynthesis    = state.didSynthesis;
 
     _.each(state.properties, p => {
@@ -82,7 +77,6 @@ saveState()
         name:            this.name,
         inheritedNames:  this.inheritedNames,
         didSynthesis:  !!this.didSynthesis,
-        placeholder:     this.placeholder,
 
         properties: _.values(this._propertyMap),
 
@@ -208,8 +202,6 @@ inherit(model)
         if (cls) {
             if (mySuperclass) {
                 throw Utils.makeError(NSError.InheritanceError, `Cannot inherit from both "${name}" and "${mySuperclass.name}"`, location);
-            } else if (cls.placeholder) {
-                throw Utils.makeError(NSError.InheritanceError, `Cannot find non-category implementation of "${name}"`, location);
             } else {
                 mySuperclass = cls;
             }

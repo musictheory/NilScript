@@ -111,7 +111,6 @@ generate()
     let methodNodeClasses = [ ];
 
     let currentClass;
-    let currentCategoryName;
     let currentMethodNode;
 
     let methodUsesSelfVar = false;
@@ -258,14 +257,6 @@ generate()
             Utils.throwError(
                 NSError.CannotUseInstanceVariable,
                 `Use of instance variable "${node.name}" declared by superclass`,
-                node
-            );
-        }
-
-        if (currentCategoryName) {
-            Utils.throwError(
-                NSError.CannotUseInstanceVariable,
-                `Use of instance variable "${node.name}" inside of category`,
                 node
             );
         }
@@ -531,11 +522,7 @@ generate()
             let classSymbolAsString = classSymbol ? `"${classSymbol}"` : null;
             let superSymbolAsString = superSymbol ? `"${superSymbol}"` : null;
 
-            if (node.category) {
-                startText = `${NSRootVariable}._registerCategory(${classSymbolAsString},`;
-            } else {
-                startText = `${NSRootVariable}._registerClass(${classSymbolAsString},${superSymbolAsString},`;
-            }
+            startText = `${NSRootVariable}._registerClass(${classSymbolAsString},${superSymbolAsString},`;
 
             startText = startText +
                 "function(" + NSClassMethodsVariable + ", " + NSInstanceMethodsVariable + ") { " +
@@ -1166,7 +1153,6 @@ generate()
 
         } else if (type === Syntax.NSClassImplementation) {
             currentClass = model.classes[node.id.name];
-            currentCategoryName = node.category;
 
             _.each(currentClass.prepareWarnings, warning => {
                 warnings.push(warning);
@@ -1254,7 +1240,7 @@ generate()
     }, function(node, parent) {
         let type = node.type;
 
-        if (type === Syntax.NSClassImplementation && !node.category) {
+        if (type === Syntax.NSClassImplementation) {
             if (optionWarnUnusedPrivates) {
                 _.each(currentClass.getAllProperties(), property => {
                     let { name, location, ivar, getter, setter } = property;
@@ -1271,7 +1257,6 @@ generate()
             }
 
             currentClass = null;
-            currentCategoryName = null;
 
         } else if (type === Syntax.NSMethodDefinition) {
             finishScope(scope, methodUsesSelfVar);

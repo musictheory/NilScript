@@ -381,25 +381,13 @@ addClass(nsClass)
     let name     = nsClass.name;
     let existing = this.classes[name];
 
-    // We have an existing placeholder, copy over methods in case it's a category
-    if (existing && existing.placeholder) {
-        _.each(existing.getAllMethods(), m => nsClass.addMethod(m));
-    }
-
-    // Ensure we aren't overwriting a non-placeholder with a placeholder
-    if (!existing || existing.placeholder) {
-        this.classes[name] = nsClass;
-    }
-
-    // We have an existing non-placeholder and a new non-placeholder
-    if (existing && !existing.placeholder && !nsClass.placeholder) {
+    if (existing) {
         Utils.throwError(NSError.DuplicateClass, `Duplicate declaration of class "${name}"`);
-    } 
-
-    // Register a non-placeholder
-    if (!nsClass.placeholder) {
-        this.registerDeclaration(name);
     }
+
+    this.classes[name] = nsClass;
+
+    this.registerDeclaration(name);
 }
 
 

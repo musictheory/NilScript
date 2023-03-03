@@ -306,24 +306,6 @@ function test() {
 
 
 // --------------------------------------------------------------------
-// @name Category No Ivars
-
-@class CategoryNoIvars (CategoryName) { //@error NilScriptParseError
-
-}
-
-@end
-
-
-// --------------------------------------------------------------------
-// @name Category Properties Not Yet Supported
-
-@class CategoryNoProperties (CategoryName)
-@property foo: String; //@error NilScriptNotYetSupportedError
-@end
-
-
-// --------------------------------------------------------------------
 // @name Warn Unused Privates
 // @opts { "warn-unused-privates": true  }
 
@@ -356,24 +338,6 @@ function test() {
 @end
 
 @class Bar : Foo
-
-- (void) doSomethingWithTheProperty
-{
-    [_theProperty doSomething]; //@error NilScriptCannotUseInstanceVariableError
-}
-
-@end
-
-
-
-// --------------------------------------------------------------------
-// @name Cannot Use Instance Variable 2
-
-@class Foo
-@property theProperty: id;
-@end
-
-@class Foo (TheCategory)
 
 - (void) doSomethingWithTheProperty
 {
