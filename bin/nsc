@@ -71,7 +71,7 @@ let argv    = opt.parsedOption.argv;
 let options = opt.parsedOption.options;
 
 
-function print_error(err)
+function printError(err)
 {
     function toString(e) {
         let result  = "";
@@ -101,34 +101,29 @@ function print_error(err)
 }
 
 
-function read_files(files)
+function readFilePairs(files)
 {
     if (!files) return [ ];
 
-    if (!_.isArray(files)) {
-        files = [ files ];
-    }
+    files = _.isArray(files) ? files : [ files ];
 
-    let results = [ ];
-    _.each(files, function(file) {
+    return _.map(files, file => {
         try {
             let contents = (fs.readFileSync(file).toString());
-            results.push({ path: file, contents: contents });
+            return { path: file, contents: contents };
         } catch (e) {
             console.error("nsc: error reading file: " + e);
             process.exit(1);
         }
     });
-
-    return results;
 }
 
 
-function read_contents(files)
+function readFileContents(files)
 {
     if (!files) return null;
 
-    let pairs = read_files(files);
+    let pairs = readFilePairs(files);
 
     if (!pairs || !pairs.length) {
         return null;
@@ -157,11 +152,11 @@ let outputSymbolsFile = options["output-symbols"];  delete(options["output-symbo
 let outputSourceMapFile = options["source-map-file"];
 
 // Convert filenames in options to file contents
-options["files"]   = read_files(argv);
-options["defs"]    = read_files(options["defs"]);
-options["prepend"] = read_contents( options["prepend"] );
-options["append"]  = read_contents( options["append"]  );
-options["state"]   = read_contents( inputStateFile     );
+options["files"]   = readFilePairs(argv);
+options["defs"]    = readFilePairs(options["defs"]);
+options["prepend"] = readFileContents( options["prepend"] );
+options["append"]  = readFileContents( options["append"]  );
+options["state"]   = readFileContents( inputStateFile     );
 
 if (outputStateFile) {
     options["include-state"] = true;
@@ -172,52 +167,28 @@ if (outputSymbolsFile) {
 }
 
 
-function compile(options, callback)
-{
-    nilscript.compile(options)
-        .then(result => callback(null, result))
-        .catch(err => callback(err));
-}
+nilscript.compile(options).then(result => {
+    printError(result.errors);
+    printError(result.warnings);
 
+    if (outputFile) {
+        fs.writeFileSync(outputFile, result.code, "utf8")
+    } else if (result.code) {
+        process.stdout.write(result.code);
+    }
 
-try {
-    compile(options, function(err, result) {
-        if (err) {
-            print_error(err);
-            process.exit(1);
-        }
+    if (outputStateFile) {
+        fs.writeFileSync(outputStateFile, JSON.stringify(result.state || { }, null, "    "), "utf8");
+    }
 
-        _.each(result.warnings, function(warning) {
-            print_error(warning);
-        });
+    if (outputSourceMapFile) {
+        fs.writeFileSync(outputSourceMapFile, result.map, "utf8");
+    }
 
-        if (outputFile) {
-            fs.writeFileSync(outputFile, result.code, "utf8")
-        } else {
-            if (err) {
-                print_error(err);
-            } else if (result.code) {
-                process.stdout.write(result.code);
-            }
-        }
+    if (outputSymbolsFile) {
+        fs.writeFileSync(outputSourceMapFile, result.symbols, "utf8");
+    }
 
-        if (outputStateFile) {
-            fs.writeFileSync(outputStateFile, JSON.stringify(result.state || { }, null, "    "), "utf8");
-        }
+    process.exit((result.errors?.length > 0) ? 1 : 0);
+});
 
-        if (outputSourceMapFile) {
-            fs.writeFileSync(outputSourceMapFile, result.map, "utf8");
-        }
-
-        if (outputSymbolsFile) {
-            fs.writeFileSync(outputSourceMapFile, result.symbols, "utf8");
-        }
-
-        process.exit(err ? 1 : 0);
-    });
-
-
-} catch (e) {
-    print_error(e);
-    process.exit(2);
-}
