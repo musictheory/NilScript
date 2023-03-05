@@ -52,10 +52,7 @@ declare class N$_BaseClass implements N$_BaseProtocol {
     static class() : typeof N$_BaseClass;
     static respondsToSelector_(aSelector : N$_Selector) : boolean;
     static instancesRespondToSelector_(aSelector : N$_Selector) : boolean;
-    static isKindOfClass_(cls : typeof N$_BaseClass) : boolean;
-    static isMemberOfClass_(cls : typeof N$_BaseClass) : boolean;
     static isSubclassOfClass_(cls : typeof N$_BaseClass) : boolean;
-    static isEqual_(other : N$_BaseClass) : boolean;
 
     init() : N$_BaseClass;
     copy() : any;

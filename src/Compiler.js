@@ -275,6 +275,52 @@ async _buildFiles(files, model, options)
 }
 
 
+async _reorderFiles(inOutFiles, model, options)
+{
+    let files = inOutFiles.slice(0);
+    inOutFiles.splice(0, inOutFiles.length);
+
+    let remainingFiles = { };
+    _.each(files, file => (remainingFiles[file.path] = file));
+
+    let dependencies = { };
+
+    _.each(model.classes, nsClass => {
+        let classPath = nsClass.location.path;
+        let superPath = nsClass.superclass?.location?.path;
+
+        if (superPath && (superPath != classPath)) {
+            let arr = dependencies[classPath] || [ ];
+            arr.push(superPath);
+            dependencies[classPath] = arr;
+        }
+    });
+
+    function addFile(path, stack) {
+        if (stack.includes(path)) {
+            stack.push(path);
+            throw new Error("Recursive class dependency detected: " + stack.join(","));
+        }
+
+        stack = [...stack, path];
+
+        _.each(dependencies[path], dependency => {
+            addFile(dependency, stack);
+        });
+
+        let file = remainingFiles[path];
+        if (!file) return;
+
+        remainingFiles[path] = null;
+        inOutFiles.push(file);
+    }
+
+    _.each(files, file => {
+        addFile(file.path, [ ]);
+    });
+}
+
+
 async _generateJavaScript(files, model, options)
 {
     let afterCompileCallback = options["after-compile"];
@@ -528,6 +574,9 @@ async compile(options)
 
         // Build model
         await this._buildFiles(files, model, options);
+
+        // Reorder files
+        await this._reorderFiles(files, model, options);
 
         // Perform model diff
         if (!previousModel || previousModel.hasGlobalChanges(model)) {

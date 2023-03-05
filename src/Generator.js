@@ -22,8 +22,6 @@ const NSWarning  = require("./Errors").NSWarning;
 const Location = require("./model/NSSymbolTyper").Location;
 
 const NSRootVariable            = "N$$_";
-const NSClassMethodsVariable    = "N$_s";
-const NSInstanceMethodsVariable = "N$_m";
 const NSTemporaryVariablePrefix = "N$_t_";
 const NSSuperVariable           = "N$_super";
 
@@ -176,14 +174,6 @@ generate()
             return currentClass.getClassMethodWithName(selectorName);
         } else {
             return currentClass.getInstanceMethodWithName(selectorName);
-        }
-    }
-
-    function generateMethodDeclaration(isClassMethod, selectorName)
-    {
-        if (language === LanguageEcmascript5) {
-            let where = isClassMethod ? NSClassMethodsVariable : NSInstanceMethodsVariable;
-            return where + "." + symbolTyper.getSymbolForSelectorName(selectorName);
         }
     }
 
@@ -350,8 +340,7 @@ generate()
 
             if (receiver.name == "super") {
                 if (language === LanguageEcmascript5) {
-                    let classSymbol = symbolTyper.getSymbolForClassName(currentClass.name );
-                    doCommonReplacement(classSymbol + "." + NSSuperVariable + "." + (isInstance ? "prototype." : "") + methodName + ".call(this" + (hasArguments ? "," : ""), ")");
+                    doCommonReplacement(`super.${methodName}(`, ")");
 
                 } else if (language === LanguageTypechecker) {
                     let method = getCurrentMethodInModel();
@@ -505,38 +494,25 @@ generate()
 
         makeScope(node);
 
-        let constructorCallSuper = "";
-        let superSymbol = null;
-
-        if (superName) {
-            constructorCallSuper = getClassAsRuntimeVariable(superName) + ".call(this);";
-            superSymbol          = symbolTyper.getSymbolForClassName(superName);
-        }
-
-        let constructorSetIvars = generateIvarAssignments(currentClass);
-
         let startText;
         let endText;
 
         if (language === LanguageEcmascript5) {
-            let classSymbolAsString = classSymbol ? `"${classSymbol}"` : null;
-            let superSymbolAsString = superSymbol ? `"${superSymbol}"` : null;
+            let extendsString = NSRootWithClassPrefix +
+                (superName ? symbolTyper.getSymbolForClassName(superName) : "N$_base");
 
-            startText = `${NSRootVariable}._registerClass(${classSymbolAsString},${superSymbolAsString},`;
+            let constructorSetIvars = generateIvarAssignments(currentClass);
 
-            startText = startText +
-                "function(" + NSClassMethodsVariable + ", " + NSInstanceMethodsVariable + ") { " +
-                "function " + classSymbol + "() { " +
-                constructorCallSuper +
-                constructorSetIvars  +
-                "this.constructor = " + classSymbol + ";" +
-                "this.N$_id = ++" + NSRootVariable + "._id;" +
-                "}";
+            startText = `${NSRootWithClassPrefix}${classSymbol} = class ${classSymbol} extends ${extendsString} {`;
 
-            endText = "return " + classSymbol + ";});";
-        
+            if (constructorSetIvars) {
+                startText += `constructor () { super(); ${constructorSetIvars} }`;
+            }
+
+            endText = "};";
+
         } else if (language === LanguageTypechecker) {
-            startText = "var N$_unused = (function(" + NSClassMethodsVariable + " : any, " + NSInstanceMethodsVariable + " : any) { ";
+            startText = "(function() { ";
             endText = "});";
         }
 
@@ -553,7 +529,6 @@ generate()
     {
         let methodName = symbolTyper.getSymbolForSelectorName(node.selectorName);
         let isClassMethod = node.selectorType == "+";
-        let where = isClassMethod ? NSClassMethodsVariable : NSInstanceMethodsVariable;
         let args = [ ];
 
         makeScope(node);
@@ -588,16 +563,22 @@ generate()
             }
         }
 
-        let definition = where + "." + methodName + " = function(" + args.join(", ") + ") ";
+        if (language == LanguageEcmascript5) {
+            let definition = (isClassMethod ? "static " : "") + methodName + "(" + args.join(", ") + ") ";
 
-        if (language === LanguageTypechecker) {
+            modifier.from(node).to(node.body).replace(definition);
+            modifier.from(node.body).to(node).replace("");
+
+        } else if (language === LanguageTypechecker) {
+            let definition = "(function(" + args.join(", ") + ") ";
+
             let returnType = getCurrentMethodInModel().returnType;
             if (returnType == "instancetype") returnType = currentClass.name;
             definition += ": " + symbolTyper.toTypecheckerType(returnType);
-        }
 
-        modifier.from(node).to(node.body).replace(definition);
-        modifier.from(node.body).to(node).replace(";");
+            modifier.from(node).to(node.body).replace(definition);
+            modifier.from(node.body).to(node).replace(");");
+        }
     }
 
     function handleLiteral(node)
@@ -811,18 +792,20 @@ generate()
                     s.push("}");
                 }
 
-                result += generateMethodDeclaration(false, property.setter.name) + " = function(arg) { " + s.join(" ")  + "} ;"; 
+                let symbol = symbolTyper.getSymbolForSelectorName(property.setter.name);
+
+                result += symbol + "(arg) {" + s.join(" ")  + " } "; 
             }
         }
 
         if (getterMethod?.synthesized) {
             if (language === LanguageEcmascript5) {
-                result += generateMethodDeclaration(false, property.getter.name);
+                result += symbolTyper.getSymbolForSelectorName(property.getter.name);
 
                 if (property.getter.copies) {
-                    result += " = function() { return " + NSRootVariable + ".makeCopy(" + ivar + "); } ; ";
+                    result += "() { return " + NSRootVariable + ".makeCopy(" + ivar + "); } ";
                 } else {
-                    result += " = function() { return " + ivar + "; } ; ";
+                    result += "() { return " + ivar + "; } ";
                 }
             }
         }
