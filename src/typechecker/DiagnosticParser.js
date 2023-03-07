@@ -222,20 +222,22 @@ getWarnings(diagnostics, fileCallback)
         fileName = fileCallback(fileName);
         if (!fileName) return null;
 
-        let result = {
-            code:   code,
-            column: lineColumn.column,
-            name:   NSWarning.Typechecker,
-            file:   fileName,
-            line:   lineNumber,
-            reason: reason 
-        };
-
         // Only return if this error message is unique (defs can spam duplicate messages)
-        let key = result.file + ":" + result.line + ":" + result.reason;
+        let key = fileName + ":" + lineNumber + ":" + reason;
+
         if (!duplicateMap[key]) {
             duplicateMap[key] = true;
-            return result;
+
+            let error = new Error(reason);
+
+            error.name   = NSWarning.Typechecker;
+            error.file   = fileName;
+            error.line   = lineNumber;
+            error.column = lineColumn.column;
+            error.reason = reason;
+            error.code   = code;
+
+            return error;
         }
 
         return null;

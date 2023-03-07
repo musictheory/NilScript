@@ -165,6 +165,8 @@ async check(model, defs, files)
             return sourceFile;
         },
 
+        fileExists:                () => { return false; },
+        readFile:                  () => { },
         writeFile:                 () => { },
         getDefaultLibFileName:     options => ts.getDefaultLibFilePath(options),
         useCaseSensitiveFileNames: () => false,
