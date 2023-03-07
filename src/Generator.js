@@ -922,73 +922,6 @@ generate()
         }
     }
 
-    function handleNSEachStatement(node)
-    {
-        if (language === LanguageTypechecker) {
-            let object = "";
-
-            if (node.left.type == Syntax.VariableDeclaration) {
-                object = node.left.kind + " " +  node.left.declarations[0].id.name;
-            } else {
-                object = node.left.name;
-            }
-
-            modifier.from(node).to(node.right).replace("for (" + object + " = N$_atEachGetMember(");
-            modifier.from(node.right).to(node.body).replace(") ; N$_atEachTest() ; ) ");
-
-        } else {
-            let i      = makeTemporaryVariable(false);
-            let length = makeTemporaryVariable(false);
-
-            let object, array;
-            let initLeft = "var ";
-            let initRight = "";
-            let expr = false;
-
-            // The left side is "var foo", "let foo", etc
-            if (node.left.type == Syntax.VariableDeclaration) {
-                object = node.left.declarations[0].id.name;
-                initLeft = node.left.kind + " " + object + ", ";
-
-            // The left side is just an identifier
-            } else if (node.left.type == Syntax.Identifier) {
-                if (currentClass && currentClass.isIvar(node.left.name, true)) {
-                    Utils.throwError(NSError.RestrictedUsage, `Cannot use ivar "${node.left.name}" on left-hand side of @each`, node);
-                }
-
-                object = node.left.name;
-            }
-
-            // The right side is a simple identifier
-            if (node.right.type == Syntax.Identifier && currentClass && !currentClass.isIvar(node.right.name, true)) {
-                array = node.right.name;
-
-            // The right side is an expression, we need an additional variable
-            } else {
-                array = makeTemporaryVariable(false);
-                initLeft  += array + " = (";
-                initRight = initRight + "), ";
-                expr = true;
-            }
-
-            initRight += i + " = 0, " + length + " = (" + array + " ? " + array + ".length : 0)";
-
-            let test      = i + " < " + length;
-            let increment = i + "++";
-
-            if (expr) {
-                modifier.from(node).to(node.right).replace("for (" + initLeft);
-                modifier.from(node.right).to(node.body).replace(initRight + "; " + test + "; " + increment + ") ");
-            } else {
-                modifier.from(node).to(node.body).replace("for (" + initLeft + initRight + "; " + test + "; " + increment + ") ");
-            }
-
-            if (node.body.body.length) {
-                modifier.from(node.body).to(node.body.body[0]).insert("{" + object + " = " + array + "[" + i + "];");
-            }
-        }
-    }
-
     function handleNSGlobalDeclaration(node)
     {
         let declaration = node.declaration;
@@ -1176,9 +1109,6 @@ generate()
 
         } else if (type === Syntax.NSTypeAnnotation) {
             handleNSTypeAnnotation(node, parent);
-
-        } else if (type === Syntax.NSEachStatement) {
-            handleNSEachStatement(node);
 
         } else if (type === Syntax.NSGlobalDeclaration) {
             handleNSGlobalDeclaration(node);
