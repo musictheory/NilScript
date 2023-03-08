@@ -18,6 +18,10 @@ var assert = require("assert");
 
 @property synthesizeTest: Number;
 
+@property (change=_updateChangeTest2) changeTest: Number;
+@property (private) changeTest2: Number;
+
+
 @property withoutSemicolon: Number
 @property withoutSemicolon2: Number
 
@@ -38,8 +42,18 @@ var assert = require("assert");
     assert.strictEqual([self synthesizeTest], 40);
     assert.strictEqual(_synthesizeTest,       40);
 
+    [self setChangeTest:20];
+    assert.strictEqual(_changeTest2, 20 * 20, "setChangeTest: did not call observer");
+
     return YES;
 }
+
+
+- (void) _updateChangeTest2
+{
+    _changeTest2 = _changeTest * 20;
+}
+
 
 @end
 

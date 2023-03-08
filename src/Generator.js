@@ -472,10 +472,7 @@ generate()
         _.each(node.body.body, child => {
             let type = child.type;
             
-            if (type !== Syntax.NSMethodDefinition  &&
-                type !== Syntax.NSPropertyDirective &&
-                type !== Syntax.NSObserveDirective)
-            {
+            if (type !== Syntax.NSMethodDefinition && type !== Syntax.NSPropertyDirective) {
                 Utils.throwError(NSError.ParseError, 'Unexpected implementation child.', child);
             }
 
@@ -769,32 +766,28 @@ generate()
         let result = "";
         if (setterMethod?.synthesized) {
             if (language === LanguageEcmascript5) {
-                let observers = currentClass.getObserversWithName(name) || [ ];
+                let changeName = property.setter.change;
+
                 let s = [ ];
 
-                if (observers.length > 0) {
-                    s.push( "var old = " + ivar + ";" );
-                    s.push("if (old !== arg) {");
+                if (changeName) {
+                    s.push(`if (${ivar} !== arg) {`);
                 }
 
                 if (property.setter.copies) {
-                    s.push(ivar + " = " + NSRootVariable + ".makeCopy(arg);");
+                    s.push(`${ivar} = ${NSRootVariable}.makeCopy(arg);`);
                 } else {
-                    s.push(ivar + " = arg;");
+                    s.push(`${ivar} = arg;`);
                 }
 
-                if (observers.length > 0) {
-                    _.each(observers, observer => {
-                        let after = observer.after && symbolTyper.getSymbolForSelectorName(observer.after);
-                        if (after) s.push( "this." + after + "(old);" );
-                    });
-
-                    s.push("}");
+                if (changeName) {
+                    s.push(`this.${symbolTyper.getSymbolForSelectorName(changeName)}();`);
+                    s.push(`}`);
                 }
 
                 let symbol = symbolTyper.getSymbolForSelectorName(property.setter.name);
 
-                result += symbol + "(arg) {" + s.join(" ")  + " } "; 
+                result += `${symbol}(arg) {${s.join(" ")} } `; 
             }
         }
 
@@ -1056,9 +1049,8 @@ generate()
 
         if (node.oj_skip) return Traverser.SkipNode;
 
-        if (type === Syntax.NSProtocolDefinition                 ||
-            type === Syntax.NSObserveDirective                   ||
-            type === Syntax.NSEnumDeclaration                    ||
+        if (type === Syntax.NSProtocolDefinition ||
+            type === Syntax.NSEnumDeclaration    ||
             type === Syntax.NSConstDeclaration
         ) {
             modifier.select(node).remove();

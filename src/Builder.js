@@ -181,6 +181,8 @@ build()
         let setterEnabled = true;
         let setterCopies  = false;
 
+        let changeName    = null;
+
         for (let i = 0, length = node.attributes.length; i < length; i++) {
             let attribute = node.attributes[i];
             let attributeName = attribute.name;
@@ -211,6 +213,9 @@ build()
             } else if (attributeName == "setter") {
                 setterName = attribute.selector.selectorName;
 
+            } else if (attributeName == "change") {
+                changeName = attribute.selector.selectorName;
+
             } else if (attributeName == "class") {
                 Utils.throwError(NSError.NotYetSupported, "'class' attribute is not supported", node);
 
@@ -230,7 +235,8 @@ build()
 
         let setter = setterEnabled ? {
             name: setterName || ("set" + name[0].toUpperCase() + name.slice(1) + ":"),
-            copies: setterCopies
+            copies: setterCopies,
+            change: changeName
         } : null;
 
         let property = new Model.NSProperty(makeLocation(node), name, type, "_" + name, getter, setter);
@@ -241,26 +247,6 @@ build()
             currentProtocol.addProperty(property);
         }
     }        
-
-    function handleNSObserveDirective(node)
-    {
-        let after = null;
-
-        for (let i = 0, length = node.attributes.length; i < length; i++) {
-            let attribute = node.attributes[i];
-
-            if (attribute.name == "after") {
-                after = attribute.selector.selectorName;
-            }
-        }
-
-        for (let i = 0, length = node.ids.length; i < length; i++) {
-            let name = node.ids[i].name;
-
-            let observer = new Model.NSObserver(makeLocation(node), name, after);
-            if (currentClass) currentClass.addObserver(observer);
-        }
-    }
 
     function handleNSTypeDefinition(node)
     {
@@ -463,9 +449,6 @@ build()
 
             } else if (type === Syntax.NSPropertyDirective) {
                 handleNSPropertyDirective(node);
-
-            } else if (type === Syntax.NSObserveDirective) {
-                handleNSObserveDirective(node);
 
             } else if (type === Syntax.NSTypeDefinition) {
                 handleNSTypeDefinition(node);
