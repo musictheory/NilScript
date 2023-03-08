@@ -13,7 +13,6 @@ const NSWarning   = require("../Errors").NSWarning;
 const Utils       = require("../Utils");
 const NSProperty  = require("./NSProperty");
 const NSMethod    = require("./NSMethod");
-const NSObserver  = require("./NSObserver");
 
 
 module.exports = class NSClass {
@@ -42,7 +41,6 @@ constructor(location, name, inheritedNames)
     this._knownIvars = null;  // My ivars + inherited ivar names
 
     this._propertyMap       = { };
-    this._observerMap       = { };
     this._classMethodMap    = { };
     this._instanceMethodMap = { };
     this._usedIvarMap       = { };
@@ -60,10 +58,6 @@ loadState(state)
         this.addProperty(new NSProperty(p.location, p.name, p.type, p.ivar, p.getter, p.setter, false));
     });
 
-    _.each(state.observers, o => {
-        this.addObserver(new NSObserver(o.location, o.name, o.after));
-    });
-
     _.each(state.methods, m => {
         this.addMethod(new NSMethod(m.location, m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, false));
     });
@@ -79,10 +73,6 @@ saveState()
         didSynthesis:  !!this.didSynthesis,
 
         properties: _.values(this._propertyMap),
-
-        observers: _.flatten(
-            _.values(this._observerMap)
-        ),
 
         methods: _.flatten([
             _.values(this._classMethodMap),
@@ -114,15 +104,14 @@ _doAutomaticSynthesis(model)
         let location = property.location;
         let name     = property.name;
         let ivar     = property.ivar;
-        let getter   = property.getter;
-        let setter   = property.setter;
 
         if (inheritedPropertyNames[name]) {
             throw Utils.makeError(NSError.DuplicateProperty, `Property "${name}" declared in superclass`, location);
         }
 
-        let getterName = getter ? getter.name : null;
-        let setterName = setter ? setter.name : null;
+        let getterName = property.getter?.name;
+        let setterName = property.setter?.name;
+        let changeName = property.change?.name;
 
         let getterMethod = getterName ? this._instanceMethodMap[getterName] : null;
         let setterMethod = setterName ? this._instanceMethodMap[setterName] : null;
@@ -141,6 +130,10 @@ _doAutomaticSynthesis(model)
             setterMethod.synthesized = true;
             this._instanceMethodMap[setterName] = setterMethod;
             needsBacking = true;
+        }
+
+        if (changeName && !knownSelectors[changeName]) {
+            this.prepareWarnings.push(Utils.makeError(NSWarning.UnknownSelector, `Unknown selector: "${changeName}"`, location));
         }
 
         property.needsBacking = needsBacking;
@@ -162,29 +155,6 @@ _getClassHierarchy(model, includeThis)
     }
 
     return result;
-}
-
-
-_checkObservers()
-{
-    let knownSelectors = this._knownSelectors;
-
-    _.each(_.values(this._observerMap), observers => {
-        _.each(observers, observer => {
-            let after  = observer.after;
-
-            if (after && !knownSelectors[after]) {
-                this.prepareWarnings.push(Utils.makeError(NSWarning.UnknownSelector, `Unknown selector: "${after}"`, observer.location));
-            }
-
-            let name = observer.name;
-            let property = this._propertyMap[name];
-
-            if (!property) {
-                this.prepareWarnings.push(Utils.makeError(NSWarning.UnknownProperty, `Unknown property: "${name}"`, observer.location));
-            }
-        });
-    });
 }
 
 
@@ -253,8 +223,6 @@ prepare(model)
         this._knownSelectors = _.merge(this._knownSelectors, superclass._knownSelectors || { });
         this._knownIvars     = _.merge(this._knownIvars,     superclass._knownIvars     || { });
     }
-
-    this._checkObservers();
 }
 
 
@@ -267,20 +235,6 @@ addProperty(nsProperty)
     }
 
     this._propertyMap[name] = nsProperty;
-}
-
-
-addObserver(nsObserver)
-{
-    let name = nsObserver.name;
-
-    let existing = this._observerMap[name];
-
-    if (!existing) {
-        this._observerMap[name] = existing = [ ];
-    }
-
-    existing.push(nsObserver);
 }
 
 
@@ -330,12 +284,6 @@ isIvar(ivar, allowInherited)
 getAllProperties()
 {
     return _.values(this._propertyMap);
-}
-
-
-getObserversWithName(propertyName)
-{
-    return this._observerMap[propertyName];
 }
 
 

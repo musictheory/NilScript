@@ -13,7 +13,6 @@ module.exports = {
     NSClass:    require("./NSClass"),
     NSProtocol: require("./NSProtocol"),
     NSProperty: require("./NSProperty"),
-    NSObserver: require("./NSObserver"),
     NSMethod:   require("./NSMethod"),
     NSConst:    require("./NSConst"),
     NSEnum:     require("./NSEnum"),

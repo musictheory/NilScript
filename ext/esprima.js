@@ -427,12 +427,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    NSAnyExpression: 'NSAnyExpression',
 	    NSCastExpression: 'NSCastExpression',
 	    NSTypeAnnotation: 'NSTypeAnnotation',
-	    NSEachStatement: 'NSEachStatement',
 	    NSGlobalDeclaration: 'NSGlobalDeclaration',
 	    NSBridgedDeclaration: 'NSBridgedDeclaration',
-	    NSTypeDefinition: 'NSTypeDefinition',
-	    NSObserveDirective: 'NSObserveDirective',
-	    NSObserveAttribute: 'NSObserveAttribute'
+	    NSTypeDefinition: 'NSTypeDefinition'
 	    //!ns: end changes
 	};
 
@@ -1944,12 +1941,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	}());
 	exports.NSMethodNameSegment = NSMethodNameSegment;
 	var NSClassImplementation = /** @class */ (function () {
-	    function NSClassImplementation(id, inheritanceList, category, body) {
+	    function NSClassImplementation(id, inheritanceList, body) {
 	        this.type = syntax_1.Syntax.NSClassImplementation;
 	        this.id = id;
 	        this.body = body;
 	        this.inheritanceList = inheritanceList;
-	        this.category = category;
 	    }
 	    return NSClassImplementation;
 	}());
@@ -2018,24 +2014,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	    return NSPropertyAttribute;
 	}());
 	exports.NSPropertyAttribute = NSPropertyAttribute;
-	var NSObserveDirective = /** @class */ (function () {
-	    function NSObserveDirective(ids, attributes) {
-	        this.type = syntax_1.Syntax.NSObserveDirective;
-	        this.ids = ids;
-	        this.attributes = attributes;
-	    }
-	    return NSObserveDirective;
-	}());
-	exports.NSObserveDirective = NSObserveDirective;
-	var NSObserveAttribute = /** @class */ (function () {
-	    function NSObserveAttribute(name, selector) {
-	        this.type = syntax_1.Syntax.NSObserveAttribute;
-	        this.name = name;
-	        this.selector = selector;
-	    }
-	    return NSObserveAttribute;
-	}());
-	exports.NSObserveAttribute = NSObserveAttribute;
 	var NSSelectorDirective = /** @class */ (function () {
 	    function NSSelectorDirective(name) {
 	        this.type = syntax_1.Syntax.NSSelectorDirective;
@@ -2120,16 +2098,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	    return NSTypeDefinition;
 	}());
 	exports.NSTypeDefinition = NSTypeDefinition;
-	var NSEachStatement = /** @class */ (function () {
-	    function NSEachStatement(left, right, body) {
-	        this.type = syntax_1.Syntax.NSEachStatement;
-	        this.left = left;
-	        this.right = right;
-	        this.body = body;
-	    }
-	    return NSEachStatement;
-	}());
-	exports.NSEachStatement = NSEachStatement;
 	var NSGlobalDeclaration = /** @class */ (function () {
 	    function NSGlobalDeclaration(declaration, declarators) {
 	        this.type = syntax_1.Syntax.NSGlobalDeclaration;
@@ -2245,8 +2213,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	            inSwitch: false,
 	            inClassConstructor: false,
 	            labelSet: {},
-	            strict: false,
-	            ns_inImplementation: false //!ns: Add ns_inImplementation
+	            strict: false
 	        };
 	        this.tokens = [];
 	        this.startMarker = {
@@ -4755,9 +4722,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	                    case '@enum':
 	                        statement = this.ns_parseEnumStatement();
 	                        break;
-	                    case '@each':
-	                        statement = this.ns_parseEachStatement();
-	                        break;
 	                    case '@global':
 	                        statement = this.ns_parseGlobalDeclaration();
 	                        break;
@@ -5644,7 +5608,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        var startToken = this.lookahead;
 	        var name = this.parseIdentifierName().name;
 	        var selector = null;
-	        if (name == 'getter' || name == 'setter') {
+	        if (name == 'getter' || name == 'setter' || name == 'change') {
 	            this.expect('=');
 	            selector = this.ns_parseSelector(true);
 	        }
@@ -5666,41 +5630,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	        var identifier = this.ns_parseIdentifierWithAnnotation();
 	        this.consumeSemicolon();
 	        return this.finalize(node, new Node.NSPropertyDirective(identifier, attributes));
-	    };
-	    Parser.prototype.ns_parseObserveAttribute = function () {
-	        var node = this.createNode();
-	        var startToken = this.lookahead;
-	        var name = this.parseVariableIdentifier().name;
-	        var selector = null;
-	        var allowedNames = ['change', 'set'];
-	        if (name == 'before' || name == 'after') {
-	            this.expect('=');
-	            selector = this.ns_parseSelector(true);
-	        }
-	        else if (allowedNames.indexOf(name) < 0) {
-	            this.throwUnexpectedToken(startToken);
-	        }
-	        return this.finalize(node, new Node.NSObserveAttribute(name, selector));
-	    };
-	    Parser.prototype.ns_parseObserveDirective = function () {
-	        var node = this.createNode();
-	        var attributes = [];
-	        var ids = [];
-	        this.expectKeyword('@observe');
-	        this.expect('(');
-	        attributes.push(this.ns_parseObserveAttribute());
-	        while (this.match(',')) {
-	            this.expect(',');
-	            attributes.push(this.ns_parseObserveAttribute());
-	        }
-	        this.expect(')');
-	        ids.push(this.parseVariableIdentifier());
-	        while (this.match(',')) {
-	            this.expect(',');
-	            ids.push(this.parseVariableIdentifier());
-	        }
-	        this.consumeSemicolon();
-	        return this.finalize(node, new Node.NSObserveDirective(ids, attributes));
 	    };
 	    // This should be called when lookahead is a '<' token.
 	    Parser.prototype.ns_parseTypeAngleSuffix = function () {
@@ -5862,41 +5791,24 @@ return /******/ (function(modules) { // webpackBootstrap
 	            if (this.matchKeyword('@end')) {
 	                break;
 	            }
-	            else if (token.type === 4 /* Keyword */) {
-	                switch (token.value) {
-	                    case '@property':
-	                        sourceElement = this.ns_parsePropertyDirective();
-	                        break;
-	                    case '@observe':
-	                        sourceElement = this.ns_parseObserveDirective();
-	                        break;
-	                    default:
-	                        sourceElement = this.parseStatementListItem();
-	                        break;
-	                }
+	            else if (this.matchKeyword('@property')) {
+	                sourceElement = this.ns_parsePropertyDirective();
 	            }
 	            else if (this.match('-') || this.match('+')) {
 	                sourceElement = this.ns_parseMethodDefinition();
 	            }
 	            else {
-	                sourceElement = this.parseStatementListItem();
+	                this.throwUnexpectedToken(token);
 	            }
-	            if (typeof sourceElement === 'undefined') {
-	                break;
+	            if (sourceElement) {
+	                sourceElements.push(sourceElement);
 	            }
-	            sourceElements.push(sourceElement);
 	        }
 	        return this.finalize(node, new Node.BlockStatement(sourceElements));
 	    };
 	    Parser.prototype.ns_parseClassImplementationDefinition = function () {
 	        var node = this.createNode();
 	        var inheritanceList = null;
-	        var extension = false;
-	        var category = null;
-	        if (this.context.ns_inImplementation) {
-	            this.throwError(messages_1.Messages.NSCannotNestImplementations);
-	        }
-	        this.context.ns_inImplementation = true;
 	        var oldLabelSet = this.context.labelSet;
 	        var previousStrict = this.context.strict;
 	        this.context.strict = true;
@@ -5905,19 +5817,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	        // Has inheritance list
 	        if (this.match(':')) {
 	            inheritanceList = this.ns_parseInheritanceList();
-	            // Category on existing class
-	        }
-	        else if (this.match('(')) {
-	            this.expect('(');
-	            category = this.parseVariableIdentifier();
-	            this.expect(')');
 	        }
 	        var body = this.ns_parseClassImplementationBody();
 	        this.expectKeyword('@end');
 	        this.context.strict = previousStrict;
-	        this.context.ns_inImplementation = false;
 	        this.context.labelSet = oldLabelSet;
-	        return this.finalize(node, new Node.NSClassImplementation(id, inheritanceList, category, body));
+	        return this.finalize(node, new Node.NSClassImplementation(id, inheritanceList, body));
 	    };
 	    Parser.prototype.ns_parseInheritanceList = function () {
 	        var node = this.createNode();
@@ -5968,13 +5873,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    Parser.prototype.ns_parseProtocolDefinition = function () {
 	        var node = this.createNode();
 	        var inheritanceList = null;
-	        if (this.context.ns_inImplementation) {
-	            this.throwError(messages_1.Messages.NSCannotNestImplementations);
-	        }
 	        var oldLabelSet = this.context.labelSet;
 	        var previousStrict = this.context.strict;
 	        this.context.strict = true;
-	        this.context.ns_inImplementation = true;
 	        this.expectKeyword('@protocol');
 	        var id = this.parseVariableIdentifier();
 	        if (this.match(':')) {
@@ -5983,7 +5884,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	        var body = this.ns_parseProtocolDefinitionBody();
 	        this.expectKeyword('@end');
 	        this.context.strict = previousStrict;
-	        this.context.ns_inImplementation = false;
 	        this.context.labelSet = oldLabelSet;
 	        return this.finalize(node, new Node.NSProtocolDefinition(id, inheritanceList, body));
 	    };
@@ -6258,32 +6158,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	        else {
 	            return this.finalize(node, new Node.Identifier(token.value));
 	        }
-	    };
-	    Parser.prototype.ns_parseEachStatement = function () {
-	        var node = this.createNode();
-	        var left;
-	        this.expectKeyword('@each');
-	        this.expect('(');
-	        if (this.matchKeyword('var') || this.matchKeyword('let')) {
-	            var marker = this.createNode();
-	            var kind = this.nextToken().value;
-	            var previousAllowIn = this.context.allowIn;
-	            this.context.allowIn = false;
-	            var declarations = this.parseBindingList(kind, { inFor: false });
-	            left = this.finalize(marker, new Node.VariableDeclaration(declarations, kind));
-	            this.context.allowIn = previousAllowIn;
-	        }
-	        else {
-	            left = this.parseVariableIdentifier();
-	        }
-	        this.expectKeyword('in');
-	        var right = this.parseExpression();
-	        this.expect(')');
-	        var oldInIteration = this.context.inIteration;
-	        this.context.inIteration = true;
-	        var body = this.parseStatement();
-	        this.context.inIteration = oldInIteration;
-	        return this.finalize(node, new Node.NSEachStatement(left, right, body));
 	    };
 	    Parser.prototype.ns_parseGlobalDeclaration = function () {
 	        var node = this.createNode();
@@ -6775,8 +6649,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                (id === '@each') ||
 	                (id === '@global') ||
 	                (id === '@type') ||
-	                (id === '@bridged') ||
-	                (id === '@observe');
+	                (id === '@bridged');
 	        }
 	        //!ns: end changes
 	        switch (id.length) {
