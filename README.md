@@ -83,45 +83,23 @@ To inherit from a superclass, use a colon followed by the superclass name:
 @end
 ```
 
-Additional [instance variables](#ivar) can be added by using a block after class name (or superclass name).
-
-Note: While C-based languages prefix the variable name(s) with the type (`TheType theVariable`), NilScript uses TypeScript-style (`theVariable: TheType`).
-
-```
-@class TheClass {
-    _myStringInstanceVariable: String;
-}
-@end
-
-@class TheSubClass : TheSuperClass {
-    _myStringInstanceVariable: String;
-}
-@end
-```
-
 ### <a name="class-compiler"></a>Behind the scenes (Class)
 
-Behind the scenes, the NilScript compiler changes the `@class`/`@end` block into a JavaScript function block which is invoked at runtime.  Private functions and variables may be declared inside of an `@class` without polluting the global namespace.
+Behind the scenes, the NilScript compiler changes the `@class`/`@end` block into a JavaScript class.
 
 ```
 @class TheClass
-let sPrivateStaticVariable = "Private";
-function sPrivate() { }
 @end
 ```
 
 becomes equivalent to:
 
 ```
-oj_private_function(…, function() {
-    let sPrivateStaticVariable = "Private";
-    function sPrivate() { }
-});
+… = class N$_c_TheClass { // Stored to internal NilScript class registry
+}
 ```
 
-To prevent undefined behavior, variable declarations must be initialized to a literal or function expression (or left uninitialized).  
-
-Note: Only `@property`, `@synthesize`, `@dynamic`, `@observe`, instance variable declarations, method declarations, variable declarations, or function declarations may be used inside of an `@class` block.
+Note: Only `@property` declarations or method declarations may be used inside of a `@class` block.
 
 ---
 
@@ -132,7 +110,7 @@ Unlike Objective-C, all NilScript classes inherit from a private root base class
 The root base class provides the following methods:
 
 ```
-+ (id) alloc
++ (instancetype) alloc
 + (Class) class
 + (Class) superclass
 + (String) className
@@ -140,7 +118,7 @@ The root base class provides the following methods:
 
 + (BOOL) instancesRespondToSelector:(SEL)aSelector
 
-- (id) init
+- (instancetype) init
 - (id) copy
 
 - (Class) class
@@ -183,19 +161,6 @@ Methods are defined in a `@class` block and use standard Objective-C syntax:
 @end
 ```
 
-Old-school bare method declarations may also be used:
-
-```
-@class TheClass
-    
-- doSomethingWithString:string andNumber:number
-{
-    return string + "-" + number;    
-}
-    
-@end
-```
-
 ### <a name="method-nullish"></a>Nullish Messaging
 
 Just as Objective-C supports messaging `nil`, NilScript supports the concept of "Nullish Messaging".
@@ -211,7 +176,7 @@ let result2 = [foo2 doSomething];  // result2 is also null
 
 ### <a name="method-compiler"></a>Behind the Scenes (Methods)
 
-Behind the scenes, NilScript methods are simply renamed JavaScript functions.  Each colon (`:`) in a method name is replaced by an underscore and a prefix is added to the start of the method name.
+Behind the scenes, NilScript methods are simply method definitions on a JavaScript `class`.  Each colon (`:`) in a method name is replaced by an underscore and a prefix is added to the start of the method name.
 
 Hence:
 
@@ -225,29 +190,31 @@ Hence:
 becomes the equivalent of:
 
 ```
-TheClass.prototype.N$_f_doSomethingWithString_andNumber_ = function(string, number)
+N$_f_doSomethingWithString_andNumber_(string, number)
 {
     return string + "-" + number;    
 }
 ```
 
-Messages to an object are simply JavaScript function calls wrapped in a falsey check.  Hence:
+Messages to an object become JavaScript optional chains followed by nullish coalescing to null.
 
-     let result = [anObject doSomethingWithString:"Hello" andNumber:0];
+```
+let result = [anObject doSomethingWithString:"Hello" andNumber:0];
+```
      
 becomes the equivalent of:
 
-     let result = anObject && anObject.N$_f_doSomethingWithString_andNumber_("Hello", 0);
+```
+let result = ((anObject?.N$_f_doSomethingWithString_andNumber_("Hello", 0))??null);
+```
      
 The compiler will produce slightly different output depending on:
 
- - if the return value is needed
- - if the message receiver is a JavaScript expression.
- - if the message receiver is known to be non-falsey
- - if the message receiver is `self`
- - if the message receiver is `super`
-
-Sometimes the compiler will choose to use `nilscript.msgSend()` rather than a direct function call.
+- if the return value is needed
+- if the message receiver is a JavaScript expression.
+- if the message receiver is known to be non-nullish
+- if the message receiver is `self`
+- if the message receiver is `super`
 
 ---
 ## <a name="property"></a>Properties and Instance Variables
@@ -314,6 +281,7 @@ NilScript supports property attributes similar to Objective-C:
 | `readonly`, `readwrite`, `private` | Default is `readwrite`. `readonly` suppresses the generation of a setter. `private` suppresses the generation of both a setter and getter.
 | `getter=` | Changes the name of the getter
 | `setter=` | Changes the name of the setter
+| `change=` | Calls the selector when the property changes. See <a href="#observers">Property Observers</a>.
 | `copy`, `struct`  | Creates a copy (See below)
 
 `copy` uses `nilscript.makeCopy` in the setter.
@@ -385,15 +353,15 @@ Hence, the following NilScript code:
 would compile into:
 
 ```
-nilscript.makeClass(…, function(…) {
+class … {
     
 … // Compiler generates -setCounter: and -counter here
 
-….incrementCounter = function() {
+N$_f_incrementCounter() {
     this._counter++;
 }
 
-});
+}
 ```
 
 ---
@@ -426,57 +394,12 @@ Often, every property in these classes needs a custom setter, resulting in a lot
 Property observers simplify this:
 
 ```
-@property backgroundColor: String;
-@property cornerRadius: Number;
-@property title: String;
-
-@observe (change, after=setNeedsDisplay) backgroundColor, cornerRadius, title;
+@property (change=setNeedsDisplay) backgroundColor: String;
+@property (change=setNeedsDisplay) cornerRadius: Number;
+@property (change=setNeedsDisplay) title: String;
 ```
 
 This example will call `[self setNeedsDisplay]` after the backgroundColor, colorRadius, or title changes.
-`change` is a default attribute and may be omitted.
-
-| Attribute          | Description                                                      
-|--------------------|------------------------------------------------------------------
-| `change`  | Default. Call the before/after methods in response to a property change (determined via `!==`)
-| `set`     | Call the before/after methods whenever the setter is called.
-| `before=` | The selector to invoke before a change or set.
-| `after=`  | The selector to invoke after a change or set.
-
-`before=` observer methods are passed the new value as an optional parameter.  `after=` observer methods
-are passed the old value as an optional parameter.
-
-For example:
-
-```
-@property foo: Number;
-@observe (change, before=_handleFooWillChange:, after=_handleFooDidChange:) foo;
-@observe (set,    before=_handleFooWillSet:,    after=_handleFooDidSet:)    foo;
-
-- (void) _handleFooWillChange:(Number)newFoo { … }
-- (void) _handleFooDidChange:(Number)oldFoo  { … }
-- (void) _handleFooWillSet:(Number)newFoo { … }
-- (void) _handleFooDidSet:(Number)oldFoo  { … }
-```
-
-Will generate the following setter:
-
-```
-- (void) setFoo:(Number)newFoo
-{
-    var oldFoo = _foo;
-
-    [self _handleFooWillSet:newFoo];
-
-    if (oldFoo !== newFoo) {
-        [self _handleFooWillChange:newFoo];
-        _foo = newFoo;
-        [self _handleFooDidChange:oldFoo];
-    }
-
-    [self _handleFooDidSet:oldFoo];
-}
-```
 
 ---
 ## <a name="callbacks"></a>Callbacks
