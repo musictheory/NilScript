@@ -34,8 +34,9 @@ build()
 
     let traverser = new Traverser(nsFile.ast);
 
-    let currentClass, currentMethod;
+    let currentClass, currentMethod, currentMethodNode;
     let currentProtocol;
+    let functionCount = 0;
 
     let usedSelectorMap   = { };
 
@@ -159,6 +160,8 @@ build()
         let method = makeNSMethodNode(node);
         currentClass.addMethod(method);
         currentMethod = method;
+        currentMethodNode = node;
+        functionCount = 0;
     }
 
     function handleNSMethodDeclaration(node)
@@ -406,8 +409,25 @@ build()
         let name = node.name;
         let transformable = isIdentifierTransformable(node);
 
-        if (transformable && (name[0] == "_") && (name.length > 0) && currentMethod && currentClass) {
-            currentClass.markUsedIvar(name);
+        if (currentMethod && currentClass) {
+            if (transformable && (name[0] == "_") && (name.length > 0)) {
+                if (functionCount > 0) {
+                    currentMethodNode.ns_needs_var_self = true;
+                }
+
+                currentClass.markUsedIvar(name);
+
+            } else if (name == "self") {
+                if (functionCount > 0) {
+                    currentMethodNode.ns_needs_var_self = true;
+                }
+
+                let parent = node.ns_parent;
+
+                if (parent.type == Syntax.AssignmentExpression && parent.left == node) {
+                    currentMethodNode.ns_needs_var_self = true;
+                }
+            }
         }
 
         node.ns_transformable = transformable;
@@ -475,9 +495,14 @@ build()
                 handleVariableDeclarator(node);
 
             } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression) {
+                functionCount++;
                 handleFunctionDeclarationOrExpression(node);
 
             } else if (type === Syntax.NSMessageExpression) {
+                if (node.selectorName == "alloc") {
+                    node.ns_nonnull = true;
+                }
+
                 usedSelectorMap[node.selectorName] = true;
 
             } else if (type === Syntax.NSSelectorDirective) {
@@ -505,12 +530,17 @@ build()
         if (type === Syntax.NSClassImplementation) {
             currentClass  = null;
             currentMethod = null;
+            currentMethodNode = null;
 
         } else if (type === Syntax.NSProtocolDefinition) {
             currentProtocol = null;
 
         } else if (type === Syntax.NSMethodDefinition) {
             currentMethod = null;
+            currentMethodNode = null;
+
+        } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression) {
+            functionCount--;
         }
     });
 

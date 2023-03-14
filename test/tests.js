@@ -26,6 +26,7 @@ constructor(name, options, lines)
     this.expectedErrorMap     = { };    // Line number to name
     this.expectedWarningMap   = { };    // Line number to name
     this.expectedTypecheckMap = { };    // Line number to code,quoted string
+    this.codegenMap           = { };    // Line number to codegen rule
 
     this._parseLines();
 }
@@ -51,7 +52,36 @@ _parseLines()
             this.expectedTypecheckMap[lineNumber] = m[1].trim();
         }
 
+
         lineNumber++;
+    });
+}
+
+
+_checkCodegen(result)
+{
+    // Check @codegen comments
+    _.each(result.code?.split("\n"), (outputLine, index) => {
+        let inputLine = this.lines[index];
+
+        // We need to search both input and output for @codegen, as comments
+        // may be removed during code generation
+        //
+        let inputMatch  = inputLine.match( /(.*?)\@codegen\s+(.*?)\s+(.*?)$/);
+        let outputMatch = outputLine.match(/(.*?)\@codegen\s+(.*?)\s+(.*?)$/);
+        if (!inputMatch) return;
+
+        let lineNumber = index + 1;
+
+        let haystack = outputMatch ? outputMatch[1] : outputLine;
+        let needle = inputMatch[3].trim();
+        let found = haystack.indexOf(needle) >= 0;
+
+        if ((inputMatch[2] == "needs") && !found) {
+            throw new Error(`Generated code missing "${needle}" on line ${lineNumber}`);
+        } else if ((inputMatch[2] == "lacks") && found) {
+            throw new Error(`Generated code contains "${needle}" on line ${lineNumber}`);
+        }
     });
 }
 
@@ -117,6 +147,8 @@ _checkResults(result)
     checkMaps(this.expectedErrorMap,     actualErrorMap,     "error");
     checkMaps(this.expectedWarningMap,   actualWarningMap,   "warning");
     checkMaps(this.expectedTypecheckMap, actualTypecheckMap, "type check");
+
+    this._checkCodegen(result);
 
     if (canRun) {
         nilscript._reset();

@@ -8,7 +8,7 @@
 "use strict";
 
 const _          = require("lodash");
-const esprima     = require("../ext/esprima");
+const esprima    = require("../ext/esprima");
 const Syntax     = esprima.Syntax;
 
 const Modifier   = require("./Modifier");
@@ -19,11 +19,8 @@ const NSModel    = require("./model").NSModel;
 const NSError    = require("./Errors").NSError;
 const NSWarning  = require("./Errors").NSWarning;
 
-const Location = require("./model/NSSymbolTyper").Location;
-
-const NSRootVariable            = "N$$_";
-const NSTemporaryVariablePrefix = "N$_t_";
-const NSSuperVariable           = "N$_super";
+const NSRootVariable  = "N$$_";
+const NSSuperVariable = "N$_super";
 
 const NSRootWithGlobalPrefix = NSRootVariable + "._g.";
 const NSRootWithClassPrefix  = NSRootVariable + "._c.";
@@ -103,15 +100,9 @@ generate()
     let language = this._language;
     let options  = this._options;
     let inlines  = this._inlines;
-    let scope    = null;
-
-    let methodNodes = [ ];
-    let methodNodeClasses = [ ];
 
     let currentClass;
     let currentMethodNode;
-
-    let methodUsesSelfVar = false;
 
     let optionWarnGlobalNoType        = options["warn-global-no-type"];
     let optionWarnThisInMethods       = options["warn-this-in-methods"];
@@ -130,39 +121,7 @@ generate()
 
     let usesSimpleIvars = !optionSqueeze && (language !== LanguageTypechecker);
 
-
     let warnings = [ ];
-
-    function makeScope(node)
-    {
-        scope = { node: node, declarations: [ ], count: 0, previous: scope };
-    }
-
-    function canDeclareTemporaryVariable()
-    {
-        return scope && scope.node && (
-            scope.node.type === Syntax.FunctionDeclaration     ||
-            scope.node.type === Syntax.FunctionExpression      ||
-            scope.node.type === Syntax.ArrowFunctionExpression ||
-            scope.node.type === Syntax.NSMethodDefinition
-        );
-    }
-
-    function makeTemporaryVariable(needsDeclaration)
-    {
-        let name = NSTemporaryVariablePrefix + scope.count++;
-        if (needsDeclaration) scope.declarations.push(name);
-        return name;
-    }
-
-    function getClassAsRuntimeVariable(className)
-    {
-        if (language === LanguageEcmascript5) {
-            return NSRootWithClassPrefix + symbolTyper.getSymbolForClassName(className);
-        }
-
-        return symbolTyper.getSymbolForClassName(className);
-    }
 
     function getCurrentMethodInModel() {
         if (!currentClass || !currentMethodNode) return null;
@@ -269,24 +228,15 @@ generate()
         }
     }
 
-    function handleNSMessageExpression(node)
+    function handleNSMessageExpression(node, parent)
     {
-        let receiver     = node.receiver.value;
-        let methodName   = symbolTyper.getSymbolForSelectorName(node.selectorName);
-        let hasArguments = false;
+        let receiver   = node.receiver.value;
+        let methodName = symbolTyper.getSymbolForSelectorName(node.selectorName);
 
         let firstSelector, lastSelector;
 
         if (knownSelectors && !knownSelectors[node.selectorName]) {
             warnings.push(Utils.makeError(NSWarning.UnknownSelector, `Use of unknown selector "${node.selectorName}"`, node));
-        }
-
-        for (let i = 0, length = node.messageSelectors.length; i < length; i++) {
-            let messageSelector = node.messageSelectors[i];
-
-            if (messageSelector.arguments || messageSelector.argument) {
-                hasArguments = true;
-            }
         }
 
         function replaceMessageSelectors()
@@ -318,7 +268,7 @@ generate()
                 } else {
                     modifier.select(messageSelector).remove()
                     lastSelector = messageSelector;
-                    messageSelector.oj_skip = true;
+                    messageSelector.ns_skip = true;
                 }
             }        
         }
@@ -326,17 +276,64 @@ generate()
         function doCommonReplacement(start, end) {
             replaceMessageSelectors();
 
-            node.receiver.oj_skip = true;
+            node.receiver.ns_skip = true;
 
             modifier.from(node).to(firstSelector).replace(start);
             modifier.from(lastSelector).to(node).replace(end);
         }
 
+        function getNullishSuffix() {
+            let parentType = parent.type;
+
+            let result = (
+                language === LanguageTypechecker ||
+
+                parentType == Syntax.NSMessageExpression ||
+                parentType == Syntax.NSMessageReceiver   ||
+                parentType == Syntax.ExpressionStatement ||
+                parentType == Syntax.LogicalExpression   ||
+                parentType == Syntax.IfStatement         ||
+                parentType == Syntax.DoWhileStatement    ||
+                parentType == Syntax.WhileStatement      ||
+
+                // ~undefined === ~null, !undefined === !null
+                (parentType == Syntax.UnaryExpression && (
+                    parent.operator == "!" ||
+                    parent.operator == "~" ||
+                    parent.operator == "void"
+                )) ||
+
+                // Access on either undefined and null will throw "Cannot read properties"
+                (parentType == Syntax.MemberExpression && parent.object == node) ||
+
+                (parentType == Syntax.ConditionalExpression && parent.test == node)
+            ) ? "" : "??null";
+
+            return result;
+        }
+
         // Optimization cases
-        if (receiver.type == Syntax.Identifier && currentMethodNode) {
-            let usesSelf   = methodUsesSelfVar || (language === LanguageTypechecker);
+        if (receiver.type == Syntax.Identifier && model.classes[receiver.name]) {
+            let classVariable = symbolTyper.getSymbolForClassName(receiver.name);
+
+            if (language === LanguageEcmascript5) {
+                classVariable = NSRootWithClassPrefix + classVariable;
+            }
+
+            if (methodName == "alloc") {
+                node.receiver.ns_skip = true;
+                modifier.select(node).replace("new " + classVariable + "()");
+
+            } else if (methodName == "class") {
+                doCommonReplacement(classVariable);
+
+            } else {
+                doCommonReplacement(classVariable + "." + methodName + "(", ")");
+            }
+
+        } else if (receiver.type == Syntax.Identifier && currentMethodNode) {
+            let usesSelf   = (currentMethodNode?.ns_needs_var_self) || (language === LanguageTypechecker);
             let selfOrThis = usesSelf ? "self" : "this";
-            let isInstance = (currentMethodNode.selectorType != "+");
 
             if (receiver.name == "super") {
                 if (language === LanguageEcmascript5) {
@@ -352,112 +349,41 @@ generate()
 
                     doCommonReplacement(cast + selfOrThis + "." + NSSuperVariable + "()." + methodName + "(", ")");
                 }
-                return;
-
-            } else if (methodName == "class") {
-                if (language === LanguageEcmascript5) {
-                    if (model.classes[receiver.name]) {
-                        doCommonReplacement(getClassAsRuntimeVariable(receiver.name));
-                    } else if (receiver.name == "self") {
-                        if (isInstance) {
-                            doCommonReplacement(selfOrThis + ".constructor");
-                        } else {
-                            doCommonReplacement(selfOrThis);
-                        }
-
-                    } else {
-                        doCommonReplacement("(" + receiver.name + " ? " + receiver.name + "['class'](", ") : null)");
-                    }
-                } else {
-                    if (model.classes[receiver.name]) {
-                        doCommonReplacement(getClassAsRuntimeVariable(receiver.name));
-                    } else {
-                        doCommonReplacement("(" + receiver.name + " ? " + receiver.name + "['class'](", ") : null)");
-                    }                    
-                }
-                return;
-
-            } else if (model.classes[receiver.name]) {
-                let classVariable = getClassAsRuntimeVariable(receiver.name);
-
-                if (methodName == "alloc") {
-                    node.receiver.oj_skip = true;
-                    modifier.select(node).replace("new " + classVariable + "()");
-                    return;
-                }
-
-                doCommonReplacement(classVariable + "." + methodName + "(", ")");
-                return;
 
             } else if (receiver.name == "self") {
                 doCommonReplacement(selfOrThis + "." + methodName + "(", ")");
-                return;
 
             } else if (currentClass.isIvar(receiver.name, true)) {
                 checkIvarAccess(receiver);
 
                 let ivar = generateThisIvar(receiver.name, usesSelf);
+                let nullish = getNullishSuffix();
 
-                if (language === LanguageTypechecker) {
-                    doCommonReplacement("(" + ivar + "." + methodName + "(", "))");
-                } else {
-                    doCommonReplacement("(" + ivar + " && " + ivar + "." + methodName + "(", "))");
-                }
+                doCommonReplacement(`((${ivar}?.${methodName}(`, `))${nullish})`);
 
                 usedIvarMap[receiver.name] = true;
 
-                return;
-
             } else {
-                if (language === LanguageTypechecker) {
-                    doCommonReplacement("(" + receiver.name + "." + methodName + "(", "))");
-                } else {
-                    doCommonReplacement("(" + receiver.name + " && " + receiver.name + "." + methodName + "(", "))");
-                }
-
-                return;
+                let nullish = getNullishSuffix();
+                doCommonReplacement(`((${receiver.name}?.${methodName}(`, `))${nullish})`);
             }
 
-        } else if (canDeclareTemporaryVariable()) {
+        } else {
             replaceMessageSelectors();
 
-            if (language === LanguageTypechecker) {
-                modifier.from(node).to(receiver).replace("(");
-
-                if (receiver.type == Syntax.Identifier && model.classes[receiver.name]) {
-                    modifier.select(receiver).replace(getClassAsRuntimeVariable(receiver.name));
-                }
-
-                modifier.from(receiver).to(firstSelector).replace("." + methodName + "(");
-                modifier.from(lastSelector).to(node).replace("))");
+            if (receiver.ns_nonnull) {
+                modifier.from(node).to(receiver).replace("((");
+                modifier.from(receiver).to(firstSelector).replace(`).${methodName}(`);
+                modifier.from(lastSelector).to(node).replace(`))`);
 
             } else {
-                let temporaryVariable = makeTemporaryVariable(true);
+                let nullish = getNullishSuffix();
 
-                modifier.from(node).to(receiver).replace("((" + temporaryVariable + " = (");
-
-                if (receiver.type == Syntax.Identifier && model.classes[receiver.name]) {
-                    modifier.select(receiver).replace(getClassAsRuntimeVariable(receiver.name));
-                }
-
-                modifier.from(receiver).to(firstSelector).replace(")) && " + temporaryVariable + "." + methodName + "(");
-                modifier.from(lastSelector).to(node).replace("))");
+                modifier.from(node).to(receiver).replace("(((");
+                modifier.from(receiver).to(firstSelector).replace(`)?.${methodName}(`);
+                modifier.from(lastSelector).to(node).replace(`))${nullish})`);
             }
-
-            return;
         }
-
-        // Slow path
-        replaceMessageSelectors();
-
-        modifier.from(node).to(receiver).replace(NSRootVariable + ".msgSend(");
-
-        if (receiver.type == Syntax.Identifier && model.classes[receiver.name]) {
-            modifier.select(receiver).replace(getClassAsRuntimeVariable(receiver.name));
-        }
-
-        modifier.from(receiver).to(firstSelector).replace(",'" + methodName + "'" + (hasArguments ? "," : ""));
-        modifier.from(lastSelector).to(node).replace(")");
     }
 
     function handleNSClassImplementation(node)
@@ -488,8 +414,6 @@ generate()
                 });
             }
         });
-
-        makeScope(node);
 
         let startText;
         let endText;
@@ -527,8 +451,6 @@ generate()
         let methodName = symbolTyper.getSymbolForSelectorName(node.selectorName);
         let isClassMethod = node.selectorType == "+";
         let args = [ ];
-
-        makeScope(node);
 
         if (Utils.isReservedSelectorName(node.selectorName)) {
             Utils.throwError(
@@ -699,7 +621,7 @@ generate()
                     checkIvarAccess(node);
                 }
 
-                let usesSelf = currentMethodNode && (methodUsesSelfVar || (language === LanguageTypechecker));
+                let usesSelf = (currentMethodNode.ns_needs_var_self) || (language === LanguageTypechecker);
 
                 if (isSelf) {
                     replacement = usesSelf ? "self" : "this";
@@ -941,7 +863,7 @@ generate()
 
                 modifier.from(node).to(declaration).replace(NSRootWithGlobalPrefix + name + "=");
                 modifier.select(declaration.id).remove();
-                declaration.id.oj_skip = true;
+                declaration.id.ns_skip = true;
 
             } else if (declarators) {
                 modifier.from(node).to(declarators[0]).remove();
@@ -950,7 +872,7 @@ generate()
                     let name = symbolTyper.getSymbolForIdentifierName(declarator.id.name);
 
                     modifier.select(declarator.id).replace(NSRootWithGlobalPrefix + name);
-                    declarator.id.oj_skip = true;
+                    declarator.id.ns_skip = true;
                 })
             }
 
@@ -960,7 +882,7 @@ generate()
                 modifier.select(declaration.id).remove();
                 modifier.after(node).insert(");");
 
-                declaration.id.oj_skip = true;
+                declaration.id.ns_skip = true;
 
             } else if (declarators) {
                 modifier.from(node).to(declarators[0]).replace("(function() { var ");
@@ -969,7 +891,7 @@ generate()
                 let index = 0;
                 _.each(declarators, function(declarator) {
                     modifier.select(declarator.id).replace("a" + index++);
-                    declarator.id.oj_skip = true;
+                    declarator.id.ns_skip = true;
                 });
             }
         }
@@ -977,8 +899,6 @@ generate()
 
     function handleFunctionDeclarationOrExpression(node)
     {
-        makeScope(node);
-
         _.each(node.params, param => {
             checkRestrictedUsage(param);
         });
@@ -994,37 +914,22 @@ generate()
             if (nsConst && _.isString(nsConst.value)) {
                 modifier.from(node).to(node.value).replace(nsConst.raw + ":");
                 modifier.from(node.value).to(node).replace("");
-                key.oj_skip = true;
+                key.ns_skip = true;
             }
         }
     }
 
-    function finishScope(scope, needsSelf)
+    function addSelfToMethodNode(methodNode)
     {
-        let node = scope.node;
-        let varParts = [ ];
-        let toInsert = "";
+        let body = methodNode.body.body;
 
-        if (needsSelf && (language !== LanguageTypechecker)) varParts.push("self = this");
-
-        _.each(scope.declarations, declaration => {
-            varParts.push(declaration);
-        });
-
-        if (varParts.length) {
-            toInsert += "var " + varParts.join(",") + ";";
-        }
-
-        if (toInsert.length && scope.node.body.body.length) {
-            modifier.before(scope.node.body.body[0]).insert(toInsert);
+        if ((language !== LanguageTypechecker) && body.length) {
+            modifier.before(body[0]).insert("let self = this;");
         }
     }
 
     function checkThis(thisNode, path)
     {
-        let inFunction = false;
-        let inMethod   = true;
-
         for (let i = path.length - 1; i >= 0; i--) {
             let node = path[i];
 
@@ -1042,12 +947,10 @@ generate()
         }
     }
 
-    makeScope();
-
     traverser.traverse(function(node, parent) {
         let type = node.type;
 
-        if (node.oj_skip) return Traverser.SkipNode;
+        if (node.ns_skip) return Traverser.SkipNode;
 
         if (type === Syntax.NSProtocolDefinition ||
             type === Syntax.NSEnumDeclaration    ||
@@ -1073,12 +976,10 @@ generate()
 
         } else if (type === Syntax.NSMethodDefinition) {
             currentMethodNode = node;
-            methodUsesSelfVar = false;
-
             handleMethodDefinition(node);
 
         } else if (type === Syntax.NSMessageExpression) {
-            handleNSMessageExpression(node);
+            handleNSMessageExpression(node, parent);
 
         } else if (type === Syntax.NSPropertyDirective) {
             handleNSPropertyDirective(node);
@@ -1125,18 +1026,8 @@ generate()
                 checkThis(node, traverser.getParents());
             }
 
-        } else if (type === Syntax.AssignmentExpression) {
-            if (currentMethodNode &&
-                node.left &&
-                node.left.type == Syntax.Identifier &&
-                node.left.name == "self")
-            {
-                methodUsesSelfVar = true;
-            }
-
         } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression || type === Syntax.ArrowFunctionExpression) {
             handleFunctionDeclarationOrExpression(node);
-            methodUsesSelfVar = true;
 
         } else if (type === Syntax.Property) {
             handleProperty(node);
@@ -1164,15 +1055,11 @@ generate()
             currentClass = null;
 
         } else if (type === Syntax.NSMethodDefinition) {
-            finishScope(scope, methodUsesSelfVar);
+            if (currentMethodNode.ns_needs_var_self) {
+                addSelfToMethodNode(currentMethodNode);
+            }
+
             currentMethodNode = null;
-
-        } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression || type == Syntax.ArrowFunctionExpression) {
-            finishScope(scope);
-        }
-
-        if (scope.node === node) {
-            scope = scope.previous;
         }
     });
 

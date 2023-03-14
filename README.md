@@ -19,7 +19,7 @@ NilScript was formerly known as oj.
   - [Behind the Scenes](#class-compiler)
 - [The Built-in Base Class](#base-class)
 - [Methods](#method)
-  - [Falsy Messaging](#method-falsy)
+  - [Nullish Messaging](#method-nullish)
   - [Behind the Scenes](#method-compiler)
 - [Properties and Instance Variables](#property)
   - [Synthesis](#property-synthesis) 
@@ -196,15 +196,17 @@ Old-school bare method declarations may also be used:
 @end
 ```
 
-### <a name="method-falsy"></a>Falsy Messaging
+### <a name="method-nullish"></a>Nullish Messaging
 
-Just as Objective-C supports messaging `nil`, NilScript supports the concept of "Falsy Messaging".
+Just as Objective-C supports messaging `nil`, NilScript supports the concept of "Nullish Messaging".
 
-Any message to a falsy JavaScript value (false / undefined / null / 0 / "" / NaN ) will return that value.  
+Any message to a nullish JavaScript value (`undefined` or `null`) will return `null`.
 
 ```
-let foo = null;
-let result = [foo doSomething];  // result is null
+let foo1 = null;
+let foo2 = undefined;
+let result1 = [foo1 doSomething];  // result1 is null
+let result2 = [foo2 doSomething];  // result2 is also null
 ```
 
 ### <a name="method-compiler"></a>Behind the Scenes (Methods)
