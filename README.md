@@ -95,7 +95,7 @@ Behind the scenes, the NilScript compiler changes the `@class`/`@end` block into
 becomes equivalent to:
 
 ```
-… = class N$_c_TheClass { // Stored to internal NilScript class registry
+… = class N$_c_TheClass { // Stored into an internal class registry
 }
 ```
 
@@ -213,8 +213,8 @@ The compiler will produce slightly different output depending on:
 - if the return value is needed
 - if the message receiver is a JavaScript expression.
 - if the message receiver is known to be non-nullish
-- if the message receiver is `self`
-- if the message receiver is `super`
+- if the message receiver is `self` or `super`
+- if the message selector is `alloc` or `class`
 
 ---
 ## <a name="property"></a>Properties and Instance Variables
