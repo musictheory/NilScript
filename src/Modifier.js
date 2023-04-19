@@ -43,7 +43,9 @@ function _isDescendantOf(a, b)
 }
 
 
-function Modifier(inLines, options)
+module.exports = class Modifier {
+
+constructor(inLines, options)
 {
     this._lines0 = inLines;
 
@@ -54,19 +56,19 @@ function Modifier(inLines, options)
 }
 
 
-Modifier.prototype._getLine = function(line1)
+_getLine(line1)
 {
     return this._lines0[line1 - 1];
 }
 
 
-Modifier.prototype._setLine = function(line1, text)
+_setLine(line1, text)
 {
     this._lines0[line1 - 1] = text;        
 }
 
 
-Modifier.prototype._addReplacement = function(line, fromColumn, toColumn, text)
+_addReplacement(line, fromColumn, toColumn, text)
 {
     if ((fromColumn == toColumn) && !text) {
         return;
@@ -78,8 +80,7 @@ Modifier.prototype._addReplacement = function(line, fromColumn, toColumn, text)
 }
 
 
-
-Modifier.prototype._flush = function()
+_flush()
 {
     let c = this._current;
     let text = c.text;
@@ -129,22 +130,18 @@ Modifier.prototype._flush = function()
 }
 
 
-Modifier.prototype.from   = function(node) { this._current.from   = node;  return this; }
-Modifier.prototype.to     = function(node) { this._current.to     = node;  return this; }
-Modifier.prototype.select = function(node) { this._current.select = node;  return this; }
-Modifier.prototype.before = function(node) { this._current.before = node;  return this; }
-Modifier.prototype.after  = function(node) { this._current.after  = node;  return this; }
+from   (node) { this._current.from   = node;  return this; }
+to     (node) { this._current.to     = node;  return this; }
+select (node) { this._current.select = node;  return this; }
+before (node) { this._current.before = node;  return this; }
+after  (node) { this._current.after  = node;  return this; }
 
-Modifier.prototype.remove  = 
-Modifier.prototype.insert  = 
-Modifier.prototype.replace = function(text)
-{
-    this._current.text = text;
-    this._flush();
-}
+remove  ()     { this._current.text = null;  this._flush(); }
+insert  (text) { this._current.text = text;  this._flush(); }
+replace (text) { this._current.text = text;  this._flush(); }
 
 
-Modifier.prototype.finish = function()
+finish()
 {
     this._replacements.sort(function(a, b) {
         if (a.line == b.line) {
@@ -177,8 +174,6 @@ Modifier.prototype.finish = function()
         }
     });
 
-
-
     for (let i = 0, length = this._replacements.length; i < length; i++) {
         let r      = this._replacements[i];
         let line1  = r.line;
@@ -198,7 +193,9 @@ Modifier.prototype.finish = function()
                 console.log("" + r.line + ": inserting " + _green(r.text, r.fromColumn, r.toColumn) + " between " + _yellow(before) + " and " + _yellow(after));
             }
         }
+
         this._setLine(r.line, before + (r.text || "") + after);
+
         if (this._debug) {
             console.log("Line " + r.line + " is now " + this._getLine(r.line));
             console.log();
@@ -209,4 +206,4 @@ Modifier.prototype.finish = function()
 }
 
 
-module.exports = Modifier;
+};
