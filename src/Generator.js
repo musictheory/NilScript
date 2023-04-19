@@ -606,10 +606,10 @@ generate()
 
         if (!node.ns_transformable) return;
 
-        let ojGlobal = model.globals[name];
+        let nsGlobal = model.globals[name];
         let replacement;
 
-        if (ojGlobal) {
+        if (nsGlobal) {
             replacement = NSRootWithGlobalPrefix + (optionSqueeze ? symbolTyper.getSymbolForIdentifierName(name) : name);
 
             modifier.select(node).replace(replacement);
@@ -718,9 +718,9 @@ generate()
                 result += symbolTyper.getSymbolForSelectorName(property.getter.name);
 
                 if (property.getter.copies) {
-                    result += "() { return " + NSRootVariable + ".makeCopy(" + ivar + "); } ";
+                    result += `() { return ${NSRootVariable}.makeCopy(${ivar}); } `;
                 } else {
-                    result += "() { return " + ivar + "; } ";
+                    result += `() { return ${ivar}; } `;
                 }
             }
         }
