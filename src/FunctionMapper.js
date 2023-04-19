@@ -1,6 +1,6 @@
 /*
     FunctionMapper.js
-    (c) 2016-2018 musictheory.net, LLC
+    (c) 2016-2023 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
