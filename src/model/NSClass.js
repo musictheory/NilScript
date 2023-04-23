@@ -1,21 +1,21 @@
 /*
     NSClass.js
     Model class for an NilScript class implementation
-    (c) 2013-2018 musictheory.net, LLC
+    (c) 2013-2023d musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
+import _ from "lodash";
 
-const _           = require("lodash");
-const NSError     = require("../Errors").NSError;
-const NSWarning   = require("../Errors").NSWarning;
-const Utils       = require("../Utils");
-const NSProperty  = require("./NSProperty");
-const NSMethod    = require("./NSMethod");
+import { NSError    } from "../Errors.js";
+import { NSWarning  } from "../Errors.js";
+import { Utils      } from "../Utils.js";
+
+import { NSProperty } from "./NSProperty.js";
+import { NSMethod   } from "./NSMethod.js";
 
 
-module.exports = class NSClass {
+export class NSClass {
 
 
 constructor(location, name, inheritedNames)

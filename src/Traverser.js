@@ -1,16 +1,14 @@
 /*
     Traverser.js
     Extends estraverse with ability to traverse NilScript nodes
-    (c) 2013-2018 musictheory.net, LLC
+    (c) 2013-2023 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
+import _ from "lodash";
+import estraverse from "estraverse";
 
-const _          = require("lodash");
-const esprima    = require("../ext/esprima");
-const estraverse = require("estraverse");
-const Syntax     = esprima.Syntax;
+import { Syntax } from "./Parser.js";
 
 // Add additional visitor keys for the NilScript language extension
 const NSVisitorKeys = {
@@ -68,7 +66,9 @@ const NSVisitorKeys = {
 
 
 
-class Traverser {
+export class Traverser {
+
+static SkipNode = estraverse.VisitorOption.Skip;
 
 constructor(ast)
 {
@@ -94,7 +94,3 @@ getParents()
 
 }
 
-
-Traverser.SkipNode = estraverse.VisitorOption.Skip;
-
-module.exports = Traverser;

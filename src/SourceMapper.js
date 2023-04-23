@@ -1,16 +1,14 @@
 /*
     SourceMapper.js
     Wraps SourceMapGenerator to generate source maps
-    (c) 2013-2018 musictheory.net, LLC
+    (c) 2013-2023 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
-
-const SourceMapGenerator = require && require("source-map").SourceMapGenerator;
+import { SourceMapGenerator } from "source-map";
 
 
-module.exports = class SourceMapper {
+export class SourceMapper {
 
 constructor(files, sourceRoot)
 {

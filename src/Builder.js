@@ -5,19 +5,25 @@
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
 
-const _          = require("lodash");
-const esprima    = require("../ext/esprima");
-const Syntax     = esprima.Syntax;
+import _ from "lodash";
 
-const NSError    = require("./Errors").NSError;
-const Traverser  = require("./Traverser");
-const Utils      = require("./Utils");
-const Model      = require("./model");
+import { NSError   } from "./Errors.js";
+import { Syntax    } from "./Parser.js";
+import { Traverser } from "./Traverser.js";
+import { Utils     } from "./Utils.js";
+
+import { NSClass    } from "./model/NSClass.js";
+import { NSConst    } from "./model/NSConst.js";
+import { NSEnum     } from "./model/NSEnum.js";
+import { NSGlobal   } from "./model/NSGlobal.js";
+import { NSMethod   } from "./model/NSMethod.js";
+import { NSProperty } from "./model/NSProperty.js";
+import { NSProtocol } from "./model/NSProtocol.js";
+import { NSType     } from "./model/NSType.js";
 
 
-module.exports = class Builder {
+export class Builder {
 
 constructor(file, model, options)
 {
@@ -89,7 +95,7 @@ build()
         if (node.returnType) returnType = node.returnType.value;
         if (!returnType) returnType = "id";
 
-        return new Model.NSMethod(makeLocation(node), selectorName, selectorType, returnType, parameterTypes, variableNames, optional);
+        return new NSMethod(makeLocation(node), selectorName, selectorType, returnType, parameterTypes, variableNames, optional);
     }
 
     function isIdentifierTransformable(node)
@@ -131,7 +137,7 @@ build()
             _.map(node.inheritanceList.ids, id => id.name) :
             [ ];
 
-        let nsClass = new Model.NSClass(makeLocation(node), className, inheritedNames);
+        let nsClass = new NSClass(makeLocation(node), className, inheritedNames);
         model.addClass(nsClass);
 
         currentClass = nsClass;
@@ -147,7 +153,7 @@ build()
             _.map(node.inheritanceList.ids, id => id.name) :
             [ ];
 
-        let nsProtocol = new Model.NSProtocol(makeLocation(node), name, inheritedNames);
+        let nsProtocol = new NSProtocol(makeLocation(node), name, inheritedNames);
         model.addProtocol(nsProtocol);
 
         currentProtocol = nsProtocol;
@@ -242,7 +248,7 @@ build()
             change: changeName
         } : null;
 
-        let property = new Model.NSProperty(makeLocation(node), name, type, "_" + name, getter, setter);
+        let property = new NSProperty(makeLocation(node), name, type, "_" + name, getter, setter);
 
         if (currentClass) {
             currentClass.addProperty(property);
@@ -267,7 +273,7 @@ build()
             parameterOptional.push(param.annotation ? param.annotation.optional : null);
         });
 
-        let type = new Model.NSType(name, kind, parameterNames, parameterTypes, parameterOptional, returnType);
+        let type = new NSType(name, kind, parameterNames, parameterTypes, parameterOptional, returnType);
         model.addType(type);
 
         declaredTypes.push(name);
@@ -303,7 +309,7 @@ build()
         }
 
         let name = node.id ? node.id.name : null;
-        let e = new Model.NSEnum(makeLocation(node), name, node.unsigned, bridged);
+        let e = new NSEnum(makeLocation(node), name, node.unsigned, bridged);
 
         if (name) {
             declaredEnums.push(name);
@@ -363,7 +369,7 @@ build()
                 Utils.throwError(NSError.NonLiteralConst, "Use of non-literal value with @const", node);
             }
 
-            let nsConst = new Model.NSConst(makeLocation(node), declaration.id.name, value, raw, bridged);
+            let nsConst = new NSConst(makeLocation(node), declaration.id.name, value, raw, bridged);
             model.addConst(nsConst);
         }
     }
@@ -388,7 +394,7 @@ build()
                 annotation = node.id.annotation ? node.id.annotation.value : null;
             }
 
-            model.addGlobal(new Model.NSGlobal(node, name, annotation));
+            model.addGlobal(new NSGlobal(node, name, annotation));
             model.getSymbolTyper().enrollForSqueezing(name);
 
             declaredGlobals.push(name);

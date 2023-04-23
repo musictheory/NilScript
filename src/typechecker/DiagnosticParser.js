@@ -1,15 +1,13 @@
 /*
     DiagnosticParser.js
     Translates TypeScript compiler warnings/errors into oj-like ones
-    (c) 2013-2018 musictheory.net, LLC
+    (c) 2013-2023 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
-
-const _         = require("lodash");
-const ts        = require("typescript");
-const NSWarning = require("../Errors").NSWarning;
+import _  from "lodash";
+import ts from "typescript";
+import { NSWarning } from "../Errors.js";
 
 const sBlacklistCodes  = [ 2417 ];
 
@@ -69,7 +67,7 @@ function sGetReasonTemplate(code, nextCode, sawClass, sawProtocol, sawMethod, sa
 }
 
 
-module.exports = class DiagnosticParser {
+export class DiagnosticParser {
 
 
 constructor(model)

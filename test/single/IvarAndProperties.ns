@@ -1,7 +1,5 @@
 //@opts = { }
 
-var assert = require("assert");
-
 @class IvarAndPropertiesClass
 
 @property property1_shouldBeNull: id;

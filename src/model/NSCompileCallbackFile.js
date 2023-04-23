@@ -1,17 +1,15 @@
 /*
     NSCompileCallbackFile.js
     Represents a file passed into the compiler
-    (c) 2013-2018 musictheory.net, LLC
+    (c) 2013-2023 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
-
-const Utils     = require("../Utils");
-const NSWarning = require("../Errors").NSWarning;
+import { NSWarning  } from "../Errors.js";
+import { Utils      } from "../Utils.js";
 
 
-module.exports = class NSCompileCallbackFile {
+export class NSCompileCallbackFile {
 
 
 constructor(path, lines, warnings)

@@ -4,9 +4,8 @@
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
 
-const NSError = {
+export const NSError = {
     ParseError:                     "NilScriptParseError",
     NotYetSupported:                "NilScriptNotYetSupportedError",
 
@@ -41,7 +40,7 @@ const NSError = {
 };
 
 
-const NSWarning = {
+export const NSWarning = {
     MissingTypeAnnotation:        "NilScriptMissingTypeAnnotationWarning",
     PropertyUsingInherited:       "NilScriptPropertyUsingInheritedWarning",
     NeedsExplicitDynamic:         "NilScriptNeedsExplicitDynamicWarning",
@@ -55,10 +54,4 @@ const NSWarning = {
     UseOfEmptyArrayElement:       "NilScriptUseOfEmptyArrayElementWarning",
     UseOfSelfInNonMethod:         "NilScriptUseOfSelfInNonMethodWarning",
     UseOfThisInMethod:            "NilScriptUseOfThisInMethodWarning"
-};
-
-
-module.exports = {
-    NSError:   NSError,
-    NSWarning: NSWarning
 };

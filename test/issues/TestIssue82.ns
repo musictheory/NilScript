@@ -1,4 +1,3 @@
-var assert = require("assert");
 
 @class Issue82Class
 - (Class) shouldThrow { "use strict"; return Issue82Class; }

@@ -1,19 +1,19 @@
 /*
     DefinitionMaker.js
     Responsible for generating TypeScript definition files for NilScript model objects
-    (c) 2013-2018 musictheory.net, LLC
+    (c) 2013-2023 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
+import _ from "lodash";
 
-const _ = require("lodash");
+import { NSType        } from "../model/NSType.js";
+import { NSSymbolTyper } from "../model/NSSymbolTyper.js";
 
-const TypecheckerSymbols = require("../model/NSSymbolTyper").TypecheckerSymbols;
-const NSType             = require("../model/NSType");
+const TypecheckerSymbols = NSSymbolTyper.TypecheckerSymbols;
 
 
-module.exports = class DefinitionMaker {
+export class DefinitionMaker {
 
 
 constructor(model)

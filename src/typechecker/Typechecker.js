@@ -1,25 +1,22 @@
 /*
     Typechecker.js
     Main implementation of type checking, wraps the TypeScript compiler
-    (c) 2013-2018 musictheory.net, LLC
+    (c) 2013-2023 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
+import _    from "lodash";
+import ts   from "typescript";
 
-const fs      = require("fs");
-const cp      = require("child_process");
-const path    = require("path");
-const dirname = require("path").dirname;
-const _       = require("lodash");
-const ts      = require("typescript");
+import fs   from "node:fs";
+import path from "node:path";
 
-const DefinitionMaker  = require("./DefinitionMaker");
-const DiagnosticParser = require("./DiagnosticParser");
-const Utils            = require("../Utils")
+import { DefinitionMaker  } from "./DefinitionMaker.js";
+import { DiagnosticParser } from "./DiagnosticParser.js";
+import { Utils            } from "../Utils.js";
 
 
-module.exports = class Typechecker {
+export class Typechecker {
 
 
 constructor(options)
@@ -151,7 +148,8 @@ async check(model, defs, files)
     }
 
     if (!this._runtimeDefsSourceFile) {
-        let runtimeDefs = fs.readFileSync(dirname(__filename) + "/../../lib/runtime.d.ts") + "\n";
+        let runtimeDefsFile = Utils.getProjectPath("lib/runtime.d.ts");
+        let runtimeDefs = fs.readFileSync(runtimeDefsFile) + "\n";
         this._runtimeDefsSourceFile = ts.createSourceFile(runtimeFileName, runtimeDefs || "", tsOptions.target);
     }
 

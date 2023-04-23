@@ -1,18 +1,15 @@
 #!/usr/bin/env node 
 
 /*
-  (c) 2013-2018 musictheory.net, LLC
+  (c) 2013-2023 musictheory.net, LLC
   MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
-
-const fs        = require("fs");
-const util      = require("util");
-const getopt    = require("node-getopt");
-const _         = require("lodash");
-
-const nilscript = require("../lib/api");
+import _         from "lodash";
+import getopt    from "node-getopt";
+import fs        from "node:fs";
+import util      from "node:util";
+import nilscript from "../lib/api.js";
 
 
 let opt = getopt.create([
@@ -133,7 +130,6 @@ function readFileContents(files)
         return pair.contents;
     }).join("\n");
 }
-
 
 // Bail if no input files (specified after options)
 if (!argv || argv.length == 0) {

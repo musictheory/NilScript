@@ -4,19 +4,14 @@
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
+import _ from "lodash";
 
-const _          = require("lodash");
-const esprima    = require("../ext/esprima");
-const Syntax     = esprima.Syntax;
-
-const Traverser  = require("./Traverser");
-const Utils      = require("./Utils");
-const Model      = require("./model");
+import { Syntax    } from "./Parser.js";
+import { Traverser } from "./Traverser.js";
+import { Utils     } from "./Utils.js";
 
 
-
-module.exports = class FunctionMapper {
+export class FunctionMapper {
 
 constructor(file)
 {

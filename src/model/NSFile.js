@@ -1,17 +1,15 @@
 /*
     NSFile.js
     Represents a file passed into the compiler
-    (c) 2013-2018 musictheory.net, LLC
+    (c) 2013-2023 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
-
-const fs    = require("fs");
-const Utils = require("../Utils");
+import fs from "node:fs";
+import { Utils } from "../Utils.js";
 
 
-module.exports = class NSFile {
+export class NSFile {
 
 
 

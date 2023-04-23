@@ -1,17 +1,14 @@
 //@opts = { }
 
-"use strict";
+import _      from "lodash";
+import assert from "assert";
 
-const _      = require("lodash");
-const assert = require("assert");
-const cp     = require("child_process");
-const fs     = require("fs");
-const path   = require("path");
+import fs     from "node:fs";
+import path   from "node:path";
 
-const NSError   = require("../src/Errors.js").NSError;
-const NSWarning = require("../src/Errors.js").NSWarning;
-const nsc       = require("../lib/api");
-const nilscript = require("../lib/runtime");
+import nsc from "../lib/api.js";
+import { NSWarning } from "../src/Errors.js";
+import { Utils     } from "../src/Utils.js";
 
 
 class TestCase {
@@ -287,8 +284,12 @@ function gatherTestCases(dir)
     return testCases;
 }
 
+// Add assert and nilscript to global scope
+globalThis.assert = assert;
+eval(fs.readFileSync(nsc.getRuntimePath()).toString());
 
-_.each(gatherTestCases(path.dirname(__filename)), testCase => {
+
+_.each(gatherTestCases(Utils.getProjectPath("test")), testCase => {
     testCase.run();
 });
 

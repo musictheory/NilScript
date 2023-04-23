@@ -6,11 +6,6 @@
     Based on Modifier from harmonizr (http://github.com/jdiamond/harmonizr)
 */
 
-"use strict";
-
-const SourceMapGenerator = require && require("source-map").SourceMapGenerator;
-
-
 let sTimestampCounter = 0;
 
 function _colorString(string, from, to, color)
@@ -43,7 +38,7 @@ function _isDescendantOf(a, b)
 }
 
 
-module.exports = class Modifier {
+export class Modifier {
 
 constructor(inLines, options)
 {

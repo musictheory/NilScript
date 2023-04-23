@@ -4,27 +4,28 @@
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
 
-const _               = require("lodash");
-const fs              = require("fs");
-const path            = require("path");
+import _    from "lodash";
+import fs   from "node:fs";
+import path from "node:path";
 
-const esprima         = require("../ext/esprima");
+import { Builder        } from "./Builder.js";
+import { FunctionMapper } from "./FunctionMapper.js";
+import { Generator      } from "./Generator.js";
+import { NSError        } from "./Errors.js";
+import { Parser         } from "./Parser.js";
+import { SourceMapper   } from "./SourceMapper.js";
+import { Syntax         } from "./Parser.js";
+import { Utils          } from "./Utils.js";
 
-const Builder         = require("./Builder");
-const Generator       = require("./Generator");
-const SourceMapper    = require("./SourceMapper");
-const FunctionMapper  = require("./FunctionMapper");
-const Typechecker     = require("./typechecker/Typechecker");
-const Utils           = require("./Utils");
-const Log             = Utils.log;
+import { NSCompileCallbackFile } from "./model/NSCompileCallbackFile.js";
+import { NSFile                } from "./model/NSFile.js";
+import { NSModel               } from "./model/NSModel.js";
 
-const NSError         = require("./Errors").NSError;
-const NSModel         = require("./model").NSModel;
-const NSFile          = require("./model").NSFile;
 
-const NSCompileCallbackFile = require("./model").NSCompileCallbackFile;
+const Log = Utils.log;
+
+let Typechecker; // loaded dynamically
 
 
 const sPublicOptions = [
@@ -85,7 +86,7 @@ const sPrivateOptions = [
 let sPrivateOptionsMap = null;
 
 
-module.exports = class Compiler {
+export class Compiler {
 
 
 constructor()
@@ -229,7 +230,7 @@ async _parseFiles(files, options)
 
             try { 
                 let sourceType = options["parser-source-type"] || "script";
-                nsFile.ast = esprima.parse(nsFile.contents, { loc: true, sourceType: sourceType });
+                nsFile.ast = Parser.parse(nsFile.contents, { loc: true, sourceType: sourceType });
 
                 nsFile.needsGenerate();
                 nsFile.needsTypecheck();
@@ -550,6 +551,10 @@ async compile(options)
     this._defs    = defs;
 
     if (optionsCheckTypes && !this._checker) {
+        if (!Typechecker) {
+            Typechecker = (await import("./typechecker/Typechecker.js")).Typechecker;
+        }
+
         this._checker = new Typechecker(options);
     }
 

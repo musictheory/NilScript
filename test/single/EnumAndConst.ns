@@ -1,7 +1,5 @@
 //@opts { }
 
-var assert = require("assert");
-
 @enum {
     zero = 0,
     one,

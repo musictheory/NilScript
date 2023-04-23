@@ -1,15 +1,13 @@
 /*
     Utils.js
-    (c) 2013-2018 musictheory.net, LLC
+    (c) 2013-2023 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
-
-const _      = require("lodash");
-const path   = require("path");
-const fs     = require("fs");
-
+import _    from "lodash";
+import path from "node:path";
+import fs   from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const sBaseObjectSelectors = {
     "alloc": 1,
@@ -154,7 +152,14 @@ function mkdirAndWriteFile(file, contents)
 }
 
 
-module.exports = {
+function getProjectPath(file)
+{
+    let base = fileURLToPath(new URL("..", import.meta.url));
+    return path.resolve(base, file);
+}
+
+
+export const Utils = {
     isReservedSelectorName,
     isBaseObjectSelectorName,
     getBaseObjectSelectorNames,
@@ -162,6 +167,8 @@ module.exports = {
     throwError,
     addNodeToError,
     addFilePathToError,
+
+    getProjectPath,
 
     enableLog,
     log,

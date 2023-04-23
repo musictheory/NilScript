@@ -3,6 +3,7 @@
     "description": "compiler for the NilScript language",
     "homepage": "http://github.com/musictheory/NilScript",
     "main": "./lib/api.js",
+    "type": "module",
     "bin": {
         "nsc": "./bin/nsc"
     },

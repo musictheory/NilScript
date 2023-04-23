@@ -1,20 +1,20 @@
 /*
     NSProtocol.js
     Model class for a @protocol
-    (c) 2013-2018 musictheory.net, LLC
+    (c) 2013-2023 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
+import _ from "lodash";
 
-const _          = require("lodash");
-const NSError    = require("../Errors").NSError;
-const Utils      = require("../Utils");
-const NSProperty = require("./NSProperty");
-const NSMethod   = require("./NSMethod");
+import { NSError } from "../Errors.js";
+import { Utils   } from "../Utils.js";
+
+import { NSMethod   } from "./NSMethod.js";
+import { NSProperty } from "./NSProperty.js";
 
 
-module.exports = class NSProtocol {
+export class NSProtocol {
 
 
 constructor(location, name, protocolNames)

@@ -1,27 +1,29 @@
 /*
     NSModel.js
-    (c) 2013-2018 musictheory.net, LLC
+    (c) 2013-2023 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
 
-const _             = require("lodash");
-const NSError       = require("../Errors").NSError;
-const Utils         = require("../Utils");
-const NSClass       = require("./NSClass");
-const NSGlobal      = require("./NSGlobal");
-const NSProtocol    = require("./NSProtocol");
-const NSMethod      = require("./NSMethod");
-const NSConst       = require("./NSConst");
-const NSEnum        = require("./NSEnum");
-const NSType        = require("./NSType");
-const NSSymbolTyper = require("./NSSymbolTyper")
+import _ from "lodash";
 
-const Log           = Utils.log;
+import { NSError    } from "../Errors.js";
+import { NSWarning  } from "../Errors.js";
+import { Utils      } from "../Utils.js";
+
+import { NSClass       } from "./NSClass.js";
+import { NSConst       } from "./NSConst.js";
+import { NSEnum        } from "./NSEnum.js";
+import { NSGlobal      } from "./NSGlobal.js";
+import { NSMethod      } from "./NSMethod.js";
+import { NSProtocol    } from "./NSProtocol.js";
+import { NSSymbolTyper } from "./NSSymbolTyper.js";
+import { NSType        } from "./NSType.js";
+
+const Log = Utils.log;
 
 
-class NSModel {
+export class NSModel {
 
 
 constructor()
@@ -444,6 +446,3 @@ getSymbolTyper()
 
 
 }
-
-
-module.exports = NSModel;

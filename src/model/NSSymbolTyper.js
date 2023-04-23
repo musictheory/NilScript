@@ -2,29 +2,30 @@
     NSSymbolTyper.js
     Converts to/from names to compiler symbols
     Also converts to/from typechecker types
-    (c) 2013-2018 musictheory.net, LLC
+    (c) 2013-2023 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
+import _ from "lodash";
 
-const _           = require("lodash");
-const NSError     = require("../Errors").NSError;
-const Utils       = require("../Utils");
-const NSClass     = require("./NSClass");
-const NSProtocol  = require("./NSProtocol");
-const NSMethod    = require("./NSMethod");
-const NSEnum      = require("./NSEnum");
+import { NSError } from "../Errors.js";
+import { Utils   } from "../Utils.js";
 
-const NSClassPrefix             = "N$_c_";
-const NSProtocolPrefix          = "N$_p_";
-const NSMethodPrefix            = "N$_f_";
-const NSIvarPrefix              = "N$_i_";
-
-const NSEnumPrefix              = "N$_e_";   // Typechecker only
+import { NSClass    } from "./NSClass.js";
+import { NSEnum     } from "./NSEnum.js";
+import { NSMethod   } from "./NSMethod.js";
+import { NSProtocol } from "./NSProtocol.js";
 
 
-const TypecheckerSymbols = {
+const NSClassPrefix    = "N$_c_";
+const NSProtocolPrefix = "N$_p_";
+const NSMethodPrefix   = "N$_f_";
+const NSIvarPrefix     = "N$_i_";
+
+const NSEnumPrefix     = "N$_e_";   // Typechecker only
+
+
+export const TypecheckerSymbols = {
     Base:           "N$_BaseClass",
     StaticBase:     "N$_StaticBaseClass",
     GlobalType:     "N$_Globals"
@@ -48,7 +49,7 @@ function sToBase52(index)
 }
 
 
-function sSymbolicate(string, fromSqueezedMap)
+export function symbolicate(string, fromSqueezedMap)
 {
     return string.replace(/N\$[A-Za-z0-9_$]+/g, function(symbol) {
         if (symbol.match(/^N\$_[cCpPi]_/)) {
@@ -73,8 +74,9 @@ function sSymbolicate(string, fromSqueezedMap)
 }
 
 
-class NSSymbolTyper {
+export class NSSymbolTyper {
 
+static TypecheckerSymbols = TypecheckerSymbols;
 
 constructor(model)
 {
@@ -445,7 +447,7 @@ fromTypecheckerType(rawInType)
 
 getSymbolicatedString(inString)
 {
-    return sSymbolicate(inString, this._fromSqueezedMap);
+    return symbolicate(inString, this._fromSqueezedMap);
 }
 
 
@@ -524,7 +526,3 @@ getAllSymbolsMap()
 }
 
 
-NSSymbolTyper.TypecheckerSymbols = TypecheckerSymbols;
-NSSymbolTyper.symbolicate = sSymbolicate;
-
-module.exports = NSSymbolTyper;

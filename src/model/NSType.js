@@ -1,17 +1,15 @@
 /*
     NSType.js
     Model class for an @type or internal alias
-    (c) 2017-2018 musictheory.net, LLC
+    (c) 2017-2023 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
-
-const Utils       = require("../Utils");
-const _           = require("lodash");
+import _ from "lodash";
+import { Utils } from "../Utils.js";
 
 
-class NSType {
+export class NSType {
 
 constructor(name, kind, parameterNames, parameterTypes, parameterOptional, returnType)
 {
@@ -68,6 +66,3 @@ NSType.makeAlias = function(name, original)
 {
     return new NSType(name, NSType.KindAlias, null, null, null, original);
 }
-
-
-module.exports = NSType;

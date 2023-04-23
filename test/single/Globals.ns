@@ -1,7 +1,5 @@
 //@opts = { }
 
-var assert = require("assert");
-
 // Check basic behavior
 (function() {
 

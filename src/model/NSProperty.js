@@ -1,17 +1,16 @@
 /*
     NSProperty.js
     Simple model class for a @property on a class
-    (c) 2013-2018 musictheory.net, LLC
+    (c) 2013-2023 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
 
-const _        = require("lodash");
-const NSMethod = require("./NSMethod");
+import _ from "lodash";
+import { NSMethod } from "./NSMethod.js";
 
 
-module.exports = class NSProperty {
+export class NSProperty {
 
 
 constructor(location, name, type, ivar, getter, setter, optional)

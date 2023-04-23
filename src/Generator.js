@@ -5,19 +5,17 @@
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-"use strict";
+import _ from "lodash";
 
-const _          = require("lodash");
-const esprima    = require("../ext/esprima");
-const Syntax     = esprima.Syntax;
+import { Modifier  } from "./Modifier.js";
+import { NSError   } from "./Errors.js";
+import { NSWarning } from "./Errors.js";
+import { Syntax    } from "./Parser.js";
+import { Traverser } from "./Traverser.js";
+import { Utils     } from "./Utils.js";
 
-const Modifier   = require("./Modifier");
-const Traverser  = require("./Traverser");
-const Utils      = require("./Utils");
+import { NSModel   } from "./model/NSModel.js";
 
-const NSModel    = require("./model").NSModel;
-const NSError    = require("./Errors").NSError;
-const NSWarning  = require("./Errors").NSWarning;
 
 const NSRootVariable  = "N$$_";
 const NSSuperVariable = "N$_super";
@@ -30,7 +28,7 @@ const LanguageTypechecker = "typechecker";
 const LanguageNone        = "none";
 
 
-module.exports = class Generator {
+export class Generator {
 
 
 constructor(nsFile, model, forTypechecker, options)

@@ -1,4 +1,3 @@
-var assert = require("assert");
 
 @enum Issue21Enum {
     Issue21Enum_Foo,
