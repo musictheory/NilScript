@@ -11,7 +11,7 @@ This is the first major release under the new language name (NilScript); as such
 runtime APIs and generated code use "ns"/"NS"/"nilscript" rather than "oj"/"OJ".
 
 API Changes:
- - All API functions are expected to use Promises (#167).
+ - API functions now use Promises rather than callbacks (#167).
 
 Major Language Changes:
  - `@implementation` is now `@class` (#140).
@@ -32,6 +32,10 @@ Major Language Changes:
  - Removed 'nonnull', 'null_resettable', 'null_unspecified', and 'nullable' property attributes (#148).
  - Removed 'double', 'float', 'int', 'char', 'short', and 'long' types (#152).
  - Removed 'Bool' and 'bool' types (#152).
+
+Other Changes:
+ - The project internally uses ES Modules rather than CommonJS. bin/nsc is now
+   a shell script which executes `node bin/nsc.js`. 
 
 ---
 
