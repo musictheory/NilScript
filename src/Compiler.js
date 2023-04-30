@@ -260,9 +260,14 @@ async _parseFiles(files, options)
 async _buildFiles(files, model, options)
 {
     await Promise.all(_.map(files, async nsFile => {
-        try { 
-            let builder = new Builder(nsFile, model, options);
-            builder.build();
+        try {
+            if (!nsFile.builder) {
+                let builder = new Builder(options);
+                builder.build(nsFile);
+                nsFile.builder = builder;
+            }
+
+            nsFile.builder.addToModel(model);
 
         } catch (err) {
             nsFile.needsParse();

@@ -25,33 +25,41 @@ import { NSType     } from "./model/NSType.js";
 
 export class Builder {
 
-constructor(file, model, options)
+constructor()
 {
-    this._file    = file;
-    this._model   = model;
-    this._options = options;
+    this._didBuild  = false;
+    
+    this._classes   = [ ];
+    this._consts    = [ ];
+    this._enums     = [ ];
+    this._globals   = [ ];
+    this._protocols = [ ];
+    this._types     = [ ];
 }
 
 
-build()
+build(nsFile)
 {
-    let nsFile = this._file;
-    let model  = this._model;
-
+    if (this._didBuild) {
+        throw new Error("Cannot call Builder.build() twice");
+    }
+    
+    this._didBuild = true;
+    
     let traverser = new Traverser(nsFile.ast);
 
     let currentClass, currentMethod, currentMethodNode;
     let currentProtocol;
     let functionCount = 0;
+    
+    let usedSelectorMap = { };
 
-    let usedSelectorMap   = { };
-
-    let declaredClasses   = [ ];
-    let declaredGlobals   = [ ];
-    let declaredProtocols = [ ];
-    let declaredTypes     = [ ];
-
-    let declaredEnums     = [ ];
+    let declaredClasses   = this._classes;
+    let declaredConsts    = this._consts;
+    let declaredEnums     = this._enums;
+    let declaredGlobals   = this._globals;
+    let declaredProtocols = this._protocols;
+    let declaredTypes     = this._types;
 
     function makeLocation(node) {
         if (node && node.loc && node.loc.start) {
@@ -138,11 +146,9 @@ build()
             [ ];
 
         let nsClass = new NSClass(makeLocation(node), className, inheritedNames);
-        model.addClass(nsClass);
+        declaredClasses.push(nsClass)
 
         currentClass = nsClass;
-
-        declaredClasses.push(nsClass.name)
     }
 
     function handleNSProtocolDefinition(node)
@@ -154,11 +160,9 @@ build()
             [ ];
 
         let nsProtocol = new NSProtocol(makeLocation(node), name, inheritedNames);
-        model.addProtocol(nsProtocol);
+        declaredProtocols.push(nsProtocol);
 
         currentProtocol = nsProtocol;
-
-        declaredProtocols.push(nsProtocol.name);
     }
  
     function handleNSMethodDefinition(node)
@@ -273,10 +277,8 @@ build()
             parameterOptional.push(param.annotation ? param.annotation.optional : null);
         });
 
-        let type = new NSType(name, kind, parameterNames, parameterTypes, parameterOptional, returnType);
-        model.addType(type);
-
-        declaredTypes.push(name);
+        let nsType = new NSType(name, kind, parameterNames, parameterTypes, parameterOptional, returnType);
+        declaredTypes.push(nsType);
     }
 
     function handleNSEnumDeclaration(node, parent)
@@ -309,11 +311,9 @@ build()
         }
 
         let name = node.id ? node.id.name : null;
-        let e = new NSEnum(makeLocation(node), name, node.unsigned, bridged);
 
-        if (name) {
-            declaredEnums.push(name);
-        }
+        let nsEnum = new NSEnum(makeLocation(node), name, node.unsigned, bridged);
+        declaredEnums.push(nsEnum);
 
         if (length) {
             let firstDeclaration = node.declarations[0];
@@ -328,16 +328,13 @@ build()
                     currentValue = valueForInit(declaration.init);
                 }
 
-                e.addValue(declaration.id.name, currentValue);
-                model.registerDeclaration(declaration.id.name, declaration);
+                nsEnum.addValue(declaration.id.name, currentValue);
 
                 declaration.enumValue = currentValue;
 
                 currentValue++;
             }
         }
-
-        model.addEnum(e);
     }
 
     function handleNSConstDeclaration(node, parent)
@@ -370,7 +367,7 @@ build()
             }
 
             let nsConst = new NSConst(makeLocation(node), declaration.id.name, value, raw, bridged);
-            model.addConst(nsConst);
+            declaredConsts.push(nsConst);
         }
     }
 
@@ -394,10 +391,8 @@ build()
                 annotation = node.id.annotation ? node.id.annotation.value : null;
             }
 
-            model.addGlobal(new NSGlobal(node, name, annotation));
-            model.getSymbolTyper().enrollForSqueezing(name);
-
-            declaredGlobals.push(name);
+            let nsGlobal = new NSGlobal(node, name, annotation);
+            declaredGlobals.push(nsGlobal);
         }
 
         if (inNode.declaration) {
@@ -555,12 +550,23 @@ build()
     };
 
     nsFile.declares = {
-        classes:   declaredClasses.sort(),
-        globals:   declaredGlobals.sort(),
-        protocols: declaredProtocols.sort(),
-        types:     declaredTypes.sort(),
-        enums:     declaredEnums.sort()
+        classes:   _.filter(_.map(declaredClasses,   c => c.name).sort()),
+        globals:   _.filter(_.map(declaredGlobals,   g => g.name).sort()),
+        protocols: _.filter(_.map(declaredProtocols, p => p.name).sort()),
+        types:     _.filter(_.map(declaredTypes,     t => t.name).sort()),
+        enums:     _.filter(_.map(declaredEnums,     e => e.name).sort()),
     };
+}
+
+
+addToModel(model)
+{
+    _.each(this._classes,   nsClass    => { model.addClass(nsClass);       } );
+    _.each(this._consts,    nsConst    => { model.addConst(nsConst);       } );
+    _.each(this._enums,     nsEnum     => { model.addEnum(nsEnum);         } );
+    _.each(this._globals,   nsGlobal   => { model.addGlobal(nsGlobal);     } );
+    _.each(this._protocols, nsProtocol => { model.addProtocol(nsProtocol); } );
+    _.each(this._types,     nsType     => { model.addType(nsType);         } );
 }
 
 

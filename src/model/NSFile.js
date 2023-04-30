@@ -63,6 +63,7 @@ needsParse()
 
 needsBuild()
 {
+    this.builder      = null;
     this.usage        = null;
     this.declarations = null;
 

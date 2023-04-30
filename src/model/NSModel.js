@@ -335,12 +335,12 @@ getChangedSelectorMap(other)
 }
 
 
-registerDeclaration(name, node)
+registerDeclaration(name)
 {
     let existing = this._declarationMap[name];
 
     if (existing) {
-        Utils.throwError(NSError.DuplicateDeclaration, `Duplicate declaration of "${name}"`, node)
+        Utils.throwError(NSError.DuplicateDeclaration, `Duplicate declaration of "${name}"`)
     }
 
     this._declarationMap[name] = true;
@@ -375,6 +375,10 @@ addEnum(nsEnum)
     this.enums[name] = nsEnum;
 
     this.registerDeclaration(name);
+
+    _.each(_.keys(nsEnum.values), valueName => {
+        this.registerDeclaration(valueName);
+    });
 }
 
 
@@ -423,6 +427,8 @@ addGlobal(nsGlobal)
     let name = nsGlobal.name;
 
     this.globals[name] = nsGlobal;
+
+    this.getSymbolTyper().enrollForSqueezing(name);
     this.registerDeclaration(name);
 }
 
