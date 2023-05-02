@@ -18,6 +18,7 @@ constructor(path)
     this.path     = path;
     this.contents = null;
     this.time     = 0;
+    this.version  = 1;
 
     this.needsAll();
 }
@@ -39,6 +40,7 @@ updateWithContentsAndTime(contents, time)
         if (this.contents != contents) {
             this.contents = contents;
             this.time  = time;
+            this.version++;
 
             // A change in contents invalidates everything
             this.needsAll();

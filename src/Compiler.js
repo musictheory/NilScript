@@ -22,10 +22,9 @@ import { NSCompileCallbackFile } from "./model/NSCompileCallbackFile.js";
 import { NSFile                } from "./model/NSFile.js";
 import { NSModel               } from "./model/NSModel.js";
 
+import { Typechecker           } from "./typechecker/Typechecker.js";
 
 const Log = Utils.log;
-
-let Typechecker; // loaded dynamically
 
 
 const sPublicOptions = [
@@ -374,7 +373,7 @@ async _runTypechecker(typechecker, defs, files, model, options)
                 let generator = new Generator(nsFile, model, true, options);
                 let result = generator.generate();
 
-                nsFile.typecheckerCode  = result.lines.join("\n");
+                nsFile.typecheckerCode = result.lines.join("\n");
 
             } catch (e) {
                 nsFile.needsTypecheck();
@@ -556,10 +555,6 @@ async compile(options)
     this._defs    = defs;
 
     if (optionsCheckTypes && !this._checker) {
-        if (!Typechecker) {
-            Typechecker = (await import("./typechecker/Typechecker.js")).Typechecker;
-        }
-
         this._checker = new Typechecker(options);
     }
 

@@ -6,7 +6,6 @@
 */
 
 import _  from "lodash";
-import ts from "typescript";
 import { NSWarning } from "../Errors.js";
 
 const sBlacklistCodes  = [ 2417 ];
@@ -83,11 +82,10 @@ getWarnings(diagnostics, fileCallback)
     let duplicateMap = { };
 
     function makeHintsWithDiagnostic(diagnostic) {
-        let fileName = diagnostic && diagnostic.file && diagnostic.file.fileName;
+        let fileName = diagnostic.fileName;
         if (!fileName) return null;
 
-        let lineColumn  = diagnostic.file ? diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start) : { line: 0, column: 0 };
-        let lineNumber  = lineColumn.line + 1;
+        let lineNumber  = diagnostic.line;
 
         let code        = diagnostic.code;
         let next;
@@ -101,17 +99,17 @@ getWarnings(diagnostics, fileCallback)
             return null;
         }
 
-        let reason = ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
-        reason = reason.split("\n")[0];
+        let reason = diagnostic.reason;
 
         // messageText is a linked list of { messageText: , next: } objects
         // Traverse through it and set up quotedMap / saw*
         //
         {
-            function parseMessageText(object) {
+            function parseChain(chain) {
                 let i = 0;
+                let messageText = chain.messageText;
 
-                (object.messageText || object).replace(/'(.*?)'/g, function(a0, a1) {
+                messageText.replace(/'(.*?)'/g, function(a0, a1) {
                     if (a1.match(/^N\$_C_/)) {
                         sawStatic = true;
                         sawClass = true;
@@ -136,7 +134,7 @@ getWarnings(diagnostics, fileCallback)
 
                     a1 = symbolTyper.fromTypecheckerType(a1);
 
-                    let key = "" + (object.code || code) + ":" + i;
+                    let key = "" + (chain.code || code) + ":" + i;
 
                     if (!quotedMap[i])   quotedMap[i]   = a1;
                     if (!quotedMap[key]) quotedMap[key] = a1;
@@ -145,17 +143,11 @@ getWarnings(diagnostics, fileCallback)
 
                     return a1;
                 });
+                
+                _.each(chain.next, child => parseChain(child));
             }
-
-            let arr = [ diagnostic.messageText ];
-            if (diagnostic.messageText.next) {
-                arr.push(...diagnostic.messageText.next);
-            }
-
-            _.each(arr, messageText => {
-                parseMessageText(messageText);
-                if (!next) next = messageText ? messageText.code : 0;
-            });
+            
+            parseChain(diagnostic.chain);
         }
 
         // Now look up the friendlier reason string from the map
@@ -231,7 +223,7 @@ getWarnings(diagnostics, fileCallback)
             error.name   = NSWarning.Typechecker;
             error.file   = fileName;
             error.line   = lineNumber;
-            error.column = lineColumn.column;
+            error.column = diagnostic.column;
             error.reason = reason;
             error.code   = code;
 

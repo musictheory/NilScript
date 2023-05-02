@@ -6,14 +6,20 @@
 */
 
 import _    from "lodash";
-import ts   from "typescript";
 
 import fs   from "node:fs";
 import path from "node:path";
 
 import { DefinitionMaker  } from "./DefinitionMaker.js";
 import { DiagnosticParser } from "./DiagnosticParser.js";
+import { TypeWorker       } from "./TypeWorker.js";
 import { Utils            } from "../Utils.js";
+
+let sInstanceMap = { };
+
+let sNextCheckerID = 1;
+let sWorkerCount = 4;
+let sWorkers;
 
 
 export class Typechecker {
@@ -21,76 +27,112 @@ export class Typechecker {
 
 constructor(options)
 {
-    this._options = options;
-    this._program = null;
+    if (!sWorkers) {
+        sWorkers = [ ];
 
-    this._globalDefs = null;
-    this._globalDefsSourceFile  = null;
-    this._runtimeDefsSourceFile = null;
-
-    this._contentCache    = { };
-    this._sourceFileCache = { };
-}
-
-
-_getSourceFile(key, contents)
-{
-    let result;
-
-    if (this._contentCache[key] == contents) {
-        result = this._sourceFileCache[key];
-
-    } else {
-        result = ts.createSourceFile(key, contents);
-
-        this._sourceFileCache[key] = result;
-        this._contentCache[key] = contents;
-    }
-
-    return result;
-}
-
-
-_getSourceFileWithPath(path)
-{
-    let result = this._sourceFileCache[path];
-
-    if (result === undefined) {
-        try {
-            let contents = fs.readFileSync(path).toString();
-            result = ts.createSourceFile(path, contents);
-        } catch (e) {
-            result = null;
+        for (let i = 0; i < sWorkerCount; i++) {
+            sWorkers.push(new TypeWorker());
         }
-
-        this._sourceFileCache[path] = result;
     }
+    
+    this._checkerID = sNextCheckerID++;
+    this._options = options;
+    this._workerIndexMap = { };
+    this._nextWorkerIndex = 0;
 
-    return result || undefined;
+    options = {
+        noImplicitAny:        !!options["no-implicit-any"],
+        noImplicitReturns:    !!options["no-implicit-returns"],
+        allowUnreachableCode:  !options["no-unreachable-code"],
+        lib:                    options["typescript-lib"]?.split(",")
+    };
+        
+    for (let i = 0; i < sWorkerCount; i++) {
+        sWorkers[i].prepare(this._checkerID, options);
+    }
 }
 
 
-_getLibraryFilePaths(libString)
+_makeWorkerArgsArray(inModel, inDefs, inFiles)
 {
-    let defaultPath   = ts.getDefaultLibFilePath({ });
-    let defaultResult = [ defaultPath ];
-    if (!libString) return defaultResult;
+    let allCode  = [ ];
+    let allDefs  = [ ];
 
-    let libs = libString.split(",");
-    if (!libs.length) return defaultResult;
+    const defsSuffix = "defs.d.ts";
+    const codeSuffix = "code.ts";
 
-    let convertedOptions = ts.convertCompilerOptionsFromJson({ lib: libs });
-    if (!convertedOptions) return defaultResult;
+    _.each(inFiles, nsFile => {
+        let codeKey = path.normalize(nsFile.path) + path.sep + codeSuffix;
+        let defsKey = path.normalize(nsFile.path) + path.sep + defsSuffix;
 
-    let basePath = path.dirname(defaultPath);
+        if (!nsFile.typecheckerDefs) {
+            nsFile.typecheckerDefs = (new DefinitionMaker(inModel)).getFileDefinitions(nsFile);
+        }
+        
+        let workerIndex = this._workerIndexMap[codeKey];
+        if (workerIndex === undefined) {
+            workerIndex = this._nextWorkerIndex;
+            this._nextWorkerIndex = (workerIndex + 1) % sWorkerCount;
+            this._workerIndexMap[codeKey] = workerIndex;
+        }
+        
+        allCode.push({
+            file: codeKey,
+            contents: nsFile.typecheckerCode,
+            version: nsFile.version,
+            original: nsFile.path,
+            workerIndex
+        });
 
-    let result = [ ];
-    _.each(convertedOptions.options.lib, libName => {
-        if (!libName) return;
-        result.push(path.join(basePath, libName));
+        allDefs.push({
+            file: defsKey,
+            contents: nsFile.typecheckerDefs,
+            version: nsFile.version,
+        });
     });
 
-    return result;
+    _.each(inDefs, nsFile => {
+        let defsKey = nsFile.path + path.sep + defsSuffix;
+
+        allDefs.push({
+            file: defsKey,
+            contents: nsFile.contents,
+            version: nsFile.version,
+            original: nsFile.path
+        });
+    });
+    
+    // Make entry for globals
+    {
+        let globalDefs = (new DefinitionMaker(inModel)).getGlobalDefinitions();
+        
+        allDefs.push({
+            file: `N$-global${path.sep}${defsSuffix}`,
+            contents: globalDefs,
+            version: 0
+        });
+    }
+
+    // Make entry for runtime.d.ts
+    {
+        if (!this._runtimeDefsContents) {
+            let runtimeDefsFile = Utils.getProjectPath("lib/runtime.d.ts");
+            this._runtimeDefsContents = fs.readFileSync(runtimeDefsFile) + "\n";
+        }
+        
+        allDefs.push({
+            file: `N$-runtime${path.sep}${defsSuffix}`,
+            contents: this._runtimeDefsContents,
+            version: 0
+        });
+    }
+
+    return _.map(sWorkers, (unused, index) => {
+        return {
+            code: _.filter(allCode, code => (code.workerIndex == index)),
+            defs: allDefs
+        }
+    });
 }
 
 
@@ -98,86 +140,17 @@ async check(model, defs, files)
 {
     let options         = this._options;
     let development     = options["dev-dump-tmp"];
-    let sourceFileMap   = { };
     let originalFileMap = { };
-    let toCheck         = [ ];
 
-    let tsOptions = {
-        noImplicitAny:        !!options["no-implicit-any"],
-        noImplicitReturns:    !!options["no-implicit-returns"],
-        allowUnreachableCode:  !options["no-unreachable-code"]
-    };
-
-    if (options["typescript-lib"]) {
-        tsOptions.lib = this._getLibraryFilePaths(options["typescript-lib"])
-    }
-
-    const defsSuffix      = "defs.d.ts";
-    const codeSuffix      = "code.ts";
-
-    const runtimeFileName = "N$-runtime" + path.sep + defsSuffix;
-    const globalFileName  = "N$-global"  + path.sep + defsSuffix;
-
-    _.each(files, nsFile => {
-        let codeKey = path.normalize(nsFile.path) + path.sep + codeSuffix;
-        let defsKey = path.normalize(nsFile.path) + path.sep + defsSuffix;
-
-        if (!nsFile.typecheckerDefs) {
-            nsFile.typecheckerDefs = (new DefinitionMaker(model)).getFileDefinitions(nsFile);
-        }
-
-        sourceFileMap[codeKey] = this._getSourceFile(codeKey, nsFile.typecheckerCode);
-        sourceFileMap[defsKey] = this._getSourceFile(defsKey, nsFile.typecheckerDefs);
-        
-        originalFileMap[codeKey] = nsFile.path;
-        originalFileMap[defsKey] = null;
-    });
-
-    _.each(defs, nsFile => {
-        let defsKey = nsFile.path + path.sep + defsSuffix;
-
-        sourceFileMap[defsKey] = this._getSourceFile(defsKey, nsFile.contents);
-        originalFileMap[defsKey] = nsFile.path;
-    });
-
-    let globalDefs = (new DefinitionMaker(model)).getGlobalDefinitions();
-
-    if (!this._globalDefsSourceFile || (globalDefs != this._globalDefs)) {
-        this._globalDefs           = globalDefs;
-        this._globalDefsSourceFile = this._getSourceFile(globalFileName, this._globalDefs);
-    }
-
-    if (!this._runtimeDefsSourceFile) {
-        let runtimeDefsFile = Utils.getProjectPath("lib/runtime.d.ts");
-        let runtimeDefs = fs.readFileSync(runtimeDefsFile) + "\n";
-        this._runtimeDefsSourceFile = ts.createSourceFile(runtimeFileName, runtimeDefs || "", tsOptions.target);
-    }
-
-    sourceFileMap[runtimeFileName] = this._runtimeDefsSourceFile;
-    sourceFileMap[globalFileName]  = this._globalDefsSourceFile;
-
-    let compilerHost = {
-        getSourceFile: (n) => {
-            let sourceFile = sourceFileMap[n];
-            if (!sourceFile) sourceFile = this._getSourceFileWithPath(n);
-            return sourceFile;
-        },
-
-        fileExists:                () => { return false; },
-        readFile:                  () => { },
-        writeFile:                 () => { },
-        getDefaultLibFileName:     options => ts.getDefaultLibFilePath(options),
-        useCaseSensitiveFileNames: () => false,
-        getCanonicalFileName:      n  => n,
-        getCurrentDirectory:       () => process.cwd(),
-        getNewLine:                () => "\n"
-    };
-
-    let program = ts.createProgram(_.keys(sourceFileMap), tsOptions, compilerHost, this._program);
-
-    let diagnostics = [ ].concat(
-        ts.getPreEmitDiagnostics(program)
+    let workerArgsArray = this._makeWorkerArgsArray(model, defs, files);
+    
+    let diagnostics = _.flatten(
+        await Promise.all(_.map(workerArgsArray, (args, index) => {
+            let worker = sWorkers[index];
+            return worker.work(this._checkerID, args.code, args.defs);
+        }))
     );
+
 
     let debugTmp = "/tmp/nilscript.typechecker";
     let debugFilesToWrite = { };
@@ -225,8 +198,6 @@ async check(model, defs, files)
 
         }
     }
-
-    this._program = program;
 
     return warnings;
 }
