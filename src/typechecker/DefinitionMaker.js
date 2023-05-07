@@ -233,8 +233,8 @@ _appendEnum(lines, nsEnum)
 
     lines.push("declare enum " + this._symbolTyper.getSymbolForEnumName(nsEnum.name) + " {");
 
-    _.each(nsEnum.values, (value, name) => {
-        lines.push(name + " = " + value + ",");
+    _.each(nsEnum.members, member => {
+        lines.push(member.name + " = " + member.value + ",");
     });
 
     lines.push("}"); 

@@ -28,13 +28,7 @@ export class Builder {
 constructor()
 {
     this._didBuild  = false;
-    
-    this._classes   = [ ];
-    this._consts    = [ ];
-    this._enums     = [ ];
-    this._globals   = [ ];
-    this._protocols = [ ];
-    this._types     = [ ];
+    this._modelObjects = [ ];
 }
 
 
@@ -54,12 +48,14 @@ build(nsFile)
     
     let usedSelectorMap = { };
 
-    let declaredClasses   = this._classes;
-    let declaredConsts    = this._consts;
-    let declaredEnums     = this._enums;
-    let declaredGlobals   = this._globals;
-    let declaredProtocols = this._protocols;
-    let declaredTypes     = this._types;
+    let modelObjects = this._modelObjects;
+
+    let declaredClassNames    = [ ];
+    let declaredConstNames    = [ ];
+    let declaredEnumNames     = [ ];
+    let declaredGlobalNames   = [ ];
+    let declaredProtocolNames = [ ];
+    let declaredTypeNames     = [ ];
 
     function makeLocation(node) {
         if (node && node.loc && node.loc.start) {
@@ -146,7 +142,8 @@ build(nsFile)
             [ ];
 
         let nsClass = new NSClass(makeLocation(node), className, inheritedNames);
-        declaredClasses.push(nsClass)
+        modelObjects.push(nsClass);
+        declaredClassNames.push(nsClass.name)
 
         currentClass = nsClass;
     }
@@ -160,7 +157,8 @@ build(nsFile)
             [ ];
 
         let nsProtocol = new NSProtocol(makeLocation(node), name, inheritedNames);
-        declaredProtocols.push(nsProtocol);
+        modelObjects.push(nsProtocol);
+        declaredProtocolNames.push(nsProtocol.name);
 
         currentProtocol = nsProtocol;
     }
@@ -266,6 +264,7 @@ build(nsFile)
         let name = node.name;
         let kind = node.kind;
 
+        let location = makeLocation(node);
         let parameterNames    = [ ];
         let parameterTypes    = [ ];
         let parameterOptional = [ ];
@@ -277,8 +276,9 @@ build(nsFile)
             parameterOptional.push(param.annotation ? param.annotation.optional : null);
         });
 
-        let nsType = new NSType(name, kind, parameterNames, parameterTypes, parameterOptional, returnType);
-        declaredTypes.push(nsType);
+        let nsType = new NSType(location, name, kind, parameterNames, parameterTypes, parameterOptional, returnType);
+        modelObjects.push(nsType);
+        declaredTypeNames.push(nsType.name);
     }
 
     function handleNSEnumDeclaration(node, parent)
@@ -313,7 +313,8 @@ build(nsFile)
         let name = node.id ? node.id.name : null;
 
         let nsEnum = new NSEnum(makeLocation(node), name, node.unsigned, bridged);
-        declaredEnums.push(nsEnum);
+        modelObjects.push(nsEnum);
+        declaredEnumNames.push(nsEnum.name);
 
         if (length) {
             let firstDeclaration = node.declarations[0];
@@ -328,7 +329,7 @@ build(nsFile)
                     currentValue = valueForInit(declaration.init);
                 }
 
-                nsEnum.addValue(declaration.id.name, currentValue);
+                nsEnum.addMember(makeLocation(declaration), declaration.id.name, currentValue);
 
                 declaration.enumValue = currentValue;
 
@@ -367,7 +368,8 @@ build(nsFile)
             }
 
             let nsConst = new NSConst(makeLocation(node), declaration.id.name, value, raw, bridged);
-            declaredConsts.push(nsConst);
+            modelObjects.push(nsConst);
+            declaredConstNames.push(nsConst.name);
         }
     }
 
@@ -392,7 +394,8 @@ build(nsFile)
             }
 
             let nsGlobal = new NSGlobal(node, name, annotation);
-            declaredGlobals.push(nsGlobal);
+            modelObjects.push(nsGlobal);
+            declaredGlobalNames.push(nsGlobal.name);
         }
 
         if (inNode.declaration) {
@@ -550,23 +553,37 @@ build(nsFile)
     };
 
     nsFile.declares = {
-        classes:   _.filter(_.map(declaredClasses,   c => c.name).sort()),
-        globals:   _.filter(_.map(declaredGlobals,   g => g.name).sort()),
-        protocols: _.filter(_.map(declaredProtocols, p => p.name).sort()),
-        types:     _.filter(_.map(declaredTypes,     t => t.name).sort()),
-        enums:     _.filter(_.map(declaredEnums,     e => e.name).sort()),
+        classes:   _.filter(declaredClassNames   ).sort(),
+        globals:   _.filter(declaredGlobalNames  ).sort(),
+        protocols: _.filter(declaredProtocolNames).sort(),
+        types:     _.filter(declaredTypeNames    ).sort(),
+        enums:     _.filter(declaredEnumNames    ).sort(),
     };
 }
 
 
 addToModel(model)
 {
-    _.each(this._classes,   nsClass    => { model.addClass(nsClass);       } );
-    _.each(this._consts,    nsConst    => { model.addConst(nsConst);       } );
-    _.each(this._enums,     nsEnum     => { model.addEnum(nsEnum);         } );
-    _.each(this._globals,   nsGlobal   => { model.addGlobal(nsGlobal);     } );
-    _.each(this._protocols, nsProtocol => { model.addProtocol(nsProtocol); } );
-    _.each(this._types,     nsType     => { model.addType(nsType);         } );
+    _.each(this._modelObjects, modelObject => {
+        if (modelObject instanceof NSClass) {
+            model.addClass(modelObject);
+
+        } else if (modelObject instanceof NSConst) {
+            model.addConst(modelObject);
+
+        } else if (modelObject instanceof NSEnum) {
+            model.addEnum(modelObject);
+
+        } else if (modelObject instanceof NSGlobal) {
+            model.addGlobal(modelObject);
+        
+        } else if (modelObject instanceof NSProtocol) {
+            model.addProtocol(modelObject);
+
+        } else if (modelObject instanceof NSType) {
+            model.addType(modelObject);
+        }
+    });
 }
 
 

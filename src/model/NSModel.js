@@ -335,15 +335,15 @@ getChangedSelectorMap(other)
 }
 
 
-registerDeclaration(name)
+registerDeclaration(name, location)
 {
-    let existing = this._declarationMap[name];
+    let existingLocation = this._declarationMap[name];
 
-    if (existing) {
-        Utils.throwError(NSError.DuplicateDeclaration, `Duplicate declaration of "${name}"`)
+    if (existingLocation) {
+        Utils.throwError(NSError.DuplicateDeclaration, `Duplicate declaration of "${name}"`, location)
     }
 
-    this._declarationMap[name] = true;
+    this._declarationMap[name] = location;
 }
 
 
@@ -352,7 +352,7 @@ addConst(nsConst)
     let name = nsConst.name;
 
     this.consts[name] = nsConst;
-    this.registerDeclaration(name);
+    this.registerDeclaration(name, nsConst.location);
 }
 
 
@@ -362,7 +362,7 @@ addEnum(nsEnum)
 
     if (name) {
         if (this.enums[name]) {
-            Utils.throwError(NSError.DuplicateEnum, `Duplicate declaration of enum "${name}"`);
+            Utils.throwError(NSError.DuplicateEnum, `Duplicate declaration of enum "${name}"`, nsEnum.location);
         }
 
     } else {
@@ -373,11 +373,10 @@ addEnum(nsEnum)
     }
 
     this.enums[name] = nsEnum;
+    this.registerDeclaration(name, nsEnum.location);
 
-    this.registerDeclaration(name);
-
-    _.each(_.keys(nsEnum.values), valueName => {
-        this.registerDeclaration(valueName);
+    _.each(nsEnum.members, member => {
+        this.registerDeclaration(member.name, member.location);
     });
 }
 
@@ -388,12 +387,11 @@ addClass(nsClass)
     let existing = this.classes[name];
 
     if (existing) {
-        Utils.throwError(NSError.DuplicateClass, `Duplicate declaration of class "${name}"`);
+        Utils.throwError(NSError.DuplicateClass, `Duplicate declaration of class "${name}"`, nsClass.location);
     }
 
     this.classes[name] = nsClass;
-
-    this.registerDeclaration(name);
+    this.registerDeclaration(name, nsClass.location);
 }
 
 
@@ -402,10 +400,11 @@ addProtocol(nsProtocol)
     let name = nsProtocol.name;
 
     if (this.protocols[name]) {
-        Utils.throwError(NSError.DuplicateProtocol, `Duplicate declaration of protocol "${name}"`);
+        Utils.throwError(NSError.DuplicateProtocol, `Duplicate declaration of protocol "${name}"`, nsProtocol.location);
     }
 
     this.protocols[name] = nsProtocol;
+    this.registerDeclaration(name, nsProtocol.location);
 }
 
 
@@ -414,11 +413,11 @@ addType(nsType)
     let name = nsType.name;
 
     if (this.types[name]) {
-        Utils.throwError(NSError.DuplicateType, `Duplicate declaration of type "${name}"`);
+        Utils.throwError(NSError.DuplicateType, `Duplicate declaration of type "${name}"`, nsType.location);
     }
 
     this.types[name] = nsType;
-    this.registerDeclaration(name);
+    this.registerDeclaration(name, nsType.location);
 }
 
 
@@ -426,10 +425,10 @@ addGlobal(nsGlobal)
 {
     let name = nsGlobal.name;
 
-    this.globals[name] = nsGlobal;
-
     this.getSymbolTyper().enrollForSqueezing(name);
-    this.registerDeclaration(name);
+
+    this.globals[name] = nsGlobal;
+    this.registerDeclaration(name, nsGlobal.location);
 }
 
 

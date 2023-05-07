@@ -11,8 +11,9 @@ import { Utils } from "../Utils.js";
 
 export class NSType {
 
-constructor(name, kind, parameterNames, parameterTypes, parameterOptional, returnType)
+constructor(location, name, kind, parameterNames, parameterTypes, parameterOptional, returnType)
 {
+    this.location = location;
     this.name = name;
     this.kind = kind;
     this.parameterNames = parameterNames;
@@ -27,6 +28,7 @@ constructor(name, kind, parameterNames, parameterTypes, parameterOptional, retur
 
 loadState(state)
 {
+    this.location          = state.location;
     this.name              = state.name;
     this.kind              = state.kind;
     this.parameterNames    = state.parameterNames;
@@ -39,6 +41,7 @@ loadState(state)
 saveState()
 {
     return {
+        location:          this.location,
         name:              this.name,
         kind:              this.kind,
         parameterNames:    this.parameterNames,
@@ -58,11 +61,11 @@ NSType.KindObject    = "object";
 
 NSType.makePrimitive = function(name)
 {
-    return new NSType(name, NSType.KindPrimitive, null, null, null, null);
+    return new NSType(null, name, NSType.KindPrimitive, null, null, null, null);
 }
 
 
 NSType.makeAlias = function(name, original)
 {
-    return new NSType(name, NSType.KindAlias, null, null, null, original);
+    return new NSType(null, name, NSType.KindAlias, null, null, null, original);
 }

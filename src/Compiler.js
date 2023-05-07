@@ -387,7 +387,7 @@ async _finish(files, options)
         mapper.add(null, prependLines);
 
         _.each(files, nsFile => {
-            mapper.add(nsFile.path, nsFile.generatorLines);
+            mapper.add(nsFile.path, nsFile.generatedLines);
         });
         
         mapper.add(null, appendLines);

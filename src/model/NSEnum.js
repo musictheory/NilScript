@@ -5,6 +5,7 @@
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
+import _ from "lodash";
 
 export class NSEnum {
 
@@ -15,7 +16,7 @@ constructor(location, name, unsigned, bridged)
     this.name      =   name;
     this.unsigned  =   unsigned;
     this.anonymous =  !name;
-    this.values    =   { };
+    this.members   =   [ ];
     this.bridged   = !!bridged;
     this.local     =   true;
 }
@@ -28,7 +29,10 @@ loadState(state)
     this.unsigned  = !!state.unsigned;
     this.anonymous = !!state.anonymous;
     this.bridged   =   state.bridged;
-    this.values    =   state.values || { };
+
+    _.each(state.members, m => {
+        this.addMember(m.location, m.name, m.value);
+    });
 }
 
 
@@ -40,14 +44,14 @@ saveState()
         bridged:   this.bridged,
         unsigned:  this.unsigned,
         anonymous: this.anonymous,
-        values:    this.values
+        members:   this.members
     };
 }
 
 
-addValue(name, value)
+addMember(location, name, value)
 {
-    this.values[name] = value;
+    this.members.push({ location, name, value });
 }
 
 

@@ -15,7 +15,7 @@ true;
 true;
 
 // --------------------------------------------------------------------
-// @name Type Exists
+// @name Type Exists 1
 
 @class Foo
 @end
@@ -23,7 +23,7 @@ true;
 @type Foo = Number;   //@error NilScriptDuplicateDeclarationError
 
 // --------------------------------------------------------------------
-// @name Type Exists
+// @name Type Exists 2
 
 @type Foo = Number;
 

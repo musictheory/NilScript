@@ -53,11 +53,13 @@ constructor(nsFile, model, options)
     _.each(model.enums, nsEnum => {
         let enumNameSymbol = (nsEnum.name && !nsEnum.anonymous) ? symbolTyper.getSymbolForEnumName(nsEnum.name) : null;
 
-        _.each(nsEnum.values, (value, name) => {
+        _.each(nsEnum.members, member => {
+            let name = member.name;
+
             if (enumNameSymbol && (this._language == LanguageTypechecker)) {
                 inlines[name] = enumNameSymbol + "." + name;
             } else {
-                inlines[name] = value;
+                inlines[name] = member.value;
             }
         });
     });
