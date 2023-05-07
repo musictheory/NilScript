@@ -31,7 +31,7 @@ const LanguageNone        = "none";
 export class Generator {
 
 
-constructor(nsFile, model, forTypechecker, options)
+constructor(nsFile, model, options)
 {
     this._file     = nsFile;
     this._model    = model;
@@ -50,16 +50,11 @@ constructor(nsFile, model, forTypechecker, options)
         this._language = LanguageEcmascript5;
     }
 
-    if (forTypechecker || (this._language == LanguageTypechecker)) {
-        this._language = LanguageTypechecker;
-        forTypechecker = true;
-    }
-
     _.each(model.enums, nsEnum => {
         let enumNameSymbol = (nsEnum.name && !nsEnum.anonymous) ? symbolTyper.getSymbolForEnumName(nsEnum.name) : null;
 
         _.each(nsEnum.values, (value, name) => {
-            if (enumNameSymbol && forTypechecker) {
+            if (enumNameSymbol && (this._language == LanguageTypechecker)) {
                 inlines[name] = enumNameSymbol + "." + name;
             } else {
                 inlines[name] = value;

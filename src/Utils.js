@@ -128,23 +128,6 @@ function log()
 }
 
 
-function rmrf(dir)
-{
-    try {
-        _.each(fs.readdirSync(dir), file => {
-            file = dir + path.sep + file;
-            if (fs.statSync(file).isFile()) {
-                fs.unlinkSync(file)
-            } else {
-                rmrf(file);
-            }
-        });
-
-        fs.rmdirSync(dir);
-    } catch(e) { }
-}
-
-
 function mkdirAndWriteFile(file, contents)
 {
     fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -173,6 +156,5 @@ export const Utils = {
     enableLog,
     log,
 
-    rmrf,
     mkdirAndWriteFile
 };

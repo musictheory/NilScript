@@ -55,7 +55,7 @@ const sPublicOptions = [
     // Typechecker options
     "check-types",               // Boolean, enable type checker
     "defs",                      // String or Object, additional typechecker defs
-    "typescript-lib",            // String, specify alternate lib.d.ts file
+    "typescript-lib",            // String, specify alternate lib.d.ts file(s)
     "no-implicit-any",           // Boolean, disallow implicit any
     "no-implicit-returns",       // Boolean, disallow implicit returns
     "no-unreachable-code",       // Boolean, inverts tsc's "--allowUnreachableCode" option
@@ -70,7 +70,7 @@ const sPublicOptions = [
 
     // Private / Development
     "dev-dump-tmp",              // Boolean, dump debug info to /tmp
-    "dev-print-log",             // Boolean, print log to stdout 
+    "dev-print-log",             // Boolean, print log to stdout
     "allow-private-options",     // Boolean, allow use of sPrivateOptions (see below)
 ];
 let sPublicOptionsMap = null;
@@ -96,6 +96,7 @@ constructor()
     this._model   = null;   
     this._parents = null;
     this._checker = null;
+    this._checkerPromise = null;
 }
 
 
@@ -232,7 +233,6 @@ async _parseFiles(files, options)
                 nsFile.ast = Parser.parse(nsFile.contents, { loc: true, sourceType: sourceType });
 
                 nsFile.needsGenerate();
-                nsFile.needsTypecheck();
 
             } catch (inError) {
                 let message = inError.description || inError.toString();
@@ -332,23 +332,23 @@ async _generateJavaScript(files, model, options)
 
     await Promise.all(_.map(files, async nsFile => {
         try {
-            if (!nsFile.generatorLines) {
+            if (!nsFile.generatedLines) {
                 Log(`Generating ${nsFile.path}`);
 
-                let generator = new Generator(nsFile, model, false, options);
+                let generator = new Generator(nsFile, model, options);
                 let result    = generator.generate();
 
-                nsFile.generatorLines    = result.lines;
-                nsFile.generatorWarnings = result.warnings || [ ];
-            }
+                nsFile.generatedLines    = result.lines;
+                nsFile.generatedWarnings = result.warnings || [ ];
 
-            if (afterCompileCallback) {
-                let callbackFile = new NSCompileCallbackFile(nsFile.path, nsFile.generatorLines, nsFile.generatorWarnings);
+                if (afterCompileCallback) {
+                    let callbackFile = new NSCompileCallbackFile(nsFile.path, nsFile.generatedLines, nsFile.generatedWarnings);
 
-                await afterCompileCallback(callbackFile);
+                    await afterCompileCallback(callbackFile);
 
-                nsFile.generatorLines    = callbackFile._lines;
-                nsFile.generatorWarnings = callbackFile._warnings;
+                    nsFile.generatedLines    = callbackFile._lines;
+                    nsFile.generatedWarnings = callbackFile._warnings;
+                }
             }
 
         } catch (err) {
@@ -360,31 +360,6 @@ async _generateJavaScript(files, model, options)
     }));
 
     this._throwErrorInFiles(files);
-}
-
-
-async _runTypechecker(typechecker, defs, files, model, options)
-{
-    let err = null;
-
-    await Promise.all(_.map(files, async nsFile => {
-        if (!nsFile.typecheckerCode) {
-            try {
-                let generator = new Generator(nsFile, model, true, options);
-                let result = generator.generate();
-
-                nsFile.typecheckerCode = result.lines.join("\n");
-
-            } catch (e) {
-                nsFile.needsTypecheck();
-                nsFile.error = e;
-            }
-        }
-    }));
-
-    this._throwErrorInFiles(files);
-
-    return typechecker.check(model, defs, files);
 }
 
 
@@ -437,7 +412,7 @@ async _finish(files, options)
 
         linesArray.push(prependLines);
         _.each(files, nsFile => {
-            linesArray.push(nsFile.generatorLines);
+            linesArray.push(nsFile.generatedLines);
         });
         linesArray.push(appendLines);
 
@@ -456,6 +431,12 @@ uses(compiler)
 {
     if (!this._parents) this._parents = [ ];
     this._parents.push(compiler);
+}
+
+
+async collectTypecheckerWarnings()
+{
+    return this._checker?.collectWarnings();
 }
 
 
@@ -529,15 +510,31 @@ async compile(options)
         });
 
         this._checker = null;
+        this._checkerPromise = null;
+    }
+
+    if (optionsCheckTypes && !this._checker) {
+        this._checker = new Typechecker(options);
     }
 
     let model = new NSModel();
+
     if (this._parents) {
+        let parentCheckers = [ ];
+
         _.each(this._parents, parent => {
             if (parent._model) {
                 model.loadState(parent._model.saveState());
             }
+
+            if (parent._checker) {
+                parentCheckers.push(parent._checker);
+            }
         });
+
+        if (this._checker) {
+            this._checker.parents = parentCheckers;
+        }
 
     } else if (optionsState) {
         model.loadState(optionsState);
@@ -553,10 +550,6 @@ async compile(options)
     this._files   = files;
     this._options = options;
     this._defs    = defs;
-
-    if (optionsCheckTypes && !this._checker) {
-        this._checker = new Typechecker(options);
-    }
 
     let outputCode          = null;
     let outputSourceMap     = null;
@@ -591,10 +584,7 @@ async compile(options)
                 Log("Model has global changes, all files need generate");
             }
 
-            _.each(files, nsFile => {
-                nsFile.needsGenerate();
-                nsFile.needsTypecheck();
-            });
+            _.each(files, nsFile => nsFile.needsGenerate());
 
         } else {
             if (options["warn-unknown-selectors"]) {
@@ -616,14 +606,18 @@ async compile(options)
         // If we get here, our current model is valid.  Save it for next time
         this._model = model;
 
+        // Run typechecker
+        if (optionsCheckTypes) {
+            this._checker.check(model, defs, files);
+
+            if (Typechecker.includeInCompileResults) {
+                typecheckerWarnings = await this._checker.collectWarnings();
+            }
+        }
+
         // Run generator
         if (optionsOutputLanguage != "none") {
             await this._generateJavaScript(files, model, options);
-        }
-
-        // Run typechecker
-        if (optionsCheckTypes) {
-            typecheckerWarnings = await this._runTypechecker(this._checker, defs, files, model, options);
         }
 
         // Concatenate and map output
@@ -654,7 +648,7 @@ async compile(options)
     });
 
     let warnings = _.map(files, nsFile => [
-        nsFile.generatorWarnings,
+        nsFile.generatedWarnings,
     ]);
 
     warnings.push(typecheckerWarnings);

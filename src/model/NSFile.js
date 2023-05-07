@@ -18,7 +18,9 @@ constructor(path)
     this.path     = path;
     this.contents = null;
     this.time     = 0;
-    this.version  = 1;
+
+    this.contentsVersion  = 1;
+    this.generatedVersion = 1;
 
     this.needsAll();
 }
@@ -38,9 +40,10 @@ updateWithContentsAndTime(contents, time)
 {
     if (time > this.time) {
         if (this.contents != contents) {
+            this.contentsVersion++;
+
             this.contents = contents;
             this.time  = time;
-            this.version++;
 
             // A change in contents invalidates everything
             this.needsAll();
@@ -70,21 +73,14 @@ needsBuild()
     this.declarations = null;
 
     this.needsGenerate();
-    this.needsTypecheck();
 }
 
 
 needsGenerate()
 {
-    this.generatorLines    = null;
-    this.generatorWarnings = null;
-}
-
-
-needsTypecheck()
-{
-    this.typecheckerCode  = null;
-    this.typecheckerDefs  = null;
+    this.generatedVersion++;
+    this.generatedLines    = null;
+    this.generatedWarnings = null;
 }
 
 

@@ -728,8 +728,6 @@ foo(1, 2, 3); // Error in TS
 
 ---
 
-For performance reasons, we recommend a separate typechecker pass (in parallel with the main build), with `--check-types` enabled, `--output-language` set to `none`, and TypeScript type definitions (such as those found at [DefinitelyTyped](http://definitelytyped.org)) specified using the `--prepend` option.
-
 NilScript tries to convert TypeScript error messages back into NilScript syntax.  Please report any confusing error messages.
 
 ---
@@ -843,8 +841,7 @@ squeeze | Object  | Map of squeezed identifiers to original identifiers.  See [S
 
 The `before-compile` key specifies a callback which is called prior to the compiler's NilScript->js stage.  This allows you to preprocess files.  The callback must return a Promise. Once the promise is resolved, a file's content must be valid NilScript or JavaScript.
 
-The `after-compile` key specifies a callback which is called each time the compiler generates JavaScript code for a file.  This allows you to run the generated JavaScript through a linter (such as [ESLint](http://eslint.org)), or allows further transformations via [Babel](https://babeljs.io).
-The callback must return a Promise. When this callback is invoked, a file's content will be valid JavaScript.
+The `after-compile` key specifies a callback which is called each time the compiler generates JavaScript code for a file.  This allows you to run the generated JavaScript through a linter (such as [ESLint](http://eslint.org)), or allows further transformations via [Babel](https://babeljs.io). The callback must return a Promise. When this callback is invoked, a file's content will be valid JavaScript.
 
 
 ```javascript
@@ -906,6 +903,24 @@ Note: `options.state` and `result.state` are private objects and the format/cont
 
 NilScript 2.x also adds the `symbolicate` function as API.  This converts an internal NilScript identifier such as `N$_f_stringWithString_` to a human-readable string (`"stringWithString:"`).  See [Squeezing and Symbolication](#squeeze) below.
 
+--
+
+To improve type checker performance, NilScript 3.x adds a `tuneTypecheckerPerformance` API:
+
+`nilscript.tuneTypecheckerPerformance(includeInCompileResults, workerCount)`
+
+Key                       | Type     | Default |
+------------------------- | -------- | ------- |
+includeInCompileResults   | Boolean  | `true`  |
+workerCount               | Number   | `4`     |
+
+When `includeInCompileResults` is `true`, Each call to `Compiler#compile` will wait for its associated type checker to finish. Type checker warnings are then merged with `results.warnings`.
+
+When `includeInCompileResults` is `false`, `Compiler#compile` will start the type checker but not wait for it to finish. Warnings are accessed via the `Promise` returned from `Compiler#collectTypecheckerWarnings`. In complex projects with several `Compiler` objects, this option can result in faster compile times.
+
+`workerCount` sets the number of node `worker_threads` used to run TypeScript compilers.
+
+
 ---
 ## <a name="compiling-projects"></a>Compiling Projects
 
@@ -959,15 +974,6 @@ function doWebAppCompile(callback) {
 4. The `result.code` from this compilation pass is saved as `webapp.js`.
 5. Both `core.js` and `webapp.js` are included (in that order) in various HTML files via `<script>` elements.
 6. The NilScript runtime (`runtime.js`) is also included in various HTML files.  You can obtain its location via the `getRuntimePath` API.
-
---
-
-We've found it best to run a separate typecheck pass in parallel with the `core.js`/`webapp.js` build (via a separate `node` process).  This allows one CPU to be dedicated to typechecking while the other performs transpiling.  The typecheck pass uses the following options:
-
-* All `.js` and `.ns` files (From steps #1 and #3) are passed as `INPUT_FILES` (or `options.files`).
-* Several `.d.ts` definitions (for jQuery, underscore, etc.) are specified with the `--defs` option (or `options.defs`).
-* `--output-language` is set to `none`.
-* `--check-types` is enabled 
 
 ---
 ## <a name="squeeze"></a>Squeezing and Symbolication
