@@ -20,9 +20,10 @@ let sCodeKeys = null;
 let sFileMap = null;
 let sOptions = null;
 
+
 if (workerData == import.meta.url) {
     parentPort.on("message", async message => {
-        let { type, jobID, args } = message;
+        let { type, args } = message;
 
         if (type == "prepare") {
             prepare(...args);
@@ -36,7 +37,7 @@ if (workerData == import.meta.url) {
                 err = e;
             }
         
-            parentPort.postMessage({ jobID, result, err });
+            parentPort.postMessage({ result, err });
         }
     });
 }
@@ -191,9 +192,22 @@ constructor()
     let worker = new Worker(new URL(import.meta.url), { workerData: url });
     worker.on("error", err => { console.error(err); });
     
-    worker.on("message", message => {
-        let { jobID, result, err } = message;
-        let { resolve, reject } = this._jobMap[jobID];
+    worker.unref();
+
+    this._worker = worker;
+    this._waitingJobs = [ ];
+}
+
+
+_sendNextJob()
+{
+    let job = this._waitingJobs[0];
+    if (!job) return;
+    
+    let { resolve, reject, args } = job;
+
+    this._worker.once("message", message => {
+        let { result, err } = message;
 
         if (err) {
             reject(err)
@@ -201,35 +215,11 @@ constructor()
             resolve(result);
         }
         
-        this._jobMap[jobID] = null;
-        this._availableJobIDs.push(jobID);
-
-        this._workerReady = true;
-        this._sendNextJobIfReady();
+        this._waitingJobs.shift();
+        this._sendNextJob();
     });
 
-    this._worker = worker;
-    this._workerReady = true;
-
-    this._availableJobIDs = [ ];
-    this._nextJobID = 1;
-    this._waitingJobIDs = [ ];
-    this._jobMap = { };
-}
-
-
-_sendNextJobIfReady()
-{
-    if (!this._workerReady || !this._waitingJobIDs.length) {
-        return;
-    }
-
-    this._workerReady = false;
-
-    let jobID = this._waitingJobIDs.shift();
-    let args = this._jobMap[jobID].args;
-
-    this._worker.postMessage({ type: "work", jobID, args });
+    this._worker.postMessage({ type: "work", args });
 }
 
 
@@ -243,15 +233,13 @@ prepare(checkerID, options)
 async work(checkerID, code, defs)
 {
     return new Promise((resolve, reject) => {
-        let jobID = this._availableJobIDs.pop();
-        if (!jobID) jobID = this._nextJobID++;
-
         let args = [ checkerID, code, defs ];
 
-        this._jobMap[jobID] = { jobID, args, resolve, reject };
-        this._waitingJobIDs.push(jobID);
+        this._waitingJobs.push({ args, resolve, reject });
 
-        this._sendNextJobIfReady();
+        if (this._waitingJobs.length == 1) {
+            this._sendNextJob();
+        }
     });
 }
 
