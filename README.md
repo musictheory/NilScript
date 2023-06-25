@@ -899,11 +899,11 @@ options["after-compile"] = async file => {
 
 Note: `options.state` and `result.state` are private objects and the format/contents will change between releases.  Users are encouraged to use the new `Compiler#uses` API rather than `state`. (See below).
 
---
+---
 
 NilScript 2.x also adds the `symbolicate` function as API.  This converts an internal NilScript identifier such as `N$_f_stringWithString_` to a human-readable string (`"stringWithString:"`).  See [Squeezing and Symbolication](#squeeze) below.
 
---
+---
 
 To improve type checker performance, NilScript 3.x adds a `tuneTypecheckerPerformance` API:
 
@@ -1007,7 +1007,7 @@ The `--squeeze` compiler option adds a `squeeze` property to the compiler result
 }
 ```
 
---
+---
 
 Symbolication is the process of transforming an internal identifier (either squeezed or unsqueezed) into a human-readable name.  This is frequently used for stack traces in crash reports.
 

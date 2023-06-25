@@ -299,11 +299,9 @@ check(model, defs, files)
             if (development) {
                 return debugTmp + path.sep + filePath;
             } else {
-                if (filePath in originalFileMap) {
-                    return originalFileMap[filePath];
-                }
-
-                return filePath;
+                return this._codeMap[filePath]?.original ??
+                       this._defsMap[filePath]?.original ??
+                       filePath;
             }
         });
 

@@ -22,6 +22,13 @@ const sReasonTemplates = [
     { code: 2339, type: "+", text: "No known class method: +[{1} {0}]"    },
     { code: 2339, type: "-", text: "No known instance method: -[{1} {0}]" },
 
+    // 2551: Property '{0}' does not exist on type '{1}'. Did you mean...
+    { code: 2551, type: "+", text: "No known class method: +[{1} {0}]"    },
+    { code: 2551, type: "-", text: "No known instance method: -[{1} {0}]" },
+
+
+
+
     // 2415: Class '{0}' incorrectly extends base class '{1}'.
     // 2326: Types of property 'buildElements' are incompatible.
     { code: 2415, next: 2326, text: "'{2415:0}' and '{2415:1}' have incompatible method '{2326:0}'", retarget: [ "class" , "2415:0" ] },
