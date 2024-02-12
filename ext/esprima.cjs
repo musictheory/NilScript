@@ -385,6 +385,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    ObjectPattern: 'ObjectPattern',
 	    Program: 'Program',
 	    Property: 'Property',
+	    PropertyDefinition: 'PropertyDefinition',
 	    RestElement: 'RestElement',
 	    ReturnStatement: 'ReturnStatement',
 	    SequenceExpression: 'SequenceExpression',
@@ -431,6 +432,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	    NSBridgedDeclaration: 'NSBridgedDeclaration',
 	    NSTypeDefinition: 'NSTypeDefinition'
 	    //!ns: end changes
+	    //!nx: start changes
+	    ,
+	    NXClassDeclaration: 'NXClassDeclaration',
+	    NXPropDefinition: 'NXPropDefinition',
+	    NXFuncDefinition: 'NXFuncDefinition',
+	    NXFuncParameter: 'NXFuncParameter',
+	    NXNamedArgument: 'NXNamedArgument'
+	    //!nx: end changes
 	};
 
 
@@ -1032,7 +1041,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        return (cp === 0x24) || (cp === 0x5F) || // $ (dollar) and _ (underscore)
 	            (cp >= 0x41 && cp <= 0x5A) || // A..Z
 	            (cp >= 0x61 && cp <= 0x7A) || // a..z
-	            (cp === 0x40) || //!ns: @
+	            (cp === 0x23 || cp === 0x40) || //!ns: @ and #
 	            (cp === 0x5C) || // \ (backslash)
 	            ((cp >= 0x80) && Regex.NonAsciiIdentifierStart.test(exports.Character.fromCodePoint(cp)));
 	    },
@@ -1699,6 +1708,18 @@ return /******/ (function(modules) { // webpackBootstrap
 	    return Property;
 	}());
 	exports.Property = Property;
+	var PropertyDefinition = /** @class */ (function () {
+	    function PropertyDefinition(key, computed, value, isStatic, annotation) {
+	        this.type = syntax_1.Syntax.PropertyDefinition;
+	        this.key = key;
+	        this.computed = computed;
+	        this.value = value;
+	        this.static = isStatic;
+	        this.annotation = annotation;
+	    }
+	    return PropertyDefinition;
+	}());
+	exports.PropertyDefinition = PropertyDefinition;
 	var RegexLiteral = /** @class */ (function () {
 	    function RegexLiteral(value, raw, pattern, flags) {
 	        this.type = syntax_1.Syntax.Literal;
@@ -2125,6 +2146,61 @@ return /******/ (function(modules) { // webpackBootstrap
 	}());
 	exports.NSIdentifierWithAnnotation = NSIdentifierWithAnnotation;
 	//!ns: end changes
+	//!nx: start changes
+	var NXClassDeclaration = /** @class */ (function () {
+	    function NXClassDeclaration(id, superClass, body) {
+	        this.type = syntax_1.Syntax.NXClassDeclaration;
+	        this.id = id;
+	        this.superClass = superClass;
+	        this.body = body;
+	    }
+	    return NXClassDeclaration;
+	}());
+	exports.NXClassDeclaration = NXClassDeclaration;
+	var NXPropDefinition = /** @class */ (function () {
+	    function NXPropDefinition(key, value, isStatic, isReadonly, annotation) {
+	        this.type = syntax_1.Syntax.NXPropDefinition;
+	        this.key = key;
+	        this.value = value;
+	        this.static = isStatic;
+	        this.readonly = isReadonly;
+	        this.annotation = annotation;
+	    }
+	    return NXPropDefinition;
+	}());
+	exports.NXPropDefinition = NXPropDefinition;
+	var NXFuncParameter = /** @class */ (function () {
+	    function NXFuncParameter(label, name, annotation) {
+	        this.type = syntax_1.Syntax.NXFuncParameter;
+	        this.label = label;
+	        this.name = name;
+	        this.annotation = annotation;
+	    }
+	    return NXFuncParameter;
+	}());
+	exports.NXFuncParameter = NXFuncParameter;
+	var NXNamedArgument = /** @class */ (function () {
+	    function NXNamedArgument(name, argument) {
+	        this.type = syntax_1.Syntax.NXNamedArgument;
+	        this.name = name;
+	        this.argument = argument;
+	    }
+	    return NXNamedArgument;
+	}());
+	exports.NXNamedArgument = NXNamedArgument;
+	var NXFuncDefinition = /** @class */ (function () {
+	    function NXFuncDefinition(key, isStatic, params, annotation, body) {
+	        this.type = syntax_1.Syntax.NXFuncDefinition,
+	            this.key = key;
+	        this.static = isStatic;
+	        this.params = params;
+	        this.annotation = annotation;
+	        this.body = body;
+	    }
+	    return NXFuncDefinition;
+	}());
+	exports.NXFuncDefinition = NXFuncDefinition;
+	//!nx: end changes
 
 
 /***/ },
@@ -3174,9 +3250,19 @@ return /******/ (function(modules) { // webpackBootstrap
 	        var args = [];
 	        if (!this.match(')')) {
 	            while (true) {
+	                var node = this.createNode(); //!ns: create node here
 	                var expr = this.match('...') ? this.parseSpreadElement() :
 	                    this.isolateCoverGrammar(this.parseAssignmentExpression);
-	                args.push(expr);
+	                //!ns: start changes
+	                if (this.match(':') && (expr instanceof Node.Identifier)) {
+	                    this.expect(':');
+	                    var argument = this.isolateCoverGrammar(this.parseAssignmentExpression);
+	                    args.push(this.finalize(node, new Node.NXNamedArgument(expr, argument)));
+	                }
+	                else {
+	                    args.push(expr);
+	                }
+	                //!ns: end changes
 	                if (this.match(')')) {
 	                    break;
 	                }
@@ -4729,6 +4815,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	                        statement = this.ns_parseTypeDefinition();
 	                        break;
 	                    //!ns: End changes
+	                    //!nx: Start changes
+	                    case '#class':
+	                        statement = this.nx_parseClassDeclaration();
+	                        break;
+	                    //!nx: End changes
 	                    default:
 	                        statement = this.parseExpressionStatement();
 	                        break;
@@ -5061,9 +5152,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	        if (formalParameters.params.length > 0) {
 	            this.tolerateError(messages_1.Messages.BadGetterArity);
 	        }
+	        var annotation = this.match(':') ? this.ns_parseTypeAnnotation({ allowVoid: false }) : null; //!ns: Allow annotations
 	        var method = this.parsePropertyMethod(formalParameters);
 	        this.context.allowYield = previousAllowYield;
-	        return this.finalize(node, new Node.FunctionExpression(null, formalParameters.params, method, isGenerator, null)); //!ns: null for annotation
+	        return this.finalize(node, new Node.FunctionExpression(null, formalParameters.params, method, isGenerator, annotation)); //!ns: annotation
 	    };
 	    Parser.prototype.parseSetterMethod = function () {
 	        var node = this.createNode();
@@ -5077,9 +5169,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	        else if (formalParameters.params[0] instanceof Node.RestElement) {
 	            this.tolerateError(messages_1.Messages.BadSetterRestParameter);
 	        }
+	        var annotation = this.match(':') ? this.ns_parseTypeAnnotation({ allowVoid: true }) : null; //!ns: Allow annotations
 	        var method = this.parsePropertyMethod(formalParameters);
 	        this.context.allowYield = previousAllowYield;
-	        return this.finalize(node, new Node.FunctionExpression(null, formalParameters.params, method, isGenerator, null)); //!ns: null for annotation
+	        return this.finalize(node, new Node.FunctionExpression(null, formalParameters.params, method, isGenerator, annotation)); //!ns: annotation
 	    };
 	    Parser.prototype.parseGeneratorMethod = function () {
 	        var node = this.createNode();
@@ -6186,6 +6279,184 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	        return this.finalize(node, new Node.NSBridgedDeclaration(declaration));
 	    };
+	    //!ns: end changes
+	    //!nx: start changes
+	    Parser.prototype.nx_parseFuncParameter = function () {
+	        var node = this.createNode();
+	        var labelOrName = this.parseIdentifierName();
+	        var label;
+	        var name;
+	        if (this.match(':')) {
+	            label = null;
+	            name = labelOrName;
+	        }
+	        else {
+	            label = labelOrName;
+	            name = this.parseIdentifierName();
+	        }
+	        var annotation = this.ns_parseTypeAnnotation();
+	        return this.finalize(node, new Node.NXFuncParameter(label, name, annotation));
+	    };
+	    Parser.prototype.nx_parseClassElement = function (hasConstructor) {
+	        var _this = this;
+	        var token = this.lookahead;
+	        var node = this.createNode();
+	        var kind = '';
+	        var key = null;
+	        var value = null;
+	        var method = false;
+	        var isStatic = false;
+	        var isReadonly = false;
+	        var isPrivate = false;
+	        var result = null;
+	        var readIdentifier = function (name) {
+	            var result = false;
+	            if (id.name === name && _this.qualifiedPropertyName(_this.lookahead)) {
+	                token = _this.lookahead;
+	                result = true;
+	                key = _this.parseObjectPropertyKey();
+	                id = key;
+	            }
+	            return result;
+	        };
+	        var parseOptionalTypeAnnotation = function (options) {
+	            return _this.match(':') ? _this.ns_parseTypeAnnotation(options) : null;
+	        };
+	        var parseOptionalAssignment = function () {
+	            if (_this.match('=')) {
+	                _this.expect('=');
+	                return _this.parseAssignmentExpression();
+	            }
+	            else {
+	                return null;
+	            }
+	        };
+	        key = this.parseObjectPropertyKey();
+	        var id = key;
+	        isStatic = readIdentifier('static');
+	        isReadonly = readIdentifier('readonly');
+	        isPrivate = !isReadonly && readIdentifier('private');
+	        if ((isReadonly || isPrivate) && token.value !== 'prop') {
+	            this.throwUnexpectedToken(token);
+	        }
+	        var lookaheadPropertyKey = this.qualifiedPropertyName(this.lookahead);
+	        if (token.type === 3 /* Identifier */) {
+	            if (token.value === 'get' && lookaheadPropertyKey) {
+	                kind = 'get';
+	                key = this.parseObjectPropertyKey();
+	                this.context.allowYield = false;
+	                value = this.parseGetterMethod();
+	            }
+	            else if (token.value === 'set' && lookaheadPropertyKey) {
+	                kind = 'set';
+	                key = this.parseObjectPropertyKey();
+	                value = this.parseSetterMethod();
+	            }
+	            else if (token.value === 'prop' && lookaheadPropertyKey) {
+	                kind = 'NXProp';
+	                key = this.parseObjectPropertyKey();
+	                var annotation = this.ns_parseTypeAnnotation();
+	                var assignment = parseOptionalAssignment();
+	                this.consumeSemicolon();
+	                result = this.finalize(node, new Node.NXPropDefinition(key, assignment, isStatic, isReadonly, annotation));
+	            }
+	            else if (token.value === 'func' && lookaheadPropertyKey) {
+	                kind = 'NXFunc';
+	                key = this.parseObjectPropertyKey();
+	                var params = [];
+	                this.expect('(');
+	                while (!this.match(')')) {
+	                    params.push(this.nx_parseFuncParameter());
+	                    if (this.match(',')) {
+	                        this.expect(',');
+	                    }
+	                }
+	                this.expect(')');
+	                var annotation = parseOptionalTypeAnnotation({ allowVoid: true });
+	                var body = this.parseFunctionSourceElements();
+	                result = this.finalize(node, new Node.NXFuncDefinition(key, isStatic, params, annotation, body));
+	            }
+	        }
+	        if (!kind && key) {
+	            if (this.match('(')) {
+	                var previousInClassConstructor = this.context.inClassConstructor;
+	                this.context.inClassConstructor = token.value === 'constructor';
+	                kind = 'init';
+	                value = this.parsePropertyMethodFunction(false);
+	                this.context.inClassConstructor = previousInClassConstructor;
+	                method = true;
+	            }
+	            else {
+	                kind = 'property';
+	                var annotation = parseOptionalTypeAnnotation();
+	                var assignment = parseOptionalAssignment();
+	                this.consumeSemicolon();
+	                result = this.finalize(node, new Node.PropertyDefinition(key, false, assignment, isStatic, annotation));
+	            }
+	        }
+	        if (!kind) {
+	            this.throwUnexpectedToken(this.lookahead);
+	        }
+	        if (kind === 'init') {
+	            kind = 'method';
+	        }
+	        if (isStatic && this.isPropertyKey(key, 'prototype')) {
+	            this.throwUnexpectedToken(token, messages_1.Messages.StaticPrototype);
+	        }
+	        if (!isStatic && this.isPropertyKey(key, 'constructor')) {
+	            if (kind !== 'method' || !method || (value && value.generator)) {
+	                this.throwUnexpectedToken(token, messages_1.Messages.ConstructorSpecialMethod);
+	            }
+	            if (hasConstructor.value) {
+	                this.throwUnexpectedToken(token, messages_1.Messages.DuplicateConstructor);
+	            }
+	            else {
+	                hasConstructor.value = true;
+	            }
+	            kind = 'constructor';
+	        }
+	        if (result) {
+	            return result;
+	        }
+	        else {
+	            return this.finalize(node, new Node.MethodDefinition(key, false, value, kind, isStatic));
+	        }
+	    };
+	    Parser.prototype.nx_parseClassElementList = function () {
+	        var body = [];
+	        var hasConstructor = { value: false };
+	        this.expect('{');
+	        while (!this.match('}')) {
+	            if (this.match(';')) {
+	                this.nextToken();
+	            }
+	            else {
+	                body.push(this.nx_parseClassElement(hasConstructor));
+	            }
+	        }
+	        this.expect('}');
+	        return body;
+	    };
+	    Parser.prototype.nx_parseClassBody = function () {
+	        var node = this.createNode();
+	        var elementList = this.nx_parseClassElementList();
+	        return this.finalize(node, new Node.ClassBody(elementList));
+	    };
+	    Parser.prototype.nx_parseClassDeclaration = function () {
+	        var node = this.createNode();
+	        var previousStrict = this.context.strict;
+	        this.context.strict = true;
+	        this.expectKeyword('#class');
+	        var id = this.parseVariableIdentifier();
+	        var superClass = null;
+	        if (this.matchKeyword('extends')) {
+	            this.nextToken();
+	            superClass = this.parseVariableIdentifier();
+	        }
+	        var classBody = this.nx_parseClassBody();
+	        this.context.strict = previousStrict;
+	        return this.finalize(node, new Node.NXClassDeclaration(id, superClass, classBody));
+	    };
 	    return Parser;
 	}());
 	exports.Parser = Parser;
@@ -6650,6 +6921,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	                (id === '@global') ||
 	                (id === '@type') ||
 	                (id === '@bridged');
+	        }
+	        else if (id[0] === '#') {
+	            return (id === '#class');
 	        }
 	        //!ns: end changes
 	        switch (id.length) {

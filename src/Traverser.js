@@ -35,6 +35,19 @@ const NSVisitorKeys = {
     [ Syntax.NSGlobalDeclaration            ]: [ "declaration", "declarators" ],
     [ Syntax.NSBridgedDeclaration           ]: [ "declaration" ],
     [ Syntax.NSTypeDefinition               ]: [ ],
+    
+
+    [ Syntax.PropertyDefinition             ]: [ "key", "value", "annotation" ],
+    [ Syntax.NXClassDeclaration             ]: [ "id", "superClass", "body" ],
+    [ Syntax.NXFuncDefinition               ]: [ "key", "params", "annotation", "body" ],
+    [ Syntax.NXPropDefinition               ]: [ "key", "value", "annotation" ],
+    [ Syntax.NXFuncParameter                ]: [ "labe", "name", "annotation" ],
+    [ Syntax.NXNamedArgument                ]: [ "name", "argument" ],
+    
+    
+    [ Syntax.ChainExpression                ]: [ "name", "expression" ],
+
+
 };
 
 

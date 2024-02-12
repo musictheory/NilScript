@@ -13,13 +13,6 @@ const sBaseObjectSelectors = {
     "alloc": 1,
     "class": 1,
     "className": 1,
-    "instancesRespondToSelector:": 1,
-    "isKindOfClass:": 1,
-    "isMemberOfClass:": 1,
-    "isSubclassOfClass:": 1,
-    "performSelector:": 1,
-    "performSelector:withObject:": 1,
-    "performSelector:withObject:withObject:": 1,
     "respondsToSelector:": 1,
     "superclass": 1,
 
@@ -27,10 +20,7 @@ const sBaseObjectSelectors = {
     "iterator": 1,
 
     // Subclasses may override these
-    "copy":        2,
-    "description": 2,
     "init":        2,
-    "isEqual:":    2,
     "toString":    2,
     "toJSON":      2,
     "valueOf":     2

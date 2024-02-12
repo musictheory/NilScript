@@ -29,10 +29,6 @@
 @const the_null = null;
 @const the_true = true;
 @const the_false = false;
-@const the_YES = YES;
-@const the_NO = NO;
-@const the_NULL = NULL;
-@const the_nil = nil;
 @const the_regexp = /foo/g;
 
 
@@ -85,11 +81,6 @@ function runTests()
     assert.strictEqual(the_null, null);
     assert.strictEqual(the_true, true);
     assert.strictEqual(the_false, false);
-
-    assert.strictEqual(the_nil, nil);
-    assert.strictEqual(the_NULL, NULL);
-    assert.strictEqual(the_YES, YES);
-    assert.strictEqual(the_NO, NO);
 
     regexEqual(the_regexp, /foo/g);
 

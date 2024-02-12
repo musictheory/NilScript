@@ -2,7 +2,7 @@
 
 @class Issue69Class
 
-@property (private) foo: String;
+@property (private) foo: string;
 
 - (void) testIvar
 {

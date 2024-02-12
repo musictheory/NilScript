@@ -158,6 +158,10 @@ if (outputStateFile) {
     options["include-state"] = true;
 }
 
+if (outputSourceMapFile) {
+    options["include-map"] = true;
+}
+
 if (outputSymbolsFile) {
     options["include-symbols"] = true;
 }
@@ -178,11 +182,12 @@ nilscript.compile(options).then(result => {
     }
 
     if (outputSourceMapFile) {
+        console.log(result);
         fs.writeFileSync(outputSourceMapFile, result.map, "utf8");
     }
 
     if (outputSymbolsFile) {
-        fs.writeFileSync(outputSourceMapFile, result.symbols, "utf8");
+        fs.writeFileSync(outputSymbolsFile, result.symbols, "utf8");
     }
 
     process.exit((result.errors?.length > 0) ? 1 : 0);

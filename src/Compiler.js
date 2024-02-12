@@ -55,6 +55,7 @@ const sPublicOptions = [
     // Typechecker options
     "check-types",               // Boolean, enable type checker
     "defs",                      // String or Object, additional typechecker defs
+    "typescript-target",         // String
     "typescript-lib",            // String, specify alternate lib.d.ts file(s)
     "no-implicit-any",           // Boolean, disallow implicit any
     "no-implicit-returns",       // Boolean, disallow implicit returns

@@ -19,7 +19,7 @@
 
 @class Issue10Class
 
-- (BOOL) testUnused
+- (boolean) testUnused
 {
 	var bob;
 	var foo = [bob init];
@@ -28,7 +28,7 @@
 }
 
 
-- (BOOL) runTests
+- (boolean) runTests
 {
 	var foo    = [[Mooer alloc] init];
 	var oinker = [[Oinker alloc] init];

@@ -4,20 +4,20 @@
 // Properties
 @property a: Foo;
 @property b: id<Foo,Bar>;
-@property c: Array<String>;
+@property c: Array<string>;
 
 // Return types
 - (id<Foo>)       resultA { return nil; }
 - (id<Foo, Bar>)  resultB { return nil; }
-- (Array<String>) resultC { return nil; }
+- (Array<string>) resultC { return nil; }
 
 // Methods
 - (void) foo:(id<Foo>)a bar:(id<Foo, Bar>)b { }
-- (void) foo:(id<Foo>)a bar:(id<Foo, Bar>)b baz:(Array<String>)c { }
+- (void) foo:(id<Foo>)a bar:(id<Foo, Bar>)b baz:(Array<string>)c { }
 
 - (void) check {
     // Type annotation
-    function moo(d : Array<String>) { }
+    function moo(d : Array<string>) { }
     moo();
 }
 

@@ -1,11 +1,11 @@
 
 @protocol ExampleProtocol
 @required
-+ (BOOL) classMethodDefinedInProtocol;
++ (boolean) classMethodDefinedInProtocol;
 - (void) instanceMethodDefinedInProtocol;
 
 @optional
-+ (BOOL) classMethodDefinedInProtocolWithString:(String)s;
++ (boolean) classMethodDefinedInProtocolWithString:(string)s;
 - (void) instanceMethodDefinedInProtocolWithString:(string)s;
 
 @end
@@ -13,65 +13,65 @@
 
 @class MultilineMethodClass
 
-+ (BOOL) classMethod { return YES }
++ (boolean) classMethod { return YES }
 
 // Test JavaScript reserved keywords as method names
-- (BOOL) break      { return YES; }
-- (BOOL) case       { return YES; }
-- (BOOL) catch      { return YES; }
-- (BOOL) continue   { return YES; }
-- (BOOL) debugger   { return YES; }
-- (BOOL) default    { return YES; }
-- (BOOL) delete     { return YES; }
-- (BOOL) do         { return YES; }
-- (BOOL) else       { return YES; }
-- (BOOL) finally    { return YES; }
-- (BOOL) for        { return YES; }
-- (BOOL) function   { return YES; }
-- (BOOL) if         { return YES; }
+- (boolean) break      { return YES; }
+- (boolean) case       { return YES; }
+- (boolean) catch      { return YES; }
+- (boolean) continue   { return YES; }
+- (boolean) debugger   { return YES; }
+- (boolean) default    { return YES; }
+- (boolean) delete     { return YES; }
+- (boolean) do         { return YES; }
+- (boolean) else       { return YES; }
+- (boolean) finally    { return YES; }
+- (boolean) for        { return YES; }
+- (boolean) function   { return YES; }
+- (boolean) if         { return YES; }
 // in and instanceof do not currently work due to being special cases in binaryPrecedence()
-// - (BOOL) in         { return YES; }
-// - (BOOL) instanceof { return YES; }
-- (BOOL) new        { return YES; }
-- (BOOL) return     { return YES; }
-- (BOOL) switch     { return YES; }
-- (BOOL) this       { return YES; }
-- (BOOL) throw      { return YES; }
-- (BOOL) try        { return YES; }
-- (BOOL) typeof     { return YES; }
-- (BOOL) var        { return YES; }
-- (BOOL) void       { return YES; }
-- (BOOL) while      { return YES; }
-- (BOOL) with       { return YES; }
+// - (boolean) in         { return YES; }
+// - (boolean) instanceof { return YES; }
+- (boolean) new        { return YES; }
+- (boolean) return     { return YES; }
+- (boolean) switch     { return YES; }
+- (boolean) this       { return YES; }
+- (boolean) throw      { return YES; }
+- (boolean) try        { return YES; }
+- (boolean) typeof     { return YES; }
+- (boolean) var        { return YES; }
+- (boolean) void       { return YES; }
+- (boolean) while      { return YES; }
+- (boolean) with       { return YES; }
 
-- (Number) three { return 3; }
-- (Number) five  { return 5; }
-- (Number) add:(Number)a with:(Number)b { return a + b }
+- (number) three { return 3; }
+- (number) five  { return 5; }
+- (number) add:(number)a with:(number)b { return a + b }
 
-- (BOOL) doMultilineMethodWithArg: (Number) arg0
-                              arg: (Number) arg1
-                              arg: (Number) arg2
+- (boolean) doMultilineMethodWithArg: (number) arg0
+                              arg: (number) arg1
+                              arg: (number) arg2
 {
     return YES;
 }
 
-- (BOOL) doMultilineMethodWithArg: (Number) arg0
-                              arg: (Number) arg2
+- (boolean) doMultilineMethodWithArg: (number) arg0
+                              arg: (number) arg2
 {
     return YES;
 }
 
-- (BOOL) doSinglelineMethodWithArg:(Number)arg0 arg:(Number)arg1 arg:(Number)arg2
+- (boolean) doSinglelineMethodWithArg:(number)arg0 arg:(number)arg1 arg:(number)arg2
 {
     return YES;
 }
 
 
-- (BOOL) compactMethod  { return YES; }
-- (BOOL) compactMethod2 { return YES; }
-- (BOOL) compactMethod3 { return YES; }
+- (boolean) compactMethod  { return YES; }
+- (boolean) compactMethod2 { return YES; }
+- (boolean) compactMethod3 { return YES; }
 
-- (BOOL) checkClass:(Class)cls
+- (boolean) checkClass:(Class)cls
 {
     return YES;
 }
@@ -81,7 +81,7 @@
 
 }
 
-- (BOOL) runTests
+- (boolean) runTests
 {
     var result = true;
 

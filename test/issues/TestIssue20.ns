@@ -5,11 +5,11 @@
 // as both 'doFoo:withBar:' and 'doFoo_withBar:' map to the same
 // underlying JavaScript function 'doFoo_withBar_'
 
-- (String) doFoo:(id)foo withBar:(id)bar { return "A"; }
-- (String) doFoo_withBar:(id)bar { return "B"; }
+- (string) doFoo:(id)foo withBar:(id)bar { return "A"; }
+- (string) doFoo_withBar:(id)bar { return "B"; }
 
-- (String) _doFoo:(id)foo withBar:(id)bar { return "C"; }
-- (String) _doFoo_withBar:(id)bar { return "D"; }
+- (string) _doFoo:(id)foo withBar:(id)bar { return "C"; }
+- (string) _doFoo_withBar:(id)bar { return "D"; }
 
 @end
 

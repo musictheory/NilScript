@@ -130,9 +130,6 @@ The root base class provides the following methods:
 - (String) description 
 
 - (BOOL) respondsToSelector:(SEL)aSelector
-- (id) performSelector:(SEL)aSelector
-- (id) performSelector:(SEL)aSelector withObject:(id)object
-- (id) performSelector:(SEL)aSelector withObject:(id)object withObject:(id)object2
 
 - (BOOL) isEqual:(id)anotherObject
 ```
@@ -147,13 +144,13 @@ Methods are defined in a `@class` block and use standard Objective-C syntax:
 ```
 @class TheClass
     
-- (String) doSomethingWithString:(String)string andNumber:(Number)number
+- (string) doSomethingWithString:(string)string andNumber:(number)number
 {
     return string + "-" + number;    
 }
 
 // Returns "Foo-5"
-- (String) anotherMethod
+- (string) anotherMethod
 {
     return [self doSomethingWithString:"Foo" andNumber:5];
 }
@@ -181,7 +178,7 @@ Behind the scenes, NilScript methods are simply method definitions on a JavaScri
 Hence:
 
 ```
-- (String) doSomethingWithString:(String)string andNumber:(Number)number
+- (string) doSomethingWithString:(string)string andNumber:(number)number
 {
     return string + "-" + number;    
 }
@@ -224,7 +221,7 @@ and setter methods are automatically created.
 
 ```
 @class TheClass {
-@property theProperty: String;
+@property theProperty: string;
 }
 
 let theInstance = [[TheClass alloc] init];
@@ -242,7 +239,7 @@ property name prefixed with `_`.  No `this.` or `self.` prefix is needed.
 ```
 @class TheClass {
 
-@property theProperty: String;
+@property theProperty: string;
 
 - (void) logTheProperty
 {
@@ -282,28 +279,6 @@ NilScript supports property attributes similar to Objective-C:
 | `getter=` | Changes the name of the getter
 | `setter=` | Changes the name of the setter
 | `change=` | Calls the selector when the property changes. See <a href="#observers">Property Observers</a>.
-| `copy`, `struct`  | Creates a copy (See below)
-
-`copy` uses `nilscript.makeCopy` in the setter.
-
-`struct` uses `nilscript.makeCopy` in both the setter and the getter.  It is intended to assist the porting of C `struct`s, which are pass-by-value rather than pass-by-reference.
-
-```
-@property (copy) foo: Foo;
-@property (struct) bar: Bar;
-@property baz: Baz;
-
-// Synthesized methods:
-
-- (void) setFoo:(Foo)foo { _foo = nilscript.makeCopy(foo); }
-- (Foo) foo { return _foo; }
-
-- (void) setBar:(Bar)bar { _bar = nilscript.makeCopy(bar); }
-- (Bar) bar { return nilscript.makeCopy(_bar); }
-
-- (void) setBaz:(Bar)bar { _baz = baz; }
-- (Baz) baz { return _baz; }
-```
 
 Due to differences between JavaScript and Objective-C, the following attributes are not supported:
 
@@ -375,11 +350,11 @@ property change.  For example, our Button class has a custom corner radius prope
 
 …
 
-@property cornerRadius: Number;
+@property cornerRadius: number;
 
 …
 
-- (void) setCornerRadius:(Number)cornerRadius
+- (void) setCornerRadius:(number)cornerRadius
 {
     if (_cornerRadius != cornerRadius) {
         _cornerRadius = cornerRadius;
@@ -394,9 +369,9 @@ Often, every property in these classes needs a custom setter, resulting in a lot
 Property observers simplify this:
 
 ```
-@property (change=setNeedsDisplay) backgroundColor: String;
-@property (change=setNeedsDisplay) cornerRadius: Number;
-@property (change=setNeedsDisplay) title: String;
+@property (change=setNeedsDisplay) backgroundColor: string;
+@property (change=setNeedsDisplay) cornerRadius: number;
+@property (change=setNeedsDisplay) title: string;
 ```
 
 This example will call `[self setNeedsDisplay]` after the backgroundColor, colorRadius, or title changes.
@@ -418,7 +393,7 @@ Counter.prototype.incrementAfterDelay = function(delay) {
 NilScript handles the binding for you.  No additional code is needed to access ivars or `self`:
 
 ```
-- (void) incrementAfterDelay:(Number)delay
+- (void) incrementAfterDelay:(number)delay
 {
     setTimeout(function() {
         _count++;
@@ -534,9 +509,9 @@ Hence, declaring protocol conformance is optional. In this example, `TheClass` c
 ```
 @protocol ControllerDelegate
 @required
-- (void) controller:(Controller)controller didPerformAction:(String)action;
+- (void) controller:(Controller)controller didPerformAction:(string)action;
 @optional
-- (BOOL) controller:(Controller)controller shouldPerformAction:(String)action;
+- (boolean) controller:(Controller)controller shouldPerformAction:(string)action;
 @end
 
 @class TheClass
@@ -604,9 +579,6 @@ If `receiver` is non-falsy, invokes `aSelector` on it.
 **-[BaseObject className]**  
 Returns a human-readable string of a class or selector.  Note that this is for debug purposes only!  When `--squeeze` is passed into the compiler, the resulting class/selector names will be obfuscated/shortened.
 
-**nilscript.makeCopy(object)**  
-If `object` is an NilScript instance, invokes `-copy`.  If `object` is a JavaScript array, returns a shallow clone (via `slice(0)`).  If `object` is a JavaScript primitive, returns `object`.  Else, returns a clone of each key/value pair (via `Object.keys`) on `object`.
-
 ---
 ## <a name="hinting"></a>Hinting
 
@@ -621,7 +593,7 @@ When the `--warn-unknown-ivars` option is specified, NilScript checks all JavaSc
 ```
 @class TheClass
     
-@property foo: String;
+@property foo: string;
     
 - (void) checkFoo {
     if (_foi) {  // Warns, likely typo
@@ -668,7 +640,7 @@ NilScript uses an Objective-C inspired syntax for types, which is automatically 
 Most NilScript method declarations will have type information and should behave exactly as their Objective-C counterparts.  However, JavaScript functions need to be annotated via type annotations, similar to ActionScript and TypeScript:
 
 ```
-function getStringWithNumber(a: String, b: Number): String {
+function getStringWithNumber(a: string, b: number): string {
     return a + "-" + b;
 }
 ```
@@ -679,7 +651,7 @@ TypeScript infers variables automatically; however, sometimes an explicit annota
 function getNumber() { … }
 
 function doSometingWithNumber(): void {
-    let num: Number = getNumber(); // Annotation needed since getNumber() is not annotated
+    let num: number = getNumber(); // Annotation needed since getNumber() is not annotated
     …
 }
 ```    
@@ -687,10 +659,10 @@ function doSometingWithNumber(): void {
 NilScript also provides `@type` to declare basic types.  `@type` does not affect generated code and only provides hints to the typechecker:
 
 ```
-@type MyNumericType = Number;
-@type MyRect = { x: Number, y: Number, width: Number, height: Number };
-@type MyDoneCallback = function(completed: BOOL): void;
-@type MyTypedTuple = [ Number, Number, String ];
+@type MyNumericType = number;
+@type MyRect = { x: number, y: number, width: number, height: number };
+@type MyDoneCallback = function(completed: boolean): void;
+@type MyTypedTuple = [ number, number, string ];
 
 function makeSquare(length: Number): MyRect { … }
 function loadWithCallback(callback: MyDoneCallback): void { … }
@@ -744,13 +716,9 @@ In order to support compiler optimizations, the following method names are reser
     alloc
     class
     className
-    instancesRespondToSelector:
     isKindOfClass:
     isMemberOfClass:
     isSubclassOfClass:
-    performSelector:
-    performSelector:withObject:
-    performSelector:withObject:withObject:
     respondsToSelector:
     superclass
 

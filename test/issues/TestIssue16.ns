@@ -1,7 +1,7 @@
 
 
 @class WrappedNumber
-@property number: Number;
+@property number: number;
 @end
 
 
@@ -12,21 +12,17 @@
 
 - (id) init
 {
-    if ((self = [super init])) {
-        _wrappedTen = [[WrappedNumber alloc] init];
-        [_wrappedTen setNumber:10];
-    }
-
-    return self;
+    _wrappedTen = [[WrappedNumber alloc] init];
+    [_wrappedTen setNumber:10];
 }
 
-- (Number) twentyFive
+- (number) twentyFive
 {
     return 25.0;
 }
 
 
-- (BOOL) runTests
+- (boolean) runTests
 {
     var ten = [[self wrappedTen] number];
     assert.equal(ten, 10);
@@ -40,7 +36,7 @@
     var fifty = 2  * [self twentyFive];
     assert.equal(fifty, 50);
 
-    return YES;
+    return true;
 }
 
 @end

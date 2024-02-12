@@ -75,6 +75,7 @@ constructor(options)
         noImplicitAny:        !!options["no-implicit-any"],
         noImplicitReturns:    !!options["no-implicit-returns"],
         allowUnreachableCode:  !options["no-unreachable-code"],
+        target:                 options["typescript-target"],
         lib:                    options["typescript-lib"]?.split(",")
     };
         
@@ -233,8 +234,13 @@ _updateCode(inModel, inFiles)
         if (!previous) previous = { file: codeKey };
         
         let entry = this._updateEntry(previous, nsFile.generatedVersion, () => {
-            let generator = new Generator(nsFile, inModel, this._generatorOptions);
-            return "export {};" + generator.generate().lines.join("\n");
+            try {
+                let generator = new Generator(nsFile, inModel, this._generatorOptions);
+                return "export {};" + generator.generate().lines.join("\n");
+            } catch (err) {
+                nsFile.error = err;            
+                throw err;
+            }
         });
 
         let workerIndex = previous.workerIndex;
@@ -297,6 +303,7 @@ check(model, defs, files)
 
         let warnings = (new DiagnosticParser(model)).getWarnings(diagnostics, filePath => {
             if (development) {
+                let debugTmp = "/tmp/nilscript.typechecker";
                 return debugTmp + path.sep + filePath;
             } else {
                 return this._codeMap[filePath]?.original ??

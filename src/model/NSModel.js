@@ -43,18 +43,18 @@ constructor()
     this.booleanMap  = { };
     this.selectorMap = { };
 
-    _.each([ "Array", "Boolean", "Number", "Object", "String", "Symbol" ], name => {
+    _.each([ "Array", "boolean", "number", "Object", "string", "symbol" ], name => {
         this.types[name] = new NSType.makePrimitive(name);
         this._declarationMap[name] = true;
     });
 
-    _.each([ "boolean", "BOOL" ], name => {
-        this.types[name] = new NSType.makeAlias(name, "Boolean");
+    _.each([ "Boolean" ], name => {
+        this.types[name] = new NSType.makeAlias(name, "boolean");
         this._declarationMap[name] = true;
     });
 
-    _.each([ "number" ], name => {
-        this.types[name] = new NSType.makeAlias(name, "Number");
+    _.each([ "Number" ], name => {
+        this.types[name] = new NSType.makeAlias(name, "number");
         this._declarationMap[name] = true;
     });
 }
@@ -140,13 +140,19 @@ saveBridged()
             return null;
         }
     }));
-
+    
     let enums  = _.compact(_.map(this.enums, nsEnum => {
         if (nsEnum.bridged) {
+            let members = _.compact(_.map(Array.from(nsEnum.members.values()), member => {
+                return {
+                    name: member.name,
+                    value: member.value
+                };
+            }));
+
             return {
-                name: nsEnum.anonymous ? null : nsEnum.name,
-                unsigned: nsEnum.unsigned,
-                values: _.clone(nsEnum.values)
+                name: nsEnum.name,
+                members: members
             };
 
         } else {
@@ -235,9 +241,9 @@ prepare()
             } else if (currentType.kind == NSType.KindPrimitive) {
                 let name = currentType.name;
 
-                if (name == "Boolean") {
+                if (name == "boolean") {
                     booleanMap[originalName] = true; 
-                } else if (name == "Number") {
+                } else if (name == "number") {
                     numericMap[originalName] = true; 
                 }
 
@@ -360,24 +366,12 @@ addEnum(nsEnum)
 {
     let name = nsEnum.name;
 
-    if (name) {
-        if (this.enums[name]) {
-            Utils.throwError(NSError.DuplicateEnum, `Duplicate declaration of enum "${name}"`, nsEnum.location);
-        }
-
-    } else {
-        name = "N$_anonymousEnum" + _.size(this.enums);
-
-        nsEnum.name = name;
-        nsEnum.anonymous = true;
+    if (this.enums[name]) {
+        Utils.throwError(NSError.DuplicateEnum, `Duplicate declaration of enum "${name}"`, nsEnum.location);
     }
 
     this.enums[name] = nsEnum;
     this.registerDeclaration(name, nsEnum.location);
-
-    _.each(nsEnum.members, member => {
-        this.registerDeclaration(member.name, member.location);
-    });
 }
 
 

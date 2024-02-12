@@ -3,11 +3,11 @@
 // Check basic behavior
 (function() {
 
-@global function globalFunction(unused:String):Number {
+@global function globalFunction(unused:string):number {
     return 1;
 }
 
-@global globalA:String = "a", globalB:String = "b", globalC:String= "c";
+@global globalA:string = "a", globalB:string = "b", globalC:string= "c";
 
 }());
 

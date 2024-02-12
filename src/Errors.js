@@ -27,6 +27,9 @@ export const NSError = {
     NonLiteralConst:                "NilScriptNonLiteralConstError",
     NonLiteralEnum:                 "NilScriptNonLiteralEnumError",
     NonIntegerEnum:                 "NilScriptNonIntegerEnumError",
+
+    UnnamedEnum:                    "NilScriptUnnamedEnumError",
+
     SelfIsReserved:                 "NilScriptSelfIsReservedError",
     ReservedIdentifier:             "NilScriptReservedIdentifierError",
     ReservedMethodName:             "NilScriptReservedMethodNameError",
@@ -48,10 +51,10 @@ export const NSWarning = {
     Typechecker:                  "NilScriptTypecheckerWarning",
     UnassignedPrivateProperty:    "NilScriptUnassignedPrivatePropertyWarning",
     UndeclaredInstanceVariable:   "NilScriptUndeclaredInstanceVariableWarning",
+    UnknownEnumMember:            "NilScriptUnknownEnumMember",
     UnknownSelector:              "NilScriptUnknownSelectorWarning",
     UnusedPrivateProperty:        "NilScriptUnusedPrivatePropertyWarning",
-    UseOfDebugger:                "NilScriptUseOfDebuggerWarning",
-    UseOfEmptyArrayElement:       "NilScriptUseOfEmptyArrayElementWarning",
     UseOfSelfInNonMethod:         "NilScriptUseOfSelfInNonMethodWarning",
-    UseOfThisInMethod:            "NilScriptUseOfThisInMethodWarning"
+    UseOfThisInMethod:            "NilScriptUseOfThisInMethodWarning",
+    UseOfReturnInInit:            "NilScriptUseOfReturnInInitWarning"
 };

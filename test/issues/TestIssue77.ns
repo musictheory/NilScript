@@ -41,7 +41,7 @@
 }
 
 
-+ (Number) return42
++ (number) return42
 {
     return 42;
 }

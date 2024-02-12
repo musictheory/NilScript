@@ -2,7 +2,7 @@
 // @name Basic Type
 
 @type Rect = Array;
-@type MyNumber = Number;
+@type MyNumber = number;
 
 true;
 
@@ -20,12 +20,12 @@ true;
 @class Foo
 @end
 
-@type Foo = Number;   //@error NilScriptDuplicateDeclarationError
+@type Foo = number;   //@error NilScriptDuplicateDeclarationError
 
 // --------------------------------------------------------------------
 // @name Type Exists 2
 
-@type Foo = Number;
+@type Foo = number;
 
 @class Foo  //@error NilScriptDuplicateDeclarationError
 @end

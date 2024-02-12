@@ -87,7 +87,7 @@ _appendClass(lines, nsClass, classSymbol, staticSymbol)
         let name = method.selectorType + method.selectorName;
         if (declaredMethodNames[name]) return;
 
-        if (method.returnType == "instancetype") {
+        if (method.returnType == "instancetype" || method.returnType == "init") {
             method = method.copy();
             method.returnType = nsClass.name;
         }
@@ -113,7 +113,7 @@ _appendClass(lines, nsClass, classSymbol, staticSymbol)
 
         while (superclass) {
             _.each(superclass.getAllMethods(), method => {
-                if (method.returnType == "instancetype") {
+                if (method.returnType == "instancetype" || method.returnType == "init") {
                     addMethod(method);
                 }
             });
@@ -228,14 +228,11 @@ _appendType(lines, nsType)
 
 _appendEnum(lines, nsEnum)
 {
-    // Anonymous enums are inlined
-    if (!nsEnum.name || nsEnum.anonymous) return;
-
     lines.push("declare enum " + this._symbolTyper.getSymbolForEnumName(nsEnum.name) + " {");
 
-    _.each(nsEnum.members, member => {
+    for (let member of nsEnum.members.values()) {
         lines.push(member.name + " = " + member.value + ",");
-    });
+    }
 
     lines.push("}"); 
 }

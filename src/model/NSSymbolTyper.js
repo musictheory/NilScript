@@ -196,9 +196,6 @@ _setupTypecheckerMaps()
 
     for (let i = 0, length = enums.length; i < length; i++) {
         let enumName = enums[i].name;
-        if (!enumName || enums[i].anonymous) {
-            continue;
-        }
 
         let enumSymbol = this.getSymbolForEnumName(enumName);
 
@@ -214,9 +211,6 @@ _setupTypecheckerMaps()
         "any[]":            "Array",
         "{}":               "Object",
         "undefined[]":      "Array",
-        "boolean":          "BOOL",
-        "number":           "Number",
-        "string":           "String"
     });
 
     fromMap[TypecheckerSymbols.Base] = "NilScript.BaseObject";

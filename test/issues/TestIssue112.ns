@@ -1,11 +1,11 @@
 @class TestIssue112
 
-+ (Number) runTest
++ (number) runTest
 {
     return [[self class] returnFive];
 }
 
-+ (Number) returnFive
++ (number) returnFive
 {
     return 5;
 }

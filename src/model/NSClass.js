@@ -40,10 +40,10 @@ constructor(location, name, inheritedNames)
     this._myIvars    = null;  // Only my ivar names
     this._knownIvars = null;  // My ivars + inherited ivar names
 
-    this._propertyMap       = { };
-    this._classMethodMap    = { };
-    this._instanceMethodMap = { };
-    this._usedIvarMap       = { };
+    this._propertyMap       = Object.create(null);
+    this._classMethodMap    = Object.create(null);
+    this._instanceMethodMap = Object.create(null);
+    this._usedIvarMap       = Object.create(null);
 }
 
 
@@ -253,7 +253,9 @@ addMethod(method)
             method.returnType = "instancetype";
         }
     } else {
-        if (selectorName.match(/_*init($|[^a-z])/) || selectorName.match(/_*self($|[^a-z])/)) {
+        if (selectorName.match(/_*init($|[^a-z])/)) {
+            method.returnType = "init";
+        } else if (selectorName.match(/_*self($|[^a-z])/)) {
             method.returnType = "instancetype";
         }
     }

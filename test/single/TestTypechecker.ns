@@ -6,26 +6,26 @@
 @end
 
 @class Foo
-- (BOOL) isFoo { return true; }
+- (boolean) isFoo { return true; }
 @end
 
 @class Foo2 : Foo
-- (String) aString { return "foo"; }
+- (string) aString { return "foo"; }
 @end
 
 @class Bar
-- (id) initWithString:(String)string { return [self init]; }
-- (BOOL) isBar { return true; }
+- (id) initWithString:(string)string { return [self init]; }
+- (boolean) isBar { return true; }
 @end
 
 
 @class TestReturnTypes
 
-// TypeScript reports constants as their own type, so use functions here to get Number/String
+// TypeScript reports constants as their own type, so use functions here to get number/string
 //
-- (BOOL) returnsNumberInsteadOfBOOL { return Math.round(3.14);            }  //@typecheck 2322,Number,BOOL
-- (Foo) returnsStringInsteadOfFoo   { return [ "b", "a", "r" ].join(","); }  //@typecheck 2322,String,Foo
-- (Foo) returnsNumberInsteadOfFoo   { return Math.round(3.14);            }  //@typecheck 2322,Number,Foo
+- (boolean) returnsNumberInsteadOfBoolean { return Math.round(3.14);            }  //@typecheck 2322,number,boolean
+- (Foo) returnsStringInsteadOfFoo   { return [ "b", "a", "r" ].join(","); }  //@typecheck 2322,string,Foo
+- (Foo) returnsNumberInsteadOfFoo   { return Math.round(3.14);            }  //@typecheck 2322,number,Foo
 
 - (Singleton) returnsSingleton  { return null;                          }
 - (Singleton) returnsSingleton2 { return [[Singleton alloc] init];      }
@@ -45,7 +45,7 @@
 
 
 
-- (Map<Number, Number>) returnsNumberMap {
+- (Map<number, number>) returnsNumberMap {
     var map = new Map();
 
     map.set(4, 4);
@@ -53,7 +53,7 @@
     return map;
 }
 
-- (Promise<String>) returnsStringPromise {
+- (Promise<string>) returnsStringPromise {
     return new Promise(function(resolve, reject) {
         resolve("foo");
     });
@@ -73,7 +73,7 @@
 
 - (void) doSomethingWithBar:(Bar)bar { }
 - (void) doSomethingWithClass:(Class)cls { }
-- (void) doSomethingWithString:(String)aString { }
+- (void) doSomethingWithString:(string)aString { }
 
 - (void) test
 {
@@ -104,11 +104,11 @@
 
 
 (function() {
-@global function TakesNumber(x : Number) : void { }
+@global function TakesNumber(x : number) : void { }
 @global function TakesId(x : id) : void { }
-@global GlobalString : String = "";
+@global GlobalString : string = "";
 }());
 
-TakesNumber(GlobalString); //@typecheck 2345,String,Number
+TakesNumber(GlobalString); //@typecheck 2345,string,number
 
 true;

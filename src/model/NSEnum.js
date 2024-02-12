@@ -10,13 +10,11 @@ import _ from "lodash";
 export class NSEnum {
 
 
-constructor(location, name, unsigned, bridged)
+constructor(location, name, bridged)
 {
     this.location  =   location;
     this.name      =   name;
-    this.unsigned  =   unsigned;
-    this.anonymous =  !name;
-    this.members   =   [ ];
+    this.members   =   new Map();
     this.bridged   = !!bridged;
     this.local     =   true;
 }
@@ -26,8 +24,6 @@ loadState(state)
 {
     this.location  =   state.location;
     this.name      =   state.name;
-    this.unsigned  = !!state.unsigned;
-    this.anonymous = !!state.anonymous;
     this.bridged   =   state.bridged;
 
     _.each(state.members, m => {
@@ -42,16 +38,14 @@ saveState()
         location:  this.location,
         name:      this.name,
         bridged:   this.bridged,
-        unsigned:  this.unsigned,
-        anonymous: this.anonymous,
-        members:   this.members
+        members:   Array.from(this.members.values())
     };
 }
 
 
 addMember(location, name, value)
 {
-    this.members.push({ location, name, value });
+    this.members.set(name, { location, name, value });
 }
 
 

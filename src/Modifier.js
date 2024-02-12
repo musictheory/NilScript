@@ -46,7 +46,7 @@ constructor(inLines, options)
 
     this._current = { };
     this._replacements = [ ];
-    this._debug = (options && options.debug);
+    this._debug = options && options.debug;
     this._options = options || { };
 }
 

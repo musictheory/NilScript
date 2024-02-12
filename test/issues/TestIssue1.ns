@@ -1,9 +1,9 @@
 
 @class Issue1Class
 
-@property (private) index: Number;
+@property (private) index: number;
 
-- (BOOL) runTests
+- (boolean) runTests
 {
     var arr = [ ];
 

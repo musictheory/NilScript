@@ -50,20 +50,6 @@ constructor(nsFile, model, options)
         this._language = LanguageEcmascript5;
     }
 
-    _.each(model.enums, nsEnum => {
-        let enumNameSymbol = (nsEnum.name && !nsEnum.anonymous) ? symbolTyper.getSymbolForEnumName(nsEnum.name) : null;
-
-        _.each(nsEnum.members, member => {
-            let name = member.name;
-
-            if (enumNameSymbol && (this._language == LanguageTypechecker)) {
-                inlines[name] = enumNameSymbol + "." + name;
-            } else {
-                inlines[name] = member.value;
-            }
-        });
-    });
-
     _.each(model.consts, nsConst => {
         let name = nsConst.name;
 
@@ -96,6 +82,7 @@ generate()
     let options  = this._options;
     let inlines  = this._inlines;
 
+    let currentNXClass;
     let currentClass;
     let currentMethodNode;
 
@@ -277,36 +264,6 @@ generate()
             modifier.from(lastSelector).to(node).replace(end);
         }
 
-        function getNullishSuffix() {
-            let parentType = parent.type;
-
-            let result = (
-                language === LanguageTypechecker ||
-
-                parentType == Syntax.NSMessageExpression ||
-                parentType == Syntax.NSMessageReceiver   ||
-                parentType == Syntax.ExpressionStatement ||
-                parentType == Syntax.LogicalExpression   ||
-                parentType == Syntax.IfStatement         ||
-                parentType == Syntax.DoWhileStatement    ||
-                parentType == Syntax.WhileStatement      ||
-
-                // ~undefined === ~null, !undefined === !null
-                (parentType == Syntax.UnaryExpression && (
-                    parent.operator == "!" ||
-                    parent.operator == "~" ||
-                    parent.operator == "void"
-                )) ||
-
-                // Access on either undefined and null will throw "Cannot read properties"
-                (parentType == Syntax.MemberExpression && parent.object == node) ||
-
-                (parentType == Syntax.ConditionalExpression && parent.test == node)
-            ) ? "" : "??null";
-
-            return result;
-        }
-
         // Optimization cases
         if (receiver.type == Syntax.Identifier && model.classes[receiver.name]) {
             let classVariable = symbolTyper.getSymbolForClassName(receiver.name);
@@ -327,10 +284,14 @@ generate()
             }
 
         } else if (receiver.type == Syntax.Identifier && currentMethodNode) {
-            let usesSelf   = (currentMethodNode?.ns_needs_var_self) || (language === LanguageTypechecker);
+            let usesSelf   = (language === LanguageTypechecker);
             let selfOrThis = usesSelf ? "self" : "this";
 
             if (receiver.name == "super") {
+                if (!currentClass.superclass) {
+                    warnings.push(Utils.makeError(NSWarning.UndeclaredInstanceVariable, `NO SUPERCLASS`, node));
+                }
+            
                 if (language === LanguageEcmascript5) {
                     doCommonReplacement(`super.${methodName}(`, ")");
 
@@ -352,15 +313,13 @@ generate()
                 checkIvarAccess(receiver);
 
                 let ivar = generateThisIvar(receiver.name, usesSelf);
-                let nullish = getNullishSuffix();
 
-                doCommonReplacement(`((${ivar}?.${methodName}(`, `))${nullish})`);
+                doCommonReplacement(`(${ivar}?.${methodName}(`, `))`);
 
                 usedIvarMap[receiver.name] = true;
 
             } else {
-                let nullish = getNullishSuffix();
-                doCommonReplacement(`((${receiver.name}?.${methodName}(`, `))${nullish})`);
+                doCommonReplacement(`(${receiver.name}?.${methodName}(`, `))`);
             }
 
         } else {
@@ -372,11 +331,9 @@ generate()
                 modifier.from(lastSelector).to(node).replace(`))`);
 
             } else {
-                let nullish = getNullishSuffix();
-
-                modifier.from(node).to(receiver).replace("(((");
+                modifier.from(node).to(receiver).replace("((");
                 modifier.from(receiver).to(firstSelector).replace(`)?.${methodName}(`);
-                modifier.from(lastSelector).to(node).replace(`))${nullish})`);
+                modifier.from(lastSelector).to(node).replace(`))`);
             }
         }
     }
@@ -487,11 +444,22 @@ generate()
             let definition = "(function(" + args.join(", ") + ") ";
 
             let returnType = getCurrentMethodInModel().returnType;
-            if (returnType == "instancetype") returnType = currentClass.name;
+            if (returnType == "instancetype" || returnType == "init") returnType = currentClass.name;
             definition += ": " + symbolTyper.toTypecheckerType(returnType);
 
             modifier.from(node).to(node.body).replace(definition);
             modifier.from(node.body).to(node).replace(");");
+        }
+
+        let returnType = getCurrentMethodInModel().returnType;
+
+        if (returnType == "init") {
+            let length = node.body.body.length;
+            if (length > 0) {
+                modifier.from(node.body.body[length - 1]).to(node.body).replace("return this; }");
+            } else {
+                modifier.select(node.body).replace("{ return this; }");
+            }
         }
     }
 
@@ -616,7 +584,7 @@ generate()
                     checkIvarAccess(node);
                 }
 
-                let usesSelf = (currentMethodNode.ns_needs_var_self) || (language === LanguageTypechecker);
+                let usesSelf = (language === LanguageTypechecker);
 
                 if (isSelf) {
                     replacement = usesSelf ? "self" : "this";
@@ -663,6 +631,45 @@ generate()
         }
     }
 
+    function handleMemberExpression(node, parent)
+    {
+        if (node.computed ||
+            node.object.type !== Syntax.Identifier ||
+            !model.enums[node.object.name]
+        ) {
+            return;
+        }
+        
+        if (node.property.type !== Syntax.Identifier) {
+            warnings.push(Utils.makeError(NSWarning.UnknownEnumMember, `enum member must be an identifier`, node));
+            return;
+        }
+
+        let nsEnum = model.enums[node.object.name];
+        let memberName = node.property.name;
+        let member = nsEnum.members.get(memberName);
+
+        if (member) {
+            node.object.ns_skip = true;
+            node.property.ns_skip = true;
+
+            let replacement;
+            if (language == LanguageTypechecker) {
+                let enumNameSymbol = symbolTyper.getSymbolForEnumName(nsEnum.name);
+                replacement = enumNameSymbol + "." + member.name;
+            } else {
+                replacement = "" + member.value;
+            }
+            
+            modifier.select(node).replace(replacement);
+
+        } else {
+            warnings.push(
+                Utils.makeError(NSWarning.UnknownEnumMember, `Unknown enum member '${memberName}`, node.property)
+            );
+        }
+    }
+
     function handleVariableDeclaration(node, parent)
     {
         for (let declaration of node.declarations) {
@@ -691,11 +698,7 @@ generate()
                     s.push(`if (${ivar} !== arg) {`);
                 }
 
-                if (property.setter.copies) {
-                    s.push(`${ivar} = ${NSRootVariable}.makeCopy(arg);`);
-                } else {
-                    s.push(`${ivar} = arg;`);
-                }
+                s.push(`${ivar} = arg;`);
 
                 if (changeName) {
                     s.push(`this.${symbolTyper.getSymbolForSelectorName(changeName)}();`);
@@ -711,12 +714,7 @@ generate()
         if (getterMethod?.synthesized) {
             if (language === LanguageEcmascript5) {
                 result += symbolTyper.getSymbolForSelectorName(property.getter.name);
-
-                if (property.getter.copies) {
-                    result += `() { return ${NSRootVariable}.makeCopy(${ivar}); } `;
-                } else {
-                    result += `() { return ${ivar}; } `;
-                }
+                result += `() { return ${ivar}; } `;
             }
         }
 
@@ -913,13 +911,52 @@ generate()
             }
         }
     }
-
-    function addSelfToMethodNode(methodNode)
+    
+    function handleNXPropDefinition(node)
     {
-        let body = methodNode.body.body;
+        let name = node.key.name;
+        
+        let hasField =  currentNXClass.hasField("_" + name);
+        let hasGetter = currentNXClass.hasGetter(name);
+        let hasSetter = currentNXClass.hasSetter(name);
+        
+        let replacement = "";
+        if (!hasField) {
+            replacement += `_${name};`;
+        }
 
-        if ((language !== LanguageTypechecker) && body.length) {
-            modifier.before(body[0]).insert("let self = this;");
+        if (!hasGetter) {
+            replacement += `get ${name}() { return this._${name}; }`;
+        }
+
+        if (!node.isReadonly && !hasSetter) {
+            replacement += `set ${name}(x) { this._${name} = x; }`;
+        }
+
+        modifier.select(node).replace(replacement);
+        node.annotation.ns_skip = true;
+    }
+
+    function handleNXFuncDefinition(node)
+    {
+        let isStatic = node.static;
+
+        let replacement = node.key.name;
+
+        for (let param of node.params) {
+            let label = param.label?.name;
+            if (!label) label = param.name.name;
+            replacement += "_" + label;
+        }
+        
+        modifier.from(node).to(node.key).replace(isStatic ? "static " : "");
+        modifier.select(node.key).replace(replacement);
+    }
+
+    function handleNXFuncParameter(node)
+    {
+        if (node.label) {
+            modifier.select(node.label).remove();
         }
     }
 
@@ -1013,6 +1050,9 @@ generate()
         } else if (type === Syntax.Identifier) {
             handleIdentifier(node, parent);
 
+        } else if (type === Syntax.MemberExpression) {
+            handleMemberExpression(node, parent);
+
         } else if (type === Syntax.VariableDeclaration) {
             handleVariableDeclaration(node);
 
@@ -1026,8 +1066,20 @@ generate()
 
         } else if (type === Syntax.Property) {
             handleProperty(node);
+
+        } else if (type === Syntax.NXClassDeclaration) {
+            console.log(node);
+            currentNXClass = node.nxClass;
+
+        } else if (type === Syntax.NXPropDefinition) {
+            handleNXPropDefinition(node);
+        } else if (type === Syntax.NXFuncDefinition) {
+            handleNXFuncDefinition(node);
+        } else if (type === Syntax.NXFuncParameter) {
+            handleNXFuncParameter(node);
         }
 
+        
     }, function(node, parent) {
         let type = node.type;
 
@@ -1050,10 +1102,6 @@ generate()
             currentClass = null;
 
         } else if (type === Syntax.NSMethodDefinition) {
-            if (currentMethodNode.ns_needs_var_self) {
-                addSelfToMethodNode(currentMethodNode);
-            }
-
             currentMethodNode = null;
         }
     });

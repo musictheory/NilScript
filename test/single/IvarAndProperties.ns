@@ -3,38 +3,36 @@
 @class IvarAndPropertiesClass
 
 @property property1_shouldBeNull: id;
-@property property2_shouldBeZero: Number;
-@property property3_shouldBeNull: String;
+@property property2_shouldBeZero: number;
+@property property3_shouldBeNull: string;
 @property property4_shouldBeNull: id;
-@property property5_shouldBeFalse: BOOL;
-@property property6_shouldBeFalse: Boolean;
-@property property7_shouldBeZero: Number;
-@property propertyWithoutSemicolon: Boolean
-@property propertyWithoutSemicolon2: Boolean
+@property property6_shouldBeFalse: boolean;
+@property property7_shouldBeZero: number;
+@property propertyWithoutSemicolon: boolean
+@property propertyWithoutSemicolon2: boolean
 
-@property (getter=propertyWithGetter) propertyWithGetterRaw: Boolean
+@property (getter=propertyWithGetter) propertyWithGetterRaw: boolean
 
-@property synthesizeTest: Number;
+@property synthesizeTest: number;
 
-@property (change=_updateChangeTest2) changeTest: Number;
-@property (private) changeTest2: Number;
+@property (change=_updateChangeTest2) changeTest: number;
+@property (private) changeTest2: number;
 
 
-@property withoutSemicolon: Number
-@property withoutSemicolon2: Number
+@property withoutSemicolon: number
+@property withoutSemicolon2: number
 
-- (BOOL) runTests
+- (boolean) runTests
 {
-    assert.strictEqual(_property1_shouldBeNull,  nil,   "_property1_shouldBeNull is not null");
+    assert.strictEqual(_property1_shouldBeNull,  null,  "_property1_shouldBeNull is not null");
     assert.strictEqual(_property2_shouldBeZero,  0,     "_property2_shouldBeZero is not 0"  );
-    assert.strictEqual(_property3_shouldBeNull,  nil,   "_property3_shouldBeNull is not null");
-    assert.strictEqual(_property4_shouldBeNull,  nil,   "_property4_shouldBeNull is not null");
-    assert.strictEqual(_property5_shouldBeFalse, false, "_property5_shouldBeFalse is not false");
+    assert.strictEqual(_property3_shouldBeNull,  null,  "_property3_shouldBeNull is not null");
+    assert.strictEqual(_property4_shouldBeNull,  null,  "_property4_shouldBeNull is not null");
     assert.strictEqual(_property6_shouldBeFalse, false, "_property6_shouldBeFalse is not false");
     assert.strictEqual(_property7_shouldBeZero,  0,     "_property7_shouldBeZero is not 0");
 
-    assert.strictEqual(_propertyWithoutSemicolon,  NO);
-    assert.strictEqual(_propertyWithoutSemicolon2, NO);
+    assert.strictEqual(_propertyWithoutSemicolon,  false);
+    assert.strictEqual(_propertyWithoutSemicolon2, false);
 
     [self setSynthesizeTest:40];
     assert.strictEqual([self synthesizeTest], 40);

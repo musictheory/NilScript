@@ -143,19 +143,8 @@ function test() {
 }
 
 
-
 // --------------------------------------------------------------------
 // @name Reserved Method Name
-
-@class TestReservedMethod
-
-- (void) isSubclassOfClass:(id)unused { }   //@error NilScriptReservedMethodNameError
-
-@end
-
-
-// --------------------------------------------------------------------
-// @name Reserved Method Name 2
 
 @class TestReservedMethod
 
@@ -267,7 +256,7 @@ function test() {
 
 @class RestrictedUsageClass
 
-@property (private) ivar1: String;
+@property (private) ivar1: string;
 
 - (void) foo {
     (function(_ivar1) {      //@error NilScriptRestrictedUsageError
@@ -282,7 +271,7 @@ function test() {
 
 @class RestrictedUsageClass
 
-@property (private) ivar1: String;
+@property (private) ivar1: string;
 
 - (void) foo {
     var _ivar1; //@error NilScriptRestrictedUsageError
@@ -296,7 +285,7 @@ function test() {
 
 @class RestrictedUsageClass
 
-@property (private) ivar1: String;
+@property (private) ivar1: string;
 
 - (void) foo:(id)_ivar1 {  //@error NilScriptRestrictedUsageError
 
@@ -359,13 +348,13 @@ function test() {
 // @name Missing Method Name (Protocol)
 
 @protocol MissingMethodName
-- (String); //@error NilScriptParseError
+- (string); //@error NilScriptParseError
 @end
 
 // --------------------------------------------------------------------
 // @name Missing Method Name (Implementation)
 
 @class MissingMethodName
-- (String) { return ""; } //@error NilScriptParseError
+- (string) { return ""; } //@error NilScriptParseError
 @end
 

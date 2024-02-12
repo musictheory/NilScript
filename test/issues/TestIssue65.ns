@@ -1,12 +1,12 @@
 
-function foo() : String { }
+function foo() : string { }
 
-var foo = function() : String { }
+var foo = function() : string { }
 
 
-function foo(a:Number,b:Number):String{ }
+function foo(a:number,b:number):string{ }
 
-var foo=function(a:Number,b:Number):String{ }
+var foo=function(a:number,b:number):string{ }
 
 
 function runTests()

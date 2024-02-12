@@ -3,7 +3,7 @@
 
 @class Issue58Class
 
-+ (BOOL) checkWithArgument:(String)alpha argument:(String)beta
++ (boolean) checkWithArgument:(string)alpha argument:(string)beta
 {
     if (!@CLASS.startsWith("N$")) {
         assert.equal( @CLASS,    "Issue58Class"                                );
@@ -16,7 +16,7 @@
     return YES;
 }
 
-- (BOOL) check
+- (boolean) check
 {
     if (!@CLASS.startsWith("N$")) {
         assert.equal( @CLASS,    "Issue58Class"          );

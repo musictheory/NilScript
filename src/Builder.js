@@ -22,6 +22,8 @@ import { NSProperty } from "./model/NSProperty.js";
 import { NSProtocol } from "./model/NSProtocol.js";
 import { NSType     } from "./model/NSType.js";
 
+import { NXClass    } from "./model/NXClass.js";
+
 
 export class Builder {
 
@@ -42,6 +44,7 @@ build(nsFile)
     
     let traverser = new Traverser(nsFile.ast);
 
+    let currentNXClass;
     let currentClass, currentMethod, currentMethodNode;
     let currentProtocol;
     let functionCount = 0;
@@ -132,6 +135,14 @@ build(nsFile)
         return true;   
     }
 
+    function handleNXClassDeclaration(node)
+    {
+        let className = node.id.name;
+
+        node.nxClass = new NXClass(makeLocation(node), className, node.superClass);
+        currentNXClass = node.nxClass;
+    }
+
     function handleNSClassImplementation(node)
     {
         let className    = node.id.name;
@@ -180,17 +191,11 @@ build(nsFile)
 
     function handleNSPropertyDirective(node)
     {
-
-        let accessAttribute = null;
-        let copyAttribute   = null;
-
         let getterName    = null;
         let getterEnabled = true;
-        let getterCopies  = false;
 
         let setterName    = null;
         let setterEnabled = true;
-        let setterCopies  = false;
 
         let changeName    = null;
 
@@ -209,14 +214,6 @@ build(nsFile)
             } else if (attributeName == "private") {
                 getterEnabled = false;
                 setterEnabled = false; 
-
-            } else if (attributeName == "copy") {
-                getterCopies = false;
-                setterCopies = true;
-
-            } else if (attributeName == "struct") {
-                getterCopies = true;
-                setterCopies = true;
 
             } else if (attributeName == "getter") {
                 getterName = attribute.selector.selectorName;
@@ -241,12 +238,10 @@ build(nsFile)
 
         let getter = getterEnabled ? {
             name: getterName || name,
-            copies: getterCopies
         } : null;
 
         let setter = setterEnabled ? {
             name: setterName || ("set" + name[0].toUpperCase() + name.slice(1) + ":"),
-            copies: setterCopies,
             change: changeName
         } : null;
 
@@ -312,7 +307,11 @@ build(nsFile)
 
         let name = node.id ? node.id.name : null;
 
-        let nsEnum = new NSEnum(makeLocation(node), name, node.unsigned, bridged);
+        if (!name) {
+            Utils.throwError(NSError.UnnamedEnum, "Unnamed @enum", node);
+        }
+
+        let nsEnum = new NSEnum(makeLocation(node), name, bridged);
         modelObjects.push(nsEnum);
         declaredEnumNames.push(nsEnum.name);
 
@@ -353,11 +352,6 @@ build(nsFile)
             if (initType === Syntax.Literal) {
                 value = declaration.init.value;
                 raw   = declaration.init.raw;
-
-                if      (raw == "YES")   raw = "true";
-                else if (raw == "NO")    raw = "false";
-                else if (raw == "NULL")  raw = "null";
-                else if (raw == "nil")   raw = "null";
 
             } else if (initType === Syntax.UnaryExpression && _.isNumber(declaration.init.argument.value)) {
                 value = -declaration.init.argument.value;
@@ -414,23 +408,8 @@ build(nsFile)
         let transformable = isIdentifierTransformable(node);
 
         if (currentMethod && currentClass) {
-            if (transformable && (name[0] == "_") && (name.length > 0)) {
-                if (functionCount > 0) {
-                    currentMethodNode.ns_needs_var_self = true;
-                }
-
+            if (transformable && (name[0] == "_") && (name.length > 1)) {
                 currentClass.markUsedIvar(name);
-
-            } else if (name == "self") {
-                if (functionCount > 0) {
-                    currentMethodNode.ns_needs_var_self = true;
-                }
-
-                let parent = node.ns_parent;
-
-                if (parent.type == Syntax.AssignmentExpression && parent.left == node) {
-                    currentMethodNode.ns_needs_var_self = true;
-                }
             }
         }
 
@@ -465,7 +444,18 @@ build(nsFile)
         }
 
         try {
-            if (type === Syntax.NSClassImplementation) {
+            if (type === Syntax.NXClassDeclaration) {
+                handleNXClassDeclaration(node);
+
+            } else if (currentNXClass && (
+                type === Syntax.NXPropDefinition ||
+                type === Syntax.NXFuncDefinition ||
+                type === Syntax.MethodDefinition ||
+                type === Syntax.PropertyDefinition
+            )) {
+                currentNXClass.addElement(node);
+
+            } else if (type === Syntax.NSClassImplementation) {
                 handleNSClassImplementation(node);
 
             } else if (type === Syntax.NSProtocolDefinition) {
@@ -545,6 +535,9 @@ build(nsFile)
 
         } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression) {
             functionCount--;
+
+        } else if (type === Syntax.NXClassDeclaration) {
+            currentNXClass = null;        
         }
     });
 

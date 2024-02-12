@@ -1,6 +1,6 @@
 // This just needs to parse
 
-let TestIssue126_A = @cast(Array<Object<String>>, [ { foo: "bar" } ] );
+let TestIssue126_A = @cast(Array<Object<string>>, [ { foo: "bar" } ] );
 let TestIssue126_B = @cast(Array<Object>, [ { foo: TestIssue126_A } ] );
 
 true;
