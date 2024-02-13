@@ -118,11 +118,11 @@ generate()
         }
     }
 
-    function generateThisIvar(ivarName, useSelf)
+    function generateThisIvar(ivarName)
     {
         let symbol = usesSimpleIvars ? ivarName : symbolTyper.getSymbolForIvarName(ivarName);
 
-        return (useSelf ? "self" : "this") + "." + symbol;
+        return "this." + symbol;
     }
 
     function generateIvarAssignments(nsClass)
@@ -180,17 +180,6 @@ generate()
         }
 
         return result;
-    }
-
-    function checkIvarAccess(node)
-    {
-        if (!currentClass.isIvar(node.name, false)) {
-            Utils.throwError(
-                NSError.CannotUseInstanceVariable,
-                `Use of instance variable "${node.name}" declared by superclass`,
-                node
-            );
-        }
     }
 
     function checkRestrictedUsage(node)
@@ -255,10 +244,12 @@ generate()
             }        
         }
 
-        function doCommonReplacement(start, end) {
+        function doCommonReplacement(start, end, needsGroup) {
             replaceMessageSelectors();
 
             node.receiver.ns_skip = true;
+            
+            if (needsGroup) { start = `(${start}`; end = `${end})`; }
 
             modifier.from(node).to(firstSelector).replace(start);
             modifier.from(lastSelector).to(node).replace(end);
@@ -273,8 +264,7 @@ generate()
             }
 
             if (methodName == "alloc") {
-                node.receiver.ns_skip = true;
-                modifier.select(node).replace("new " + classVariable + "()");
+                doCommonReplacement("new " + classVariable + "()");
 
             } else if (methodName == "class") {
                 doCommonReplacement(classVariable);
@@ -284,9 +274,6 @@ generate()
             }
 
         } else if (receiver.type == Syntax.Identifier && currentMethodNode) {
-            let usesSelf   = (language === LanguageTypechecker);
-            let selfOrThis = usesSelf ? "self" : "this";
-
             if (receiver.name == "super") {
                 if (!currentClass.superclass) {
                     warnings.push(Utils.makeError(NSWarning.UndeclaredInstanceVariable, `NO SUPERCLASS`, node));
@@ -303,38 +290,34 @@ generate()
                         cast = "<" + symbolTyper.toTypecheckerType(currentClass.name) + ">";
                     }
 
-                    doCommonReplacement(cast + selfOrThis + "." + NSSuperVariable + "()." + methodName + "(", ")");
+                    doCommonReplacement(cast + "this." + NSSuperVariable + "()." + methodName + "(", ")");
                 }
 
             } else if (receiver.name == "self") {
-                doCommonReplacement(selfOrThis + "." + methodName + "(", ")");
+                doCommonReplacement("this." + methodName + "(", ")");
 
             } else if (currentClass.isIvar(receiver.name, true)) {
-                checkIvarAccess(receiver);
+                let ivar = generateThisIvar(receiver.name);
 
-                let ivar = generateThisIvar(receiver.name, usesSelf);
-
-                doCommonReplacement(`(${ivar}?.${methodName}(`, `))`);
+                let needsGroup = parent.type == Syntax.MemberExpression; 
+                doCommonReplacement(`${ivar}?.${methodName}(`, `)`, needsGroup);
 
                 usedIvarMap[receiver.name] = true;
 
             } else {
-                doCommonReplacement(`(${receiver.name}?.${methodName}(`, `))`);
+                let needsGroup = parent.type == Syntax.MemberExpression; 
+                doCommonReplacement(`${receiver.name}?.${methodName}(`, `)`, needsGroup);
             }
 
         } else {
             replaceMessageSelectors();
 
-            if (receiver.ns_nonnull) {
-                modifier.from(node).to(receiver).replace("((");
-                modifier.from(receiver).to(firstSelector).replace(`).${methodName}(`);
-                modifier.from(lastSelector).to(node).replace(`))`);
-
-            } else {
-                modifier.from(node).to(receiver).replace("((");
-                modifier.from(receiver).to(firstSelector).replace(`)?.${methodName}(`);
-                modifier.from(lastSelector).to(node).replace(`))`);
-            }
+            let optional = receiver.ns_nonnull ? "" : "?";
+            let needsGroup = parent.type == Syntax.MemberExpression; 
+            
+            modifier.from(node).to(receiver).replace(needsGroup ? "(" : "");
+            modifier.from(receiver).to(firstSelector).replace(`${optional}.${methodName}(`);
+            modifier.from(lastSelector).to(node).replace(needsGroup ? "))" : ")");
         }
     }
 
@@ -413,7 +396,7 @@ generate()
         }
 
         if (language === LanguageTypechecker) {
-            args.push("self" + " : " + symbolTyper.getSymbolForClassName(currentClass.name, isClassMethod) );
+            args.push("this" + " : " + symbolTyper.getSymbolForClassName(currentClass.name, isClassMethod) );
         }
 
         for (let i = 0, length = node.methodSelectors.length; i < length; i++) {
@@ -580,16 +563,10 @@ generate()
 
         } else if (currentMethodNode && currentClass) {
             if (currentClass.isIvar(name, true) || name == "self") {
-                if (name != "self") {
-                    checkIvarAccess(node);
-                }
-
-                let usesSelf = (language === LanguageTypechecker);
-
                 if (isSelf) {
-                    replacement = usesSelf ? "self" : "this";
+                    replacement = "this";
                 } else {
-                    replacement = generateThisIvar(name, usesSelf);
+                    replacement = generateThisIvar(name);
                     usedIvarMap[name] = true;
 
                     if (parent.type === Syntax.AssignmentExpression && 
