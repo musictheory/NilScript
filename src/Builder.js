@@ -402,13 +402,19 @@ build(nsFile)
         }
     }
 
-    function handleIdentifier(node)
+    function handleIdentifier(node, parent)
     {
         let name = node.name;
         let transformable = isIdentifierTransformable(node);
 
-        if (currentMethod && currentClass) {
-            if (transformable && (name[0] == "_") && (name.length > 1)) {
+        if (
+            currentMethodNode &&
+            currentClass &&
+            parent.type == Syntax.MemberExpression &&
+            parent.computed == false &&
+            parent.object.type == Syntax.ThisExpression
+        ) {
+            if ((name[0] == "_") && (name.length > 1)) {
                 currentClass.markUsedIvar(name);
             }
         }
@@ -483,7 +489,7 @@ build(nsFile)
                 handleNSGlobalDeclaration(node);
 
             } else if (type === Syntax.Identifier) {
-                handleIdentifier(node);
+                handleIdentifier(node, parent);
 
             } else if (type === Syntax.VariableDeclarator) {
                 handleVariableDeclarator(node);

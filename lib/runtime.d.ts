@@ -43,7 +43,3 @@ declare class N$_BaseClass implements N$_BaseProtocol {
 declare var N$$_      : N$_Runtime;
 declare var nilscript : N$_Runtime;
 
-declare function N$_atEachGetMember<T>(arg : T[]) : T;
-declare function N$_atEachGetMember(arg : any) : any;
-declare function N$_atEachTest() : boolean;
-

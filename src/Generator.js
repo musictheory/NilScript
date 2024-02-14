@@ -87,11 +87,7 @@ generate()
     let currentMethodNode;
 
     let optionWarnGlobalNoType        = options["warn-global-no-type"];
-    let optionWarnThisInMethods       = options["warn-this-in-methods"];
-    let optionWarnSelfInNonMethod     = options["warn-self-in-non-methods"];
-    let optionWarnUnknownIvars        = options["warn-unknown-ivars"];
     let optionWarnUnknownSelectors    = options["warn-unknown-selectors"];
-    let optionWarnUnusedPrivates      = options["warn-unused-privates"];
 
     let optionSqueeze = this._squeeze;
     let symbolTyper   = model.getSymbolTyper();
@@ -99,7 +95,6 @@ generate()
     let knownSelectors = optionWarnUnknownSelectors ? model.selectors : null;
 
     let usedIvarMap = null;
-    let assignedIvarMap = null;
 
     let usesSimpleIvars = !optionSqueeze && (language !== LanguageTypechecker);
 
@@ -118,68 +113,9 @@ generate()
         }
     }
 
-    function generateThisIvar(ivarName)
+    function generateIvar(ivarName)
     {
-        let symbol = usesSimpleIvars ? ivarName : symbolTyper.getSymbolForIvarName(ivarName);
-
-        return "this." + symbol;
-    }
-
-    function generateIvarAssignments(nsClass)
-    {
-        let booleanIvars = [ ];
-        let numericIvars = [ ];
-        let objectIvars  = [ ];
-
-        let properties = nsClass.getAllProperties();
-
-        for (let i = 0, length = properties.length; i < length; i++) {
-            let property = properties[i];
-
-            if (property.needsBacking) {
-                let ivar = property.ivar;
-
-                if (model.isNumericType(property.type)) {
-                    numericIvars.push(ivar);
-                } else if (model.isBooleanType(property.type)) {
-                    booleanIvars.push(ivar);
-                } else {
-                    objectIvars.push(ivar);
-                }
-            }
-        }
-
-        numericIvars.sort();
-        booleanIvars.sort();
-        objectIvars.sort();
-
-        let result = "";
-
-        if (objectIvars.length) {
-            for (let i = 0, length = objectIvars.length; i < length; i++) {
-                result += generateThisIvar(objectIvars[i]) + "="
-            }
-
-            result += "null;"
-        }
-
-        if (numericIvars.length) {
-            for (let i = 0, length = numericIvars.length; i < length; i++) {
-                result += generateThisIvar(numericIvars[i]) + "="
-            }
-
-            result += "0;"
-        }
-
-        if (booleanIvars.length) {
-            for (let i = 0, length = booleanIvars.length; i < length; i++) {
-                result += generateThisIvar(booleanIvars[i]) + "="
-            }
-
-            result += "false;"
-        }
-
-        return result;
+        return usesSimpleIvars ? ivarName : symbolTyper.getSymbolForIvarName(ivarName);
     }
 
     function checkRestrictedUsage(node)
@@ -256,7 +192,11 @@ generate()
         }
 
         // Optimization cases
-        if (receiver.type == Syntax.Identifier && model.classes[receiver.name]) {
+
+        if (receiver.type == Syntax.ThisExpression) {
+            doCommonReplacement("this." + methodName + "(", ")");
+
+        } else if (receiver.type == Syntax.Identifier && model.classes[receiver.name]) {
             let classVariable = symbolTyper.getSymbolForClassName(receiver.name);
 
             if (language === LanguageEcmascript5) {
@@ -293,17 +233,6 @@ generate()
                     doCommonReplacement(cast + "this." + NSSuperVariable + "()." + methodName + "(", ")");
                 }
 
-            } else if (receiver.name == "self") {
-                doCommonReplacement("this." + methodName + "(", ")");
-
-            } else if (currentClass.isIvar(receiver.name, true)) {
-                let ivar = generateThisIvar(receiver.name);
-
-                let needsGroup = parent.type == Syntax.MemberExpression; 
-                doCommonReplacement(`${ivar}?.${methodName}(`, `)`, needsGroup);
-
-                usedIvarMap[receiver.name] = true;
-
             } else {
                 let needsGroup = parent.type == Syntax.MemberExpression; 
                 doCommonReplacement(`${receiver.name}?.${methodName}(`, `)`, needsGroup);
@@ -312,12 +241,28 @@ generate()
         } else {
             replaceMessageSelectors();
 
-            let optional = receiver.ns_nonnull ? "" : "?";
-            let needsGroup = parent.type == Syntax.MemberExpression; 
+            let start = "";
+            let end   = ")";
+            let afterReceiver = receiver.ns_nonnull ? "" : "?";
+
+            if (parent.type == Syntax.MemberExpression) {
+                start += "(";
+                end   += ")";
+            }
             
-            modifier.from(node).to(receiver).replace(needsGroup ? "(" : "");
-            modifier.from(receiver).to(firstSelector).replace(`${optional}.${methodName}(`);
-            modifier.from(lastSelector).to(node).replace(needsGroup ? "))" : ")");
+            if (
+                receiver.type != Syntax.Identifier &&
+                receiver.type != Syntax.MemberExpression &&
+                receiver.type != Syntax.CallExpression &&
+                receiver.type != Syntax.NSMessageExpression
+            ) {
+                start += "(";
+                afterReceiver = ")" + afterReceiver;
+            }
+
+            modifier.from(node).to(receiver).replace(start);
+            modifier.from(receiver).to(firstSelector).replace(`${afterReceiver}.${methodName}(`);
+            modifier.from(lastSelector).to(node).replace(end);
         }
     }
 
@@ -357,13 +302,7 @@ generate()
             let extendsString = NSRootWithClassPrefix +
                 (superName ? symbolTyper.getSymbolForClassName(superName) : "N$_base");
 
-            let constructorSetIvars = generateIvarAssignments(currentClass);
-
             startText = `${NSRootWithClassPrefix}${classSymbol} = class ${classSymbol} extends ${extendsString} {`;
-
-            if (constructorSetIvars) {
-                startText += `constructor () { super(); ${constructorSetIvars} }`;
-            }
 
             endText = "};";
 
@@ -446,23 +385,6 @@ generate()
         }
     }
 
-    function handleLiteral(node)
-    {
-        let replacement;
-
-        if (node.value === null) {
-            replacement = "null";
-        } else if (node.value === true) {
-            replacement = "true";
-        } else if (node.value === false) {
-            replacement = "false";
-        }
-
-        if (replacement) {
-            modifier.select(node).replace(replacement);
-        }
-    }
-
     function handleNSPredefinedMacro(node)
     {
         let name = node.name;
@@ -539,14 +461,31 @@ generate()
 
     function handleIdentifier(node, parent)
     {
-        let name   = node.name;
-        let isSelf = (name == "self");
+        let name = node.name;
+
+        if (name == "self") {
+            warnings.push(Utils.makeError(NSWarning.UseOfSelfInNonMethod, `Use of "self"`, node));
+        }
 
         if (name[0] === "N" && name[1] === "$") {
             Utils.throwError(NSError.ReservedIdentifier, `Identifiers may not start with "N$"`, node);
 
         } else if (name[0] === "@") {
             handleNSPredefinedMacro(node);
+            return;
+        }
+
+
+        if (
+            currentMethodNode &&
+            currentClass &&
+            currentClass.isIvar(name, true) &&
+            parent.type == Syntax.MemberExpression &&
+            parent.computed == false &&
+            parent.object.type == Syntax.ThisExpression
+        ) {
+            usedIvarMap[name] = true;
+            modifier.select(node).replace(generateIvar(name));
             return;
         }
 
@@ -560,34 +499,7 @@ generate()
 
             modifier.select(node).replace(replacement);
             return;
-
-        } else if (currentMethodNode && currentClass) {
-            if (currentClass.isIvar(name, true) || name == "self") {
-                if (isSelf) {
-                    replacement = "this";
-                } else {
-                    replacement = generateThisIvar(name);
-                    usedIvarMap[name] = true;
-
-                    if (parent.type === Syntax.AssignmentExpression && 
-                        parent.left.name == name)
-                    {
-                        assignedIvarMap[name] = true;
-                    }
-                }
-
-                modifier.select(node).replace(replacement);
-                return;
-
-            } else {
-                if (name[0] == "_" && optionWarnUnknownIvars && (name.length > 1)) {
-                    warnings.push(Utils.makeError(NSWarning.UndeclaredInstanceVariable, `Use of undeclared instance variable "${node.name}"`, node));
-                }
-            } 
-
-        } else if (isSelf && optionWarnSelfInNonMethod && !currentMethodNode) {
-            warnings.push(Utils.makeError(NSWarning.UseOfSelfInNonMethod, `Use of "self" in non-method`, node));
-        }
+        }  
 
         if (inlines) {
             let result = inlines[name];
@@ -659,7 +571,7 @@ generate()
         let name = node.id.name;
 
         let property = currentClass.getPropertyWithName(name);
-        let ivar = generateThisIvar(property.ivar, false);
+        let ivar = generateIvar(property.ivar);
 
         let getterMethod = currentClass.getInstanceMethodWithName(property.getter?.name);
         let setterMethod = currentClass.getInstanceMethodWithName(property.setter?.name);
@@ -672,10 +584,10 @@ generate()
                 let s = [ ];
 
                 if (changeName) {
-                    s.push(`if (${ivar} !== arg) {`);
+                    s.push(`if (this.${ivar} !== arg) {`);
                 }
 
-                s.push(`${ivar} = arg;`);
+                s.push(`this.${ivar} = arg;`);
 
                 if (changeName) {
                     s.push(`this.${symbolTyper.getSymbolForSelectorName(changeName)}();`);
@@ -691,12 +603,23 @@ generate()
         if (getterMethod?.synthesized) {
             if (language === LanguageEcmascript5) {
                 result += symbolTyper.getSymbolForSelectorName(property.getter.name);
-                result += `() { return ${ivar}; } `;
+                result += `() { return this.${ivar}; } `;
             }
         }
 
         if (language === LanguageTypechecker) {
             result += "<" + symbolTyper.toTypecheckerType(property.type) + "> null;";
+        } else {
+            let initValue;
+            if (model.isNumericType(property.type)) {
+                initValue = "0";
+            } else if (model.isBooleanType(property.type)) {
+                initValue = "false";
+            } else {
+                initValue = "null";
+            }
+
+            result += `${ivar} = ${initValue}`;
         }
 
         if (!result) {
@@ -979,7 +902,6 @@ generate()
             });
 
             usedIvarMap = { };
-            assignedIvarMap = { }
 
             handleNSClassImplementation(node);
 
@@ -1021,9 +943,6 @@ generate()
         } else if (type === Syntax.NSTypeDefinition) {
             handleNSTypeDefinition(node);
 
-        } else if (type === Syntax.Literal) {
-            handleLiteral(node);
-
         } else if (type === Syntax.Identifier) {
             handleIdentifier(node, parent);
 
@@ -1032,11 +951,6 @@ generate()
 
         } else if (type === Syntax.VariableDeclaration) {
             handleVariableDeclaration(node);
-
-        } else if (type === Syntax.ThisExpression) {
-            if (optionWarnThisInMethods) {
-                checkThis(node, traverser.getParents());
-            }
 
         } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression || type === Syntax.ArrowFunctionExpression) {
             handleFunctionDeclarationOrExpression(node);
@@ -1061,21 +975,6 @@ generate()
         let type = node.type;
 
         if (type === Syntax.NSClassImplementation) {
-            if (optionWarnUnusedPrivates) {
-                _.each(currentClass.getAllProperties(), property => {
-                    let { name, location, ivar, getter, setter } = property;
-
-                    if (getter || setter) return;
-
-                    if (!usedIvarMap[ivar]) {
-                        warnings.push(Utils.makeError(NSWarning.UnusedPrivateProperty, `Unused private property "${name}"`, location));
-
-                    } else if (!assignedIvarMap[ivar]) {
-                        warnings.push(Utils.makeError(NSWarning.UnassignedPrivateProperty, `Private property "${name}" used but never assigned`, location));
-                    }
-                });
-            }
-
             currentClass = null;
 
         } else if (type === Syntax.NSMethodDefinition) {
