@@ -25,7 +25,6 @@ constructor(location, name, protocolNames)
 
     this._classMethodMap    = { };
     this._instanceMethodMap = { };
-    this._propertyMap       = { };
 
     // Is this class in the current compilation unit?
     this.local = true;
@@ -36,7 +35,6 @@ loadState(state)
 {
     let classMethodMap    = this._classMethodMap;
     let instanceMethodMap = this._instanceMethodMap;
-    let propertyMap       = this._propertyMap;
 
     this.location = state.location;
     this.name = state.name;
@@ -48,10 +46,6 @@ loadState(state)
 
     _.each(state.instanceMethods, function(m) {
         instanceMethodMap[m.name] = new NSMethod(m.location, m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, m.optional);
-    });
-
-    _.each(state.properties, function(p) {
-        propertyMap[p.name] = new NSProperty(p.location, p.name, p.type, p.ivar, p.getter, p.setter, p.optional);
     });
 }
 
@@ -69,18 +63,6 @@ addMethod(nsMethod)
 }
 
 
-addProperty(nsProperty)
-{
-    let name = nsProperty.name;
-
-    if (this._propertyMap[name]) {
-        Utils.throwError(NSError.DuplicateProperty, `Property "${name}" has previous declaration`);
-    }
-
-    this._propertyMap[name] = nsProperty;
-}
-
-
 saveState()
 {
     return {
@@ -88,35 +70,13 @@ saveState()
         name:            this.name,
         classMethods:    _.values(this._classMethodMap),
         instanceMethods: _.values(this._instanceMethodMap),
-        properties:      _.values(this._properties)
     }
 }
 
 
 getAllMethods()
 {
-    let results = _.values(this._classMethodMap).concat(_.values(this._instanceMethodMap));
-
-    _.each(this._propertyMap, nsProperty => {
-        let getter   = nsProperty.getter;
-        let setter   = nsProperty.setter;
-        let type     = nsProperty.type;
-        let optional = nsProperty.optional;
-
-        if (setter) {
-            if (!this._instanceMethodMap[setter]) {
-                results.push(nsProperty.generateSetterMethod());
-            }
-        }
-
-        if (getter) {
-            if (!this._instanceMethodMap[getter]) {
-                results.push(nsProperty.generateGetterMethod());
-            }
-        }
-    });
-
-    return results;
+    return _.values(this._classMethodMap).concat(_.values(this._instanceMethodMap));
 }
 
 

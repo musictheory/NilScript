@@ -579,41 +579,13 @@ If `receiver` is non-falsy, invokes `aSelector` on it.
 **-[BaseObject className]**  
 Returns a human-readable string of a class or selector.  Note that this is for debug purposes only!  When `--squeeze` is passed into the compiler, the resulting class/selector names will be obfuscated/shortened.
 
----
-## <a name="hinting"></a>Hinting
-
-NilScript provides basic code hinting to catch common errors.
-
-When the `--warn-unknown-selectors` option is specified, NilScript warns about usage of undefined selectors/methods.  This can help catch typos at compile time:
-
-    let c = [[TheClass allc] init]; // Warns if no +allc or -allc method exists on any class
-
-When the `--warn-unknown-ivars` option is specified, NilScript checks all JavaScript identifiers prefixed with an underscore.  A warning is produced when such an identifier is used in a method declaration and the current class lacks a corresponding `@property` or instance variable declaration.
-
 ```
 @class TheClass
     
 @property foo: string;
     
-- (void) checkFoo {
-    if (_foi) {  // Warns, likely typo
-    }    
-}
-    
 @end
 ```
-
-When the `--warn-unused-privates` option is specified, NilScript warns about `@property (private)` declarations that
-are unused within an implementation.
-
-```
-@class TheClass {
-    _unused: id; // Warns
-}
-@end
-```
-
-When the `--warn-unknown-selectors` option is used, NilScript checks each selector against all known selectors.
 
 ---
 ## <a name="typechecking"></a>Type Checking
@@ -783,11 +755,6 @@ no-implicit-any           | Boolean  | Disallow implicit any (`tsc --noImplicitA
 no-implicit-returns       | Boolean  | Disallow implicit returns (`tsc --noImplicitReturns`)
 no-unreachable-code       | Boolean  | Disallow unreachable code (inverse of `tsc --allowUnreachableCode`)
 warn-global-no-type       | Boolean  | Warn about missing type annotations on @globals
-warn-this-in-methods      | Boolean  | Warn about usage of 'this' in NilScript methods
-warn-self-in-non-methods  | Boolean  | Warn about usage of 'self' in non-NilScript methods
-warn-unknown-ivars        | Boolean  | Warn about unknown ivars
-warn-unknown-selectors    | Boolean  | Warn about usage of unknown selectors
-warn-unused-privates      | Boolean  | Warn about unused private properties
 
 Valid properties for each `file` or `defs` object:
 

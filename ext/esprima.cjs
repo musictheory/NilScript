@@ -5730,7 +5730,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	        var parts = [];
 	        var angles = 0;
 	        function appendNameAngle() {
-	            parts.push(parser.parseVariableIdentifier().name);
+	            var name = parser.parseVariableIdentifier().name;
+	            while (parser.match('[')) {
+	                parser.expect('[');
+	                parser.expect(']');
+	                name += "[]";
+	            }
+	            parts.push(name);
 	            if (parser.match('<')) {
 	                appendAngle();
 	            }
@@ -5781,11 +5787,27 @@ return /******/ (function(modules) { // webpackBootstrap
 	            this.nextToken();
 	            name = "void";
 	        }
+	        else if (this.lookahead.type == 1 /* BooleanLiteral */ ||
+	            this.lookahead.type == 5 /* NullLiteral */ ||
+	            this.lookahead.type == 6 /* NumericLiteral */ ||
+	            this.lookahead.type == 8 /* StringLiteral */) {
+	            var token = this.nextToken();
+	            name += this.getTokenRaw(token);
+	        }
 	        else {
 	            name = this.parseVariableIdentifier().name;
 	        }
 	        if (this.match('<')) {
 	            name += this.ns_parseTypeAngleSuffix();
+	        }
+	        while (this.match('[')) {
+	            this.expect('[');
+	            this.expect(']');
+	            name += "[]";
+	        }
+	        if (this.match('|')) {
+	            this.expect('|');
+	            name += "|" + this.ns_parseType(options);
 	        }
 	        return name;
 	    };
@@ -5889,6 +5911,25 @@ return /******/ (function(modules) { // webpackBootstrap
 	            }
 	            else if (this.match('-') || this.match('+')) {
 	                sourceElement = this.ns_parseMethodDefinition();
+	            }
+	            else if (this.lookahead.type === 3 /* Identifier */) {
+	                if (this.lookahead.value == "get") {
+	                    var node_1 = this.createNode();
+	                    this.nextToken();
+	                    var key = this.parseObjectPropertyKey();
+	                    var value = this.parseGetterMethod();
+	                    sourceElement = this.finalize(node_1, new Node.Property('get', key, false, value, false, false));
+	                }
+	                else if (this.lookahead.value == "set") {
+	                    var node_2 = this.createNode();
+	                    this.nextToken();
+	                    var key = this.parseObjectPropertyKey();
+	                    var value = this.parseSetterMethod();
+	                    sourceElement = this.finalize(node_2, new Node.Property('set', key, false, value, false, false));
+	                }
+	                else {
+	                    this.throwUnexpectedToken(token);
+	                }
 	            }
 	            else {
 	                this.throwUnexpectedToken(token);
@@ -7110,10 +7151,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	        else if (this.isKeyword(id)) {
 	            type = 4 /* Keyword */;
 	        }
-	        else if (id === 'null' || id === 'Nil' || id === 'nil' || id === 'NULL') { //!ns: Add nil and NULL
+	        else if (id === 'null') {
 	            type = 5 /* NullLiteral */;
 	        }
-	        else if (id === 'true' || id === 'false' || id === 'YES' || id === 'NO') { //!ns: Add YES and NO
+	        else if (id === 'true' || id === 'false') {
 	            type = 1 /* BooleanLiteral */;
 	        }
 	        else {

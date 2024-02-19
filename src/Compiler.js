@@ -35,8 +35,6 @@ const sPublicOptions = [
     "append",                    // String or Array<String>, content/lines to append, not compiled
     "state",                     // Object, state from previous compile
 
-    "parser-source-type",        // Passed to Esprima as sourceType.  'script' or 'module'
-
     // Output options
     "output-language",           // Output language ('none' or 'es5' public, 'typechecker' for debugging only)
     "include-map",               // Boolean, include 'map' key in results object
@@ -63,11 +61,6 @@ const sPublicOptions = [
 
     // Warnings
     "warn-global-no-type",       // Boolean, warn about missing type annotations on @globals
-    "warn-this-in-methods",      // Boolean, warn about usage of 'this' in ns methods
-    "warn-self-in-non-methods",  // Boolean, warn about usage of 'self' in non-methods
-    "warn-unknown-ivars",        // Boolean, warn about unknown ivars
-    "warn-unknown-selectors",    // Boolean, warn about usage of unknown selectors
-    "warn-unused-privates",      // Boolean, warn about unused ivars
 
     // Private / Development
     "dev-dump-tmp",              // Boolean, dump debug info to /tmp
@@ -230,9 +223,7 @@ async _parseFiles(files, options)
             Log(`Parsing ${nsFile.path}`);
 
             try { 
-                let sourceType = options["parser-source-type"] || "script";
-                nsFile.ast = Parser.parse(nsFile.contents, { loc: true, sourceType: sourceType });
-
+                nsFile.ast = Parser.parse(nsFile.contents, { loc: true, sourceType: "module" });
                 nsFile.needsGenerate();
 
             } catch (inError) {
@@ -588,19 +579,17 @@ async compile(options)
             _.each(files, nsFile => nsFile.needsGenerate());
 
         } else {
-            if (options["warn-unknown-selectors"]) {
-                let changedSelectors = previousModel.getChangedSelectorMap(model);
+            let changedSelectors = previousModel.getChangedSelectorMap(model);
 
-                if (changedSelectors) {
-                    _.each(files, nsFile => {
-                        _.each(nsFile.uses.selectors, selectorName => {
-                            if (changedSelectors[selectorName]) {
-                                Log(`${nsFile.path} needsGenerate due to selector: '${selectorName}'`);
-                                nsFile.needsGenerate();
-                            }
-                        });
+            if (changedSelectors) {
+                _.each(files, nsFile => {
+                    _.each(nsFile.uses.selectors, selectorName => {
+                        if (changedSelectors[selectorName]) {
+                            Log(`${nsFile.path} needsGenerate due to selector: '${selectorName}'`);
+                            nsFile.needsGenerate();
+                        }
                     });
-                }
+                });
             }
         }
 

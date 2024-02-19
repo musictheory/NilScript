@@ -9,6 +9,9 @@ export const NSError = {
     ParseError:                     "NilScriptParseError",
     NotYetSupported:                "NilScriptNotYetSupportedError",
 
+    ImportError:               "NilScriptImportError",
+    ExportError:               "NilScriptExportError",
+
 // Used for mixed types (@class Foo conflicts with @enum Foo)
     DuplicateDeclaration:           "NilScriptDuplicateDeclarationError",
 

@@ -86,17 +86,10 @@ generate()
     let currentClass;
     let currentMethodNode;
 
-    let optionWarnGlobalNoType        = options["warn-global-no-type"];
-    let optionWarnUnknownSelectors    = options["warn-unknown-selectors"];
+    let optionWarnGlobalNoType = options["warn-global-no-type"];
 
     let optionSqueeze = this._squeeze;
     let symbolTyper   = model.getSymbolTyper();
-
-    let knownSelectors = optionWarnUnknownSelectors ? model.selectors : null;
-
-    let usedIvarMap = null;
-
-    let usesSimpleIvars = !optionSqueeze && (language !== LanguageTypechecker);
 
     let warnings = [ ];
 
@@ -111,11 +104,6 @@ generate()
         } else {
             return currentClass.getInstanceMethodWithName(selectorName);
         }
-    }
-
-    function generateIvar(ivarName)
-    {
-        return usesSimpleIvars ? ivarName : symbolTyper.getSymbolForIvarName(ivarName);
     }
 
     function checkRestrictedUsage(node)
@@ -141,10 +129,6 @@ generate()
         let methodName = symbolTyper.getSymbolForSelectorName(node.selectorName);
 
         let firstSelector, lastSelector;
-
-        if (knownSelectors && !knownSelectors[node.selectorName]) {
-            warnings.push(Utils.makeError(NSWarning.UnknownSelector, `Use of unknown selector "${node.selectorName}"`, node));
-        }
 
         function replaceMessageSelectors()
         {
@@ -278,7 +262,12 @@ generate()
         _.each(node.body.body, child => {
             let type = child.type;
             
-            if (type !== Syntax.NSMethodDefinition && type !== Syntax.NSPropertyDirective) {
+            if (!(
+                type == Syntax.NSMethodDefinition  ||
+                type == Syntax.NSPropertyDirective ||
+                (type == Syntax.Property && child.kind == "get") ||
+                (type == Syntax.Property && child.kind == "set")
+            )) {
                 Utils.throwError(NSError.ParseError, 'Unexpected implementation child.', child);
             }
 
@@ -484,8 +473,7 @@ generate()
             parent.computed == false &&
             parent.object.type == Syntax.ThisExpression
         ) {
-            usedIvarMap[name] = true;
-            modifier.select(node).replace(generateIvar(name));
+            modifier.select(node).replace(symbolTyper.getSymbolForIdentifierName(name));
             return;
         }
 
@@ -571,30 +559,35 @@ generate()
         let name = node.id.name;
 
         let property = currentClass.getPropertyWithName(name);
-        let ivar = generateIvar(property.ivar);
+        let ivar = symbolTyper.getSymbolForIdentifierName(`_${property.name}`);
+        
+        let isObserved = property.attributes.indexOf("observed") >= 0;
 
-        let getterMethod = currentClass.getInstanceMethodWithName(property.getter?.name);
-        let setterMethod = currentClass.getInstanceMethodWithName(property.setter?.name);
+        let getterName = property.getterName;
+        let setterName = property.setterName;
+
+        let getterMethod = currentClass.getInstanceMethodWithName(getterName);
+        let setterMethod = currentClass.getInstanceMethodWithName(setterName);
 
         let result = "";
         if (setterMethod?.synthesized) {
             if (language === LanguageEcmascript5) {
-                let changeName = property.setter.change;
 
                 let s = [ ];
 
-                if (changeName) {
+                if (isObserved) {
                     s.push(`if (this.${ivar} !== arg) {`);
                 }
 
                 s.push(`this.${ivar} = arg;`);
 
-                if (changeName) {
-                    s.push(`this.${symbolTyper.getSymbolForSelectorName(changeName)}();`);
+                if (isObserved) {
+                    let changeSymbol = symbolTyper.getSymbolForSelectorName("observePropertyChange");
+                    s.push(`this.${changeSymbol}();`);
                     s.push(`}`);
                 }
 
-                let symbol = symbolTyper.getSymbolForSelectorName(property.setter.name);
+                let symbol = symbolTyper.getSymbolForSelectorName(setterName);
 
                 result += `${symbol}(arg) {${s.join(" ")} } `; 
             }
@@ -602,7 +595,7 @@ generate()
 
         if (getterMethod?.synthesized) {
             if (language === LanguageEcmascript5) {
-                result += symbolTyper.getSymbolForSelectorName(property.getter.name);
+                result += symbolTyper.getSymbolForSelectorName(getterName);
                 result += `() { return this.${ivar}; } `;
             }
         }
@@ -619,7 +612,11 @@ generate()
                 initValue = "null";
             }
 
-            result += `${ivar} = ${initValue}`;
+            let nobacking = property.attributes.indexOf("nobacking") >= 0;
+
+            if (!nobacking) {
+                result += `${ivar} = ${initValue}`;
+            }
         }
 
         if (!result) {
@@ -632,10 +629,6 @@ generate()
     function handleNSSelectorDirective(node)
     {
         let name = symbolTyper.getSymbolForSelectorName(node.name);
-
-        if (knownSelectors && !knownSelectors[node.name]) {
-            warnings.push(Utils.makeError(NSWarning.UnknownSelector, `Use of unknown selector "${node.name}"`, node));
-        }
 
         modifier.select(node).replace(
             language === LanguageTypechecker ? `{ N$_Selector: "${name}" }` : `"${name}"`
@@ -698,7 +691,7 @@ generate()
         let after  = ")";
 
         if (language == LanguageTypechecker) {
-            before = "(<" + symbolTyper.toTypecheckerType(node.id.name) + ">(<any>(";
+            before = "(<" + symbolTyper.toTypecheckerType(node.id) + ">(<any>(";
             after  = ")))";
         }
 
@@ -901,8 +894,6 @@ generate()
                 warnings.push(warning);
             });
 
-            usedIvarMap = { };
-
             handleNSClassImplementation(node);
 
         } else if (type === Syntax.NSMethodDefinition) {
@@ -988,10 +979,13 @@ generate()
         Utils.addFilePathToError(path, warning);
     });
 
-    return {
-        lines: this._modifier.finish(),
-        warnings: warnings
-    };
+    let lines = this._modifier.finish();
+    if (lines.length) {
+        lines[0] = "(function(){\"use strict\";" + lines[0];
+        lines[lines.length - 1] += "})();";    
+    }
+
+    return { lines, warnings };
 }
 
 }

@@ -18,6 +18,7 @@ constructor(path)
     this.path     = path;
     this.contents = null;
     this.time     = 0;
+    this.imports  = [ ];
 
     this.contentsVersion  = 1;
     this.generatedVersion = 1;
@@ -49,6 +50,12 @@ updateWithContentsAndTime(contents, time)
             this.needsAll();
         }
     }
+}
+
+
+addImport(name)
+{
+    this.imports.push(name);
 }
 
 

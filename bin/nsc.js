@@ -36,13 +36,6 @@ let opt = getopt.create([
     [ "",  "no-unreachable-code",       "type checker: warn about unreachable code"        ],
 
     [ "",  "warn-global-no-type",       "warn about missing type annotations on @globals" ],
-    [ "",  "warn-this-in-methods",      "warn about usage of 'this' in NilScript methods" ],
-    [ "",  "warn-self-in-non-methods",  "warn about usage of 'self' in non-methods" ],
-
-    [ "",  "warn-unknown-ivars",        "warn about unknown ivars"                 ],
-    [ "",  "warn-unknown-selectors",    "warn about usage of unknown selectors"    ],
-    [ "",  "warn-unknown-superclasses", "warn about usage of unknown superclasses" ],
-    [ "",  "warn-unused-privates",      "warn about unused privates"               ],
 
     [ "",  "dev-dump-tmp",              "(for development)" ],
     [ "",  "dev-print-log",             "(for development)" ],

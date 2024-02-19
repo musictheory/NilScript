@@ -135,6 +135,40 @@ build(nsFile)
         return true;   
     }
 
+    function handleImportDeclaration(node)
+    {
+        let specifiers = node.specifiers;
+        
+        if (specifiers.length == 0) {
+            Utils.throwError(NSError.NilScriptImportError, "Side-effect imports are not supported", node);
+        }
+        
+        _.each(node.specifiers, specifier => {
+            if (specifier.type === Syntax.ImportDefaultSpecifier) {
+                Utils.throwError(NSError.NilScriptImportError, "Default imports are not supported", node);
+            } else if (specifier.type === Syntax.ImportNamespaceSpecifier) {
+                Utils.throwError(NSError.NilScriptImportError, "Namespace imports are not supported", node);
+
+            } else if (specifier.type === ImportSpecifier) {
+                if (specifier.local.name !== specifier.imported.name) {
+                    Utils.throwError(NSError.NilScriptImportError, "Import 'as' is not supported", node);
+                }
+                
+                nsFile.addImport(specifier.imported.name);
+            }
+        });
+    }
+
+    function handleExportDeclaration(node)
+    {
+        if (node.type === Syntax.ExportAllDeclaration) {
+            Utils.throwError(NSError.NilScriptExportError, "Default imports are not supported", node);
+
+        } else if (node.type === Syntax.ExportDefaultDeclaration) {
+        
+        }
+    }
+
     function handleNXClassDeclaration(node)
     {
         let className = node.id.name;
@@ -145,7 +179,7 @@ build(nsFile)
 
     function handleNSClassImplementation(node)
     {
-        let className    = node.id.name;
+        let className = node.id.name;
         let result;
 
         let inheritedNames = node.inheritanceList ?
@@ -188,69 +222,71 @@ build(nsFile)
         let method = makeNSMethodNode(node);
         currentProtocol.addMethod(method);
     }
+    
+    function handleProperty(node, parent)
+    {
+        if (
+            currentClass &&
+            parent?.type == Syntax.BlockStatement &&
+            parent?.ns_parent?.type == Syntax.NSClassImplementation
+        ) {
+            if (node.kind == "get") {
+                console.log(node);
+
+                // currentClass.addGetter(node.
+            } else if (node.kind == "set") {
+            
+            }
+
+        }
+    }
 
     function handleNSPropertyDirective(node)
     {
-        let getterName    = null;
-        let getterEnabled = true;
-
-        let setterName    = null;
-        let setterEnabled = true;
-
-        let changeName    = null;
+        let attributes = [ ];
 
         for (let i = 0, length = node.attributes.length; i < length; i++) {
             let attribute = node.attributes[i];
             let attributeName = attribute.name;
 
-            if (attributeName == "readonly") {
-                getterEnabled = true;
-                setterEnabled = false; 
-
-            } else if (attributeName == "readwrite") {
-                getterEnabled = true;
-                setterEnabled = true; 
-               
-            } else if (attributeName == "private") {
-                getterEnabled = false;
-                setterEnabled = false; 
-
-            } else if (attributeName == "getter") {
-                getterName = attribute.selector.selectorName;
-
-            } else if (attributeName == "setter") {
-                setterName = attribute.selector.selectorName;
-
-            } else if (attributeName == "change") {
-                changeName = attribute.selector.selectorName;
-
-            } else if (attributeName == "class") {
-                Utils.throwError(NSError.NotYetSupported, "'class' attribute is not supported", node);
-
+            if (
+                attributeName == "readonly" ||
+                attributeName == "private" ||
+                attributeName == "observed" ||
+                attributeName == "nobacking"
+            ) {
+                attributes.push(attributeName);
             } else {
                 Utils.throwError(NSError.UnknownPropertyAttribute, `Unknown property attribute: "${attributeName}"`, node);
             }
-        }
 
+
+            // if (attributeName == "readonly") {
+            //     getterEnabled = true;
+            //     setterEnabled = false; 
+               
+            // } else if (attributeName == "private") {
+            //     getterEnabled = false;
+            //     setterEnabled = false; 
+
+            // } else if (attributeName == "change") {
+            //     changeName = attribute.selector.selectorName;
+
+            // } else if (attributeName == "nobacking") {
+            //     nobacking = true;
+
+            // } else {
+            //     Utils.throwError(NSError.UnknownPropertyAttribute, `Unknown property attribute: "${attributeName}"`, node);
+            // }
+        }
 
         let type = node.id.annotation.value;
         let name = node.id.name;
 
-        let getter = getterEnabled ? {
-            name: getterName || name,
-        } : null;
-
-        let setter = setterEnabled ? {
-            name: setterName || ("set" + name[0].toUpperCase() + name.slice(1) + ":"),
-            change: changeName
-        } : null;
-
-        let property = new NSProperty(makeLocation(node), name, type, "_" + name, getter, setter);
+        let property = new NSProperty(makeLocation(node), name, type, attributes);
 
         if (currentClass) {
             currentClass.addProperty(property);
-        } else if (currentProtocol) {
-            currentProtocol.addProperty(property);
         }
     }        
 
@@ -404,22 +440,7 @@ build(nsFile)
 
     function handleIdentifier(node, parent)
     {
-        let name = node.name;
-        let transformable = isIdentifierTransformable(node);
-
-        if (
-            currentMethodNode &&
-            currentClass &&
-            parent.type == Syntax.MemberExpression &&
-            parent.computed == false &&
-            parent.object.type == Syntax.ThisExpression
-        ) {
-            if ((name[0] == "_") && (name.length > 1)) {
-                currentClass.markUsedIvar(name);
-            }
-        }
-
-        node.ns_transformable = transformable;
+        node.ns_transformable = isIdentifierTransformable(node);
     }
 
     function handleVariableDeclarator(node)
@@ -450,7 +471,10 @@ build(nsFile)
         }
 
         try {
-            if (type === Syntax.NXClassDeclaration) {
+            if (type === Syntax.ImportDeclaration) {
+                handleImportDeclaration(node);
+
+            } else if (type === Syntax.NXClassDeclaration) {
                 handleNXClassDeclaration(node);
 
             } else if (currentNXClass && (
@@ -472,6 +496,9 @@ build(nsFile)
 
             } else if (type === Syntax.NSTypeDefinition) {
                 handleNSTypeDefinition(node);
+
+            } else if (type === Syntax.Property) {
+                handleProperty(node, parent);
 
             } else if (type === Syntax.NSMethodDefinition) {
                 handleNSMethodDefinition(node);

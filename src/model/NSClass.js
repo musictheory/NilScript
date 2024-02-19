@@ -43,7 +43,6 @@ constructor(location, name, inheritedNames)
     this._propertyMap       = Object.create(null);
     this._classMethodMap    = Object.create(null);
     this._instanceMethodMap = Object.create(null);
-    this._usedIvarMap       = Object.create(null);
 }
 
 
@@ -55,7 +54,7 @@ loadState(state)
     this.didSynthesis    = state.didSynthesis;
 
     _.each(state.properties, p => {
-        this.addProperty(new NSProperty(p.location, p.name, p.type, p.ivar, p.getter, p.setter, false));
+        this.addProperty(new NSProperty(p.location, p.name, p.type, p.attributes));
     });
 
     _.each(state.methods, m => {
@@ -88,55 +87,28 @@ _doAutomaticSynthesis(model)
         return;
     }
 
-    let inheritedPropertyNames = { };
-
-     _.each(this._getClassHierarchy(model), cls => {
-        _.each(cls.getAllProperties(), property => {
-            inheritedPropertyNames[property.name] = true;
-        });
-    });
-
     let properties = _.values(this._propertyMap);
 
     for (let i = 0, length = properties.length; i < length; i++) {
         let property = properties[i];
 
-        let location = property.location;
-        let name     = property.name;
-        let ivar     = property.ivar;
-
-        if (inheritedPropertyNames[name]) {
-            throw Utils.makeError(NSError.DuplicateProperty, `Property "${name}" declared in superclass`, location);
-        }
-
-        let getterName = property.getter?.name;
-        let setterName = property.setter?.name;
-        let changeName = property.change?.name;
-
+        let getterName = property.getterName;
+        let setterName = property.setterName;
+        
         let getterMethod = getterName ? this._instanceMethodMap[getterName] : null;
         let setterMethod = setterName ? this._instanceMethodMap[setterName] : null;
-
-        let needsBacking = !!this._usedIvarMap[ivar];
 
         if (getterName && !getterMethod) {
             getterMethod = property.generateGetterMethod();
             getterMethod.synthesized = true;
             this._instanceMethodMap[getterName] = getterMethod;
-            needsBacking = true;
         }
 
         if (setterName && !setterMethod) {
             setterMethod = property.generateSetterMethod();
             setterMethod.synthesized = true;
             this._instanceMethodMap[setterName] = setterMethod;
-            needsBacking = true;
         }
-
-        if (changeName && !knownSelectors[changeName]) {
-            this.prepareWarnings.push(Utils.makeError(NSWarning.UnknownSelector, `Unknown selector: "${changeName}"`, location));
-        }
-
-        property.needsBacking = needsBacking;
     }
 
     this.didSynthesis = true;
@@ -265,13 +237,6 @@ addMethod(method)
     }
 
     map[selectorName] = method;
-}
-
-
-
-markUsedIvar(ivar)
-{
-    this._usedIvarMap[ivar] = true;
 }
 
 

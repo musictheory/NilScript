@@ -138,8 +138,13 @@ _appendClass(lines, nsClass, classSymbol, staticSymbol)
     _.each(instanceMethodDeclarations, decl => {  lines.push(            decl);  });
 
     _.each(nsClass.getAllProperties(), property => {
-        if (property.needsBacking) {
-            lines.push(symbolTyper.getSymbolForIvarName(property.ivar) + " : " +  symbolTyper.toTypecheckerType(property.type) + ";");
+        let nobacking = property.attributes.indexOf("nobacking") >= 0;
+
+        if (!nobacking) {
+            lines.push(
+                symbolTyper.getSymbolForIdentifierName("_" + property.name) + ": " +
+                symbolTyper.toTypecheckerType(property.type) + ";"
+            );
         }
     });
 

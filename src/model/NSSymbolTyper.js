@@ -20,8 +20,6 @@ import { NSProtocol } from "./NSProtocol.js";
 const NSClassPrefix    = "N$_c_";
 const NSProtocolPrefix = "N$_p_";
 const NSMethodPrefix   = "N$_f_";
-const NSIvarPrefix     = "N$_i_";
-
 const NSEnumPrefix     = "N$_e_";   // Typechecker only
 
 
@@ -232,7 +230,7 @@ enrollForSqueezing(name)
 
 _parseTypeString(inString)
 {
-    let tokens = inString.match(/[A-Za-z0-9$_]+|[<>,]/g);
+    let tokens = inString.match(/[A-Za-z0-9$_]+|[<>,\[\]]/g);
     let next   = tokens[0];
 
     function lex() {
@@ -247,6 +245,7 @@ _parseTypeString(inString)
 
     function parse() {
         let args = null;
+        let suffix = "";
 
         let name = lex();
         if (name == "async") {
@@ -273,13 +272,20 @@ _parseTypeString(inString)
                 } else {
                     err();
                 }
+
+            } else if (next == "[") {
+                while (next == "[") {
+                    lex();
+                    if (next == "]") lex();
+                    suffix += "[]";            
+                }
             }
 
         } else {
             throw new Error();
         }
 
-        return { name, args };
+        return { name, args, suffix };
     }
 
     return parse();
@@ -313,10 +319,14 @@ toTypecheckerType(rawInType)
     function convert(node) {
         let name       = node.name;
         let args       = node.args || [ ];
+        let suffix     = node.suffix;
         let argsLength = args.length;
         let tmp;
+        
+        if (suffix) {
+            return convert({ name, args, suffix: "" }) + suffix;
 
-        if (name == "Array") {
+        } else if (name == "Array") {
             if (argsLength > 1) {
                 throw new Error();
 
@@ -328,16 +338,12 @@ toTypecheckerType(rawInType)
             }
 
         } else if (name == "Object") {
-            if (argsLength > 1) {
-                throw new Error();
-
-            } else if (argsLength == 1) {
-                return "{[i:string ]:" + convert(args[0]) + "}";
-
-            } else if (argsLength == 0) {
+            if (argsLength == 0) {
                 return "any";
+            } else {
+                throw new Error();
             }
-
+            
         } else if (argsLength > 0) {
             return name + "<" + _.map(args, arg => convert(arg)).join(",") + ">";
 
@@ -424,9 +430,6 @@ fromTypecheckerType(rawInType)
         if (inType.match(/\[\]$/)) {
             outType = "Array<" + this.fromTypecheckerType(inType.slice(0, -2)) + ">";
 
-        } else if (m = inType.match(/\{\[(.*?):string\]\:(.*)\}$/)) {
-            outType = "Object<" + this.fromTypecheckerType(m[2]) + ">";
-
         } else if (m = rawInType.match(/^typeof\s+(N\$_[cCpPi]_.*?\b)/)) {
             outType = this.fromTypecheckerType(m[1]);
 
@@ -500,15 +503,6 @@ getSymbolForIdentifierName(name)
         return name;
     }
 }
-
-
-getSymbolForIvarName(ivarName)
-{
-    let result = NSIvarPrefix + ivarName;
-    if (this._squeeze) result = this._getSqueezedSymbol(result, true);
-    return result;
-}
-
 
 
 getAllSymbolsMap()

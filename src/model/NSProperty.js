@@ -13,30 +13,51 @@ import { NSMethod } from "./NSMethod.js";
 export class NSProperty {
 
 
-constructor(location, name, type, ivar, getter, setter, optional)
+constructor(location, name, type, attributes)
 {
-    this.location = location;
-    this.name     = name;
-    this.type     = type;
-    this.ivar     = ivar;
-    this.getter   = getter;
-    this.setter   = setter;
-    this.optional = optional;
-    this.needsBacking = false;
+    this.location   = location;
+    this.name       = name;
+    this.type       = type;
+    this.attributes = attributes;
+}
+
+
+get getterName()
+{
+    let isPrivate = this.attributes.indexOf("private") >= 0;
+
+    if (!isPrivate) {
+        return this.name;
+    } else {
+        return null;
+    }
+}
+
+
+get setterName()
+{
+    let isPrivate  = this.attributes.indexOf("private")  >= 0;
+    let isReadOnly = this.attributes.indexOf("readonly") >= 0;
+    
+    if (!isPrivate && !isReadOnly) {
+        return ("set" + this.name[0].toUpperCase() + this.name.slice(1) + ":");
+    } else {
+        return null;
+    }
 }
 
 
 generateGetterMethod()
 {
-    let getter = this.getter;
-    return getter ? new NSMethod(_.clone(this.location), getter.name, "-", this.type, [ ]) : null;
+    let getterName = this.getterName;
+    return getterName ? new NSMethod(_.clone(this.location), getterName, "-", this.type, [ ]) : null;
 }
 
 
 generateSetterMethod()
 {
-    let setter = this.setter;
-    return setter ? new NSMethod(_.clone(this.location), setter.name, "-", "void", [ this.type ]) : null;
+    let setterName = this.setterName;
+    return setterName ? new NSMethod(_.clone(this.location), setterName, "-", "void", [ this.type ]) : null;
 }
 
 
