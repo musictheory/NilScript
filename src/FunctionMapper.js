@@ -6,7 +6,7 @@
 
 import _ from "lodash";
 
-import { Syntax    } from "./Parser.js";
+import { Syntax    } from "./LegacyParser.js";
 import { Traverser } from "./Traverser.js";
 import { Utils     } from "./Utils.js";
 

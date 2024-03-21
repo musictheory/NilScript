@@ -13,9 +13,9 @@ import { Builder        } from "./Builder.js";
 import { FunctionMapper } from "./FunctionMapper.js";
 import { Generator      } from "./Generator.js";
 import { NSError        } from "./Errors.js";
-import { Parser         } from "./Parser.js";
+import { Parser         } from "./LegacyParser.js";
 import { SourceMapper   } from "./SourceMapper.js";
-import { Syntax         } from "./Parser.js";
+import { Syntax         } from "./LegacyParser.js";
 import { Utils          } from "./Utils.js";
 
 import { NSCompileCallbackFile } from "./model/NSCompileCallbackFile.js";
@@ -223,18 +223,19 @@ async _parseFiles(files, options)
             Log(`Parsing ${nsFile.path}`);
 
             try { 
-                nsFile.ast = Parser.parse(nsFile.contents, { loc: true, sourceType: "module" });
+                nsFile.ast = Parser.parse(nsFile.contents);
                 nsFile.needsGenerate();
 
             } catch (inError) {
+                console.log(JSON.stringify(inError));
                 let message = inError.description || inError.toString();
                 message = message.replace(/$.*Line:/, "");
 
                 let outError = new Error(message);
 
                 outError.file   = nsFile.path;
-                outError.line   = inError.lineNumber;
-                outError.column = inError.column;
+                outError.line   = inError.loc?.line ?? inError.lineNumber;
+                outError.column = inError.loc?.column ?? inError.column;
                 outError.name   = NSError.ParseError;
                 outError.reason = message;
 
@@ -284,7 +285,7 @@ async _reorderFiles(inOutFiles, model, options)
 
     _.each(model.classes, nsClass => {
         let classPath = nsClass.location.path;
-        let superPath = nsClass.superclass?.location?.path;
+        let superPath = nsClass.superClass?.location?.path;
 
         if (superPath && (superPath != classPath)) {
             let arr = dependencies[classPath] || [ ];

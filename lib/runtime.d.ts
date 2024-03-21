@@ -17,7 +17,6 @@ interface N$_Runtime {
 }
 
 declare interface N$_BaseProtocol {
-    init() : N$_BaseClass;
     superclass() : typeof N$_BaseClass;
     class() : typeof N$_BaseClass;
     className() : string;
@@ -26,13 +25,11 @@ declare interface N$_BaseProtocol {
 }
 
 declare class N$_BaseClass implements N$_BaseProtocol {
-    static alloc() : N$_BaseClass;
     static superclass() : typeof N$_BaseClass;
     static className() : string;
     static class() : typeof N$_BaseClass;
     static respondsToSelector_(aSelector : N$_Selector) : boolean;
 
-    init() : N$_BaseClass;
     superclass() : typeof N$_BaseClass;
     class() : typeof N$_BaseClass;
     className() : string;

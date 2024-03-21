@@ -12,17 +12,17 @@ import { NSWarning  } from "../Errors.js";
 import { Utils      } from "../Utils.js";
 
 import { NSProperty } from "./NSProperty.js";
-import { NSMethod   } from "./NSMethod.js";
 
 
 export class NSClass {
 
 
-constructor(location, name, inheritedNames)
+constructor(location, name, superClassName, interfaceNames)
 {
     this.location       = location;
     this.name           = name;
-    this.inheritedNames = inheritedNames || [ ];
+    this.superClassName = superClassName;
+    this.interfaceNames = interfaceNames;
 
     // Is this class in the current compilation unit?  *not archived*
     this.local = true;
@@ -32,13 +32,21 @@ constructor(location, name, inheritedNames)
 
     // Warnings during the prepare() phase
     this.prepareWarnings = [ ];
-    this.superclass      = null;
+    this.superClass      = null;
 
     // All selectors the class responds to (inherited + synthesized). *not archived*
     this._knownSelectors = null;
 
     this._myIvars    = null;  // Only my ivar names
     this._knownIvars = null;  // My ivars + inherited ivar names
+
+    this._getters = new Map();
+    this._setters = new Map();
+
+    this._staticGetters = new Map();
+    this._staticSetters = new Map();
+
+    this._methods = [ ];
 
     this._propertyMap       = Object.create(null);
     this._classMethodMap    = Object.create(null);
@@ -50,15 +58,12 @@ loadState(state)
 {
     this.location        = state.location;
     this.name            = state.name;
-    this.inheritedNames  = state.inheritedNames || [ ];
+    this.superClassName  = state.superClassName || null;
+    this.interfaceNames  = state.interfaceNames || [ ];
     this.didSynthesis    = state.didSynthesis;
 
     _.each(state.properties, p => {
-        this.addProperty(new NSProperty(p.location, p.name, p.type, p.attributes));
-    });
-
-    _.each(state.methods, m => {
-        this.addMethod(new NSMethod(m.location, m.selectorName, m.selectorType, m.returnType, m.parameterTypes, m.variableNames, false));
+        this.addProperty(new NSProperty(p.location, p.name, p.type, p.isStatic, p.attributes));
     });
 }
 
@@ -68,7 +73,8 @@ saveState()
     return {
         location:        this.location,
         name:            this.name,
-        inheritedNames:  this.inheritedNames,
+        superClassName:  this.superClassName,
+        interfaceNames:  this.interfaceNames,
         didSynthesis:  !!this.didSynthesis,
 
         properties: _.values(this._propertyMap),
@@ -90,25 +96,25 @@ _doAutomaticSynthesis(model)
     let properties = _.values(this._propertyMap);
 
     for (let i = 0, length = properties.length; i < length; i++) {
-        let property = properties[i];
+        // let property = properties[i];
 
-        let getterName = property.getterName;
-        let setterName = property.setterName;
+        // let getterName = property.getterName;
+        // let setterName = property.setterName;
         
-        let getterMethod = getterName ? this._instanceMethodMap[getterName] : null;
-        let setterMethod = setterName ? this._instanceMethodMap[setterName] : null;
+        // let getterMethod = getterName ? this._instanceMethodMap[getterName] : null;
+        // let setterMethod = setterName ? this._instanceMethodMap[setterName] : null;
 
-        if (getterName && !getterMethod) {
-            getterMethod = property.generateGetterMethod();
-            getterMethod.synthesized = true;
-            this._instanceMethodMap[getterName] = getterMethod;
-        }
+        // if (getterName && !getterMethod) {
+        //     getterMethod = property.generateGetterMethod();
+        //     getterMethod.synthesized = true;
+        //     this._instanceMethodMap[getterName] = getterMethod;
+        // }
 
-        if (setterName && !setterMethod) {
-            setterMethod = property.generateSetterMethod();
-            setterMethod.synthesized = true;
-            this._instanceMethodMap[setterName] = setterMethod;
-        }
+        // if (setterName && !setterMethod) {
+        //     setterMethod = property.generateSetterMethod();
+        //     setterMethod.synthesized = true;
+        //     this._instanceMethodMap[setterName] = setterMethod;
+        // }
     }
 
     this.didSynthesis = true;
@@ -120,10 +126,10 @@ _getClassHierarchy(model, includeThis)
     let visited = [ this.name ];
     let result  = includeThis ? [ this ] : [ ];
 
-    let currentSuperclass = this.superclass;
-    while (currentSuperclass) {
-        result.push(currentSuperclass);
-        currentSuperclass = currentSuperclass.superclass;
+    let currentSuperClass = this.superClass;
+    while (currentSuperClass) {
+        result.push(currentSuperClass);
+        currentSuperClass = currentSuperClass.superClass;
     }
 
     return result;
@@ -132,31 +138,31 @@ _getClassHierarchy(model, includeThis)
 
 inherit(model)
 {
-    let mySuperclass = null;
+    let mySuperClass = null;
     let myProtocols  = [ ];
 
     let location = this.location;
+    
+    if (this.superClassName) {
+        mySuperClass = model.classes[this.superClassName];
+        
+        if (!mySuperClass) {
+            throw Utils.makeError(NSError.InheritanceError, `Unknown class: "${this.superClassName}"`, location);
+        }
+    }
 
-    _.each(this.inheritedNames, name => {
-        let cls      = model.classes[name];
+    _.each(this.interfaceNames, name => {
         let protocol = model.protocols[name];
-
-        if (cls) {
-            if (mySuperclass) {
-                throw Utils.makeError(NSError.InheritanceError, `Cannot inherit from both "${name}" and "${mySuperclass.name}"`, location);
-            } else {
-                mySuperclass = cls;
-            }
-          
-        } else if (protocol) {
+      
+        if (protocol) {
             myProtocols.push(protocol);
 
         } else {
-            throw Utils.makeError(NSError.InheritanceError, `Unknown class or protocol: "${name}"`, location);
+            throw Utils.makeError(NSError.InheritanceError, `Unknown protocol: "${name}"`, location);
         }
     });
 
-    this.superclass = mySuperclass;
+    this.superClass = mySuperClass;
     this.protocols  = myProtocols;
 }
 
@@ -166,10 +172,10 @@ prepare(model)
     if (this.prepared) return;
     this.prepared = true;
 
-    let superclass = this.superclass;
+    let superClass = this.superClass;
 
-    if (superclass) {
-        superclass.prepare(model);
+    if (superClass) {
+        superClass.prepare(model);
     }
 
     this.prepareWarnings = [ ];
@@ -191,9 +197,9 @@ prepare(model)
         this._myIvars[ivar] = this._knownIvars[ivar] = true;
     });
 
-    if (superclass) {
-        this._knownSelectors = _.merge(this._knownSelectors, superclass._knownSelectors || { });
-        this._knownIvars     = _.merge(this._knownIvars,     superclass._knownIvars     || { });
+    if (superClass) {
+        this._knownSelectors = _.merge(this._knownSelectors, superClass._knownSelectors || { });
+        this._knownIvars     = _.merge(this._knownIvars,     superClass._knownIvars     || { });
     }
 }
 
@@ -210,41 +216,37 @@ addProperty(nsProperty)
 }
 
 
-addMethod(method)
+addGetter(name, isStatic, type)
 {
-    let selectorName = method.selectorName;
-    let selectorType = method.selectorType;
-    let isClass      = method.selectorType == "+";
-
-    let map = isClass ? this._classMethodMap : this._instanceMethodMap;
-
-    // +alloc, +new, -init, and -self are promoted to returnType "instancetype"
-    // See http://clang.llvm.org/docs/LanguageExtensions.html
-    if (isClass) {
-        if (selectorName.match(/_*new($|[^a-z])/) || selectorName.match(/_*alloc($|[^a-z])/)) {
-            method.returnType = "instancetype";
-        }
-    } else {
-        if (selectorName.match(/_*init($|[^a-z])/)) {
-            method.returnType = "init";
-        } else if (selectorName.match(/_*self($|[^a-z])/)) {
-            method.returnType = "instancetype";
-        }
-    }
-
-    if (map[selectorName]) {
-        Utils.throwError(NSError.DuplicateMethod, `Duplicate declaration of method "${selectorName}"`);
-    }
-
-    map[selectorName] = method;
+    let key = isStatic ? `static ${name}` : name;
+    this._getters.set(key, { name, isStatic, type });
 }
 
 
-// Returns true if the identifier belongs to an ivar name or inherited ivar name
-isIvar(ivar, allowInherited)
+addSetter(name, isStatic, type)
 {
-    let map = allowInherited ? this._knownIvars : this._myIvars;
-    return !!map[ivar];
+    let key = isStatic ? `static ${name}` : name;
+    this._setters.set(key, { name, isStatic, type });
+}
+
+
+getGetter(name, isStatic)
+{
+    let key = isStatic ? `static ${name}` : name;
+    return this._getters.get(key);
+}
+
+
+getSetter(name, isStatic)
+{
+    let key = isStatic ? `static ${name}` : name;
+    return this._setters.get(key);
+}
+
+
+addMethod(method)
+{
+    this._methods.push(method);
 }
 
 
@@ -254,33 +256,9 @@ getAllProperties()
 }
 
 
-getAllMethods()
+getMethods()
 {
-    return _.values(this._classMethodMap).concat(_.values(this._instanceMethodMap));
-}
-
-
-getClassMethods()
-{
-    return _.values(this._classMethodMap);
-}
-
-
-getInstanceMethods()
-{
-    return _.values(this._instanceMethodMap);
-}
-
-
-getInstanceMethodWithName(selectorName)
-{
-    return selectorName ? this._instanceMethodMap[selectorName] : null;
-}
-
-
-getClassMethodWithName(selectorName)
-{
-    return selectorName ? this._classMethodMap[selectorName] : null;
+    return this._methods;
 }
 
 

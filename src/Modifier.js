@@ -125,11 +125,11 @@ _flush()
 }
 
 
-from   (node) { this._current.from   = node;  return this; }
-to     (node) { this._current.to     = node;  return this; }
-select (node) { this._current.select = node;  return this; }
-before (node) { this._current.before = node;  return this; }
-after  (node) { this._current.after  = node;  return this; }
+from   (node) { if (!node.loc) throw new Error(); this._current.from   = node;  return this; }
+to     (node) { if (!node.loc) throw new Error(); this._current.to     = node;  return this; }
+select (node) { if (!node.loc) throw new Error(); this._current.select = node;  return this; }
+before (node) { if (!node.loc) throw new Error(); this._current.before = node;  return this; }
+after  (node) { if (!node.loc) throw new Error(); this._current.after  = node;  return this; }
 
 remove  ()     { this._current.text = null;  this._flush(); }
 insert  (text) { this._current.text = text;  this._flush(); }

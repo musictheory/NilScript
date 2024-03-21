@@ -8,18 +8,11 @@
 import _ from "lodash";
 import estraverse from "estraverse";
 
-import { Syntax } from "./Parser.js";
+import { Syntax } from "./LegacyParser.js";
 
 // Add additional visitor keys for the NilScript language extension
 const NSVisitorKeys = {
-    [ Syntax.NSMessageExpression            ]: [ "receiver", "messageSelectors" ],
-    [ Syntax.NSMessageReceiver              ]: [ "value" ],
-    [ Syntax.NSMessageSelector              ]: [ "name", "argument", "arguments" ],
-    [ Syntax.NSMethodNameSegment            ]: [ ],
     [ Syntax.NSClassImplementation          ]: [ "id", "ivarDeclarations", "body" ],
-    [ Syntax.NSMethodDefinition             ]: [ "returnType", "methodSelectors", "body" ],
-    [ Syntax.NSMethodSelector               ]: [ "name", "variableName" ],
-    [ Syntax.NSSelector                     ]: [ ],
     [ Syntax.NSParameterType                ]: [ ],
     [ Syntax.NSPropertyDirective            ]: [ "attributes", "id" ],
     [ Syntax.NSPropertyAttribute            ]: [ ],
@@ -27,7 +20,6 @@ const NSVisitorKeys = {
     [ Syntax.NSConstDeclaration             ]: [ "declarations" ],
     [ Syntax.NSEnumDeclaration              ]: [ "declarations" ],
     [ Syntax.NSProtocolDefinition           ]: [ "id", "body" ],
-    [ Syntax.NSMethodDeclaration            ]: [ "returnType", "methodSelectors" ],
     [ Syntax.NSCastExpression               ]: [ "id", "argument" ],
     [ Syntax.NSAnyExpression                ]: [ "argument" ],
     [ Syntax.NSEachStatement                ]: [ "left", "right", "body" ],
@@ -43,11 +35,12 @@ const NSVisitorKeys = {
     [ Syntax.NXPropDefinition               ]: [ "key", "value", "annotation" ],
     [ Syntax.NXFuncParameter                ]: [ "labe", "name", "annotation" ],
     [ Syntax.NXNamedArgument                ]: [ "name", "argument" ],
-    
+    [ Syntax.NXNamedArgumentColon           ]: [  ],
     
     [ Syntax.ChainExpression                ]: [ "name", "expression" ],
 
-
+    [ "TSTypeReference" ]: [ ],
+    [ "TSTypeAnnotation" ]: [ ]
 };
 
 

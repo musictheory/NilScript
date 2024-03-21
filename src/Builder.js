@@ -9,7 +9,7 @@
 import _ from "lodash";
 
 import { NSError   } from "./Errors.js";
-import { Syntax    } from "./Parser.js";
+import { Syntax    } from "./LegacyParser.js";
 import { Traverser } from "./Traverser.js";
 import { Utils     } from "./Utils.js";
 
@@ -45,9 +45,8 @@ build(nsFile)
     let traverser = new Traverser(nsFile.ast);
 
     let currentNXClass;
-    let currentClass, currentMethod, currentMethodNode;
+    let currentClass;
     let currentProtocol;
-    let functionCount = 0;
     
     let usedSelectorMap = { };
 
@@ -70,39 +69,6 @@ build(nsFile)
         }
 
         return null;
-    }
-
-    function makeNSMethodNode(node)
-    {
-        let selectorName    = node.selectorName;
-        let selectorType    = node.selectorType;
-        let methodSelectors = node.methodSelectors;
-        let optional        = node.optional;
-
-        let variableNames  = [ ];
-        let parameterTypes = [ ];
-
-        let methodType, variableName;
-        for (let i = 0, length = (methodSelectors.length || 0); i < length; i++) {
-            methodType   = methodSelectors[i].methodType;
-            variableName = methodSelectors[i].variableName;
-
-            if (methodType) {
-                parameterTypes.push(methodType.value);
-            } else if (variableName) {
-                parameterTypes.push("id");
-            }
-
-            if (variableName) {
-                variableNames.push(variableName.name);
-            }
-        }
-
-        let returnType;
-        if (node.returnType) returnType = node.returnType.value;
-        if (!returnType) returnType = "id";
-
-        return new NSMethod(makeLocation(node), selectorName, selectorType, returnType, parameterTypes, variableNames, optional);
     }
 
     function isIdentifierTransformable(node)
@@ -169,6 +135,36 @@ build(nsFile)
         }
     }
 
+    function handleCallExpression(node)
+    {
+        let hasNamedArgument = false;
+        let components = [ ];
+
+        for (let argument of node.arguments) {
+            if (argument.type == Syntax.NXNamedArgument) {
+                hasNamedArgument = true;
+                components.push("_" + argument.name.name.replaceAll("_", "$"));
+            } else {
+                components.push("_");
+            }
+        }
+
+        if (hasNamedArgument) {
+            let baseNode = node.callee;
+            
+            while (baseNode.type !== Syntax.Identifier) {
+                if (baseNode.type === Syntax.MemberExpression) {
+                    baseNode = baseNode.property;
+                } else {
+                    Utils.throwError(NSError.UnnamedError, "Cannot use named arguments here.", baseNode);
+                }
+            }
+
+            node.nx_funcName = baseNode.name + components.join("");
+            node.nx_baseNode = baseNode;
+        }
+    }
+
     function handleNXClassDeclaration(node)
     {
         let className = node.id.name;
@@ -182,11 +178,10 @@ build(nsFile)
         let className = node.id.name;
         let result;
 
-        let inheritedNames = node.inheritanceList ?
-            _.map(node.inheritanceList.ids, id => id.name) :
-            [ ];
+        let superClassName = node.superClass?.name ?? null;
+        let interfaceNames = node.interfaces.map(id => id.name);
 
-        let nsClass = new NSClass(makeLocation(node), className, inheritedNames);
+        let nsClass = new NSClass(makeLocation(node), className, superClassName, interfaceNames);
         modelObjects.push(nsClass);
         declaredClassNames.push(nsClass.name)
 
@@ -207,88 +202,66 @@ build(nsFile)
 
         currentProtocol = nsProtocol;
     }
- 
-    function handleNSMethodDefinition(node)
-    {
-        let method = makeNSMethodNode(node);
-        currentClass.addMethod(method);
-        currentMethod = method;
-        currentMethodNode = node;
-        functionCount = 0;
-    }
-
-    function handleNSMethodDeclaration(node)
-    {
-        let method = makeNSMethodNode(node);
-        currentProtocol.addMethod(method);
-    }
-    
-    function handleProperty(node, parent)
+     
+    function handleMethodDefinition(node, parent)
     {
         if (
             currentClass &&
             parent?.type == Syntax.BlockStatement &&
             parent?.ns_parent?.type == Syntax.NSClassImplementation
         ) {
+            let isStatic = node.static;
+
             if (node.kind == "get") {
-                console.log(node);
-
-                // currentClass.addGetter(node.
+                currentClass.addGetter(node.key.name, isStatic, node.value.annotation?.value);
             } else if (node.kind == "set") {
-            
+                currentClass.addSetter(node.key.name, isStatic, node.value.params[0]?.annotation?.value);
             }
-
         }
     }
 
-    function handleNSPropertyDirective(node)
+
+    function handleNXPropDefinition(node)
     {
         let attributes = [ ];
 
-        for (let i = 0, length = node.attributes.length; i < length; i++) {
-            let attribute = node.attributes[i];
-            let attributeName = attribute.name;
+        let modifier = node.modifier;
+        if (modifier) attributes.push(modifier);
 
-            if (
-                attributeName == "readonly" ||
-                attributeName == "private" ||
-                attributeName == "observed" ||
-                attributeName == "nobacking"
-            ) {
-                attributes.push(attributeName);
-            } else {
-                Utils.throwError(NSError.UnknownPropertyAttribute, `Unknown property attribute: "${attributeName}"`, node);
-            }
+        let type = node.annotation.value;
+        let name = node.key.name;
+        let isStatic = node.static;
 
-
-            // if (attributeName == "readonly") {
-            //     getterEnabled = true;
-            //     setterEnabled = false; 
-               
-            // } else if (attributeName == "private") {
-            //     getterEnabled = false;
-            //     setterEnabled = false; 
-
-            // } else if (attributeName == "change") {
-            //     changeName = attribute.selector.selectorName;
-
-            // } else if (attributeName == "nobacking") {
-            //     nobacking = true;
-
-            // } else {
-            //     Utils.throwError(NSError.UnknownPropertyAttribute, `Unknown property attribute: "${attributeName}"`, node);
-            // }
-        }
-
-        let type = node.id.annotation.value;
-        let name = node.id.name;
-
-        let property = new NSProperty(makeLocation(node), name, type, attributes);
+        let property = new NSProperty(makeLocation(node), name, type, isStatic, attributes);
 
         if (currentClass) {
             currentClass.addProperty(property);
         }
-    }        
+    }
+
+
+    function handleNXFuncDefinition(node)
+    {
+        let params = node.params.map(param => {
+            return {
+                label: param.label?.name ?? null,
+                name:  param.name.name,
+                type:  param.annotation?.value ?? null
+            };
+        });
+        
+        let baseName   = node.key.name;
+        let returnType = node.annotation?.value ?? null;
+        
+        let method = new NSMethod(makeLocation(node), baseName, node.static, node.optional ?? false, params, returnType);
+
+        if (currentClass) {
+            currentClass.addMethod(method);
+        } else if (currentProtocol) {
+            currentProtocol.addMethod(method);
+        }  
+    }
+
 
     function handleNSTypeDefinition(node)
     {
@@ -443,31 +416,15 @@ build(nsFile)
         node.ns_transformable = isIdentifierTransformable(node);
     }
 
-    function handleVariableDeclarator(node)
-    {
-        if (node.id.name == "self" && currentMethod) {
-            Utils.throwError(NSError.SelfIsReserved, "Use of self as variable name inside of NilScript method", node);
-        }
-    }
-
-    function handleFunctionDeclarationOrExpression(node)
-    {
-        if (currentMethod) {
-            for (let i = 0, length = node.params.length; i < length; i++) {
-                let param = node.params[i];
-
-                if (param.name == "self") {
-                    Utils.throwError(NSError.SelfIsReserved, "Use of self as function parameter name", node);
-                }
-            }
-        }
-    }
-
     traverser.traverse(function(node, parent) {
         let type = node.type;
 
         if (parent) {
             node.ns_parent = parent;
+        }
+
+        if (node.typeAnnotation) {
+            node.annotation = node.typeAnnotation;
         }
 
         try {
@@ -476,6 +433,12 @@ build(nsFile)
 
             } else if (type === Syntax.NXClassDeclaration) {
                 handleNXClassDeclaration(node);
+    
+            } else if (type === Syntax.NXPropDefinition) {
+                handleNXPropDefinition(node);
+                
+            } else if (type === Syntax.NXFuncDefinition) {
+                handleNXFuncDefinition(node);
 
             } else if (currentNXClass && (
                 type === Syntax.NXPropDefinition ||
@@ -491,20 +454,14 @@ build(nsFile)
             } else if (type === Syntax.NSProtocolDefinition) {
                 handleNSProtocolDefinition(node);
 
-            } else if (type === Syntax.NSPropertyDirective) {
-                handleNSPropertyDirective(node);
-
             } else if (type === Syntax.NSTypeDefinition) {
                 handleNSTypeDefinition(node);
 
-            } else if (type === Syntax.Property) {
-                handleProperty(node, parent);
-
-            } else if (type === Syntax.NSMethodDefinition) {
-                handleNSMethodDefinition(node);
-
-            } else if (type === Syntax.NSMethodDeclaration) {
-                handleNSMethodDeclaration(node);
+            } else if (type === Syntax.MethodDefinition) {
+                handleMethodDefinition(node, parent);
+                
+            } else if (type === Syntax.CallExpression) {
+                handleCallExpression(node);
 
             } else if (type === Syntax.NSEnumDeclaration) {
                 handleNSEnumDeclaration(node, parent);
@@ -517,13 +474,6 @@ build(nsFile)
 
             } else if (type === Syntax.Identifier) {
                 handleIdentifier(node, parent);
-
-            } else if (type === Syntax.VariableDeclarator) {
-                handleVariableDeclarator(node);
-
-            } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression) {
-                functionCount++;
-                handleFunctionDeclarationOrExpression(node);
 
             } else if (type === Syntax.NSMessageExpression) {
                 if (node.selectorName == "alloc") {
@@ -556,18 +506,9 @@ build(nsFile)
 
         if (type === Syntax.NSClassImplementation) {
             currentClass  = null;
-            currentMethod = null;
-            currentMethodNode = null;
 
         } else if (type === Syntax.NSProtocolDefinition) {
             currentProtocol = null;
-
-        } else if (type === Syntax.NSMethodDefinition) {
-            currentMethod = null;
-            currentMethodNode = null;
-
-        } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression) {
-            functionCount--;
 
         } else if (type === Syntax.NXClassDeclaration) {
             currentNXClass = null;        

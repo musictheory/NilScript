@@ -10,7 +10,7 @@ import _ from "lodash";
 import { Modifier  } from "./Modifier.js";
 import { NSError   } from "./Errors.js";
 import { NSWarning } from "./Errors.js";
-import { Syntax    } from "./Parser.js";
+import { Syntax    } from "./LegacyParser.js";
 import { Traverser } from "./Traverser.js";
 import { Utils     } from "./Utils.js";
 
@@ -81,10 +81,12 @@ generate()
     let language = this._language;
     let options  = this._options;
     let inlines  = this._inlines;
+    
+    let toSkip = new Set();
 
     let currentNXClass;
     let currentClass;
-    let currentMethodNode;
+    let currentFuncNode;
 
     let optionWarnGlobalNoType = options["warn-global-no-type"];
 
@@ -93,160 +95,20 @@ generate()
 
     let warnings = [ ];
 
-    function getCurrentMethodInModel() {
-        if (!currentClass || !currentMethodNode) return null;
-
-        let selectorType = currentMethodNode.selectorType;
-        let selectorName = currentMethodNode.selectorName;
-
-        if (selectorType == "+") {
-            return currentClass.getClassMethodWithName(selectorName);
-        } else {
-            return currentClass.getInstanceMethodWithName(selectorName);
-        }
-    }
-
     function checkRestrictedUsage(node)
     {
         let name = node.name;
 
         if (!node.ns_transformable) return;
 
-        if (currentMethodNode && currentClass) {
-            if (currentClass.isIvar(name, true)) {
-                Utils.throwError(NSError.RestrictedUsage, `Cannot use instance variable "${name}" here`, node);
-            }
-        }
+        // if (currentMethodNode && currentClass) {
+        //     if (currentClass.isIvar(name, true)) {
+        //         Utils.throwError(NSError.RestrictedUsage, `Cannot use instance variable "${name}" here`, node);
+        //     }
+        // }
 
         if (inlines[name] || model.globals[name]) {
             Utils.throwError(NSError.RestrictedUsage, `Cannot use compiler-inlined "${name}" here`, node);
-        }
-    }
-
-    function handleNSMessageExpression(node, parent)
-    {
-        let receiver   = node.receiver.value;
-        let methodName = symbolTyper.getSymbolForSelectorName(node.selectorName);
-
-        let firstSelector, lastSelector;
-
-        function replaceMessageSelectors()
-        {
-            for (let i = 0, length = node.messageSelectors.length; i < length; i++) {
-                let messageSelector = node.messageSelectors[i];
-
-                if (!firstSelector) {
-                    firstSelector = messageSelector;
-                }
-
-                if (messageSelector.arguments) {
-                    let lastArgument = messageSelector.arguments[messageSelector.arguments.length - 1];
-
-                    modifier.from(messageSelector).to(messageSelector.arguments[0]).replace("[");
-                    modifier.after(lastArgument).insert("]");
-
-                    lastSelector = lastArgument;
-
-                } else if (messageSelector.argument) {
-                    modifier.from(messageSelector).to(messageSelector.argument).remove();
-                    lastSelector = messageSelector.argument;
-
-                    if (i < (length - 1)) {
-                        let nextSelector = node.messageSelectors[i+1];
-                        modifier.from(messageSelector.argument).to(nextSelector).replace(",");
-                    }
-
-                } else {
-                    modifier.select(messageSelector).remove()
-                    lastSelector = messageSelector;
-                    messageSelector.ns_skip = true;
-                }
-            }        
-        }
-
-        function doCommonReplacement(start, end, needsGroup) {
-            replaceMessageSelectors();
-
-            node.receiver.ns_skip = true;
-            
-            if (needsGroup) { start = `(${start}`; end = `${end})`; }
-
-            modifier.from(node).to(firstSelector).replace(start);
-            modifier.from(lastSelector).to(node).replace(end);
-        }
-
-        // Optimization cases
-
-        if (receiver.type == Syntax.ThisExpression) {
-            doCommonReplacement("this." + methodName + "(", ")");
-
-        } else if (receiver.type == Syntax.Identifier && model.classes[receiver.name]) {
-            let classVariable = symbolTyper.getSymbolForClassName(receiver.name);
-
-            if (language === LanguageEcmascript5) {
-                classVariable = NSRootWithClassPrefix + classVariable;
-            }
-
-            if (methodName == "alloc") {
-                doCommonReplacement("new " + classVariable + "()");
-
-            } else if (methodName == "class") {
-                doCommonReplacement(classVariable);
-
-            } else {
-                doCommonReplacement(classVariable + "." + methodName + "(", ")");
-            }
-
-        } else if (receiver.type == Syntax.Identifier && currentMethodNode) {
-            if (receiver.name == "super") {
-                if (!currentClass.superclass) {
-                    warnings.push(Utils.makeError(NSWarning.UndeclaredInstanceVariable, `NO SUPERCLASS`, node));
-                }
-            
-                if (language === LanguageEcmascript5) {
-                    doCommonReplacement(`super.${methodName}(`, ")");
-
-                } else if (language === LanguageTypechecker) {
-                    let method = getCurrentMethodInModel();
-                    let cast = "";
-
-                    if (method.returnType == "instancetype") {
-                        cast = "<" + symbolTyper.toTypecheckerType(currentClass.name) + ">";
-                    }
-
-                    doCommonReplacement(cast + "this." + NSSuperVariable + "()." + methodName + "(", ")");
-                }
-
-            } else {
-                let needsGroup = parent.type == Syntax.MemberExpression; 
-                doCommonReplacement(`${receiver.name}?.${methodName}(`, `)`, needsGroup);
-            }
-
-        } else {
-            replaceMessageSelectors();
-
-            let start = "";
-            let end   = ")";
-            let afterReceiver = receiver.ns_nonnull ? "" : "?";
-
-            if (parent.type == Syntax.MemberExpression) {
-                start += "(";
-                end   += ")";
-            }
-            
-            if (
-                receiver.type != Syntax.Identifier &&
-                receiver.type != Syntax.MemberExpression &&
-                receiver.type != Syntax.CallExpression &&
-                receiver.type != Syntax.NSMessageExpression
-            ) {
-                start += "(";
-                afterReceiver = ")" + afterReceiver;
-            }
-
-            modifier.from(node).to(receiver).replace(start);
-            modifier.from(receiver).to(firstSelector).replace(`${afterReceiver}.${methodName}(`);
-            modifier.from(lastSelector).to(node).replace(end);
         }
     }
 
@@ -255,18 +117,22 @@ generate()
         let name = node.id.name;
         let cls  = model.classes[name];
 
-        let superName   = cls.superclass ? cls.superclass.name : null;
+        let superName   = cls.superClass ? cls.superClass.name : null;
         let classSymbol = symbolTyper.getSymbolForClassName(name);
- 
+        
+        if (cls.superClass) toSkip.add(cls.superClass);
+        toSkip.add(node.id);
+
         // Only allow whitelisted children inside of an implementation block
         _.each(node.body.body, child => {
             let type = child.type;
             
             if (!(
-                type == Syntax.NSMethodDefinition  ||
                 type == Syntax.NSPropertyDirective ||
-                (type == Syntax.Property && child.kind == "get") ||
-                (type == Syntax.Property && child.kind == "set")
+                type == Syntax.NXPropDefinition ||
+                type == Syntax.NXFuncDefinition ||
+                (type == Syntax.MethodDefinition && child.kind == "get") ||
+                (type == Syntax.MethodDefinition && child.kind == "set")
             )) {
                 Utils.throwError(NSError.ParseError, 'Unexpected implementation child.', child);
             }
@@ -293,6 +159,17 @@ generate()
 
             startText = `${NSRootWithClassPrefix}${classSymbol} = class ${classSymbol} extends ${extendsString} {`;
 
+            let hasInit = false;
+            for (let method of cls._methods) {
+                if (method.baseName == "init") {
+                    hasInit = true;
+                }            
+            }
+            
+            if (hasInit) {
+                startText += `constructor(...A) { ${NSRootVariable}._i(super(${NSRootVariable}._i0), ...A); }`;
+            }
+
             endText = "};";
 
         } else if (language === LanguageTypechecker) {
@@ -311,65 +188,92 @@ generate()
 
     function handleMethodDefinition(node)
     {
-        let methodName = symbolTyper.getSymbolForSelectorName(node.selectorName);
-        let isClassMethod = node.selectorType == "+";
-        let args = [ ];
-
-        if (Utils.isReservedSelectorName(node.selectorName)) {
-            Utils.throwError(
-                NSError.ReservedMethodName,
-                `The method name "${node.selectorName}" is reserved by the runtime and may not be overridden`,
-                node
-            );
-        }
-
         if (language === LanguageTypechecker) {
-            args.push("this" + " : " + symbolTyper.getSymbolForClassName(currentClass.name, isClassMethod) );
+            let classSymbol = symbolTyper.getSymbolForClassName(currentClass.name, node.static);
+            
+            let replacement = "";
+
+            if (node.kind == "set") {
+                let replacement = `(function(this: ${classSymbol}, `
+
+                toSkip.add(node.key);
+                
+                modifier.from(node).to(node.value.params[0]).replace(replacement);
+                modifier.from(node.value).to(node).replace(");");
+
+            } else if (node.kind == "get") {
+                let replacement = `(function(this: ${classSymbol})`
+
+                toSkip.add(node.key);
+
+                modifier.from(node).to(node.value.annotation).replace(replacement);
+                modifier.from(node.value).to(node).replace(");");
+            }
+        }    
+    }
+
+    function handleSuper(node)
+    {
+        if (language === LanguageTypechecker) {
+            modifier.select(node).replace("this." + NSSuperVariable + "()");
         }
+    } 
+   
+    function handleCallExpression(node)
+    {
+        let baseNode = node.nx_baseNode;
+        
+        if (baseNode) {
+            modifier.select(node.nx_baseNode).replace(node.nx_funcName);
 
-        for (let i = 0, length = node.methodSelectors.length; i < length; i++) {
-            let variableName = node.methodSelectors[i].variableName;
-            let methodType   = node.methodSelectors[i].methodType;
+            toSkip.add(baseNode);
+            
+            for (let argument of node.arguments) {
+                if (argument.type === Syntax.NXNamedArgument) {
+                    modifier.select(argument.name).remove();
+                    modifier.select(argument.colon).remove();
 
-            if (variableName) {
-                checkRestrictedUsage(variableName);
-
-                let name = variableName.name;
-
-                if (language === LanguageEcmascript5) {
-                    args.push(name);
-                } else if (language === LanguageTypechecker) {
-                    let outputType = symbolTyper.toTypecheckerType(methodType && methodType.value);
-                    args.push(name + (methodType ? (" : " + outputType) : ""));
+                    toSkip.add(argument.name);
                 }
             }
         }
+    }
 
-        if (language == LanguageEcmascript5) {
-            let definition = (isClassMethod ? "static " : "") + methodName + "(" + args.join(", ") + ") ";
+    function handleNewExpression(node)
+    {
+        let components = [ ];
+        let hasNamedArgument = false;
 
-            modifier.from(node).to(node.body).replace(definition);
-            modifier.from(node.body).to(node).replace("");
+        for (let argument of node.arguments) {
+            if (argument.type === Syntax.NXNamedArgument) {
+                hasNamedArgument = true;
+                components.push("_" + argument.name.name.replaceAll("_", "$"));
 
-        } else if (language === LanguageTypechecker) {
-            let definition = "(function(" + args.join(", ") + ") ";
+                modifier.select(argument.name).remove();
+                modifier.select(argument.colon).remove();
+                toSkip.add(argument.name);
 
-            let returnType = getCurrentMethodInModel().returnType;
-            if (returnType == "instancetype" || returnType == "init") returnType = currentClass.name;
-            definition += ": " + symbolTyper.toTypecheckerType(returnType);
-
-            modifier.from(node).to(node.body).replace(definition);
-            modifier.from(node.body).to(node).replace(");");
+            } else {
+                components.push("_");
+            }
         }
 
-        let returnType = getCurrentMethodInModel().returnType;
+        if (hasNamedArgument) {
+            let baseNode = node.callee;
+            
+            let funcName = "init" + components.join("");
+        
+            if (language === LanguageTypechecker) {
+                let replacement = `()).${funcName}(`;
+            
+                modifier.from(node).to(node.callee).replace("((new ");
+                modifier.from(node.callee).to(node.arguments[0]).replace(replacement);
 
-        if (returnType == "init") {
-            let length = node.body.body.length;
-            if (length > 0) {
-                modifier.from(node.body.body[length - 1]).to(node.body).replace("return this; }");
+                modifier.from(node.arguments[node.arguments.length - 1]).to(node).replace("))");
+
             } else {
-                modifier.select(node.body).replace("{ return this; }");
+                let replacement = `(${NSRootVariable}._in, "${funcName}", `;
+                modifier.from(node.callee).to(node.arguments[0]).replace(replacement);
             }
         }
     }
@@ -378,12 +282,10 @@ generate()
     {
         let name = node.name;
 
-        let className    = currentClass      ? currentClass.name              : null;
-        let selectorName = currentMethodNode ? currentMethodNode.selectorName : null;
+        let className = currentClass ? currentClass.name : null;
         
         if (optionSqueeze) {
-            className    = className    && symbolTyper.getSymbolForClassName(className);
-            selectorName = selectorName && symbolTyper.getSymbolForSelectorName(selectorName);
+            className = className && symbolTyper.getSymbolForClassName(className);
         }
 
         if (name === "@CLASS") {
@@ -393,32 +295,20 @@ generate()
                 Utils.throwError(NSError.ParseError, 'Cannot use @CLASS outside of a class implementation');
             }
 
-        } else if (name === "@SEL" || name === "@FUNCTION" || name === "@ARGS" || name === "@FUNCTION_ARGS") {
-            let currentMethod = getCurrentMethodInModel();
-            let replacement   = null;
+        } else if (name === "@FUNCTION_ARGS") {
+            let replacement = null;
 
-            if (className && selectorName && currentMethodNode && currentMethod) {
-                let selectorType   = currentMethodNode.selectorType;
-                let functionString = `${selectorType}[${className} ${selectorName}]`;
-                let argsString     = "[" + (currentMethod.variableNames || [ ]).join(",") + "]";
-
-                if (name === "@SEL") {
-                    replacement = '"' + selectorName + '"';
-                } else if (name === "@FUNCTION") {
-                    replacement = '"' + functionString + '"';
-
-                } else if (name === "@FUNCTION_ARGS") {
-                    replacement = '"' + functionString + ' " + ' + argsString;
-
-                } else if (name === "@ARGS") {
-                    replacement = argsString;
-                }
+            if (className && currentFuncNode) {
+                let isStatic = currentFuncNode.static;
+                
+                //!FIXME: Implement
+                replacement = "\"\"";
             }
 
             if (replacement) {
                 modifier.select(node).replace(replacement);
             } else {
-                Utils.throwError(NSError.ParseError, `Cannot use "${name}" outside of a method definition`);
+                Utils.throwError(NSError.ParseError, `Cannot use @FUNCTION_ARGS outside of a method definition`);
             }
 
         } else {
@@ -465,17 +355,17 @@ generate()
         }
 
 
-        if (
-            currentMethodNode &&
-            currentClass &&
-            currentClass.isIvar(name, true) &&
-            parent.type == Syntax.MemberExpression &&
-            parent.computed == false &&
-            parent.object.type == Syntax.ThisExpression
-        ) {
-            modifier.select(node).replace(symbolTyper.getSymbolForIdentifierName(name));
-            return;
-        }
+        // if (
+        //     currentMethodNode &&
+        //     currentClass &&
+        //     currentClass.isIvar(name, true) &&
+        //     parent.type == Syntax.MemberExpression &&
+        //     parent.computed == false &&
+        //     parent.object.type == Syntax.ThisExpression
+        // ) {
+        //     modifier.select(node).replace(symbolTyper.getSymbolForIdentifierName(name));
+        //     return;
+        // }
 
         if (!node.ns_transformable) return;
 
@@ -487,7 +377,36 @@ generate()
 
             modifier.select(node).replace(replacement);
             return;
-        }  
+        }
+        
+        if (model.classes[name]) {
+        //  && (
+        //     parent.type == Syntax.MemberExpression ||
+        //     parent.type == Syntax.NewExpression ||
+        //     (
+        //         parent.type == Syntax.BinaryExpression &&
+        //         parent.operator == "instanceof" &&
+        //         parent.right == node
+        //     )
+        // )) {
+        //
+        
+             let classVariable = symbolTyper.getSymbolForClassName(name);
+
+            if (language === LanguageEcmascript5) {
+                classVariable = NSRootWithClassPrefix + classVariable;
+            }
+
+            modifier.select(node).replace(classVariable);
+            return;
+        }
+
+        // if (model.classes[name] && parent.type != Syntax.NSClassImplementation) {
+        //     console.log(parent);
+        //     warnings.push(Utils.makeError(NSWarning.UnknownEnumMember, `Found lone class`, node));
+        // }
+
+
 
         if (inlines) {
             let result = inlines[name];
@@ -527,8 +446,8 @@ generate()
         let member = nsEnum.members.get(memberName);
 
         if (member) {
-            node.object.ns_skip = true;
-            node.property.ns_skip = true;
+            toSkip.add(node.object);
+            toSkip.add(node.property);
 
             let replacement;
             if (language == LanguageTypechecker) {
@@ -552,87 +471,6 @@ generate()
         for (let declaration of node.declarations) {
             checkRestrictedUsage(declaration.id);
         }
-    }
-
-    function handleNSPropertyDirective(node)
-    {
-        let name = node.id.name;
-
-        let property = currentClass.getPropertyWithName(name);
-        let ivar = symbolTyper.getSymbolForIdentifierName(`_${property.name}`);
-        
-        let isObserved = property.attributes.indexOf("observed") >= 0;
-
-        let getterName = property.getterName;
-        let setterName = property.setterName;
-
-        let getterMethod = currentClass.getInstanceMethodWithName(getterName);
-        let setterMethod = currentClass.getInstanceMethodWithName(setterName);
-
-        let result = "";
-        if (setterMethod?.synthesized) {
-            if (language === LanguageEcmascript5) {
-
-                let s = [ ];
-
-                if (isObserved) {
-                    s.push(`if (this.${ivar} !== arg) {`);
-                }
-
-                s.push(`this.${ivar} = arg;`);
-
-                if (isObserved) {
-                    let changeSymbol = symbolTyper.getSymbolForSelectorName("observePropertyChange");
-                    s.push(`this.${changeSymbol}();`);
-                    s.push(`}`);
-                }
-
-                let symbol = symbolTyper.getSymbolForSelectorName(setterName);
-
-                result += `${symbol}(arg) {${s.join(" ")} } `; 
-            }
-        }
-
-        if (getterMethod?.synthesized) {
-            if (language === LanguageEcmascript5) {
-                result += symbolTyper.getSymbolForSelectorName(getterName);
-                result += `() { return this.${ivar}; } `;
-            }
-        }
-
-        if (language === LanguageTypechecker) {
-            result += "<" + symbolTyper.toTypecheckerType(property.type) + "> null;";
-        } else {
-            let initValue;
-            if (model.isNumericType(property.type)) {
-                initValue = "0";
-            } else if (model.isBooleanType(property.type)) {
-                initValue = "false";
-            } else {
-                initValue = "null";
-            }
-
-            let nobacking = property.attributes.indexOf("nobacking") >= 0;
-
-            if (!nobacking) {
-                result += `${ivar} = ${initValue}`;
-            }
-        }
-
-        if (!result) {
-            modifier.select(node).remove();
-        } else {
-            modifier.select(node).replace(result);
-        }
-    }
-
-    function handleNSSelectorDirective(node)
-    {
-        let name = symbolTyper.getSymbolForSelectorName(node.name);
-
-        modifier.select(node).replace(
-            language === LanguageTypechecker ? `{ N$_Selector: "${name}" }` : `"${name}"`
-        );
     }
 
     function handleNSEnumDeclaration(node)
@@ -749,7 +587,8 @@ generate()
 
                 modifier.from(node).to(declaration).replace(NSRootWithGlobalPrefix + name + "=");
                 modifier.select(declaration.id).remove();
-                declaration.id.ns_skip = true;
+
+                toSkip.add(declaration.id);
 
             } else if (declarators) {
                 modifier.from(node).to(declarators[0]).remove();
@@ -758,7 +597,8 @@ generate()
                     let name = symbolTyper.getSymbolForIdentifierName(declarator.id.name);
 
                     modifier.select(declarator.id).replace(NSRootWithGlobalPrefix + name);
-                    declarator.id.ns_skip = true;
+
+                    toSkip.add(declarator.id);
                 })
             }
 
@@ -768,7 +608,7 @@ generate()
                 modifier.select(declaration.id).remove();
                 modifier.after(node).insert(");");
 
-                declaration.id.ns_skip = true;
+                toSkip.add(declaration.id);
 
             } else if (declarators) {
                 modifier.from(node).to(declarators[0]).replace("(function() { var ");
@@ -777,7 +617,7 @@ generate()
                 let index = 0;
                 _.each(declarators, function(declarator) {
                     modifier.select(declarator.id).replace("a" + index++);
-                    declarator.id.ns_skip = true;
+                    toSkip.add(declarator.id);
                 });
             }
         }
@@ -800,7 +640,7 @@ generate()
             if (nsConst && _.isString(nsConst.value)) {
                 modifier.from(node).to(node.value).replace(nsConst.raw + ":");
                 modifier.from(node.value).to(node).replace("");
-                key.ns_skip = true;
+                toSkip.add(key);
             }
         }
     }
@@ -808,26 +648,71 @@ generate()
     function handleNXPropDefinition(node)
     {
         let name = node.key.name;
+
+        toSkip.add(node.key);
+        toSkip.add(node.annotation);
         
-        let hasField =  currentNXClass.hasField("_" + name);
-        let hasGetter = currentNXClass.hasGetter(name);
-        let hasSetter = currentNXClass.hasSetter(name);
+        let property = currentClass.getPropertyWithName(name);
+        let isStatic = property.isStatic;
+        let propertySymbol = symbolTyper.getSymbolForIdentifierName(name);
+        let backingSymbol  = symbolTyper.getSymbolForIdentifierName(`_${name}`);
         
-        let replacement = "";
-        if (!hasField) {
-            replacement += `_${name};`;
-        }
+        let result = "";
+        
+        let staticString = isStatic ? "static" : "";
 
-        if (!hasGetter) {
-            replacement += `get ${name}() { return this._${name}; }`;
-        }
+        if (language === LanguageEcmascript5) {
+            if (property.wantsSetter && !currentClass.getSetter(name, isStatic)) {
+                let isObserved = property.attributes.indexOf("observed") >= 0;
 
-        if (!node.isReadonly && !hasSetter) {
-            replacement += `set ${name}(x) { this._${name} = x; }`;
-        }
+                let s = [ ];
 
-        modifier.select(node).replace(replacement);
-        node.annotation.ns_skip = true;
+                if (isObserved) {
+                    s.push(`if (this.${backingSymbol} !== arg) {`);
+                }
+
+                s.push(`this.${backingSymbol} = arg;`);
+
+                if (isObserved) {
+                    let changeSymbol = symbolTyper.getSymbolForIdentifierName("observePropertyChange");
+                    s.push(`this.${changeSymbol}();`);
+                    s.push(`}`);
+                }
+
+                result += `${staticString} set ${propertySymbol}(arg) {${s.join(" ")} } `;
+            }
+                
+            if (property.wantsSetter) {
+                let legacySetterName = property.legacySetterName;
+                let legacySetterSymbol = symbolTyper.getSymbolForIdentifierName(legacySetterName);
+
+                result += `${staticString} ${legacySetterSymbol}(arg) {this.${propertySymbol}=arg;} `; 
+            }
+
+            if (property.wantsGetter && !currentClass.getGetter(name, isStatic)) {
+                result += `${staticString} get ${propertySymbol}() { return this.${backingSymbol}; } `;
+            }
+
+            let initValue;
+            if (model.isNumericType(property.type)) {
+                initValue = "0";
+            } else if (model.isBooleanType(property.type)) {
+                initValue = "false";
+            } else {
+                initValue = "null";
+            }
+
+            result += `${staticString} ${backingSymbol} = ${initValue}`;
+
+        } else if (language === LanguageTypechecker) {
+            result += "<" + symbolTyper.toTypecheckerType(property.type) + "> null;";
+        }
+        
+        if (!result) {
+            modifier.select(node).remove();
+        } else {
+            modifier.select(node).replace(result);
+        }
     }
 
     function handleNXFuncDefinition(node)
@@ -836,14 +721,56 @@ generate()
 
         let replacement = node.key.name;
 
+        let components = [ ];
+        let hasNamedArgument = false;
+
         for (let param of node.params) {
             let label = param.label?.name;
             if (!label) label = param.name.name;
-            replacement += "_" + label;
+            if (!label) label = "";
+
+            if (param.label?.name == "_") {
+                components.push("_");
+            } else {
+                components.push("_" + label.replaceAll("_", "$"));
+                hasNamedArgument = true;
+            }
         }
         
-        modifier.from(node).to(node.key).replace(isStatic ? "static " : "");
-        modifier.select(node.key).replace(replacement);
+        if (hasNamedArgument) {
+            replacement += components.join("");
+        }
+        
+        if (language === LanguageTypechecker) {
+            let args = [ ];
+
+            args.push("this" + " : " + symbolTyper.getSymbolForClassName(currentClass.name, isStatic) );
+
+            for (let param of node.params) {
+                let name = param.name.name;
+                let outputType = symbolTyper.toTypecheckerType(param.annotation?.value);
+                args.push(name + " : " + outputType);
+                
+                toSkip.add(param);
+            }
+            
+            toSkip.add(node.annotation);
+       
+            let definition = "(function(" + args.join(", ") + ") ";
+
+            let returnType = node.annotation?.value;
+            if (returnType == "instancetype" || returnType == "init") returnType = currentClass.name;
+            if (returnType) {
+                definition += ": " + symbolTyper.toTypecheckerType(returnType);
+            }
+
+            modifier.from(node).to(node.body).replace(definition);
+            modifier.from(node.body).to(node).replace(");");
+            
+        } else {
+            modifier.from(node).to(node.key).replace(isStatic ? "static " : "");
+            modifier.select(node.key).replace(replacement);       
+        }
     }
 
     function handleNXFuncParameter(node)
@@ -853,29 +780,12 @@ generate()
         }
     }
 
-    function checkThis(thisNode, path)
-    {
-        for (let i = path.length - 1; i >= 0; i--) {
-            let node = path[i];
-
-            if (node.type == Syntax.NSMethodDefinition ||
-                node.type == Syntax.NSClassImplementation ||
-                node.type == Syntax.NSMessageExpression)
-            {
-                warnings.push(Utils.makeError(NSWarning.UseOfThisInMethod, "Use of 'this' keyword in NilScript method definition", thisNode));
-
-            } else if (node.type == Syntax.FunctionDeclaration ||
-                       node.type == Syntax.FunctionExpression  ||
-                       node.type == Syntax.ArrowFunctionExpression) {
-                break;
-            }
-        }
-    }
+let path = this._file.path;
 
     traverser.traverse(function(node, parent) {
         let type = node.type;
 
-        if (node.ns_skip) return Traverser.SkipNode;
+        if (toSkip.has(node)) return Traverser.SkipNode;
 
         if (type === Syntax.NSProtocolDefinition ||
             type === Syntax.NSEnumDeclaration    ||
@@ -896,19 +806,11 @@ generate()
 
             handleNSClassImplementation(node);
 
-        } else if (type === Syntax.NSMethodDefinition) {
-            currentMethodNode = node;
-            handleMethodDefinition(node);
+        } else if (type === Syntax.CallExpression) {
+            handleCallExpression(node);
 
-        } else if (type === Syntax.NSMessageExpression) {
-            handleNSMessageExpression(node, parent);
-
-        } else if (type === Syntax.NSPropertyDirective) {
-            handleNSPropertyDirective(node);
-            return Traverser.SkipNode;
-
-        } else if (type === Syntax.NSSelectorDirective) {
-            handleNSSelectorDirective(node);
+        } else if (type === Syntax.NewExpression) {
+            handleNewExpression(node);
 
         } else if (type === Syntax.NSEnumDeclaration) {
             handleNSEnumDeclaration(node);
@@ -922,7 +824,7 @@ generate()
         } else if (type === Syntax.NSAnyExpression) {
             handleNSAnyExpression(node);
 
-        } else if (type === Syntax.NSTypeAnnotation) {
+        } else if (type === Syntax.NSTypeAnnotation || type === "TSTypeAnnotation") {
             handleNSTypeAnnotation(node, parent);
 
         } else if (type === Syntax.NSGlobalDeclaration) {
@@ -946,17 +848,25 @@ generate()
         } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression || type === Syntax.ArrowFunctionExpression) {
             handleFunctionDeclarationOrExpression(node);
 
+        } else if (type === Syntax.MethodDefinition) {
+            handleMethodDefinition(node);
+
+        } else if (type === Syntax.Super) {
+            handleSuper(node);
+
         } else if (type === Syntax.Property) {
             handleProperty(node);
 
         } else if (type === Syntax.NXClassDeclaration) {
-            console.log(node);
             currentNXClass = node.nxClass;
 
         } else if (type === Syntax.NXPropDefinition) {
             handleNXPropDefinition(node);
+
         } else if (type === Syntax.NXFuncDefinition) {
+            currentFuncNode = node;
             handleNXFuncDefinition(node);
+
         } else if (type === Syntax.NXFuncParameter) {
             handleNXFuncParameter(node);
         }
@@ -968,12 +878,10 @@ generate()
         if (type === Syntax.NSClassImplementation) {
             currentClass = null;
 
-        } else if (type === Syntax.NSMethodDefinition) {
-            currentMethodNode = null;
+        } else if (type === Syntax.NXFuncDefinition) {
+            currentFuncNode = null;        
         }
     });
-
-    let path = this._file.path;
 
     _.each(warnings, warning => {
         Utils.addFilePathToError(path, warning);

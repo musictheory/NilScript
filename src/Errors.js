@@ -42,7 +42,12 @@ export const NSError = {
     VariableNotYetDeclared:         "NilScriptVariableNotYetDeclaredError",
     RestrictedUsage:                "NilScriptRestrictedUsageError",
     CircularClassHierarchy:         "NilScriptCircularClassHierarchyError",
-    InheritanceError:               "NilScriptInheritanceError"
+    InheritanceError:               "NilScriptInheritanceError",
+
+
+    UnnamedError:           "NilScriptUnnamedError",
+
+
 };
 
 

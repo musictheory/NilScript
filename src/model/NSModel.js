@@ -15,7 +15,6 @@ import { NSClass       } from "./NSClass.js";
 import { NSConst       } from "./NSConst.js";
 import { NSEnum        } from "./NSEnum.js";
 import { NSGlobal      } from "./NSGlobal.js";
-import { NSMethod      } from "./NSMethod.js";
 import { NSProtocol    } from "./NSProtocol.js";
 import { NSSymbolTyper } from "./NSSymbolTyper.js";
 import { NSType        } from "./NSType.js";
@@ -189,23 +188,16 @@ prepare()
 
             visited.push(currentName);
 
-            currentClass = currentClass.superclass;
+            currentClass = currentClass.superClass;
         }
     });
 
     _.each(this.classes, cls => {
         cls.prepare(this);
 
-        _.each(cls.getAllMethods(), method => {
-            selectorMap[method.selectorName] = true;
-        });
-    });
-
-
-    _.each(this.protocols, protocol => {
-        _.each(protocol.getAllMethods(), method => {
-            selectorMap[method.selectorName] = true;
-        });
+        // _.each(cls.getAllLegacyMethods(), method => {
+        //     selectorMap[method.selectorName] = true;
+        // });
     });
 
     _.each(Utils.getBaseObjectSelectorNames(), selectorName => {
@@ -377,6 +369,7 @@ addEnum(nsEnum)
 
 addClass(nsClass)
 {
+    if (!nsClass || !nsClass.name) console.log(nsClass);
     let name     = nsClass.name;
     let existing = this.classes[name];
 

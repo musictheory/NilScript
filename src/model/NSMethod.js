@@ -8,17 +8,14 @@
 
 export class NSMethod {
 
-
-constructor(location, selectorName, selectorType, returnType, parameterTypes, variableNames, optional)
+constructor(location, baseName, isStatic, isOptional, parameters, returnType)
 {
-    this.location       = location;
-    this.selectorName   = selectorName;
-    this.selectorType   = selectorType;
-    this.returnType     = returnType;
-    this.parameterTypes = parameterTypes || [ ];
-    this.variableNames  = variableNames  || [ ];
-    this.optional       = optional;
-    this.synthesized    = false;
+    this.location   = location;
+    this.baseName   = baseName;
+    this.isStatic   = isStatic;
+    this.isOptional = isOptional;
+    this.parameters = parameters;
+    this.returnType = returnType;
 }
 
 
@@ -26,14 +23,14 @@ copy()
 {
     return new NSMethod(
         this.location,
-        this.selectorName,
-        this.selectorType,
-        this.returnType,
-        this.parameterTypes,
-        this.variableNames,
-        this.optional
+        this.baseName,
+        this.isStatic,
+        this.isOptional,
+        this.parameters,
+        this.returnType
     );
 }
 
 
 }
+

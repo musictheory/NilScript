@@ -13,7 +13,6 @@ import { Utils   } from "../Utils.js";
 
 import { NSClass    } from "./NSClass.js";
 import { NSEnum     } from "./NSEnum.js";
-import { NSMethod   } from "./NSMethod.js";
 import { NSProtocol } from "./NSProtocol.js";
 
 
@@ -230,7 +229,7 @@ enrollForSqueezing(name)
 
 _parseTypeString(inString)
 {
-    let tokens = inString.match(/[A-Za-z0-9$_]+|[<>,\[\]]/g);
+    let tokens = inString.match(/[A-Za-z0-9$_]+|[<>,\[\]|]/g);
     let next   = tokens[0];
 
     function lex() {
@@ -246,6 +245,7 @@ _parseTypeString(inString)
     function parse() {
         let args = null;
         let suffix = "";
+        let orType = null;
 
         let name = lex();
         if (name == "async") {
@@ -279,13 +279,16 @@ _parseTypeString(inString)
                     if (next == "]") lex();
                     suffix += "[]";            
                 }
+            } else if (next == "|") {
+                lex();
+                orType = parse();
             }
 
         } else {
             throw new Error();
         }
 
-        return { name, args, suffix };
+        return { name, args, suffix, orType };
     }
 
     return parse();
@@ -319,12 +322,16 @@ toTypecheckerType(rawInType)
     function convert(node) {
         let name       = node.name;
         let args       = node.args || [ ];
+        let orType     = node.orType;
         let suffix     = node.suffix;
         let argsLength = args.length;
         let tmp;
         
         if (suffix) {
             return convert({ name, args, suffix: "" }) + suffix;
+
+        } else if (orType) {
+            return convert({ name, args, suffix }) + "|" + convert(orType);
 
         } else if (name == "Array") {
             if (argsLength > 1) {

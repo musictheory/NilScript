@@ -44,28 +44,59 @@ _getProtocolList(verb, isStatic, rawProtocolNames)
 _getDeclarationForMethod(method)
 {
     let symbolTyper = this._symbolTyper;
-    let methodName  = symbolTyper.getSymbolForSelectorName(method.selectorName);
-    let parameters  = [ ];
 
-    for (let i = 0, length = method.parameterTypes.length; i < length; i++) {
-        let variableName  = method.variableNames[i] || ("a" + i);
-        let parameterType = symbolTyper.toTypecheckerType(method.parameterTypes[i]);
+    let line = method.isStatic ? "static " : "";
+    line += method.baseName;
+   
+    // name
+    let components = [ ];
+    let hasNamedArgument = false;
 
-        parameters.push(variableName + " : " + parameterType);
+    for (let parameter of method.parameters) {
+        let label = parameter.label;
+        if (!label) label = parameter.name;
+        if (!label) label = "";
+
+        if (label == "_") {
+            components.push("_");
+        } else {
+            components.push("_" + label.replaceAll("_", "$"));
+            hasNamedArgument = true;
+        }
     }
 
-    let returnType = symbolTyper.toTypecheckerType(method.returnType);
+    if (hasNamedArgument) {
+        line += components.join("");
+    }
 
-    return methodName + (method.optional ? "?" : "") + "(" + parameters.join(", ") + ") : " + returnType + ";";
-}
+    if (method.isOptional) {
+        line += "?";
+    } 
+   
+    line += "("
+    line += method.parameters.map(parameter => {
+        let p = parameter.name;
+        
+        if (parameter.type) {
+            p += ": " + symbolTyper.toTypecheckerType(parameter.type);
+        }
 
+        return p;
+    }).join(", ");
+    line += ")";
+    
+    let returnType = method.returnType;
+    if (method.baseName == "init") {
+        returnType = "this";
+    } else {
+        returnType = symbolTyper.toTypecheckerType(returnType);
+    }
+    
+    if (returnType) {
+        line += `: ${returnType}`;
+    }
 
-_siftMethodDeclarations(methods, classMethodDeclarations, instanceMethodDeclarations)
-{
-    _.each(methods, method => {
-        let arr = (method.selectorType == "+") ? classMethodDeclarations : instanceMethodDeclarations;
-        arr.push(this._getDeclarationForMethod(method));
-    });
+    return line;
 }
 
 
@@ -73,59 +104,22 @@ _appendClass(lines, nsClass, classSymbol, staticSymbol)
 {
     let symbolTyper = this._symbolTyper;
 
-    let superclassName = nsClass.superclass ? nsClass.superclass.name : null;
+    let superClassName = nsClass.superClass ? nsClass.superClass.name : null;
 
-    let superSymbol       = superclassName ? symbolTyper.getSymbolForClassName(superclassName, false) : TypecheckerSymbols.Base;
-    let superStaticSymbol = superclassName ? symbolTyper.getSymbolForClassName(superclassName, true)  : ("typeof " + TypecheckerSymbols.Base);
+    let superSymbol       = superClassName ? symbolTyper.getSymbolForClassName(superClassName, false) : TypecheckerSymbols.Base;
+    let superStaticSymbol = superClassName ? symbolTyper.getSymbolForClassName(superClassName, true)  : ("typeof " + TypecheckerSymbols.Base);
 
     let declaredMethodNames = { };
     let methods = [ ];
 
-    function addMethod(method) {
-        if (!method) return;
-
-        let name = method.selectorType + method.selectorName;
-        if (declaredMethodNames[name]) return;
-
-        if (method.returnType == "instancetype" || method.returnType == "init") {
-            method = method.copy();
-            method.returnType = nsClass.name;
-        }
-
-        declaredMethodNames[name] = true;
-        methods.push(method);
-    }
-
-    // Add all methods defined by this class
-    _.each(nsClass.getAllMethods(), method => {
-        addMethod(method)
-    });
-
     // Add properties at this level, if needed
-    _.each(nsClass.getAllProperties(), property => {
-        addMethod(property.generateGetterMethod());
-        addMethod(property.generateSetterMethod());
-    });
-
-    // Walk hierarchy and add any method with a returnType of "instancetype"
-    {
-        let superclass = nsClass.superclass;
-
-        while (superclass) {
-            _.each(superclass.getAllMethods(), method => {
-                if (method.returnType == "instancetype" || method.returnType == "init") {
-                    addMethod(method);
-                }
-            });
-
-            superclass = superclass.superclass;
-        }
-    }
+    // _.each(nsClass.getAllProperties(), property => {
+    //     addMethod(property.generateGetterMethod());
+    //     addMethod(property.generateSetterMethod());
+    // });
 
     let classMethodDeclarations    = [ ];
     let instanceMethodDeclarations = [ ];
-
-    this._siftMethodDeclarations(methods, classMethodDeclarations, instanceMethodDeclarations);
 
     lines.push(
         "declare class " + classSymbol +
@@ -138,21 +132,52 @@ _appendClass(lines, nsClass, classSymbol, staticSymbol)
     _.each(instanceMethodDeclarations, decl => {  lines.push(            decl);  });
 
     _.each(nsClass.getAllProperties(), property => {
-        let nobacking = property.attributes.indexOf("nobacking") >= 0;
-
-        if (!nobacking) {
-            lines.push(
-                symbolTyper.getSymbolForIdentifierName("_" + property.name) + ": " +
-                symbolTyper.toTypecheckerType(property.type) + ";"
-            );
+        let propertySymbol = symbolTyper.getSymbolForIdentifierName(property.name);
+        let backingSymbol  = symbolTyper.getSymbolForIdentifierName(`_${property.name}`);
+        let type           = symbolTyper.toTypecheckerType(property.type);
+        
+        let prefix = property.isStatic ? "static" : "";
+        
+        if (property.wantsGetter) {
+            lines.push(`${prefix} get ${propertySymbol}(): ${type}`);
         }
+        
+        if (property.wantsSetter) {
+            let legacySetterName = property.legacySetterName;
+            let legacySetterSymbol = symbolTyper.getSymbolForIdentifierName(legacySetterName);
+
+            lines.push(`${prefix} set ${propertySymbol}(arg: ${type})`);
+            lines.push(`${prefix} ${legacySetterSymbol}(arg: ${type})`);
+        }
+
+        lines.push(`${prefix} ${backingSymbol}: ${type}`);
     });
 
+    for (let method of nsClass._methods) {
+        lines.push(this._getDeclarationForMethod(method));
+    }
+
+    for (let { name, isStatic, type } of nsClass._getters.values()) {
+        type = symbolTyper.toTypecheckerType(type);
+
+        let staticString = isStatic ? "static" : "";
+        name = symbolTyper.getSymbolForIdentifierName(name);
+        type = symbolTyper.toTypecheckerType(type);
+        lines.push(`${staticString} get ${name}(): ${type}`);
+    }
+
+    for (let { name, isStatic, type } of nsClass._setters.values()) {
+        type = symbolTyper.toTypecheckerType(type);
+    
+        let staticString = isStatic ? "static" : "";
+        name = symbolTyper.getSymbolForIdentifierName(name);
+        type = symbolTyper.toTypecheckerType(type);
+        lines.push(`${staticString} set ${name}(arg: ${type})`);
+    }
+
     lines.push(
-        "static alloc() : " + classSymbol + ";",
         "class() : " + staticSymbol + ";",
         "static class() : " + staticSymbol + ";",
-        "init()  : " + classSymbol + ";",
         "N$_super() : " + superSymbol + ";",
         "static N$_super() : " + superStaticSymbol + ";",
         "}"
@@ -167,16 +192,11 @@ _appendProtocol(lines, nsProtocol)
     let protocolSymbol = symbolTyper.getSymbolForProtocolName(nsProtocol.name, false);
     let staticSymbol   = symbolTyper.getSymbolForProtocolName(nsProtocol.name, true);
 
-    let classMethodDeclarations    = [ ];
-    let instanceMethodDeclarations = [ ];
-
-    this._siftMethodDeclarations(nsProtocol.getAllMethods(), classMethodDeclarations, instanceMethodDeclarations);
-
     lines.push("declare interface " + protocolSymbol + this._getProtocolList("extends", false, nsProtocol.protocolNames) + " {");
 
-    _.each(instanceMethodDeclarations, decl => {
-        lines.push(decl);
-    });
+    for (let method of nsProtocol.getMethods()) {
+        lines.push(this._getDeclarationForMethod(method));
+    }
 
     lines.push("}");
 }

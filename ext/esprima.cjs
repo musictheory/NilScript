@@ -408,23 +408,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	    YieldExpression: 'YieldExpression'
 	    //!ns: start changes
 	    ,
-	    NSMessageExpression: 'NSMessageExpression',
-	    NSMessageReceiver: 'NSMessageReceiver',
-	    NSMessageSelector: 'NSMessageSelector',
-	    NSMethodNameSegment: 'NSMethodNameSegment',
 	    NSClassImplementation: 'NSClassImplementation',
 	    NSInheritanceList: 'NSInheritanceList',
-	    NSMethodDefinition: 'NSMethodDefinition',
-	    NSMethodSelector: 'NSMethodSelector',
-	    NSSelector: 'NSSelector',
 	    NSParameterType: 'NSParameterType',
-	    NSPropertyDirective: 'NSPropertyDirective',
-	    NSPropertyAttribute: 'NSPropertyAttribute',
 	    NSSelectorDirective: 'NSSelectorDirective',
 	    NSConstDeclaration: 'NSConstDeclaration',
 	    NSEnumDeclaration: 'NSEnumDeclaration',
 	    NSProtocolDefinition: 'NSProtocolDefinition',
-	    NSMethodDeclaration: 'NSMethodDeclaration',
 	    NSAnyExpression: 'NSAnyExpression',
 	    NSCastExpression: 'NSCastExpression',
 	    NSTypeAnnotation: 'NSTypeAnnotation',
@@ -438,7 +428,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	    NXPropDefinition: 'NXPropDefinition',
 	    NXFuncDefinition: 'NXFuncDefinition',
 	    NXFuncParameter: 'NXFuncParameter',
-	    NXNamedArgument: 'NXNamedArgument'
+	    NXNamedArgument: 'NXNamedArgument',
+	    NXNamedArgumentColon: 'NXNamedArgumentColon'
 	    //!nx: end changes
 	};
 
@@ -1925,124 +1916,17 @@ return /******/ (function(modules) { // webpackBootstrap
 	}());
 	exports.YieldExpression = YieldExpression;
 	//!ns: begin changes
-	var NSMessageExpression = /** @class */ (function () {
-	    function NSMessageExpression(receiver, selectorName, messageSelectors) {
-	        this.type = syntax_1.Syntax.NSMessageExpression;
-	        this.receiver = receiver;
-	        this.selectorName = selectorName;
-	        this.messageSelectors = messageSelectors;
-	    }
-	    return NSMessageExpression;
-	}());
-	exports.NSMessageExpression = NSMessageExpression;
-	var NSMessageReceiver = /** @class */ (function () {
-	    function NSMessageReceiver(value) {
-	        this.type = syntax_1.Syntax.NSMessageReceiver;
-	        this.value = value;
-	    }
-	    return NSMessageReceiver;
-	}());
-	exports.NSMessageReceiver = NSMessageReceiver;
-	var NSMessageSelector = /** @class */ (function () {
-	    function NSMessageSelector(name, arg, args) {
-	        this.type = syntax_1.Syntax.NSMessageSelector;
-	        this.name = name;
-	        this.argument = arg;
-	        this.arguments = args;
-	    }
-	    return NSMessageSelector;
-	}());
-	exports.NSMessageSelector = NSMessageSelector;
-	var NSMethodNameSegment = /** @class */ (function () {
-	    function NSMethodNameSegment(value) {
-	        this.type = syntax_1.Syntax.NSMethodNameSegment;
-	        this.value = value;
-	    }
-	    return NSMethodNameSegment;
-	}());
-	exports.NSMethodNameSegment = NSMethodNameSegment;
 	var NSClassImplementation = /** @class */ (function () {
-	    function NSClassImplementation(id, inheritanceList, body) {
+	    function NSClassImplementation(id, superClass, interfaces, body) {
 	        this.type = syntax_1.Syntax.NSClassImplementation;
 	        this.id = id;
+	        this.superClass = superClass;
+	        this.interfaces = interfaces;
 	        this.body = body;
-	        this.inheritanceList = inheritanceList;
 	    }
 	    return NSClassImplementation;
 	}());
 	exports.NSClassImplementation = NSClassImplementation;
-	var NSInheritanceList = /** @class */ (function () {
-	    function NSInheritanceList(ids) {
-	        this.type = syntax_1.Syntax.NSInheritanceList;
-	        this.ids = ids;
-	    }
-	    return NSInheritanceList;
-	}());
-	exports.NSInheritanceList = NSInheritanceList;
-	var NSMethodDefinition = /** @class */ (function () {
-	    function NSMethodDefinition(selectorType, selectorName, returnType, methodSelectors, body) {
-	        this.type = syntax_1.Syntax.NSMethodDefinition;
-	        this.selectorType = selectorType;
-	        this.selectorName = selectorName;
-	        this.returnType = returnType;
-	        this.methodSelectors = methodSelectors;
-	        this.body = body;
-	    }
-	    return NSMethodDefinition;
-	}());
-	exports.NSMethodDefinition = NSMethodDefinition;
-	var NSMethodSelector = /** @class */ (function () {
-	    function NSMethodSelector(name, methodType, variableName) {
-	        this.type = syntax_1.Syntax.NSMethodSelector;
-	        this.name = name;
-	        this.methodType = methodType;
-	        this.variableName = variableName;
-	    }
-	    return NSMethodSelector;
-	}());
-	exports.NSMethodSelector = NSMethodSelector;
-	var NSSelector = /** @class */ (function () {
-	    function NSSelector(name) {
-	        this.type = syntax_1.Syntax.NSSelector;
-	        this.selectorName = name;
-	    }
-	    return NSSelector;
-	}());
-	exports.NSSelector = NSSelector;
-	var NSParameterType = /** @class */ (function () {
-	    function NSParameterType(value) {
-	        this.type = syntax_1.Syntax.NSParameterType;
-	        this.value = value;
-	    }
-	    return NSParameterType;
-	}());
-	exports.NSParameterType = NSParameterType;
-	var NSPropertyDirective = /** @class */ (function () {
-	    function NSPropertyDirective(id, attributes) {
-	        this.type = syntax_1.Syntax.NSPropertyDirective;
-	        this.id = id;
-	        this.attributes = attributes;
-	    }
-	    return NSPropertyDirective;
-	}());
-	exports.NSPropertyDirective = NSPropertyDirective;
-	var NSPropertyAttribute = /** @class */ (function () {
-	    function NSPropertyAttribute(name, selector) {
-	        this.type = syntax_1.Syntax.NSPropertyAttribute;
-	        this.name = name;
-	        this.selector = selector;
-	    }
-	    return NSPropertyAttribute;
-	}());
-	exports.NSPropertyAttribute = NSPropertyAttribute;
-	var NSSelectorDirective = /** @class */ (function () {
-	    function NSSelectorDirective(name) {
-	        this.type = syntax_1.Syntax.NSSelectorDirective;
-	        this.name = name;
-	    }
-	    return NSSelectorDirective;
-	}());
-	exports.NSSelectorDirective = NSSelectorDirective;
 	var NSConstDeclaration = /** @class */ (function () {
 	    function NSConstDeclaration(declarations) {
 	        this.type = syntax_1.Syntax.NSConstDeclaration;
@@ -2061,27 +1945,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	}());
 	exports.NSEnumDeclaration = NSEnumDeclaration;
 	var NSProtocolDefinition = /** @class */ (function () {
-	    function NSProtocolDefinition(id, inheritanceList, body) {
+	    function NSProtocolDefinition(id, body) {
 	        this.type = syntax_1.Syntax.NSProtocolDefinition;
 	        this.id = id;
-	        this.inheritanceList = inheritanceList;
 	        this.body = body;
 	    }
 	    return NSProtocolDefinition;
 	}());
 	exports.NSProtocolDefinition = NSProtocolDefinition;
-	var NSMethodDeclaration = /** @class */ (function () {
-	    function NSMethodDeclaration(selectorType, selectorName, returnType, methodSelectors) {
-	        this.type = syntax_1.Syntax.NSMethodDeclaration;
-	        this.selectorType = selectorType;
-	        this.selectorName = selectorName;
-	        this.returnType = returnType;
-	        this.methodSelectors = methodSelectors;
-	        this.optional = false;
-	    }
-	    return NSMethodDeclaration;
-	}());
-	exports.NSMethodDeclaration = NSMethodDeclaration;
 	var NSCastExpression = /** @class */ (function () {
 	    function NSCastExpression(id, argument) {
 	        this.type = syntax_1.Syntax.NSCastExpression;
@@ -2158,12 +2029,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	}());
 	exports.NXClassDeclaration = NXClassDeclaration;
 	var NXPropDefinition = /** @class */ (function () {
-	    function NXPropDefinition(key, value, isStatic, isReadonly, annotation) {
+	    function NXPropDefinition(key, value, isStatic, modifier, annotation) {
 	        this.type = syntax_1.Syntax.NXPropDefinition;
 	        this.key = key;
 	        this.value = value;
 	        this.static = isStatic;
-	        this.readonly = isReadonly;
+	        this.modifier = modifier;
 	        this.annotation = annotation;
 	    }
 	    return NXPropDefinition;
@@ -2179,10 +2050,18 @@ return /******/ (function(modules) { // webpackBootstrap
 	    return NXFuncParameter;
 	}());
 	exports.NXFuncParameter = NXFuncParameter;
+	var NXNamedArgumentColon = /** @class */ (function () {
+	    function NXNamedArgumentColon() {
+	        this.type = syntax_1.Syntax.NXNamedArgumentColon;
+	    }
+	    return NXNamedArgumentColon;
+	}());
+	exports.NXNamedArgumentColon = NXNamedArgumentColon;
 	var NXNamedArgument = /** @class */ (function () {
-	    function NXNamedArgument(name, argument) {
+	    function NXNamedArgument(name, colon, argument) {
 	        this.type = syntax_1.Syntax.NXNamedArgument;
 	        this.name = name;
+	        this.colon = colon;
 	        this.argument = argument;
 	    }
 	    return NXNamedArgument;
@@ -2741,7 +2620,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                        expr = this.inheritCoverGrammar(this.parseGroupExpression);
 	                        break;
 	                    case '[':
-	                        expr = this.inheritCoverGrammar(this.ns_parseArrayInitializerOrMessageExpression); //!ns: Allow message expressions
+	                        expr = this.inheritCoverGrammar(this.parseArrayInitializer);
 	                        break;
 	                    case '{':
 	                        expr = this.inheritCoverGrammar(this.parseObjectInitializer);
@@ -2775,11 +2654,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	                    else if (this.matchKeyword('this')) {
 	                        this.nextToken();
 	                        expr = this.finalize(node, new Node.ThisExpression());
-	                        //!ns: start changes
-	                    }
-	                    else if (this.matchKeyword('@selector')) {
-	                        expr = this.ns_parseSelectorDirective();
-	                        //!ns: end changes
 	                    }
 	                    else if (this.matchKeyword('class')) {
 	                        expr = this.parseClassExpression();
@@ -3251,15 +3125,29 @@ return /******/ (function(modules) { // webpackBootstrap
 	        if (!this.match(')')) {
 	            while (true) {
 	                var node = this.createNode(); //!ns: create node here
-	                var expr = this.match('...') ? this.parseSpreadElement() :
-	                    this.isolateCoverGrammar(this.parseAssignmentExpression);
-	                //!ns: start changes
-	                if (this.match(':') && (expr instanceof Node.Identifier)) {
-	                    this.expect(':');
-	                    var argument = this.isolateCoverGrammar(this.parseAssignmentExpression);
-	                    args.push(this.finalize(node, new Node.NXNamedArgument(expr, argument)));
+	                var foundNamedArgument = false;
+	                var lookaheadType = this.lookahead.type;
+	                if (lookaheadType == 3 /* Identifier */ ||
+	                    lookaheadType == 5 /* NullLiteral */ ||
+	                    lookaheadType == 1 /* BooleanLiteral */ ||
+	                    lookaheadType == 4 /* Keyword */) {
+	                    var state = this.scanner.saveState();
+	                    this.scanner.scanComments();
+	                    var next = this.scanner.lex();
+	                    this.scanner.restoreState(state);
+	                    if (next.type == 7 /* Punctuator */ && next.value == ":") {
+	                        var name_1 = this.parseIdentifierName();
+	                        var start = this.createNode();
+	                        this.expect(':');
+	                        var colonToken = this.finalize(start, new Node.NXNamedArgumentColon());
+	                        var argument = this.isolateCoverGrammar(this.parseAssignmentExpression);
+	                        args.push(this.finalize(node, new Node.NXNamedArgument(name_1, colonToken, argument)));
+	                        foundNamedArgument = true;
+	                    }
 	                }
-	                else {
+	                if (!foundNamedArgument) {
+	                    var expr = this.match('...') ? this.parseSpreadElement() :
+	                        this.isolateCoverGrammar(this.parseAssignmentExpression);
 	                    args.push(expr);
 	                }
 	                //!ns: end changes
@@ -3472,7 +3360,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	        this.context.allowIn = previousAllowIn;
 	        if (hasOptional) {
-	            return new Node.ChainExpression(expr);
+	            return this.finalize(this.startNode(startToken), new Node.ChainExpression(expr));
 	        }
 	        return expr;
 	    };
@@ -3534,7 +3422,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	            }
 	        }
 	        if (hasOptional) {
-	            return new Node.ChainExpression(expr);
+	            return this.finalize(node, new Node.ChainExpression(expr));
 	        }
 	        return expr;
 	    };
@@ -5645,85 +5533,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	    Parser.prototype.ns_init = function () {
 	        // exports.version += "-nilscript";
 	    };
-	    Parser.prototype.ns_parseMethodNameSegment = function () {
-	        var node = this.createNode();
-	        var token, value, keyword;
-	        token = this.nextToken();
-	        if (token.type == 3 /* Identifier */) {
-	            value = token.value;
-	        }
-	        else if (token.type == 5 /* NullLiteral */) {
-	            value = "null";
-	        }
-	        else if (token.type == 4 /* Keyword */) {
-	            value = token.value;
-	            keyword = true;
-	        }
-	        else if (token.type == 1 /* BooleanLiteral */) {
-	            value = token.value;
-	        }
-	        else {
-	            this.throwUnexpectedToken(token);
-	        }
-	        return this.finalize(node, new Node.NSMethodNameSegment(value));
-	    };
-	    Parser.prototype.ns_parseSelector = function (allowComma) {
-	        var node = this.createNode();
-	        var name = "";
-	        while (!this.match(')') && (!allowComma || !this.match(','))) {
-	            var id = this.parseVariableIdentifier();
-	            name += id.name;
-	            if (this.match(':')) {
-	                name += ":";
-	                this.expect(':');
-	            }
-	        }
-	        return this.finalize(node, new Node.NSSelector(name));
-	    };
-	    Parser.prototype.ns_parseSelectorDirective = function () {
-	        var node = this.createNode();
-	        var name = "";
-	        this.expectKeyword("@selector");
-	        this.expect("(");
-	        while (!this.match(')')) {
-	            var id = this.ns_parseMethodNameSegment();
-	            name += id.value;
-	            if (this.match(':')) {
-	                name += ":";
-	                this.expect(':');
-	            }
-	        }
-	        this.expect(")");
-	        return this.finalize(node, new Node.NSSelectorDirective(name));
-	    };
-	    Parser.prototype.ns_parsePropertyAttribute = function () {
-	        var node = this.createNode();
-	        var startToken = this.lookahead;
-	        var name = this.parseIdentifierName().name;
-	        var selector = null;
-	        if (name == 'getter' || name == 'setter' || name == 'change') {
-	            this.expect('=');
-	            selector = this.ns_parseSelector(true);
-	        }
-	        return this.finalize(node, new Node.NSPropertyAttribute(name, selector));
-	    };
-	    Parser.prototype.ns_parsePropertyDirective = function () {
-	        var node = this.createNode();
-	        var attributes = [];
-	        this.expectKeyword('@property');
-	        if (this.match('(')) {
-	            this.expect('(');
-	            attributes.push(this.ns_parsePropertyAttribute());
-	            while (this.match(',')) {
-	                this.expect(',');
-	                attributes.push(this.ns_parsePropertyAttribute());
-	            }
-	            this.expect(')');
-	        }
-	        var identifier = this.ns_parseIdentifierWithAnnotation();
-	        this.consumeSemicolon();
-	        return this.finalize(node, new Node.NSPropertyDirective(identifier, attributes));
-	    };
 	    // This should be called when lookahead is a '<' token.
 	    Parser.prototype.ns_parseTypeAngleSuffix = function () {
 	        var parser = this;
@@ -5787,6 +5596,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	            this.nextToken();
 	            name = "void";
 	        }
+	        else if (this.matchKeyword("this")) {
+	            this.nextToken();
+	            name = "this";
+	        }
 	        else if (this.lookahead.type == 1 /* BooleanLiteral */ ||
 	            this.lookahead.type == 5 /* NullLiteral */ ||
 	            this.lookahead.type == 6 /* NumericLiteral */ ||
@@ -5811,92 +5624,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 	        return name;
 	    };
-	    Parser.prototype.ns_parseParameterType = function () {
-	        var node = this.createNode();
-	        return this.finalize(node, new Node.NSParameterType(this.ns_parseType()));
-	    };
-	    Parser.prototype.ns_parseParameterTypeOrKeyword = function (keyword) {
-	        var node = this.createNode();
-	        if (this.matchKeyword(keyword)) {
-	            this.nextToken();
-	            return this.finalize(node, new Node.NSParameterType(keyword));
-	        }
-	        else {
-	            return this.finalize(node, new Node.NSParameterType(this.ns_parseType()));
-	        }
-	    };
-	    Parser.prototype.ns_parseMethodSelector = function () {
-	        var node = this.createNode();
-	        var methodType = null;
-	        var variableName = null;
-	        var name = this.ns_parseMethodNameSegment();
-	        if (!this.match('{') && !this.match(';')) {
-	            this.expect(':');
-	            if (this.match('(')) {
-	                this.expect('(');
-	                methodType = this.ns_parseParameterType();
-	                this.expect(')');
-	            }
-	            variableName = this.parseVariableIdentifier();
-	        }
-	        return this.finalize(node, new Node.NSMethodSelector(name, methodType, variableName));
-	    };
-	    Parser.prototype.ns_parseMethodDefinition = function () {
-	        var node = this.createNode();
-	        var methodSelectors = [];
-	        var returnType = null;
-	        var selectorName = '';
-	        var type = this.match('+') ? '+' : '-';
-	        this.expect(type);
-	        if (this.match('(')) {
-	            this.expect('(');
-	            returnType = this.ns_parseParameterTypeOrKeyword('void');
-	            this.expect(')');
-	        }
-	        while (!this.match('{')) {
-	            var methodSelector = this.ns_parseMethodSelector();
-	            selectorName += methodSelector.name.value;
-	            if (methodSelector.variableName) {
-	                selectorName += ":";
-	            }
-	            methodSelectors.push(methodSelector);
-	        }
-	        if (!selectorName) {
-	            this.throwUnexpectedToken(this.lookahead);
-	        }
-	        var previousStrict = this.context.strict;
-	        var body = this.parseFunctionSourceElements();
-	        this.context.strict = previousStrict;
-	        return this.finalize(node, new Node.NSMethodDefinition(type, selectorName, returnType, methodSelectors, body));
-	    };
-	    Parser.prototype.ns_parseMethodDeclaration = function () {
-	        var node = this.createNode();
-	        var methodSelectors = [];
-	        var returnType = null;
-	        var selectorName = '';
-	        var type = this.match('+') ? '+' : '-';
-	        this.expect(type);
-	        if (this.match('(')) {
-	            this.expect('(');
-	            returnType = this.ns_parseParameterTypeOrKeyword('void');
-	            this.expect(')');
-	        }
-	        while (!this.match(";")) {
-	            var methodSelector = this.ns_parseMethodSelector();
-	            selectorName += methodSelector.name.value;
-	            if (methodSelector.variableName) {
-	                selectorName += ":";
-	            }
-	            methodSelectors.push(methodSelector);
-	        }
-	        if (!selectorName) {
-	            this.throwUnexpectedToken(this.lookahead);
-	        }
-	        if (this.match(';')) {
-	            this.expect(";");
-	        }
-	        return this.finalize(node, new Node.NSMethodDeclaration(type, selectorName, returnType, methodSelectors));
-	    };
 	    Parser.prototype.ns_parseClassImplementationBody = function () {
 	        var node = this.createNode();
 	        var sourceElements = [];
@@ -5906,26 +5633,23 @@ return /******/ (function(modules) { // webpackBootstrap
 	            if (this.matchKeyword('@end')) {
 	                break;
 	            }
-	            else if (this.matchKeyword('@property')) {
-	                sourceElement = this.ns_parsePropertyDirective();
-	            }
-	            else if (this.match('-') || this.match('+')) {
-	                sourceElement = this.ns_parseMethodDefinition();
-	            }
-	            else if (this.lookahead.type === 3 /* Identifier */) {
-	                if (this.lookahead.value == "get") {
-	                    var node_1 = this.createNode();
-	                    this.nextToken();
-	                    var key = this.parseObjectPropertyKey();
-	                    var value = this.parseGetterMethod();
-	                    sourceElement = this.finalize(node_1, new Node.Property('get', key, false, value, false, false));
+	            else if (token.type === 4 /* Keyword */) {
+	                if (token.value == "private" ||
+	                    token.value == "static") {
+	                    sourceElement = this.nx_parseClassElement(false);
 	                }
-	                else if (this.lookahead.value == "set") {
-	                    var node_2 = this.createNode();
-	                    this.nextToken();
-	                    var key = this.parseObjectPropertyKey();
-	                    var value = this.parseSetterMethod();
-	                    sourceElement = this.finalize(node_2, new Node.Property('set', key, false, value, false, false));
+	                else {
+	                    this.throwUnexpectedToken(token);
+	                }
+	            }
+	            else if (token.type === 3 /* Identifier */) {
+	                if (token.value == "readonly" ||
+	                    token.value == "observed" ||
+	                    token.value == "prop" ||
+	                    token.value == "func" ||
+	                    token.value == "get" ||
+	                    token.value == "set") {
+	                    sourceElement = this.nx_parseClassElement(false);
 	                }
 	                else {
 	                    this.throwUnexpectedToken(token);
@@ -5942,84 +5666,87 @@ return /******/ (function(modules) { // webpackBootstrap
 	    };
 	    Parser.prototype.ns_parseClassImplementationDefinition = function () {
 	        var node = this.createNode();
-	        var inheritanceList = null;
 	        var oldLabelSet = this.context.labelSet;
 	        var previousStrict = this.context.strict;
 	        this.context.strict = true;
 	        this.expectKeyword('@class');
 	        var id = this.parseVariableIdentifier();
-	        // Has inheritance list
-	        if (this.match(':')) {
-	            inheritanceList = this.ns_parseInheritanceList();
+	        var superClass = null;
+	        if (this.matchKeyword('extends')) {
+	            this.nextToken();
+	            superClass = this.parseVariableIdentifier();
+	        }
+	        var interfaces = [];
+	        if (this.matchKeyword('implements')) {
+	            this.nextToken();
+	            interfaces.push(this.parseVariableIdentifier());
+	            while (this.match(',')) {
+	                this.expect(',');
+	                interfaces.push(this.parseVariableIdentifier());
+	            }
 	        }
 	        var body = this.ns_parseClassImplementationBody();
 	        this.expectKeyword('@end');
 	        this.context.strict = previousStrict;
 	        this.context.labelSet = oldLabelSet;
-	        return this.finalize(node, new Node.NSClassImplementation(id, inheritanceList, body));
-	    };
-	    Parser.prototype.ns_parseInheritanceList = function () {
-	        var node = this.createNode();
-	        var ids = [];
-	        this.expect(':');
-	        ids.push(this.parseVariableIdentifier());
-	        while (this.match(',')) {
-	            this.expect(',');
-	            ids.push(this.parseVariableIdentifier());
-	        }
-	        return this.finalize(node, new Node.NSInheritanceList(ids));
+	        return this.finalize(node, new Node.NSClassImplementation(id, superClass, interfaces, body));
 	    };
 	    Parser.prototype.ns_parseProtocolDefinitionBody = function () {
-	        var node = this.createNode();
+	        var bodyNode = this.createNode();
 	        var sourceElements = [];
-	        var optional = false;
 	        while (true) {
 	            var token = this.lookahead;
 	            var sourceElement = null;
 	            if (this.matchKeyword('@end')) {
 	                break;
 	            }
-	            else if (this.matchKeyword('@required')) {
+	            else if (token.value === 'func') {
+	                var node = this.createNode();
 	                this.nextToken();
-	                optional = false;
-	            }
-	            else if (this.matchKeyword('@optional')) {
-	                this.nextToken();
-	                optional = true;
-	            }
-	            else if (this.matchKeyword('@property')) {
-	                sourceElement = this.ns_parsePropertyDirective();
-	            }
-	            else if (this.match('-') || this.match('+')) {
-	                sourceElement = this.ns_parseMethodDeclaration();
-	            }
-	            else {
-	                this.throwUnexpectedToken(token);
-	            }
-	            if (sourceElement) {
+	                var kind = 'NXFunc';
+	                var key = this.parseObjectPropertyKey();
+	                var optional = false;
+	                if (this.match('?')) {
+	                    this.expect('?');
+	                    optional = true;
+	                }
+	                var params = [];
+	                this.expect('(');
+	                while (!this.match(')')) {
+	                    params.push(this.nx_parseFuncParameter());
+	                    if (this.match(',')) {
+	                        this.expect(',');
+	                    }
+	                }
+	                this.expect(')');
+	                var annotation = null;
+	                if (this.match(':')) {
+	                    annotation = this.ns_parseTypeAnnotation({ allowVoid: true });
+	                }
+	                this.consumeSemicolon();
+	                sourceElement = this.finalize(node, new Node.NXFuncDefinition(key, false, params, annotation, null));
 	                if (optional)
 	                    sourceElement.optional = optional;
 	                sourceElements.push(sourceElement);
 	            }
+	            else {
+	                this.throwUnexpectedToken(token);
+	            }
 	        }
-	        return this.finalize(node, new Node.BlockStatement(sourceElements));
+	        return this.finalize(bodyNode, new Node.BlockStatement(sourceElements));
 	    };
 	    Parser.prototype.ns_parseProtocolDefinition = function () {
 	        var node = this.createNode();
-	        var inheritanceList = null;
 	        var oldLabelSet = this.context.labelSet;
 	        var previousStrict = this.context.strict;
 	        this.context.strict = true;
 	        this.expectKeyword('@protocol');
 	        var id = this.parseVariableIdentifier();
-	        if (this.match(':')) {
-	            inheritanceList = this.ns_parseInheritanceList();
-	        }
 	        var body = this.ns_parseProtocolDefinitionBody();
 	        this.expectKeyword('@end');
 	        this.context.strict = previousStrict;
 	        this.context.labelSet = oldLabelSet;
-	        return this.finalize(node, new Node.NSProtocolDefinition(id, inheritanceList, body));
+	        return this.finalize(node, new Node.NSProtocolDefinition(id, body));
 	    };
 	    Parser.prototype.ns_parseCastExpression = function () {
 	        var node = this.createNode();
@@ -6039,108 +5766,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	        var argument = this.parseExpression();
 	        this.expect(')');
 	        return this.finalize(node, new Node.NSAnyExpression(argument));
-	    };
-	    Parser.prototype.ns_parseMessageReceiver = function () {
-	        var node = this.createNode();
-	        var token = this.nextToken();
-	        var isSuper = (token.type == 4 /* Keyword */ && token.value == "super");
-	        var isValidType = token.type === 3 /* Identifier */ ||
-	            token.type === 1 /* BooleanLiteral */ ||
-	            token.type === 5 /* NullLiteral */;
-	        if (!(isSuper || isValidType)) {
-	            this.throwUnexpectedToken(token);
-	        }
-	        return this.finalize(node, new Node.Identifier(token.value));
-	    };
-	    Parser.prototype.ns_parseArrayInitializerOrMessageExpression = function () {
-	        var node = this.createNode();
-	        var elements = [];
-	        var nsSelectorName = null;
-	        var nsMessageSelectors = null;
-	        var nsReceiver = null;
-	        var nsMightBeMessageExpression = true, nsMaybeElement;
-	        this.expect('[');
-	        while (!this.match(']')) {
-	            if (this.match(',')) {
-	                this.nextToken();
-	                elements.push(null);
-	            }
-	            else if (this.match('...')) {
-	                var element = this.parseSpreadElement();
-	                if (!this.match(']')) {
-	                    this.context.isAssignmentTarget = false;
-	                    this.context.isBindingElement = false;
-	                    this.expect(',');
-	                }
-	                elements.push(element);
-	            }
-	            else if (nsMightBeMessageExpression) {
-	                if (this.matchKeyword("super")) {
-	                    nsMaybeElement = this.ns_parseMessageReceiver();
-	                }
-	                else {
-	                    nsMaybeElement = this.inheritCoverGrammar(this.parseAssignmentExpression);
-	                    nsMightBeMessageExpression = !(this.match(",") || this.match("]"));
-	                }
-	                // At this point, nsMightBeMessageExpression is really "isMessageExpression"
-	                if (nsMightBeMessageExpression) {
-	                    nsReceiver = new Node.NSMessageReceiver(nsMaybeElement);
-	                    if (nsMaybeElement.loc) {
-	                        nsReceiver.loc = nsMaybeElement.loc;
-	                    }
-	                    nsMessageSelectors = [];
-	                    nsSelectorName = "";
-	                    while (!this.match(']')) {
-	                        var nsMessageSelector = this.ns_parseMessageSelector();
-	                        nsMessageSelectors.push(nsMessageSelector);
-	                        nsSelectorName += nsMessageSelector.name.value;
-	                        if (nsMessageSelector.argument || nsMessageSelector.arguments) {
-	                            nsSelectorName += ":";
-	                        }
-	                    }
-	                    break;
-	                }
-	                else {
-	                    elements.push(nsMaybeElement);
-	                    if (!this.match(']')) {
-	                        this.expect(',');
-	                    }
-	                }
-	            }
-	            else {
-	                elements.push(this.inheritCoverGrammar(this.parseAssignmentExpression));
-	                if (!this.match(']')) {
-	                    this.expect(',');
-	                }
-	            }
-	        }
-	        this.expect(']');
-	        if (nsMessageSelectors) {
-	            return this.finalize(node, new Node.NSMessageExpression(nsReceiver, nsSelectorName, nsMessageSelectors));
-	        }
-	        else {
-	            return this.finalize(node, new Node.ArrayExpression(elements));
-	        }
-	    };
-	    Parser.prototype.ns_parseMessageSelector = function () {
-	        var node = this.createNode();
-	        var name = this.ns_parseMethodNameSegment();
-	        var arg = null;
-	        var args = null;
-	        if (!this.match(']')) {
-	            this.expect(':');
-	            arg = this.parseAssignmentExpression();
-	        }
-	        if (this.match(',')) {
-	            args = [arg];
-	            arg = null;
-	        }
-	        while (this.match(',')) {
-	            this.expect(',');
-	            if (args)
-	                args.push(this.parseAssignmentExpression());
-	        }
-	        return this.finalize(node, new Node.NSMessageSelector(name, arg, args));
 	    };
 	    Parser.prototype.ns_parseConstDeclaration = function () {
 	        var node = this.createNode();
@@ -6349,6 +5974,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        var isStatic = false;
 	        var isReadonly = false;
 	        var isPrivate = false;
+	        var isObserved = false;
 	        var result = null;
 	        var readIdentifier = function (name) {
 	            var result = false;
@@ -6374,10 +6000,16 @@ return /******/ (function(modules) { // webpackBootstrap
 	        };
 	        key = this.parseObjectPropertyKey();
 	        var id = key;
-	        isStatic = readIdentifier('static');
+	        if (id.name === 'static' && this.qualifiedPropertyName(this.lookahead)) {
+	            token = this.lookahead;
+	            isStatic = true;
+	            key = this.parseObjectPropertyKey();
+	            id = key;
+	        }
 	        isReadonly = readIdentifier('readonly');
 	        isPrivate = !isReadonly && readIdentifier('private');
-	        if ((isReadonly || isPrivate) && token.value !== 'prop') {
+	        isObserved = !isReadonly && !isPrivate && readIdentifier('observed');
+	        if ((isReadonly || isPrivate || isObserved) && token.value !== 'prop') {
 	            this.throwUnexpectedToken(token);
 	        }
 	        var lookaheadPropertyKey = this.qualifiedPropertyName(this.lookahead);
@@ -6399,7 +6031,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	                var annotation = this.ns_parseTypeAnnotation();
 	                var assignment = parseOptionalAssignment();
 	                this.consumeSemicolon();
-	                result = this.finalize(node, new Node.NXPropDefinition(key, assignment, isStatic, isReadonly, annotation));
+	                var modifier = null;
+	                if (isReadonly)
+	                    modifier = "readonly";
+	                else if (isPrivate)
+	                    modifier = "private";
+	                else if (isObserved)
+	                    modifier = "observed";
+	                result = this.finalize(node, new Node.NXPropDefinition(key, assignment, isStatic, modifier, annotation));
 	            }
 	            else if (token.value === 'func' && lookaheadPropertyKey) {
 	                kind = 'NXFunc';
