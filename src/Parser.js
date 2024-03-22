@@ -42,25 +42,24 @@ readToken = function(code)
     return this.getTokenFromCode(code)
 }
 
-
-saveState()
-{
-    return {
-        pos: this.pos,
-        type: this.type,
-        start: this.start,
-        end: this.end,
-        startLoc: this.startLoc,
-        endLoc: this.endLoc,
-        lastTokStart: this.lastTokStart,
-        lastTokEnd: this.lastTokEnd,
-        lastTokStartLoc: this.lastTokStartLoc,
-        lastTokEndLoc: this.lastTokEndLoc,
-        exprAllowed: this.exprAllowed,
-        lineStart: this.lineStart,
-        curLine: this.curLine
-    };
-}
+// saveState()
+// {
+//     return {
+//         pos: this.pos,
+//         type: this.type,
+//         start: this.start,
+//         end: this.end,
+//         startLoc: this.startLoc,
+//         endLoc: this.endLoc,
+//         lastTokStart: this.lastTokStart,
+//         lastTokEnd: this.lastTokEnd,
+//         lastTokStartLoc: this.lastTokStartLoc,
+//         lastTokEndLoc: this.lastTokEndLoc,
+//         exprAllowed: this.exprAllowed,
+//         lineStart: this.lineStart,
+//         curLine: this.curLine
+//     };
+// }
 
 
 restoreState(state)
@@ -69,34 +68,91 @@ restoreState(state)
 }
 
 
+saveState()
+{
+    let state = {
+        pos: this.pos,
+        type: this.type,
+        start: this.start,
+        end: this.end,
+        value: this.value,
+        startLoc: this.startLoc,
+        endLoc: this.endLoc,
+        lastTokStart: this.lastTokStart,
+        lastTokEnd: this.lastTokEnd,
+        lastTokStartLoc: this.lastTokStartLoc,
+        lastTokEndLoc: this.lastTokEndLoc,
+        context: this.context.slice(0),
+        exprAllowed: this.exprAllowed,
+        lineStart: this.lineStart,
+        curLine: this.curLine
+    };
+
+    // state.__test_storage__ = { };
+    // Object.assign(state.__test_storage__, this);
+
+    return state;
+}
+
+
+/*
+restoreState(state)
+{
+    let testStorageA = state.__test_storage__;
+    delete(state.__test_storage__);
+
+    // super.restoreState(state);
+    Object.assign(this, state);
+
+    let testStorageB = { };
+    Object.assign(testStorageB, this);
+
+    let diffs = [ ];
+    
+    let keys = new Set([
+        ...Object.keys(testStorageA),
+        ...Object.keys(testStorageB)
+    ]);
+
+    for (let key of keys) {
+        let valueA = testStorageA[key];
+        let valueB = testStorageB[key];
+
+        if (testStorageA[key] !== testStorageB[key]) {
+            diffs.push(`'${key}' is different. '${valueA}' vs '${valueB}'`);
+        }
+    }
+
+    if (diffs.length) {
+        throw new Error(diffs.join("\n"));
+    }
+}
+*/
+
 parseBindingAtom()
 {
     let result = super.parseBindingAtom();
 
     if (this.type == tt.colon && result.type == "Identifier") {
-        result.typeAnnotation = this.tsParseTypeAnnotation();
+        // result.typeAnnotation = this.tsParseTypeAnnotation();
+        result.annotation = this.ns_parseTypeAnnotation();
+        this.finishNode(result, "Identifier");
+        
+        console.log(result.name);
     }
 
     return result;
 }
 
+
 parseFunctionBody(node, isArrowFunction, isMethod, forInit)
 {
     if (this.type == tt.colon) {
-        node.typeAnnotation = this.tsParseTypeAnnotation();
+//        node.typeAnnotation = this.tsParseTypeAnnotation();
+        node.annotation = this.ns_parseTypeAnnotation({ allowVoid: true });
     }
 
     super.parseFunctionBody(node, isArrowFunction, isMethod, forInit);
-}
-
-
-parseVarId(decl, kind)
-{
-    super.parseVarId(decl, kind);
-
-    if (this.type == tt.colon) {
-        decl.typeAnnotation = this.tsParseTypeAnnotation();
-    }
 }
 
 
@@ -105,31 +161,8 @@ parseParenItem(item)
     let result = super.parseParenItem(item);
 
     if (this.type == tt.colon) {
-        result.typeAnnotation = this.tsParseTypeAnnotation();
-    }
-
-    return result;
-}
-
-
-parseMaybeAssign(forInit, refDestructuringErrors, afterLeftParse)
-{
-    const node = this.startNode();
-    let result = super.parseMaybeAssign(forInit, refDestructuringErrors, afterLeftParse);
-
-    if (
-        this.nsAllowNamedArguments &&
-        this.type == tt.colon &&
-        result.type == "Identifier"
-    ) {
-        const colonNode = this.startNode();
-        this.next();
-        
-        node.name = result;
-        node.colon = this.finishNode(colonNode);
-        node.argument = super.parseMaybeAssign(forInit, refDestructuringErrors, afterLeftParse);
-
-        return this.finishNode(node, "NXNamedArgument");
+        // result.typeAnnotation = this.tsParseTypeAnnotation();
+        result.annotation = this.ns_parseTypeAnnotation();
     }
 
     return result;
@@ -138,13 +171,57 @@ parseMaybeAssign(forInit, refDestructuringErrors, afterLeftParse)
 
 parseExprList(close, allowTrailingComma, allowEmpty, refDestructuringErrors)
 {
-    let oldAllowNamedArguments = this.nsAllowNamedArguments;
+    let elts = [], first = true;
 
-    if (close == tt.parenR) this.nsAllowNamedArguments = true;
-    let result = super.parseExprList(close, allowTrailingComma, allowEmpty, refDestructuringErrors);
-    if (close == tt.parenR) this.nsAllowNamedArguments = oldAllowNamedArguments;
-    
-    return result;
+    while (!this.eat(close)) {
+        if (!first) {
+            this.expect(tt.comma);
+            if (allowTrailingComma && this.afterTrailingComma(close)) break;
+        } else {
+            first = false;
+        }
+
+        let elt;
+        if (allowEmpty && this.type === tt.comma) {
+            elt = null;
+        } else if (this.type === tt.ellipsis) {
+            elt = this.parseSpread(refDestructuringErrors);
+
+            if (refDestructuringErrors && this.type === tt.comma && refDestructuringErrors.trailingComma < 0) {
+                refDestructuringErrors.trailingComma = this.start;
+            }
+
+        } else {
+            if (close == tt.parenR && ((this.type == tt.name) || this.type.keyword)) {
+                const namedArgument = this.startNode();
+
+                let state = this.saveState();
+                let name = this.parseIdent(true);
+                
+                if (this.type == tt.colon) {
+                    const colonNode = this.startNode();
+                    this.next();
+
+                    namedArgument.name = name;
+                    namedArgument.colon = this.finishNode(colonNode, "NXColon");
+                    namedArgument.argument = this.parseMaybeAssign(false, refDestructuringErrors);
+
+                    elt = this.finishNode(namedArgument, "NXNamedArgument");
+
+                } else {
+                    this.restoreState(state);
+                    elt = this.parseMaybeAssign(false, refDestructuringErrors);
+                }
+            
+            } else {
+                elt = this.parseMaybeAssign(false, refDestructuringErrors);
+            }
+        }
+
+        elts.push(elt);
+    }
+
+    return elts;
 }
 
 
@@ -160,30 +237,154 @@ parseMaybeUnary(sawUnary)
 }
 
 
+ns_parseTypeAngleSuffix()
+{
+    const parts = [];
+    let angles = 0;
+
+    const appendNameAngle = () => {
+        let name = this.parseIdent().name;
+        
+        while (this.eat(tt.bracketL)) {
+            this.expect(tt.bracketR);
+            name += "[]";
+        }
+        
+        parts.push(name);
+
+        if (this.type == tt.relational && this.value == "<") {
+            appendAngle();
+        }
+    }
+
+    const appendAngle = () => {
+        this.next();  // Consume '<'
+        parts.push('<');
+        angles++;
+
+        // It's possible a recursive call will handle a '>>' or '>>>' in the stream,
+        // so save angles...
+        let savedAngles = angles;
+
+        appendNameAngle();
+
+        while (angles > 0 && this.eat(tt.comma)) {
+            parts.push(',');
+            appendNameAngle();
+        }
+
+        // ...and check savedAngles here.  If angles is lower, a '>>' or '>>>' already handled our '>'
+        if (angles >= savedAngles) {
+            if (angles >= 1 && this.type == tt.relational && this.value == ">") {
+                this.expect(tt.relational);
+                parts.push('>');
+                angles -= 1;
+
+            } else if (angles >= 2 && this.type == tt.bitShift && this.value == ">>") {
+                this.expect(tt.bitShift);
+                parts.push('>>');
+                angles -= 2;
+
+            } else if (angles >= 3 && this.type == tt.bitShift && this.value == ">>>") {
+                this.expect(tt.bitShift);
+                parts.push('>>>');
+                angles -= 3;
+
+            } else {
+                this.unexpected();
+            }
+        }
+    }
+
+    let isLessThan = this.type == tt.relational && this.value == "<";
+    if (!isLessThan) return "";
+    appendAngle();
+
+    return parts.join("");
+}
+
+
+ns_parseType(options)
+{
+    let name = "";
+
+    if (options && options.allowVoid && this.type == tt._void) {
+        this.next();
+        name = "void";
+
+    } else if (this.type == tt._this) {
+        this.next();
+        name = "this";
+
+    } else if (
+        this.type == tt._true ||
+        this.type == tt._false ||
+        this.type == tt._null ||
+        this.type == tt.num ||
+        this.type == tt.string
+    ) {
+        name += this.input.slice(this.start, this.end);
+        this.next(); 
+           
+    } else {
+        name = this.parseIdent().name;
+    }
+
+    if (this.type == tt.relational && this.value == "<") {
+        name += this.ns_parseTypeAngleSuffix();
+    }
+
+    while (this.eat(tt.bracketL)) {
+        this.expect(tt.bracketR);
+        name += "[]";
+    }
+
+    if (this.eat(tt.bitwiseOR)) {
+        name += "|" + this.ns_parseType(options);
+    }
+
+    return name;
+}
+
+
+ns_parseTypeAnnotation(options)
+{
+    const node = this.startNode();
+    let optional = false;
+
+    if (options && options.allowOptional) {
+        if (this.eat(tt.question)) {
+            node.optional = true;
+        }
+    }
+
+    this.expect(tt.colon);
+    node.value = this.ns_parseType(options);
+    return this.finishNode(node, "NSTypeAnnotation");
+}
+
+
+ns_parseIdentifierWithAnnotation(options)
+{
+    const node = this.startNode();
+
+    node.name = this.parseIdent(options.liberal).name;
+    if (!node.name) this.unexpected();
+
+    node.annotation = this.ns_parseTypeAnnotation(options);
+    return this.finishNode(node, "Identifier");
+}
+
+
 nsParseTypeDefinition()
 {
     const node = this.startNode();
     const params = [];
 
-    let annotation = null;
-
     this.expect(tt._atType);
 
     node.name = this.parseIdent().name;
-
-    const finishIdentifierWithAnnotation = (node, name) => {
-
-        let optional = this.eat(tt.question);
-        node.typeAnnotation = this.tsParseTypeAnnotation();
-        node.typeAnnotation.optional = optional;
-
-        return this.finishNode(node, "Identifier");
-    }
-
-    const parseIdentifierWithAnnotation = () => {
-        const node = this.startNode();
-        return finishIdentifierWithAnnotation(node, this.parseIdent().name);
-    };
+    node.params = params;
 
     this.expect(tt.eq);
 
@@ -191,7 +392,7 @@ nsParseTypeDefinition()
         node.kind = "object";
 
         while (!this.eat(tt.braceR)) {
-            params.push(parseIdentifierWithAnnotation());
+            params.push(this.ns_parseIdentifierWithAnnotation({ allowOptional: true, liberal: true }));
 
             if (this.type != tt.braceR) {
                 this.expect(tt.comma);
@@ -203,7 +404,15 @@ nsParseTypeDefinition()
 
         while (!this.eat(tt.bracketR)) {
             const node = this.startNode();
-            params.push(finishIdentifierWithAnnotation(node, "" + params.length));
+
+            node.name = "" + params.length;
+            node.annotation = {
+                type: "NSTypeAnnotation",
+                value: this.ns_parseType(),
+                optional: false
+            };
+
+            params.push(this.finishNode(node, "Identifier"));
 
             if (this.type != tt.bracketR) {
                 this.expect(tt.comma);
@@ -216,18 +425,22 @@ nsParseTypeDefinition()
         this.expect(tt.parenL);
 
         while (!this.eat(tt.parenR)) {
-            params.push(parseIdentifierWithAnnotation());
+            params.push(this.ns_parseIdentifierWithAnnotation({ allowOptional: true }));
 
             if (this.type != tt.parenR) {
-                this.expect(',');
+                this.expect(tt.comma);
             }
         }
 
-        node.typeAnnotation = this.tsParseTypeAnnotation();
+        node.annotation = this.ns_parseTypeAnnotation({ allowVoid: true });
 
     } else if (this.type == tt.name) {
         node.kind = "alias";
-        node.typeAnnotation = this.tsParseTypeAnnotation(false);
+        node.annotation = {
+            type: "NSTypeAnnotation",
+            value: this.ns_parseType(),
+            optional: false
+        };
 
     } else {
         this.unexpected();
@@ -241,9 +454,10 @@ nsParseTypeDefinition()
 nsParseProtocolDefinitionBody()
 {
     const bodyNode = this.startNode();
+    bodyNode.body = [ ];
 
     while (!this.eat(tt._atEnd)) {
-        let node = this.createNode();
+        let node = this.startNode();
 
         if (this.eatContextual("func")) {
             node.key = this.parseIdent(true);
@@ -255,14 +469,19 @@ nsParseProtocolDefinitionBody()
             while (!this.eat(tt.parenR)) {
                 node.params.push(this.nsParseFuncParameter());
             
-                if (this.match(',')) {
-                    this.expect(',');
+                if (this.type != tt.parenR) {
+                    this.expect(tt.comma);
                 }
             }
                 
-            node.typeAnnotation = null;
+            // node.typeAnnotation = null;
+            // if (this.type == tt.colon) {
+            //     node.typeAnnotation = this.tsParseTypeAnnotation();
+            // }
+
+            node.annotation = null;
             if (this.type == tt.colon) {
-                node.typeAnnotation = this.tsParseTypeAnnotation();
+                node.annotation = this.ns_parseTypeAnnotation({ allowVoid: true });
             }
 
             this.semicolon();
@@ -290,9 +509,7 @@ nsParseProtocolDefinition()
     node.id = this.parseIdent();
     node.body = this.nsParseProtocolDefinitionBody();
 
-    this.expect(tt._atEnd);
-
-    this.strict = previousStrict;
+    this.strict = oldStrict;
 
     return this.finishNode(node, "NSProtocolDefinition");
 }
@@ -305,7 +522,8 @@ nsParseCastExpression()
     this.expect(tt._atCast);
 
     this.expect(tt.parenL);
-    node.id = this.tsParseType();
+    // node.id = this.tsParseType();
+    node.id = this.ns_parseType();
     this.expect(tt.comma);
 
     node.argument = this.parseExpression();
@@ -427,8 +645,9 @@ parseClassElement(constructorAllowsSuper)
     let state;
  
     const eat = (name) => {
-        if (this.value === name && this.eat(tt.name)) {
+        if (this.value === name && this.type == tt.name) {
             if (!state) state = this.saveState();
+            this.next();
             return true;
         }
 
@@ -467,7 +686,8 @@ nsParseProp(node, isStatic, modifier)
 
     node.key = this.parseIdent(true);
 
-    node.typeAnnotation = (this.type == tt.colon) ? this.tsParseTypeAnnotation() : null;
+    // node.typeAnnotation = (this.type == tt.colon) ? this.tsParseTypeAnnotation() : null;
+    node.annotation = (this.type == tt.colon) ? this.ns_parseTypeAnnotation() : null;
 
     this.semicolon();
 
@@ -494,7 +714,8 @@ nsParseFuncParameter()
     
     node.label = label;
     node.name = name;
-    node.typeAnnotation = (this.type == tt.colon) ? this.tsParseTypeAnnotation() : null;
+    // node.typeAnnotation = (this.type == tt.colon) ? this.tsParseTypeAnnotation() : null;
+    node.annotation = (this.type == tt.colon) ? this.ns_parseTypeAnnotation() : null;
 
     return this.finishNode(node, "NXFuncParameter");
 }
@@ -517,7 +738,10 @@ nsParseFunc(node, isStatic, isAsync)
         needsComma = true;
     }
     
-    node.typeAnnotation = this.tsParseTypeAnnotation();
+    // node.typeAnnotation = this.tsParseTypeAnnotation();
+    if (this.type == tt.colon) {
+        node.annotation = this.ns_parseTypeAnnotation({ allowVoid: true });
+    }
 
     let flags = 66; // 2(SCOPE_FUNCTION) + 64(SCOPE_SUPER)
     if (isAsync) flags += 4; // SCOPE_ASYNC
@@ -638,5 +862,12 @@ nsParseAtClass()
     return this.finishNode(node, "NSClassImplementation")
 }
 
-
 }
+
+
+let program = Parser.parse(`
+    function resolveURL(url : string) : string { }
+
+`);
+
+console.log(JSON.stringify(program, null, "    "));

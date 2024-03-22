@@ -423,6 +423,10 @@ build(nsFile)
             node.ns_parent = parent;
         }
 
+        if (node.declarations && !node.declarators) {
+            node.declarators = node.declarations;
+        }
+
         if (node.typeAnnotation) {
             node.annotation = node.typeAnnotation;
         }

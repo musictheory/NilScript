@@ -223,7 +223,7 @@ async _parseFiles(files, options)
             Log(`Parsing ${nsFile.path}`);
 
             try { 
-                nsFile.ast = Parser.parse(nsFile.contents);
+                nsFile.ast = Parser.parse(nsFile.contents, nsFile.path);
                 nsFile.needsGenerate();
 
             } catch (inError) {
