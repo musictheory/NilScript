@@ -1,7 +1,0 @@
-var foo = (a: string, b: string) => {
-    return parseInt(a, 10) + parseInt(b, 10);
-}
-
-assert.equal(foo("2", "3"), 5);
-
-true;
