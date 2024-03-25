@@ -771,6 +771,9 @@ let path = this._file.path;
             modifier.remove(node);
             return Traverser.SkipNode;
 
+        } else if (type === Syntax.ExportNamedDeclaration) {
+            modifier.remove(node.start, node.declaration.start);
+
         } else if (type === Syntax.NSBridgedDeclaration) {
             modifier.remove(node.start, node.declaration.start);
 

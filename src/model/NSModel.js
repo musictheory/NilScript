@@ -194,10 +194,6 @@ prepare()
 
     _.each(this.classes, cls => {
         cls.prepare(this);
-
-        // _.each(cls.getAllLegacyMethods(), method => {
-        //     selectorMap[method.selectorName] = true;
-        // });
     });
 
     _.each(Utils.getBaseObjectSelectorNames(), selectorName => {
@@ -308,28 +304,6 @@ hasGlobalChanges(other)
     }
 
     return false;
-}
-
-
-getChangedSelectorMap(other)
-{
-    let result = null;
-
-    _.each(_.keys(this.selectorMap), selectorName => {
-        if (!other.selectorMap[selectorName]) {
-            if (!result) result = { };
-            result[selectorName] = true;
-        }
-    });
-
-    _.each(_.keys(other.selectorMap), selectorName => {
-        if (!this.selectorMap[selectorName]) {
-            if (!result) result = { };
-            result[selectorName] = true;
-        }
-    });
-
-    return result;
 }
 
 

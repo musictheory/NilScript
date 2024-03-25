@@ -577,20 +577,6 @@ async compile(options)
             }
 
             _.each(files, nsFile => nsFile.needsGenerate());
-
-        } else {
-            let changedSelectors = previousModel.getChangedSelectorMap(model);
-
-            if (changedSelectors) {
-                _.each(files, nsFile => {
-                    _.each(nsFile.uses.selectors, selectorName => {
-                        if (changedSelectors[selectorName]) {
-                            Log(`${nsFile.path} needsGenerate due to selector: '${selectorName}'`);
-                            nsFile.needsGenerate();
-                        }
-                    });
-                });
-            }
         }
 
         // If we get here, our current model is valid.  Save it for next time
