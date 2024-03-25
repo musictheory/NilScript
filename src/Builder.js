@@ -9,8 +9,8 @@
 import _ from "lodash";
 
 import { NSError   } from "./Errors.js";
-import { Syntax    } from "./LegacyParser.js";
-import { Traverser } from "./Traverser.js";
+import { Syntax    } from "./ast/Tree.js";
+import { Traverser } from "./ast/Traverser.js";
 import { Utils     } from "./Utils.js";
 
 import { NSClass    } from "./model/NSClass.js";
@@ -112,6 +112,7 @@ build(nsFile)
         _.each(node.specifiers, specifier => {
             if (specifier.type === Syntax.ImportDefaultSpecifier) {
                 Utils.throwError(NSError.NilScriptImportError, "Default imports are not supported", node);
+
             } else if (specifier.type === Syntax.ImportNamespaceSpecifier) {
                 Utils.throwError(NSError.NilScriptImportError, "Namespace imports are not supported", node);
 
@@ -127,12 +128,20 @@ build(nsFile)
 
     function handleExportDeclaration(node)
     {
-        if (node.type === Syntax.ExportAllDeclaration) {
-            Utils.throwError(NSError.NilScriptExportError, "Default imports are not supported", node);
-
-        } else if (node.type === Syntax.ExportDefaultDeclaration) {
-        
+        if (
+            node.type === Syntax.ExportAllDeclaration ||
+            node.type === Syntax.ExportDefaultDeclaration ||
+            node.specifiers.length > 0 ||
+            node.source 
+        ) {
+            Utils.throwError(NSError.NilScriptExportError, "Export type not supported", node);
         }
+
+        // if (node.declaration.type === Syntax.NSEnumDeclaration) {
+        //     let name = 
+        // }
+        //     console.log(node);
+        // }
     }
 
     function handleCallExpression(node)
@@ -405,8 +414,8 @@ build(nsFile)
             addGlobalWithNode(inNode.declaration);
 
         } else {
-            _.each(inNode.declarators, function(declarator) {
-                addGlobalWithNode(declarator);
+            _.each(inNode.declarations, function(declaration) {
+                addGlobalWithNode(declaration);
             });
         }
     }
@@ -423,10 +432,6 @@ build(nsFile)
             node.ns_parent = parent;
         }
 
-        if (node.declarations && !node.declarators) {
-            node.declarators = node.declarations;
-        }
-
         if (node.typeAnnotation) {
             node.annotation = node.typeAnnotation;
         }
@@ -434,6 +439,13 @@ build(nsFile)
         try {
             if (type === Syntax.ImportDeclaration) {
                 handleImportDeclaration(node);
+                
+            } else if (
+                type === Syntax.ExportAllDeclaration ||
+                type === Syntax.ExportDefaultDeclaration ||
+                type === Syntax.ExportNamedDeclaration
+            ) {
+                handleExportDeclaration(node);
 
             } else if (type === Syntax.NXClassDeclaration) {
                 handleNXClassDeclaration(node);
@@ -478,16 +490,6 @@ build(nsFile)
 
             } else if (type === Syntax.Identifier) {
                 handleIdentifier(node, parent);
-
-            } else if (type === Syntax.NSMessageExpression) {
-                if (node.selectorName == "alloc") {
-                    node.ns_nonnull = true;
-                }
-
-                usedSelectorMap[node.selectorName] = true;
-
-            } else if (type === Syntax.NSSelectorDirective) {
-                usedSelectorMap[node.name] = true;
             }
 
         } catch (e) {

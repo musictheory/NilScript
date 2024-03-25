@@ -19,6 +19,7 @@ constructor(path)
     this.contents = null;
     this.time     = 0;
     this.imports  = [ ];
+    this.exports  = [ ];
 
     this.contentsVersion  = 1;
     this.generatedVersion = 1;

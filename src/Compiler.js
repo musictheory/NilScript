@@ -13,9 +13,9 @@ import { Builder        } from "./Builder.js";
 import { FunctionMapper } from "./FunctionMapper.js";
 import { Generator      } from "./Generator.js";
 import { NSError        } from "./Errors.js";
-import { Parser         } from "./LegacyParser.js";
+import { Parser         } from "./ast/Parser.js";
 import { SourceMapper   } from "./SourceMapper.js";
-import { Syntax         } from "./LegacyParser.js";
+import { Syntax         } from "./ast/Tree.js";
 import { Utils          } from "./Utils.js";
 
 import { NSCompileCallbackFile } from "./model/NSCompileCallbackFile.js";
@@ -218,24 +218,23 @@ async _preprocessFiles(files, options)
 
 async _parseFiles(files, options)
 {
-    return Promise.all(_.map(files, async nsFile => {
+    await Promise.all(_.map(files, async nsFile => {
         if (!nsFile.ast) {
             Log(`Parsing ${nsFile.path}`);
 
             try { 
-                nsFile.ast = Parser.parse(nsFile.contents, nsFile.path);
+                nsFile.ast = Parser.parse(nsFile.contents);
                 nsFile.needsGenerate();
 
             } catch (inError) {
-                console.log(JSON.stringify(inError));
                 let message = inError.description || inError.toString();
                 message = message.replace(/$.*Line:/, "");
 
                 let outError = new Error(message);
 
                 outError.file   = nsFile.path;
-                outError.line   = inError.loc?.line ?? inError.lineNumber;
-                outError.column = inError.loc?.column ?? inError.column;
+                outError.line   = inError.loc.line;
+                outError.column = inError.loc.column;
                 outError.name   = NSError.ParseError;
                 outError.reason = message;
 

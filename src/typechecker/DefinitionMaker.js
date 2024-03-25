@@ -112,24 +112,12 @@ _appendClass(lines, nsClass, classSymbol, staticSymbol)
     let declaredMethodNames = { };
     let methods = [ ];
 
-    // Add properties at this level, if needed
-    // _.each(nsClass.getAllProperties(), property => {
-    //     addMethod(property.generateGetterMethod());
-    //     addMethod(property.generateSetterMethod());
-    // });
-
-    let classMethodDeclarations    = [ ];
-    let instanceMethodDeclarations = [ ];
-
     lines.push(
         "declare class " + classSymbol +
             " extends " + superSymbol +
             this._getProtocolList("implements", false, nsClass.protocolNames) +
             " {"
     );
-
-    _.each(classMethodDeclarations,    decl => {  lines.push("static " + decl);  });
-    _.each(instanceMethodDeclarations, decl => {  lines.push(            decl);  });
 
     _.each(nsClass.getAllProperties(), property => {
         let propertySymbol = symbolTyper.getSymbolForIdentifierName(property.name);
@@ -176,8 +164,6 @@ _appendClass(lines, nsClass, classSymbol, staticSymbol)
     }
 
     lines.push(
-        "class() : " + staticSymbol + ";",
-        "static class() : " + staticSymbol + ";",
         "N$_super() : " + superSymbol + ";",
         "static N$_super() : " + superStaticSymbol + ";",
         "}"

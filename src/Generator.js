@@ -10,12 +10,14 @@ import _ from "lodash";
 import { Modifier  } from "./Modifier.js";
 import { NSError   } from "./Errors.js";
 import { NSWarning } from "./Errors.js";
-import { Syntax    } from "./LegacyParser.js";
-import { Traverser } from "./Traverser.js";
+import { Syntax    } from "./ast/Tree.js";
+import { Traverser } from "./ast/Traverser.js";
 import { Utils     } from "./Utils.js";
 
 import { NSModel   } from "./model/NSModel.js";
 
+import  fs     from "node:fs";
+let sCounter = 0;
 
 const NSRootVariable  = "N$$_";
 const NSSuperVariable = "N$_super";
@@ -35,7 +37,7 @@ constructor(nsFile, model, options)
 {
     this._file     = nsFile;
     this._model    = model;
-    this._modifier = new Modifier(nsFile.contents.split("\n"), options);
+    this._modifier = new Modifier(nsFile.contents);
     this._options  = options;
 
     let inlines = { };
@@ -128,7 +130,6 @@ generate()
             let type = child.type;
             
             if (!(
-                type == Syntax.NSPropertyDirective ||
                 type == Syntax.NXPropDefinition ||
                 type == Syntax.NXFuncDefinition ||
                 (type == Syntax.MethodDefinition && child.kind == "get") ||
@@ -138,12 +139,12 @@ generate()
             }
 
             if (type === Syntax.VariableDeclaration) {
-                _.each(child.declarations, declarator => {
-                    if (declarator.init) {
-                        if (declarator.init.type !== Syntax.Literal &&
-                            declarator.init.type !== Syntax.FunctionExpression)
+                _.each(child.declarations, declaration => {
+                    if (declaration.init) {
+                        if (declaration.init.type !== Syntax.Literal &&
+                            declaration.init.type !== Syntax.FunctionExpression)
                         {
-                            Utils.throwError(NSError.ParseError, 'Variable declaration must be initialized to a constant.', declarator.init);
+                            Utils.throwError(NSError.ParseError, 'Variable declaration must be initialized to a constant.', declaration.init);
                         }
                     }
                 });
@@ -177,12 +178,12 @@ generate()
             endText = "});";
         }
 
-        if (!node.ivarDeclarations && !node.body.body.length) {
-            modifier.select(node).replace(startText + endText);
+        if (!node.body.body.length) {
+            modifier.replace(node, startText + endText);
 
         } else {
-            modifier.from(node).to(node.ivarDeclarations || node.body).replace(startText);
-            modifier.from(node.body).to(node).replace(endText);
+            modifier.replace(node.start, node.body.start, startText);
+            modifier.replace(node.body.end, node.end, endText);
         }
     }
 
@@ -198,16 +199,16 @@ generate()
 
                 toSkip.add(node.key);
                 
-                modifier.from(node).to(node.value.params[0]).replace(replacement);
-                modifier.from(node.value).to(node).replace(");");
-
+                modifier.replace(node.start, node.value.params[0].start, replacement);
+                modifier.replace(node.value.end, node.end, ");");
+                
             } else if (node.kind == "get") {
                 let replacement = `(function(this: ${classSymbol})`
 
                 toSkip.add(node.key);
 
-                modifier.from(node).to(node.value.annotation).replace(replacement);
-                modifier.from(node.value).to(node).replace(");");
+                modifier.replace(node.start, node.value.annotation.start, replacement);
+                modifier.replace(node.value.end, node.end, ");");
             }
         }    
     }
@@ -215,7 +216,7 @@ generate()
     function handleSuper(node)
     {
         if (language === LanguageTypechecker) {
-            modifier.select(node).replace("this." + NSSuperVariable + "()");
+            modifier.replace(node, "this." + NSSuperVariable + "()");
         }
     } 
    
@@ -224,14 +225,14 @@ generate()
         let baseNode = node.nx_baseNode;
         
         if (baseNode) {
-            modifier.select(node.nx_baseNode).replace(node.nx_funcName);
+            modifier.replace(node.nx_baseNode, node.nx_funcName);
 
             toSkip.add(baseNode);
             
             for (let argument of node.arguments) {
                 if (argument.type === Syntax.NXNamedArgument) {
-                    modifier.select(argument.name).remove();
-                    modifier.select(argument.colon).remove();
+                    modifier.remove(argument.name);
+                    modifier.remove(argument.colon);
 
                     toSkip.add(argument.name);
                 }
@@ -249,8 +250,9 @@ generate()
                 hasNamedArgument = true;
                 components.push("_" + argument.name.name.replaceAll("_", "$"));
 
-                modifier.select(argument.name).remove();
-                modifier.select(argument.colon).remove();
+                modifier.remove(argument.name);
+                modifier.remove(argument.colon);
+
                 toSkip.add(argument.name);
 
             } else {
@@ -266,14 +268,15 @@ generate()
             if (language === LanguageTypechecker) {
                 let replacement = `()).${funcName}(`;
             
-                modifier.from(node).to(node.callee).replace("((new ");
-                modifier.from(node.callee).to(node.arguments[0]).replace(replacement);
+                modifier.replace(node.start, node.callee.start, "((new ");
+                modifier.replace(node.callee.end, node.arguments[0].start, replacement);
 
-                modifier.from(node.arguments[node.arguments.length - 1]).to(node).replace("))");
+                modifier.replace(node.arguments[node.arguments.length - 1].end, node.end, "))");
 
             } else {
                 let replacement = `(${NSRootVariable}._in, "${funcName}", `;
-                modifier.from(node.callee).to(node.arguments[0]).replace(replacement);
+                
+                modifier.replace(node.callee.end, node.arguments[0].start, replacement);
             }
         }
     }
@@ -290,7 +293,7 @@ generate()
 
         if (name === "@CLASS") {
             if (currentClass) {
-                modifier.select(node).replace('"' + className + '"');
+                modifier.replace(node, '"' + className + '"');
             } else {
                 Utils.throwError(NSError.ParseError, 'Cannot use @CLASS outside of a class implementation');
             }
@@ -306,7 +309,7 @@ generate()
             }
 
             if (replacement) {
-                modifier.select(node).replace(replacement);
+                modifier.replace(node, replacement);
             } else {
                 Utils.throwError(NSError.ParseError, `Cannot use @FUNCTION_ARGS outside of a method definition`);
             }
@@ -330,10 +333,10 @@ generate()
             }
 
             // Lay down a cast operation with all needed types.  This will generate a warning due to an unknown type.  
-            modifier.select(node).replace("<[ " + typesToCheck.join(", ") + "]> null;");
+            modifier.replace(node, "<[ " + typesToCheck.join(", ") + "]> null;");
 
         } else {
-            modifier.select(node).remove();
+            modifier.remove(node);
         }
     }
 
@@ -354,19 +357,6 @@ generate()
             return;
         }
 
-
-        // if (
-        //     currentMethodNode &&
-        //     currentClass &&
-        //     currentClass.isIvar(name, true) &&
-        //     parent.type == Syntax.MemberExpression &&
-        //     parent.computed == false &&
-        //     parent.object.type == Syntax.ThisExpression
-        // ) {
-        //     modifier.select(node).replace(symbolTyper.getSymbolForIdentifierName(name));
-        //     return;
-        // }
-
         if (!node.ns_transformable) return;
 
         let nsGlobal = model.globals[name];
@@ -375,44 +365,27 @@ generate()
         if (nsGlobal) {
             replacement = NSRootWithGlobalPrefix + (optionSqueeze ? symbolTyper.getSymbolForIdentifierName(name) : name);
 
-            modifier.select(node).replace(replacement);
+            modifier.replace(node, replacement);
+
             return;
         }
         
         if (model.classes[name]) {
-        //  && (
-        //     parent.type == Syntax.MemberExpression ||
-        //     parent.type == Syntax.NewExpression ||
-        //     (
-        //         parent.type == Syntax.BinaryExpression &&
-        //         parent.operator == "instanceof" &&
-        //         parent.right == node
-        //     )
-        // )) {
-        //
-        
-             let classVariable = symbolTyper.getSymbolForClassName(name);
+            let classVariable = symbolTyper.getSymbolForClassName(name);
 
             if (language === LanguageEcmascript5) {
                 classVariable = NSRootWithClassPrefix + classVariable;
             }
 
-            modifier.select(node).replace(classVariable);
+            modifier.replace(node, classVariable);
             return;
         }
-
-        // if (model.classes[name] && parent.type != Syntax.NSClassImplementation) {
-        //     console.log(parent);
-        //     warnings.push(Utils.makeError(NSWarning.UnknownEnumMember, `Found lone class`, node));
-        // }
-
-
 
         if (inlines) {
             let result = inlines[name];
             if (result !== undefined) {
                 if (inlines.hasOwnProperty(name)) {
-                    modifier.select(node).replace("" + result);
+                    modifier.replace(node, "" + result);
                     return;
                 }
             }
@@ -421,7 +394,7 @@ generate()
         if (optionSqueeze) {
             let result = symbolTyper.getSymbolForIdentifierName(name);
             if (result !== undefined) {
-                modifier.select(node).replace("" + result);
+                modifier.replace(node, "" + result);
                 return;
             }
         }
@@ -457,7 +430,7 @@ generate()
                 replacement = "" + member.value;
             }
             
-            modifier.select(node).replace(replacement);
+            modifier.replace(node, replacement);
 
         } else {
             warnings.push(
@@ -486,26 +459,26 @@ generate()
                 let declaration = node.declarations[i];
 
                 if (!declaration.init) {
-                    modifier.after(declaration.id).insert("=" + declaration.enumValue);
+                    modifier.insert(declaration.id.end, "=" + declaration.enumValue);
                 }
 
                 if (last == node) {
-                    modifier.before(declaration.id).insert("var ");
-                    modifier.from(last).to(declaration.id).remove();
+                    modifier.insert(declaration.id.start, "var ");
+                    modifier.remove(last.end, declaration.id.start);
 
                 } else {
-                    modifier.after(last).insert("; ");
-                    modifier.from(last).to(declaration.id).insert("var ");
+                    modifier.insert(last.end, "; ");
+                    modifier.replace(last.end, declaration.id.start, "var ");
                 }
 
                 last = declaration;
             }
 
-            modifier.after(lastDeclaration).insert(";");
-            modifier.from(lastDeclaration).to(node).replace("");
+            modifier.insert(lastDeclaration.end, ";");
+            modifier.remove(lastDeclaration.end, node.end);
 
         } else {
-            modifier.select(node).remove();
+            modifier.remove(node);
         }
     }
 
@@ -516,10 +489,11 @@ generate()
 
         if (length) {
             let firstDeclaration = node.declarations[0];
-            modifier.from(node).to(firstDeclaration.id).replace("var ");
+
+            modifier.replace(node.start, firstDeclaration.id.start, "var ");
 
         } else {
-            modifier.select(node).remove();
+            modifier.remove(node);
         }
     }
 
@@ -533,8 +507,8 @@ generate()
             after  = ")))";
         }
 
-        modifier.from(node).to(node.argument).replace(before);
-        modifier.from(node.argument).to(node).replace(after);
+        modifier.replace(node.start, node.argument.start, before);
+        modifier.replace(node.argument.end, node.end, after);
     }
 
     function handleNSAnyExpression(node)
@@ -542,8 +516,8 @@ generate()
         let before = (language == LanguageTypechecker) ? "(<any>(" : "(";
         let after  = (language == LanguageTypechecker) ? "))"      : ")";
 
-        modifier.from(node).to(node.argument).replace(before);
-        modifier.from(node.argument).to(node).replace(after);
+        modifier.replace(node.start, node.argument.start, before);
+        modifier.replace(node.argument.end, node.end, after);
     }
 
     function handleNSTypeAnnotation(node, parent)
@@ -553,18 +527,18 @@ generate()
             let outValue = symbolTyper.toTypecheckerType(inValue);
 
             if (inValue != outValue) {
-                modifier.select(node).replace(": " + outValue);
+                modifier.replace(node.start, node.end, ": " + outValue);
             }
 
         } else {
-            modifier.select(node).remove();
+            modifier.remove(node);
         }
     }
 
     function handleNSGlobalDeclaration(node)
     {
-        let declaration = node.declaration;
-        let declarators = node.declarators;
+        let declaration  = node.declaration;
+        let declarations = node.declarations;
 
         if (optionWarnGlobalNoType) {
             let allTyped;
@@ -572,8 +546,8 @@ generate()
             if (declaration) {
                 allTyped = !!declaration.annotation && _.every(declaration.params, param => !!param.annotation);
 
-            } else if (declarators) {
-                allTyped = _.every(declarators, declarator => !!declarator.id.annotation);
+            } else if (declarations) {
+                allTyped = _.every(declarations, declaration => !!declaration.id.annotation);
             }
 
             if (!allTyped) {
@@ -585,39 +559,40 @@ generate()
             if (declaration) {
                 let name = symbolTyper.getSymbolForIdentifierName(declaration.id.name);
 
-                modifier.from(node).to(declaration).replace(NSRootWithGlobalPrefix + name + "=");
-                modifier.select(declaration.id).remove();
+                modifier.replace(node.start, declaration.start, NSRootWithGlobalPrefix + name + "=");
+                modifier.remove(declaration.id);
 
                 toSkip.add(declaration.id);
 
-            } else if (declarators) {
-                modifier.from(node).to(declarators[0]).remove();
+            } else if (declarations) {
+                modifier.remove(node.start, declarations[0].start);
 
-                _.each(declarators, declarator => {
-                    let name = symbolTyper.getSymbolForIdentifierName(declarator.id.name);
+                _.each(declarations, declaration => {
+                    let name = symbolTyper.getSymbolForIdentifierName(declaration.id.name);
 
-                    modifier.select(declarator.id).replace(NSRootWithGlobalPrefix + name);
+                    modifier.replace(declaration.id, NSRootWithGlobalPrefix + name);
 
-                    toSkip.add(declarator.id);
+                    toSkip.add(declaration.id);
                 })
             }
 
         } else {
             if (declaration) {
-                modifier.from(node).to(declaration.id).replace("(function ");
-                modifier.select(declaration.id).remove();
-                modifier.after(node).insert(");");
+                modifier.replace(node.start, declaration.id.start, "(function ");
+                modifier.remove(declaration.id);
+                modifier.insert(node.end, ");");
 
                 toSkip.add(declaration.id);
 
-            } else if (declarators) {
-                modifier.from(node).to(declarators[0]).replace("(function() { var ");
-                modifier.after(node).insert("});");
+            } else if (declarations) {
+                modifier.replace(node.start, declarations[0].start, "(function() { var ");
+                modifier.insert(node.end, "});");
 
                 let index = 0;
-                _.each(declarators, function(declarator) {
-                    modifier.select(declarator.id).replace("a" + index++);
-                    toSkip.add(declarator.id);
+                _.each(declarations, declaration => {
+                    let replacement = "a" + index++;
+                    modifier.replace(declaration.id, replacement);
+                    toSkip.add(declaration.id);
                 });
             }
         }
@@ -638,8 +613,9 @@ generate()
             let nsConst = model.consts[key.name];
 
             if (nsConst && _.isString(nsConst.value)) {
-                modifier.from(node).to(node.value).replace(nsConst.raw + ":");
-                modifier.from(node.value).to(node).replace("");
+                modifier.replace(node.start, node.value.start, nsConst.raw + ":");
+                modifier.remove(node.value.end, node.end);
+                
                 toSkip.add(key);
             }
         }
@@ -709,9 +685,9 @@ generate()
         }
         
         if (!result) {
-            modifier.select(node).remove();
+            modifier.remove(node);
         } else {
-            modifier.select(node).replace(result);
+            modifier.replace(node, result);
         }
     }
 
@@ -764,19 +740,20 @@ generate()
                 definition += ": " + symbolTyper.toTypecheckerType(returnType);
             }
 
-            modifier.from(node).to(node.body).replace(definition);
-            modifier.from(node.body).to(node).replace(");");
-            
+            modifier.replace(node.start, node.body.start, definition);
+            modifier.replace(node.body.end, node.end, ");");
+
         } else {
-            modifier.from(node).to(node.key).replace(isStatic ? "static " : "");
-            modifier.select(node.key).replace(replacement);       
+            modifier.replace(node.start, node.key.start, isStatic ? "static " : "");
+            modifier.replace(node.key, replacement);
         }
     }
 
     function handleNXFuncParameter(node)
     {
         if (node.label) {
-            modifier.select(node.label).remove();
+            modifier.remove(node.label);
+            toSkip.add(node.label);
         }
     }
 
@@ -791,19 +768,14 @@ let path = this._file.path;
             type === Syntax.NSEnumDeclaration    ||
             type === Syntax.NSConstDeclaration
         ) {
-            modifier.select(node).remove();
+            modifier.remove(node);
             return Traverser.SkipNode;
 
         } else if (type === Syntax.NSBridgedDeclaration) {
-            modifier.from(node).to(node.declaration).remove();
+            modifier.remove(node.start, node.declaration.start);
 
         } else if (type === Syntax.NSClassImplementation) {
             currentClass = model.classes[node.id.name];
-
-            _.each(currentClass.prepareWarnings, warning => {
-                warnings.push(warning);
-            });
-
             handleNSClassImplementation(node);
 
         } else if (type === Syntax.CallExpression) {
@@ -887,7 +859,8 @@ let path = this._file.path;
         Utils.addFilePathToError(path, warning);
     });
 
-    let lines = this._modifier.finish();
+    let lines = modifier.finish().split("\n");
+        
     if (lines.length) {
         lines[0] = "(function(){\"use strict\";" + lines[0];
         lines[lines.length - 1] += "})();";    

@@ -8,7 +8,6 @@
 import _ from "lodash";
 
 import { NSError    } from "../Errors.js";
-import { NSWarning  } from "../Errors.js";
 import { Utils      } from "../Utils.js";
 
 import { NSProperty } from "./NSProperty.js";
@@ -31,14 +30,7 @@ constructor(location, name, superClassName, interfaceNames)
     this.prepared = false;
 
     // Warnings during the prepare() phase
-    this.prepareWarnings = [ ];
-    this.superClass      = null;
-
-    // All selectors the class responds to (inherited + synthesized). *not archived*
-    this._knownSelectors = null;
-
-    this._myIvars    = null;  // Only my ivar names
-    this._knownIvars = null;  // My ivars + inherited ivar names
+    this.superClass = null;
 
     this._getters = new Map();
     this._setters = new Map();
@@ -49,8 +41,6 @@ constructor(location, name, superClassName, interfaceNames)
     this._methods = [ ];
 
     this._propertyMap       = Object.create(null);
-    this._classMethodMap    = Object.create(null);
-    this._instanceMethodMap = Object.create(null);
 }
 
 
@@ -78,11 +68,6 @@ saveState()
         didSynthesis:  !!this.didSynthesis,
 
         properties: _.values(this._propertyMap),
-
-        methods: _.flatten([
-            _.values(this._classMethodMap),
-            _.values(this._instanceMethodMap)
-        ])
     }
 }
 
@@ -93,46 +78,7 @@ _doAutomaticSynthesis(model)
         return;
     }
 
-    let properties = _.values(this._propertyMap);
-
-    for (let i = 0, length = properties.length; i < length; i++) {
-        // let property = properties[i];
-
-        // let getterName = property.getterName;
-        // let setterName = property.setterName;
-        
-        // let getterMethod = getterName ? this._instanceMethodMap[getterName] : null;
-        // let setterMethod = setterName ? this._instanceMethodMap[setterName] : null;
-
-        // if (getterName && !getterMethod) {
-        //     getterMethod = property.generateGetterMethod();
-        //     getterMethod.synthesized = true;
-        //     this._instanceMethodMap[getterName] = getterMethod;
-        // }
-
-        // if (setterName && !setterMethod) {
-        //     setterMethod = property.generateSetterMethod();
-        //     setterMethod.synthesized = true;
-        //     this._instanceMethodMap[setterName] = setterMethod;
-        // }
-    }
-
     this.didSynthesis = true;
-}
-
-
-_getClassHierarchy(model, includeThis)
-{
-    let visited = [ this.name ];
-    let result  = includeThis ? [ this ] : [ ];
-
-    let currentSuperClass = this.superClass;
-    while (currentSuperClass) {
-        result.push(currentSuperClass);
-        currentSuperClass = currentSuperClass.superClass;
-    }
-
-    return result;
 }
 
 
@@ -178,29 +124,7 @@ prepare(model)
         superClass.prepare(model);
     }
 
-    this.prepareWarnings = [ ];
-
     this._doAutomaticSynthesis(model);
-
-    this._knownSelectors = { };
-
-    _.each(_.keys(this._instanceMethodMap), selectorName => {
-        this._knownSelectors[selectorName] = 1;
-    });
-
-
-    this._myIvars    = { };
-    this._knownIvars = { };
-
-    _.each(_.values(this._propertyMap), property => {
-        let ivar = property.ivar;
-        this._myIvars[ivar] = this._knownIvars[ivar] = true;
-    });
-
-    if (superClass) {
-        this._knownSelectors = _.merge(this._knownSelectors, superClass._knownSelectors || { });
-        this._knownIvars     = _.merge(this._knownIvars,     superClass._knownIvars     || { });
-    }
 }
 
 

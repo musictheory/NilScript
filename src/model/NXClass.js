@@ -11,7 +11,7 @@ import { NSError    } from "../Errors.js";
 import { NSWarning  } from "../Errors.js";
 import { Utils      } from "../Utils.js";
 
-import { Syntax } from "../LegacyParser.js";
+import { Syntax } from "../ast/Tree.js";
 
 
 function _makeKey(key, isStatic)

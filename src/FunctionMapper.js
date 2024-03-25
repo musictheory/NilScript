@@ -6,8 +6,8 @@
 
 import _ from "lodash";
 
-import { Syntax    } from "./LegacyParser.js";
-import { Traverser } from "./Traverser.js";
+import { Syntax    } from "./ast/Tree.js";
+import { Traverser } from "./ast/Traverser.js";
 import { Utils     } from "./Utils.js";
 
 

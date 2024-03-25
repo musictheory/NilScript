@@ -9,7 +9,9 @@
 import {
     tokTypes as tt,
     lineBreak,
-    keywordTypes, TokenType, isIdentifierStart } from "acorn";
+    keywordTypes, TokenType, isIdentifierStart
+} from "acorn";
+
 import { TypeParser } from "./TypeParser.js";
 
 function kw(name, options = {}) {
@@ -28,49 +30,22 @@ tt._atGlobal   = kw("@global");
 tt._atProtocol = kw("@protocol");
 tt._atType     = kw("@type");
 
+
 export class Parser extends TypeParser {
 
-
-readToken = function(code)
+static parse(contents, options)
 {
-    if (isIdentifierStart(code, true) || code === 92 /* '\' */) {
-        return this.readWord()
-    } else if (code == 64) {
-        return this.nsReadAtKeyword();
-    }
-    
-    return this.getTokenFromCode(code)
-}
-
-// saveState()
-// {
-//     return {
-//         pos: this.pos,
-//         type: this.type,
-//         start: this.start,
-//         end: this.end,
-//         startLoc: this.startLoc,
-//         endLoc: this.endLoc,
-//         lastTokStart: this.lastTokStart,
-//         lastTokEnd: this.lastTokEnd,
-//         lastTokStartLoc: this.lastTokStartLoc,
-//         lastTokEndLoc: this.lastTokEndLoc,
-//         exprAllowed: this.exprAllowed,
-//         lineStart: this.lineStart,
-//         curLine: this.curLine
-//     };
-// }
-
-
-restoreState(state)
-{
-    Object.assign(this, state);
+    return super.parse(contents, options ?? {
+        ecmaVersion: 2021,
+        sourceType: "module",
+        locations: true
+    });
 }
 
 
 saveState()
 {
-    let state = {
+    return {
         pos: this.pos,
         type: this.type,
         start: this.start,
@@ -87,47 +62,25 @@ saveState()
         lineStart: this.lineStart,
         curLine: this.curLine
     };
-
-    // state.__test_storage__ = { };
-    // Object.assign(state.__test_storage__, this);
-
-    return state;
 }
 
 
-/*
 restoreState(state)
 {
-    let testStorageA = state.__test_storage__;
-    delete(state.__test_storage__);
-
-    // super.restoreState(state);
     Object.assign(this, state);
-
-    let testStorageB = { };
-    Object.assign(testStorageB, this);
-
-    let diffs = [ ];
-    
-    let keys = new Set([
-        ...Object.keys(testStorageA),
-        ...Object.keys(testStorageB)
-    ]);
-
-    for (let key of keys) {
-        let valueA = testStorageA[key];
-        let valueB = testStorageB[key];
-
-        if (testStorageA[key] !== testStorageB[key]) {
-            diffs.push(`'${key}' is different. '${valueA}' vs '${valueB}'`);
-        }
-    }
-
-    if (diffs.length) {
-        throw new Error(diffs.join("\n"));
-    }
 }
-*/
+
+readToken(code)
+{
+    if (isIdentifierStart(code, true) || code === 92 /* '\' */) {
+        return this.readWord()
+    } else if (code == 64) {
+        return this.nsReadAtKeyword();
+    }
+    
+    return this.getTokenFromCode(code)
+}
+
 
 parseBindingAtom()
 {
@@ -137,11 +90,40 @@ parseBindingAtom()
         // result.typeAnnotation = this.tsParseTypeAnnotation();
         result.annotation = this.ns_parseTypeAnnotation();
         this.finishNode(result, "Identifier");
-        
-        console.log(result.name);
     }
 
     return result;
+}
+
+
+shouldParseExportStatement()
+{
+    return (
+        this.isContextual("enum") ||
+        super.shouldParseExportStatement()
+    );
+}
+
+
+parseImport(node)
+{
+    this.next()
+
+    if (this.type === tt.string) {
+        node.specifiers = [ ];
+        node.source = this.parseExprAtom();
+
+    } else {
+        node.specifiers = this.parseImportSpecifiers();
+
+        if (this.eatContextual("from")) {
+            node.source = this.type === tt.string ? this.parseExprAtom() : this.unexpected();
+        }
+    }
+
+    this.semicolon();
+
+    return this.finishNode(node, "ImportDeclaration");
 }
 
 
@@ -582,11 +564,11 @@ nsParseEnumDeclaration()
     node.declarations = [];
     node.id = null;
 
-    this.expect(tt._atEnum);
-    
-    if (this.type != tt.braceL) {
-        node.id = this.parseIdent();
+    if (!this.eatContextual("enum")) {
+        this.expect(tt._atEnum);
     }
+
+    node.id = this.parseIdent();
 
     this.expect(tt.braceL);
     
@@ -758,6 +740,10 @@ nsParseFunc(node, isStatic, isAsync)
 
 parseStatement(context, topLevel, exports)
 {
+    if (this.isContextual("enum")) {
+        return this.nsParseEnumDeclaration();
+    }
+    
     switch(this.type) {
     case tt._atClass:
         return this.nsParseAtClass();
@@ -863,11 +849,3 @@ nsParseAtClass()
 }
 
 }
-
-
-let program = Parser.parse(`
-    function resolveURL(url : string) : string { }
-
-`);
-
-console.log(JSON.stringify(program, null, "    "));

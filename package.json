@@ -24,7 +24,6 @@
     },
     "dependencies": {
         "acorn": "8.x",
-        "estraverse":  "4.x",
         "lodash":      "4.x",
         "node-getopt": "0.2.x",
         "source-map":  "0.5.x",
