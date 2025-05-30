@@ -1,0 +1,29 @@
+
+
+enum Foo {
+    zero,
+    one,
+    two = 2,
+    three,
+    four,
+    five
+};
+
+
+assert.equal(Foo.five, 5);
+
+(function(Foo) {
+    assert.strictEqual(Foo.four, undefined);
+    assert.equal(Foo.five, "five");
+})({ five: "five" });
+
+try {
+    throw { five: "five" };
+} catch (Foo) {
+    assert.equal(Foo.five, "five");
+}
+
+// ------------------------------------
+
+
+// assert.equal(Foo.five, 5);

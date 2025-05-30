@@ -1,6 +1,5 @@
 //@opts = { }
 
-import _      from "lodash";
 import assert from "assert";
 
 import fs     from "node:fs";
@@ -9,6 +8,15 @@ import path   from "node:path";
 import nsc from "../lib/api.js";
 import { NSWarning } from "../src/Errors.js";
 import { Utils     } from "../src/Utils.js";
+
+
+const SqueezeBuiltinObjects = [
+    globalThis, assert,
+    Array,  Array.prototype,
+    Number, Number.prototype,
+];
+
+let SqueezeBuiltins = null;
 
 
 class TestCase {
@@ -20,10 +28,8 @@ constructor(name, options, lines)
     this.lines   = lines;
 
     this.expectedNoLineErrors = [ ];
-    this.expectedErrorMap     = { };    // Line number to name
-    this.expectedWarningMap   = { };    // Line number to name
-    this.expectedTypecheckMap = { };    // Line number to code,quoted string
-    this.codegenMap           = { };    // Line number to codegen rule
+    this.expectedErrorMap     = new Map();    // Line number to name
+    this.expectedWarningMap   = new Map();    // Line number to name
 
     this._parseLines();
 }
@@ -33,133 +39,92 @@ _parseLines()
 {
     let lineNumber = 1;
 
-    _.each(this.lines, line => {
+    for (let line of this.lines) {
         let m;
 
         if (m = line.match(/\@error-no-line\s*\=?\s*(.*?)$/)) {
             this.expectedNoLineErrors.push( m[1].trim() );
 
         } else if (m = line.match(/\@error\s*\=?\s*(.*?)$/)) {
-            this.expectedErrorMap[lineNumber] = m[1].trim();
+            this.expectedErrorMap.set(lineNumber, m[1].trim());
 
         } else if (m = line.match(/\@warning\s*\=?\s*(.*?)$/)) {
-            this.expectedWarningMap[lineNumber] = m[1].trim();
-
-        } else if (m = line.match(/\@typecheck\s*\=?\s*(.*?)$/)) {
-            this.expectedTypecheckMap[lineNumber] = m[1].trim();
+            this.expectedWarningMap.set(lineNumber, m[1].trim());
         }
 
 
         lineNumber++;
-    });
-}
-
-
-_checkCodegen(result)
-{
-    // Check @codegen comments
-    _.each(result.code?.split("\n"), (outputLine, index) => {
-        let inputLine = this.lines[index];
-
-        // We need to search both input and output for @codegen, as comments
-        // may be removed during code generation
-        //
-        let inputMatch  = inputLine.match( /(.*?)\@codegen\s+(.*?)\s+(.*?)$/);
-        let outputMatch = outputLine.match(/(.*?)\@codegen\s+(.*?)\s+(.*?)$/);
-        if (!inputMatch) return;
-
-        let lineNumber = index + 1;
-
-        let haystack = outputMatch ? outputMatch[1] : outputLine;
-        let needle = inputMatch[3].trim();
-        let found = haystack.indexOf(needle) >= 0;
-
-        if ((inputMatch[2] == "needs") && !found) {
-            throw new Error(`Generated code missing "${needle}" on line ${lineNumber}`);
-        } else if ((inputMatch[2] == "lacks") && found) {
-            throw new Error(`Generated code contains "${needle}" on line ${lineNumber}`);
-        }
-    });
+    }
 }
 
 
 _checkResults(result)
 {
     function checkMaps(expectedMap, actualMap, noun) {
-        let lineNumbers = _.uniq([].concat(
-            _.keys(expectedMap),
-            _.keys(actualMap)
-        )).sort();
+    
+        for (let [ lineNumber, expected ] of expectedMap) {
+            let actual = actualMap.get(lineNumber);
 
-        _.each(lineNumbers, lineNumber => {
-            let expected = expectedMap[lineNumber];
-            let actual   = actualMap[lineNumber];
-
-            if (!expected && actual) {
-                throw new Error(`Unexpected ${noun} on line ${lineNumber}: ${actual}`);
-            } else if (!actual && expected) {
+            if (expected && !actual) {
                 throw new Error(`Expected ${noun} on line ${lineNumber}: ${expected}`);
-            } else if (actual != expected) {
+            } else if (expected != actual) {
                 throw new Error(`Expected ${expected} on line ${lineNumber}, saw ${actual}`);
             }
-        });
+        }
+        
+        for (let [ lineNumber, actual ] of actualMap) {
+            let expected = expectedMap.get(lineNumber);
+
+            if (!expected) {
+                throw new Error(`Unexpected ${noun} on line ${lineNumber}: ${actual}`);
+            }
+        }
     }
 
     let canRun = true;
 
     let actualNoLineErrors = [ ];
-    let actualErrorMap     = { };
-    let actualWarningMap   = { };
-    let actualTypecheckMap = { };
+    let actualErrorMap     = new Map();
+    let actualWarningMap   = new Map();
 
-    _.each(result.errors, error => {
+    for (let error of result.errors) {
         canRun = false;
 
         if (error.line) {
-            actualErrorMap[error.line] = error.name;
+            actualErrorMap.set(error.line, error.name);
         } else {
             actualNoLineErrors.push(error.name);
         }
-    });
+    }
 
-    _.each(result.warnings, warning => {
+    for (let warning of result.warnings) {
         canRun = false;
 
-        if (warning.name == NSWarning.Typechecker) {
-            let codeQuoted = [ warning.code ];
-
-            warning.reason.replace(/'(.*?)'/g, function(a0, a1) {
-                codeQuoted.push(a1);
-            });
-
-            actualTypecheckMap[warning.line] = codeQuoted.join(",");
-
-        } else {
-            actualWarningMap[warning.line] = warning.name;
+        if (warning.name != NSWarning.Typechecker) {
+            actualWarningMap.set(warning.line, warning.name);
         }
-    });
+    }
 
     assert.deepEqual(actualNoLineErrors.sort(), this.expectedNoLineErrors.sort());
 
-    checkMaps(this.expectedErrorMap,     actualErrorMap,     "error");
-    checkMaps(this.expectedWarningMap,   actualWarningMap,   "warning");
-    checkMaps(this.expectedTypecheckMap, actualTypecheckMap, "type check");
-
-    this._checkCodegen(result);
+    checkMaps(this.expectedErrorMap,   actualErrorMap,   "error");
+    checkMaps(this.expectedWarningMap, actualWarningMap, "warning");
 
     if (canRun) {
-        nilscript._reset();
+        N$$_._r();
+
         let r = eval(result.code);
-        assert(r, "Test returned " + r);
+        if (r === false) {
+            assert(r, "Test returned " + r);
+        }
     }
 }
 
 
 run()
 {
-    let options = { };
+    let options = Object.assign({ }, this.options);
 
-    _.extend(options, this.options);
     options.files = [ { path: "test.ns", contents: this.lines.join("\n") } ];
 
     let name = this.name;
@@ -178,7 +143,7 @@ function walkSync(dir)
 {
     let results = [ ];
 
-    _.each(fs.readdirSync(dir), function(name) {
+    for (let name of fs.readdirSync(dir)) {
         let file = dir + path.sep + name;
         let stat = fs.statSync(file);
 
@@ -187,9 +152,9 @@ function walkSync(dir)
         } else {
             results.push(file);
         }
-    });
+    }
 
-    return _.flatten(results);
+    return results.flat();
 }
 
 
@@ -198,14 +163,14 @@ function splitLines(inLines, separator)
     let outLines = [ ];
     let results  = [ ];
 
-    _.each(inLines, inLine => {
+    for (let inLine of inLines) {
         if (inLine.match(separator)) {
             results.push(outLines);
             outLines = [ ];
         } else {
             outLines.push(inLine);
         }
-    });
+    }
 
     results.push(outLines);
 
@@ -218,14 +183,14 @@ function gatherTestCases(dir)
     let nameLinesArray = [ ];
 
     // Suck up all *.ns files, split on long hyphen lines, save as nameLinesArray
-    _.each(walkSync(dir), file => {
-        if (!file.match(/\.ns$/)) return;
+    for (let file of walkSync(dir)) {
+        if (!file.match(/\.ns$/)) continue;
 
         let count     = 0;
         let dir       = file.split(path.sep).slice(-2).shift();
         let fileLines = fs.readFileSync(file).toString().split("\n");
 
-        _.each(splitLines(fileLines, "----------------"), lines => {
+        for (let lines of splitLines(fileLines, "----------------")) {
             if (lines.length) {
                 nameLinesArray.push({
                     name: dir + path.sep + path.basename(file) + (count > 1 ? " #" + count : ""),
@@ -234,21 +199,18 @@ function gatherTestCases(dir)
 
                 count++;
             }
-        });
-    });
+        }
+    }
 
     let testCases = [ ];
 
     // Create TestCase objects from nameLine pairs.
     // @name and @opts are applied at this time
     //
-    _.each(nameLinesArray, nameLines => {
-        let name  = nameLines.name;
-        let lines = nameLines.lines;
-
+    for (let { name, lines } of nameLinesArray) {
         let optionsArray = [ ];
 
-        _.each(lines, function(line) {
+        for (let line of lines) {
             let m;
 
             if (m = line.match(/\@name\s*\=?\s*(.*?)$/)) {
@@ -256,30 +218,40 @@ function gatherTestCases(dir)
             } else if (m = line.match(/\@opts\s*\=?\s*(.*?)$/)) {
                 optionsArray.push(JSON.parse(m[1]));
             }
-        });
+        }
 
         if (!optionsArray.length) optionsArray.push({ });
 
-        _.each(optionsArray, options => {
+        for (let options of optionsArray) {
             testCases.push(new TestCase(name, options, lines));
-        });
-    });
+        }
+    }
 
     // Duplicate non-error tests 
-    testCases = _.flatten(_.map(testCases, testCase => {
-        if (testCase.expectedNoLineErrors.length  == 0 &&
-            _.size(testCase.expectedErrorMap)     == 0 &&
-            _.size(testCase.expectedWarningMap)   == 0 &&
-            _.size(testCase.expectedTypecheckMap) == 0)
-        {
-            let options = _.clone(testCase.options);
-            options.squeeze = true;
+    testCases = testCases.flatMap(testCase => {
+        if (
+            testCase.expectedNoLineErrors.length  == 0 &&
+            testCase.expectedErrorMap.size        == 0 &&
+            testCase.expectedWarningMap.size      == 0 &&
+            testCase.options.squeeze == false
+        ) {
+            let options = structuredClone(testCase.options);
+
+            if (!SqueezeBuiltins) {
+                SqueezeBuiltins = [ globalThis["N$$"], ...SqueezeBuiltinObjects ].flatMap(
+                    o => o ? Object.getOwnPropertyNames(o) : [ ]
+                );
+            }
+
+            options["squeeze"] = true;
+            options["squeeze-builtins"] = SqueezeBuiltins;
+            
             return [ testCase, new TestCase(testCase.name, options, testCase.lines) ];
 
         } else {
             return testCase;
         }
-    }));
+    });
 
     return testCases;
 }
@@ -288,8 +260,7 @@ function gatherTestCases(dir)
 globalThis.assert = assert;
 eval(fs.readFileSync(nsc.getRuntimePath()).toString());
 
-
-_.each(gatherTestCases(Utils.getProjectPath("test")), testCase => {
+for (let testCase of gatherTestCases(Utils.getProjectPath("test"))) {
     testCase.run();
-});
+}
 

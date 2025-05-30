@@ -7,16 +7,17 @@
 
 import _  from "lodash";
 import fs from "node:fs";
+import path from "node:path";
 
 import { Worker, parentPort, workerData } from "node:worker_threads";
 
 let ts; // Loaded dynamically
 
-let sDocumentRegistry;
-let sPromiseMap = { };
+let sDocumentRegistryMap = new Map();
+let sPromiseMap = new Map();
 
-let sCachedFiles = { };
-let sCodeKeys = null;
+let sCachedFiles = new Map();
+let sFilesToCheck = null;
 let sFileMap = null;
 let sOptions = null;
 
@@ -90,26 +91,29 @@ function serializeDiagnostic(diagnostic)
 }
 
 
-async function prepare(checkerID, inOptions)
+async function prepare(checkerID, groupID, inOptions)
 {
-    sPromiseMap[checkerID] = new Promise(async (resolve, reject) => {
+    sPromiseMap.set(checkerID, new Promise(async (resolve, reject) => {
         try {
             if (!ts) ts = (await import("typescript")).default;
 
-            if (!sDocumentRegistry) {
-                sDocumentRegistry = ts.createDocumentRegistry();
+            let documentRegistry = sDocumentRegistryMap.get(groupID);
+
+            if (!documentRegistry) {
+                documentRegistry = ts.createDocumentRegistry();
+                sDocumentRegistryMap.set(groupID, documentRegistry);
             }
 
             let { options, errors } = ts.convertCompilerOptionsFromJson(inOptions);
 
             const servicesHost = {
-                getScriptFileNames: () => _.keys(sFileMap),
+                getScriptFileNames: () => Array.from(sFileMap.keys()),
                 getScriptVersion: fileName => {
-                    return (sFileMap[fileName]?.version || 0).toString();
+                    return (sFileMap.get(fileName)?.version || 0).toString();
                 },
 
                 getScriptSnapshot: fileName => {
-                    let file = sFileMap[fileName];
+                    let file = sFileMap.get(fileName);
                     let contents = file?.contents;
 
                     if (!file) {
@@ -117,66 +121,80 @@ async function prepare(checkerID, inOptions)
                             return null;
 
                         } else {
-                            if (!sCachedFiles[fileName]) {
-                                sCachedFiles[fileName] = fs.readFileSync(fileName).toString();
+                            if (!sCachedFiles.get(fileName)) {
+                                sCachedFiles.set(fileName, fs.readFileSync(fileName).toString());
                             }
 
-                            contents = sCachedFiles[fileName];
+                            contents = sCachedFiles.get(fileName);
                         }
                     }
 
                     return ts.ScriptSnapshot.fromString(contents);
                 },
+                
+                
+                resolveModuleNameLiterals: (moduleLiterals, containingFile, redirectedReference, options, containingSourceFile, reusedNames) => {
+                    let result = moduleLiterals.map(literal => {
+                        let dirname = path.dirname(containingFile);
+                        let resolvedFileName = path.normalize(path.join(dirname, literal.text)) + ".ts";
+                        return { resolvedModule: { resolvedFileName, extension: "ts",
+                        resolvedUsingTsExtension: false } }
+                    });
+                    
+                    return result;
+                },
 
-                getCurrentDirectory:    () => process.cwd(),
+                getCurrentDirectory:    () => "",
                 getCompilationSettings: () => options,
                 getDefaultLibFileName:  options => ts.getDefaultLibFilePath(options),
 
-                fileExists:      ts.sys.fileExists,
-                readFile:        ts.sys.readFile,
+                fileExists: fileName => { return sFileMap.has(fileName); },
+
+                readFile: fileName => {
+                    console.log("readFile", fileName);
+                },
+                
                 readDirectory:   ts.sys.readDirectory,
                 directoryExists: ts.sys.directoryExists,
                 getDirectories:  ts.sys.getDirectories,
             };
     
-            let service = ts.createLanguageService(servicesHost, sDocumentRegistry);
+            let service = ts.createLanguageService(servicesHost, documentRegistry);
 
             resolve(service);
         } catch (e) {
             reject(e);
         }
-    });
-    
-    return sPromiseMap;
+    }));
 }
 
 
-async function typecheck(checkerID, code, defs)
+async function typecheck(checkerID, entries, filesToCheck)
 {
-    sFileMap  = { };
-    sCodeKeys = _.map(code, entry => entry.file);
+    sFileMap  = new Map();
+    sFilesToCheck = filesToCheck;
 
-    _.each([...code, ...defs ], entry => {
-        sFileMap[entry.file] = entry;    
-    });
-
-    let service = await sPromiseMap[checkerID];
+    for (let entry of entries) {
+        sFileMap.set(entry.file, entry);
+    }
+    
+    let service = await sPromiseMap.get(checkerID);
     
     let diagnostics = [ service.getCompilerOptionsDiagnostics() ];
 
-    _.map(sCodeKeys, codeKey => {
+    sFilesToCheck.map(fileToCheck => {
         diagnostics.push(
-            service.getSyntacticDiagnostics(codeKey),
-            service.getSemanticDiagnostics(codeKey)
+            service.getSyntacticDiagnostics(fileToCheck),
+            service.getSemanticDiagnostics(fileToCheck)
         );
     });
 
     diagnostics = _.flattenDeep(diagnostics);
     diagnostics = _.map(diagnostics, diagnostic => serializeDiagnostic(diagnostic));
     diagnostics = _.filter(diagnostics);
-
+    
     sFileMap  = null;
-    sCodeKeys = null;
+    sFilesToCheck = null;
     sOptions  = null;
 
     return diagnostics;
@@ -223,17 +241,17 @@ _sendNextJob()
 }
 
 
-prepare(checkerID, options)
+prepare(checkerID, groupID, options)
 {
-    let args = [ checkerID, options ];
+    let args = [ checkerID, groupID, options ];
     this._worker.postMessage({ type: "prepare", args });
 }
 
 
-async work(checkerID, code, defs)
+async work(checkerID, entries, filesToCheck)
 {
     return new Promise((resolve, reject) => {
-        let args = [ checkerID, code, defs ];
+        let args = [ checkerID, entries, filesToCheck ];
 
         this._waitingJobs.push({ args, resolve, reject });
 

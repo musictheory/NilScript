@@ -27,7 +27,7 @@
         "lodash":      "4.x",
         "node-getopt": "0.2.x",
         "source-map":  "0.5.x",
-        "typescript":  "5.0"
+        "typescript":  "5.8.x"
     },
     "scripts": {
         "test": "mocha --ui tdd"

@@ -1,7 +1,7 @@
 /*
     Traverser.js
-    Extends estraverse with ability to traverse NilScript nodes
-    (c) 2013-2023 musictheory.net, LLC
+    Extends estraverse with ability to traverse Nyx and TypeScript nodes
+    (c) 2013-2024 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
@@ -29,7 +29,7 @@ _traverse(node, parent)
     
     let keys = TreeStructure[node.type];
     if (!keys) {
-        throw new Error(`Unknown node type: ${nodeType}`);
+        throw new Error(`Unknown node type: ${node.type}`);
     }
     
     for (let key of keys) {

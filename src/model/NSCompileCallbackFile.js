@@ -5,8 +5,7 @@
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-import { NSWarning  } from "../Errors.js";
-import { Utils      } from "../Utils.js";
+import { CompilerIssue } from "./CompilerIssue.js";
 
 
 export class NSCompileCallbackFile {
@@ -51,8 +50,8 @@ getPath()
 
 addWarning(line, message)
 {
-    let warning = Utils.makeError(NSWarning.OnCompileFunction, message, line);
-    Utils.addFilePathToError(this._path, warning);
+    let warning = new CompilerIssue(message, line);
+    warning.addFile(this._path);
     this._warnings.push(warning);
 }
 

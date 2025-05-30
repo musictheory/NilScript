@@ -4,11 +4,9 @@
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-import _ from "lodash";
-
-import { Syntax    } from "./ast/Tree.js";
-import { Traverser } from "./ast/Traverser.js";
-import { Utils     } from "./Utils.js";
+import { SymbolUtils } from "./SymbolUtils.js";
+import { Syntax      } from "./ast/Tree.js";
+import { Traverser   } from "./ast/Traverser.js";
 
 
 export class FunctionMapper {
@@ -23,108 +21,144 @@ map()
 {
     let nsFile = this._file;
 
-    let traverser  = new Traverser(nsFile.ast);
+    let traverser = new Traverser(nsFile.ast);
+
     let currentClassName = null;
+    let classNameStack = [ ];
+    
+    let currentContext = null;
+    let contextStack = [ ];
 
-    let entryStack = [ ];
-    let entryList = [ ];
-    let currentEntryName = null;
+    let currentSignature = null;
+    let lineSignatureList = [ ];
 
-    function _pushEntry(node, name)
+    function _push(node, signature)
     {
-        let lineNumber = (node.loc && node.loc.start && node.loc.start.line) || 0;
-        entryStack.push({ line: lineNumber, name: name });
+        let line = node.loc?.start?.line ?? 0;
 
-        if (name && (name != currentEntryName)) {
-            entryList.push( [ lineNumber, name ] );
-            currentEntryName = name;
+        contextStack.push(currentContext);
+        currentContext = { node, line, signature };
+
+        if (signature && (signature != currentSignature)) {
+            lineSignatureList.push( [ line, signature ] );
+            currentSignature = signature;
         }
     }
 
-    function _popEntry(node)
+    function _pop(node)
     {
-        let lineNumber = (node.loc && node.loc.end && node.loc.end.line) || 0;
+        let line = node.loc?.end?.line ?? 0;
 
-        entryStack.pop();
+        currentContext = contextStack.pop();
 
-        let last = _.last(entryStack);
-        let name = last ? last.name : null;
+        let signature = currentContext?.signature ?? null;
 
-        if (name != currentEntryName) {
-            entryList.push([ lineNumber + 1, name ]);
-            currentEntryName = name;
+        if (signature != currentSignature) {
+            lineSignatureList.push([ line + 1, signature ]);
+            currentSignature = signature;
         }
     }
-
-    function handleNSClassImplementation(node)
+    
+    function _getNodeName(node, parent)
     {
-        currentClassName = node.id.name;
-    }
+        let name = node.id?.name;
 
-    function handleNSMethodDefinition(node)
-    {
-        let selectorType = node.selectorType;
-        let selectorName = node.selectorName;
-        _pushEntry(node, `${selectorType}[${currentClassName} ${selectorName}]`);
-    }
-
-    function handleFunctionDeclaration(node)
-    {
-        let name = node.id && node.id.name;
-        _pushEntry(node, name);
-    }
-
-    function handleFunctionExpression(node, parent)
-    {
-        let id   = node.id;
-        let name = id && id.name;
-
-        if (!id) {
+        if (!name) {
             if (parent.type === Syntax.VariableDeclarator) {
-                name = parent.id && parent.id.name;
+                name = parent.id?.name;
             }
         }
-
-        _pushEntry(node, name);
+        
+        return name ?? null;
     }
 
-    traverser.traverse(function(node, parent) {
+    function handleClassNode(node, parent)
+    {
+        classNameStack.push(currentClassName);
+        currentClassName = _getNodeName(node, parent);
+    }
+
+    function handleFunctionNode(node, parent)
+    {
+        let signature = _getNodeName(node, parent);
+        if (!currentSignature && signature) {
+            _push(node, signature);
+        }
+    }
+    
+    function handleMethodDefinition(node)
+    {
+        if (node.computed) return;
+
+        let name = node.key.name;
+        if (!name) return;
+
+        if (node.kind == "get") {
+            name = `[get ${name}]`;
+        } else if (node.kind == "set") {
+            name = `[set ${name}]`;
+        }
+        
+        if (currentClassName && name) {
+            _push(node, `${currentClassName}.${name}`);
+        }
+    }
+
+    function handleNXFuncDefinition(node)
+    {
+        let name = node.key.name;
+        
+        if (node.nx_func) {
+            let identifier = SymbolUtils.fromFuncIdentifier(node.nx_func);
+            name = SymbolUtils.toFuncString(identifier);
+        }
+
+        if (currentClassName) {
+            _push(node, `${currentClassName}.${name}`);
+        }
+    }
+
+    traverser.traverse((node, parent) => {
         let type = node.type;
 
         try {
-            if (type === Syntax.NSClassImplementation) {
-                handleNSClassImplementation(node);
+            if (
+                type == Syntax.NXInterfaceDeclaration ||
+                type == Syntax.NXTypeDeclaration
+            ) {
+                return Traverser.SkipNode;
+            
+            } else if (
+                type == Syntax.ClassDeclaration ||
+                type == Syntax.ClassExpression
+            ) {
+                handleClassNode(node, parent);
 
-            } else if (type === Syntax.NSMethodDefinition) {
-                handleNSMethodDefinition(node);
+            } else if (
+                type == Syntax.FunctionDeclaration ||
+                type == Syntax.FunctionExpression  ||
+                type == Syntax.ArrowFunctionExpression
+            ) {
+                handleFunctionNode(node, parent);
 
-            } else if (type === Syntax.FunctionDeclaration) {
-                handleFunctionDeclaration(node);
+            } else if (type == Syntax.MethodDefinition) {
+                handleMethodDefinition(node);
 
-            } else if (type === Syntax.FunctionExpression || type === Syntax.ArrowFunctionExpression) {
-                handleFunctionExpression(node, parent);
+            } else if (type == Syntax.NXFuncDefinition) {
+                handleNXFuncDefinition(node);
             }
 
         } catch (e) {
             throw e;
         }
 
-    }, function(node, parent) {
-        let type = node.type;
-
-        if (type === Syntax.NSClassImplementation) {
-            currentClassName = null;
-
-        } else if (type === Syntax.NSMethodDefinition  ||
-                   type === Syntax.FunctionDeclaration ||
-                   type === Syntax.FunctionExpression  ||
-                   type === Syntax.ArrowFunctionExpression)
-        {
-            _popEntry(node);
+    }, node => {
+        if (node == currentContext?.node) {
+            _pop(node);
         }
     });
 
-    return entryList;
+    return lineSignatureList;
 }
 
 }

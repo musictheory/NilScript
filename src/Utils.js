@@ -9,99 +9,6 @@ import path from "node:path";
 import fs   from "node:fs";
 import { fileURLToPath } from "node:url";
 
-const sBaseObjectSelectors = {
-    "alloc": 1,
-    "class": 1,
-    "className": 1,
-    "respondsToSelector:": 1,
-    "superclass": 1,
-
-    // Reserved for https://github.com/musictheory/NilScript/issues/151
-    "iterator": 1,
-
-    // Subclasses may override these
-    "init":        2,
-    "toString":    2,
-    "toJSON":      2,
-    "valueOf":     2
-};
-
-
-function isReservedSelectorName(name)
-{
-    return sBaseObjectSelectors[name] == 1;
-}
-
-
-function isBaseObjectSelectorName(name)
-{
-    return !!sBaseObjectSelectors[name];
-}
-
-
-function getBaseObjectSelectorNames()
-{
-    return _.keys(sBaseObjectSelectors);
-}
-
-
-function makeError(name, message, arg)
-{
-    let error = new Error(message);
-    let path = null;
-    let line, column;
-
-    if (_.isObject(arg) && arg.loc && arg.loc.start) {
-        line   = arg.loc.start.line;
-        column = arg.loc.start.col;
-
-    } else if (_.isObject(arg) && arg.path) {
-        path   = arg.path;
-        line   = arg.line;
-        column = arg.column;
-
-    } else if (_.isString(arg)) {
-        line = parseInt(arg, 10);
-
-    } else if (_.isNumber(arg)) {
-        line = arg;
-    }
-
-    error.file    = path;
-    error.line    = line;
-    error.column  = column;
-    error.name    = name;
-    error.reason  = message;
-
-    return error;
-}
-
-
-function throwError(name, message)
-{
-    throw makeError.apply(null, _.toArray(arguments));
-}
-
-
-function addNodeToError(node, error)
-{
-    if (node) {
-        if (!error.line) {
-            error.line    = node.loc.start.line;
-            error.column  = node.loc.start.col;
-        }
-    }
-}
-
-
-function addFilePathToError(file, error)
-{
-    if (!error.file) {
-        error.file = file;
-    }
-}
-
-
 
 let sShouldLog = false;
 
@@ -132,16 +39,15 @@ function getProjectPath(file)
 }
 
 
-export const Utils = {
-    isReservedSelectorName,
-    isBaseObjectSelectorName,
-    getBaseObjectSelectorNames,
-    makeError,
-    throwError,
-    addNodeToError,
-    addFilePathToError,
+function getRuntimePath()
+{
+    return getProjectPath("lib/runtime.js");
+}
 
+
+export const Utils = {
     getProjectPath,
+    getRuntimePath,
 
     enableLog,
     log,

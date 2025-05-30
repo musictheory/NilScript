@@ -1,31 +1,23 @@
 /*
     Generator.js
     Generates JavaScript or TypeScript from input code/AST/model
-    (c) 2013-2023 musictheory.net, LLC
+    (c) 2013-2024 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-import _ from "lodash";
+import { Modifier     } from "./Modifier.js";
+import { Syntax       } from "./ast/Tree.js";
+import { Traverser    } from "./ast/Traverser.js";
+import { TypePrinter  } from "./ast/TypePrinter.js";
+import { ScopeManager } from "./ScopeManager.js";
+import { SymbolUtils  } from "./SymbolUtils.js";
 
-import { Modifier  } from "./Modifier.js";
-import { NSError   } from "./Errors.js";
-import { NSWarning } from "./Errors.js";
-import { Syntax    } from "./ast/Tree.js";
-import { Traverser } from "./ast/Traverser.js";
-import { Utils     } from "./Utils.js";
+import { Model         } from "./model/Model.js";
+import { CompilerIssue } from "./model/CompilerIssue.js";
 
-import { NSModel   } from "./model/NSModel.js";
+import path from "node:path";
 
-import  fs     from "node:fs";
-let sCounter = 0;
-
-const NSRootVariable  = "N$$_";
-const NSSuperVariable = "N$_super";
-
-const NSRootWithGlobalPrefix = NSRootVariable + "._g.";
-const NSRootWithClassPrefix  = NSRootVariable + "._c.";
-
-const LanguageEcmascript5 = "ecmascript5";
+const LanguageEcmascript  = "ecmascript";
 const LanguageTypechecker = "typechecker";
 const LanguageNone        = "none";
 
@@ -33,15 +25,15 @@ const LanguageNone        = "none";
 export class Generator {
 
 
-constructor(nsFile, model, options)
+constructor(nsFile, model, squeezer, options)
 {
     this._file     = nsFile;
     this._model    = model;
     this._modifier = new Modifier(nsFile.contents);
+    this._squeezer = squeezer;
     this._options  = options;
 
-    let inlines = { };
-    let symbolTyper = model.getSymbolTyper();
+    let inlines = new Map();
 
     let language = options["output-language"];
     if (language && language.match(/typechecker/)) {
@@ -49,51 +41,45 @@ constructor(nsFile, model, options)
     } else if (language && language.match(/none/)) {
         this._language = LanguageNone;
     } else {
-        this._language = LanguageEcmascript5;
+        this._language = LanguageEcmascript;
     }
 
-    _.each(model.consts, nsConst => {
-        let name = nsConst.name;
-
-        if (inlines[name] === undefined) {
-            inlines[name] = nsConst.raw;
+    for (let { name, raw } of model.globalConsts.values()) {
+        if (!inlines.has(name)) {
+            inlines.set(name, raw);
         }
-    });
+    }
 
     let additionalInlines = options["additional-inlines"];
     if (additionalInlines) {
         for (let key in additionalInlines) {
             if (additionalInlines.hasOwnProperty(key)) {
-                inlines[key] = JSON.stringify(additionalInlines[key]);
+                inlines.set(key, JSON.stringify(additionalInlines[key]));
             }
         }
     }
 
     this._inlines = inlines;
-    this._squeeze = options["squeeze"] && (language != LanguageTypechecker);
 }
 
 
 generate()
 {
     let traverser = new Traverser(this._file.ast);
+    let scopeManager = this._file.scopeManager;
 
     let model    = this._model;
     let modifier = this._modifier;
+    let squeezer = this._squeezer;
     let language = this._language;
     let options  = this._options;
     let inlines  = this._inlines;
+    let filePath = this._file.path;
     
     let toSkip = new Set();
 
-    let currentNXClass;
-    let currentClass;
-    let currentFuncNode;
-
-    let optionWarnGlobalNoType = options["warn-global-no-type"];
-
-    let optionSqueeze = this._squeeze;
-    let symbolTyper   = model.getSymbolTyper();
+    let currentClass = null;
+    let classStack = [ ];
 
     let warnings = [ ];
 
@@ -103,129 +89,231 @@ generate()
 
         if (!node.ns_transformable) return;
 
-        // if (currentMethodNode && currentClass) {
-        //     if (currentClass.isIvar(name, true)) {
-        //         Utils.throwError(NSError.RestrictedUsage, `Cannot use instance variable "${name}" here`, node);
-        //     }
-        // }
-
-        if (inlines[name] || model.globals[name]) {
-            Utils.throwError(NSError.RestrictedUsage, `Cannot use compiler-inlined "${name}" here`, node);
+        if (inlines.has(name) || model.globalFunctions.has(name)) {
+            throw new CompilerIssue(`Cannot use compiler-inlined "${name}" here`, node);
         }
     }
 
-    function handleNSClassImplementation(node)
+    function shouldRemove(node)
     {
-        let name = node.id.name;
-        let cls  = model.classes[name];
-
-        let superName   = cls.superClass ? cls.superClass.name : null;
-        let classSymbol = symbolTyper.getSymbolForClassName(name);
+        let type = node.type;
         
-        if (cls.superClass) toSkip.add(cls.superClass);
-        toSkip.add(node.id);
-
-        // Only allow whitelisted children inside of an implementation block
-        _.each(node.body.body, child => {
-            let type = child.type;
-            
-            if (!(
-                type == Syntax.NXPropDefinition ||
-                type == Syntax.NXFuncDefinition ||
-                (type == Syntax.MethodDefinition && child.kind == "get") ||
-                (type == Syntax.MethodDefinition && child.kind == "set")
-            )) {
-                Utils.throwError(NSError.ParseError, 'Unexpected implementation child.', child);
-            }
-
-            if (type === Syntax.VariableDeclaration) {
-                _.each(child.declarations, declaration => {
-                    if (declaration.init) {
-                        if (declaration.init.type !== Syntax.Literal &&
-                            declaration.init.type !== Syntax.FunctionExpression)
-                        {
-                            Utils.throwError(NSError.ParseError, 'Variable declaration must be initialized to a constant.', declaration.init);
-                        }
-                    }
-                });
-            }
-        });
-
-        let startText;
-        let endText;
-
-        if (language === LanguageEcmascript5) {
-            let extendsString = NSRootWithClassPrefix +
-                (superName ? symbolTyper.getSymbolForClassName(superName) : "N$_base");
-
-            startText = `${NSRootWithClassPrefix}${classSymbol} = class ${classSymbol} extends ${extendsString} {`;
-
-            let hasInit = false;
-            for (let method of cls._methods) {
-                if (method.baseName == "init") {
-                    hasInit = true;
-                }            
-            }
-            
-            if (hasInit) {
-                startText += `constructor(...A) { ${NSRootVariable}._i(super(${NSRootVariable}._i0), ...A); }`;
-            }
-
-            endText = "};";
-
-        } else if (language === LanguageTypechecker) {
-            startText = "(function() { ";
-            endText = "});";
+        if (language != LanguageTypechecker && (
+            type == Syntax.TSTypeAnnotation       ||
+            type == Syntax.NXEnumDeclaration      ||
+            type == Syntax.NXInterfaceDeclaration ||
+            type == Syntax.NXTypeDeclaration
+        )) {
+            return true;
         }
+    
+        return false;
+    }
+    
+    function handleRuntimeMemberExpression(node, parent)
+    {
+        let propertyName = node.property.name;
 
-        if (!node.body.body.length) {
-            modifier.replace(node, startText + endText);
+        let replaceParent = false; 
+        let replacement   = null;
+      
+        // Nyx.getFuncIdentifier()
+        if (propertyName == "getFuncIdentifier") {
+            if (
+                parent.type != Syntax.CallExpression ||
+                parent.arguments.length != 1 ||
+                parent.arguments[0].type != Syntax.Literal
+            ) {
+                throw new CompilerIssue(`Invalid use of Nyx.getFuncIdentifier`, node);
+            }
+            
+            let funcString = parent.arguments[0].value;
+            let funcComponents = SymbolUtils.fromFuncString(funcString);
+
+            if (!funcComponents) {
+                throw new CompilerIssue(`"${funcString}" is not a valid func signature.`, node);
+            }
+
+            let funcIdentifier = SymbolUtils.toFuncIdentifier(funcComponents);
+            if (!funcIdentifier) {
+                throw new CompilerIssue(`"${funcString}" has no named arguments.`, node);
+            }
+
+            if (squeezer) {
+                funcIdentifier = squeezer.squeeze(funcIdentifier);
+            }
+
+            replaceParent = true;
+            replacement = `"${funcIdentifier}"`;
+        
+        // Nyx.handleInit()        
+        } else if (propertyName == "handleInit") {
+            replacement = SymbolUtils.RootVariable + ".i";
+
+        // Nyx.noInitSymbol
+        } else if (propertyName == "noInitSymbol") {
+            replacement = SymbolUtils.RootVariable + ".m";
+
+        } else if (propertyName == "namedInitSymbol") {
+            replacement = SymbolUtils.RootVariable + ".n";
 
         } else {
-            modifier.replace(node.start, node.body.start, startText);
-            modifier.replace(node.body.end, node.end, endText);
+            throw new CompilerIssue(`Unknown runtime property: Nyx.${propertyName}`, node);
+        }
+
+        toSkip.add(node.object);
+        toSkip.add(node.property);
+
+        if (replaceParent && (parent.type == Syntax.CallExpression)) {
+            parent.arguments.forEach(a => toSkip.add(a));
+            modifier.replace(parent, replacement);
+        } else {
+            modifier.replace(node, replacement);
+        }
+    }
+    
+    function handleExportDeclaration(node)
+    {
+        if (shouldRemove(node.declaration)) {
+            modifier.remove(node.start, node.declaration.start);
+
+        } else if (language == LanguageEcmascript) {
+            let exportedNames = [ ];
+
+            if (node.declaration.type == Syntax.VariableDeclaration) {
+                for (let declaration of node.declaration.declarations) {
+                    exportedNames.push(declaration.id.name);
+                }
+
+            } else if (node.declaration.id) {
+                exportedNames.push(node.declaration.id.name);
+            }
+
+            let replacement = exportedNames.map(name => {
+                let lhs = SymbolUtils.getImportExpression(name, squeezer);
+                return `${lhs} = ${name};`;
+            });
+            
+            if (replacement) {
+                modifier.replace(node.start, node.declaration.start, "");
+                modifier.replace(node.declaration.end, node.end, replacement);
+            }
+        }
+    }
+    
+    function handleClassDeclaration(node)
+    {
+        let name = node.id.name;
+        
+        function isInitBased(cls) {
+            if (cls.hasConstructor) return false;
+            if (cls.hasFuncOrProp)  return true;
+            
+            return false;
+        }
+
+        classStack.push(currentClass);
+        currentClass = scopeManager.getValue(name)?.object;
+
+        toSkip.add(node.id);
+
+        if (isInitBased(currentClass) && language === LanguageEcmascript) {
+            let rootVariable = SymbolUtils.RootVariable;
+
+            let constructorText = node.superClass ?
+                `constructor(...A) { ${rootVariable}.i(super(${rootVariable}.m), ...A); }` :
+                `constructor(...A) { ${rootVariable}.i(this, ...A); }`;
+                    
+            if (node.body.body.length > 0) {
+                modifier.replace(node.body.start, node.body.body[0].start, `{${constructorText}`);
+
+            } else {
+                modifier.replace(node.body, `{${constructorText}}`);
+            }
+        }
+    }
+
+    function handlePropertyDefinition(node)
+    {
+        if (language !== LanguageTypechecker) {
+            if (node.readonly) {
+                let replacement = node.static ? "static" : "";
+                modifier.replace(node.start, node.key.start, replacement);                
+            }            
         }
     }
 
     function handleMethodDefinition(node)
     {
         if (language === LanguageTypechecker) {
-            let classSymbol = symbolTyper.getSymbolForClassName(currentClass.name, node.static);
-            
-            let replacement = "";
-
-            if (node.kind == "set") {
-                let replacement = `(function(this: ${classSymbol}, `
-
-                toSkip.add(node.key);
-                
-                modifier.replace(node.start, node.value.params[0].start, replacement);
-                modifier.replace(node.value.end, node.end, ");");
-                
-            } else if (node.kind == "get") {
-                let replacement = `(function(this: ${classSymbol})`
-
-                toSkip.add(node.key);
-
-                modifier.replace(node.start, node.value.annotation.start, replacement);
-                modifier.replace(node.value.end, node.end, ");");
+            if (node.kind == "set" && node.value.annotation) {
+                modifier.remove(node.value.annotation);
+                toSkip.add(node.value.annotation);
             }
-        }    
+        }
     }
 
-    function handleSuper(node)
+    function handleImportDeclaration(node)
     {
-        if (language === LanguageTypechecker) {
-            modifier.replace(node, "this." + NSSuperVariable + "()");
+        let specifiers = node.specifiers;
+        let length = specifiers.length;
+
+        let replacements = [ ];
+        
+        for (let i = 0; i < length; i++) {
+            let specifier = specifiers[i];
+
+            let name = specifier.imported.name;
+            let declaration = scopeManager.getImport(name);
+                
+            if (!declaration) {
+                warnings.push(new CompilerIssue(`Unknown import: "${name}"`, specifier));
+                continue;
+            }
+            
+            if (declaration.object instanceof Model.Runtime) {
+                continue                
+            }
+
+            if (language == LanguageTypechecker) {
+                let toPath = declaration.object?.location?.path;
+
+                if (!toPath) {
+                    warnings.push(new CompilerIssue(`No known path for: "${name}"`, specifier));
+                    continue;
+                }
+                
+                let importPath = path.relative(path.dirname(filePath), toPath);
+                replacements.push(`import { ${name} } from "${importPath}";`);
+            
+            } else if (declaration.importType == ScopeManager.ImportType.Past) {
+                let expression = SymbolUtils.getImportExpression(name, squeezer);
+                replacements.push(`${name} = ${expression}`);
+            }
         }
-    } 
+
+        let replacement = "";
+        
+        if (replacements.length) {
+            replacement = (language == LanguageTypechecker) ?
+            replacements.join("") :
+            `const ${replacements.join(",")};`
+        }
+
+        modifier.replace(node, replacement);
+    }
    
     function handleCallExpression(node)
     {
-        let baseNode = node.nx_baseNode;
-        
-        if (baseNode) {
-            modifier.replace(node.nx_baseNode, node.nx_funcName);
+        let funcName = node.nx_func;
+        let baseNode = node.nx_base;
+
+        if (funcName) {
+            if (squeezer) {
+                funcName = squeezer.squeeze(funcName);
+            }
+
+            modifier.replace(baseNode, funcName);
 
             toSkip.add(baseNode);
             
@@ -242,29 +330,22 @@ generate()
 
     function handleNewExpression(node)
     {
-        let components = [ ];
-        let hasNamedArgument = false;
-
         for (let argument of node.arguments) {
             if (argument.type === Syntax.NXNamedArgument) {
-                hasNamedArgument = true;
-                components.push("_" + argument.name.name.replaceAll("_", "$"));
-
                 modifier.remove(argument.name);
                 modifier.remove(argument.colon);
 
                 toSkip.add(argument.name);
-
-            } else {
-                components.push("_");
             }
         }
 
-        if (hasNamedArgument) {
-            let baseNode = node.callee;
-            
-            let funcName = "init" + components.join("");
-        
+        let funcName = node.nx_func;
+
+        if (funcName) {
+            if (squeezer) {
+                funcName = squeezer.squeeze(funcName);
+            }
+
             if (language === LanguageTypechecker) {
                 let replacement = `()).${funcName}(`;
             
@@ -274,168 +355,130 @@ generate()
                 modifier.replace(node.arguments[node.arguments.length - 1].end, node.end, "))");
 
             } else {
-                let replacement = `(${NSRootVariable}._in, "${funcName}", `;
+                let replacement = `(${SymbolUtils.RootVariable}.n, "${funcName}", `;
                 
                 modifier.replace(node.callee.end, node.arguments[0].start, replacement);
             }
         }
     }
 
-    function handleNSPredefinedMacro(node)
-    {
-        let name = node.name;
-
-        let className = currentClass ? currentClass.name : null;
-        
-        if (optionSqueeze) {
-            className = className && symbolTyper.getSymbolForClassName(className);
-        }
-
-        if (name === "@CLASS") {
-            if (currentClass) {
-                modifier.replace(node, '"' + className + '"');
-            } else {
-                Utils.throwError(NSError.ParseError, 'Cannot use @CLASS outside of a class implementation');
-            }
-
-        } else if (name === "@FUNCTION_ARGS") {
-            let replacement = null;
-
-            if (className && currentFuncNode) {
-                let isStatic = currentFuncNode.static;
-                
-                //!FIXME: Implement
-                replacement = "\"\"";
-            }
-
-            if (replacement) {
-                modifier.replace(node, replacement);
-            } else {
-                Utils.throwError(NSError.ParseError, `Cannot use @FUNCTION_ARGS outside of a method definition`);
-            }
-
-        } else {
-            Utils.throwError(NSError.ParseError, `Unknown identifier: "${name}"`);
-        }
-    }
-
-    function handleNSTypeDefinition(node)
-    {
-        if (language === LanguageTypechecker) {
-            let typesToCheck = [ ];
-
-            _.each(node.params, param => {
-                typesToCheck.push( symbolTyper.toTypecheckerType(param.annotation.value) );
-            });
-
-            if (node.annotation) {
-                typesToCheck.push( symbolTyper.toTypecheckerType(node.annotation.value) );
-            }
-
-            // Lay down a cast operation with all needed types.  This will generate a warning due to an unknown type.  
-            modifier.replace(node, "<[ " + typesToCheck.join(", ") + "]> null;");
-
-        } else {
-            modifier.remove(node);
-        }
-    }
-
-
     function handleIdentifier(node, parent)
     {
         let name = node.name;
 
-        if (name == "self") {
-            warnings.push(Utils.makeError(NSWarning.UseOfSelfInNonMethod, `Use of "self"`, node));
-        }
-
         if (name[0] === "N" && name[1] === "$") {
-            Utils.throwError(NSError.ReservedIdentifier, `Identifiers may not start with "N$"`, node);
-
-        } else if (name[0] === "@") {
-            handleNSPredefinedMacro(node);
-            return;
+            throw new CompilerIssue(`Identifiers may not start with "N$"`, node);
         }
 
-        if (!node.ns_transformable) return;
-
-        let nsGlobal = model.globals[name];
         let replacement;
 
-        if (nsGlobal) {
-            replacement = NSRootWithGlobalPrefix + (optionSqueeze ? symbolTyper.getSymbolForIdentifierName(name) : name);
+        let isParentProperty = (
+            parent.type == Syntax.Property ||
+            parent.type == Syntax.MethodDefinition ||
+            parent.type == Syntax.PropertyDefinition ||
+            parent.type == Syntax.MemberExpression ||
+            parent.type == Syntax.TSObjectMember
+        );
 
-            modifier.replace(node, replacement);
+        // Special case: handle shorthand syntax
+        if (parent.type == Syntax.Property && parent.shorthand) {
+            if (node == parent.key && squeezer) {
+                let squeezedName = squeezer.squeeze(name);
+                replacement = `${squeezedName}: ${name}`;
+            }
+        }
 
-            return;
+        // Squeeze if needed
+        if (
+            !replacement && 
+            isParentProperty &&
+            !parent.computed &&
+            (node == parent.key || node == parent.property)
+        ) {
+            if (squeezer) replacement = squeezer.squeeze(name);
+        }
+
+        // Globals
+        if (!replacement && model.globalFunctions.has(name)) {
+            replacement = SymbolUtils.getGlobalExpression(name, squeezer);
         }
         
-        if (model.classes[name]) {
-            let classVariable = symbolTyper.getSymbolForClassName(name);
+        // Imports
+        if (!replacement) {
+            let scopeDeclaration = scopeManager.getValue(name);
 
-            if (language === LanguageEcmascript5) {
-                classVariable = NSRootWithClassPrefix + classVariable;
-            }
-
-            modifier.replace(node, classVariable);
-            return;
-        }
-
-        if (inlines) {
-            let result = inlines[name];
-            if (result !== undefined) {
-                if (inlines.hasOwnProperty(name)) {
-                    modifier.replace(node, "" + result);
-                    return;
-                }
+            if (
+                language === LanguageEcmascript &&
+                scopeDeclaration?.importType == ScopeManager.ImportType.Future
+            ) {
+                replacement = SymbolUtils.getImportExpression(name, squeezer);
             }
         }
 
-        if (optionSqueeze) {
-            let result = symbolTyper.getSymbolForIdentifierName(name);
-            if (result !== undefined) {
-                modifier.replace(node, "" + result);
-                return;
+        // Ivars?
+        if (!replacement && (name[0] == "_") && currentClass?.hasIvar(name)) {
+            replacement = `this.#${name.slice(1)}`;
+        }
+
+        // Inlines
+        if (!replacement && inlines.has(name)) {
+            replacement = inlines.get(name);
+        }
+        
+        if (replacement) {
+            modifier.replace(node, replacement);
+
+            if (node.annotation) toSkip.add(node.annotation);
+            if (node.question)   toSkip.add(node.question);
+        } else {
+            if (node.question && language != LanguageTypechecker) {
+                modifier.remove(node.question)
+                toSkip.add(node.question);
             }
         }
     }
 
     function handleMemberExpression(node, parent)
     {
-        if (node.computed ||
-            node.object.type !== Syntax.Identifier ||
-            !model.enums[node.object.name]
-        ) {
-            return;
-        }
-        
-        if (node.property.type !== Syntax.Identifier) {
-            warnings.push(Utils.makeError(NSWarning.UnknownEnumMember, `enum member must be an identifier`, node));
+        if (node.computed || node.object.type !== Syntax.Identifier) {
             return;
         }
 
-        let nsEnum = model.enums[node.object.name];
-        let memberName = node.property.name;
-        let member = nsEnum.members.get(memberName);
+        let object = scopeManager.getValue(node.object.name)?.object;
 
-        if (member) {
-            toSkip.add(node.object);
-            toSkip.add(node.property);
-
-            let replacement;
-            if (language == LanguageTypechecker) {
-                let enumNameSymbol = symbolTyper.getSymbolForEnumName(nsEnum.name);
-                replacement = enumNameSymbol + "." + member.name;
-            } else {
-                replacement = "" + member.value;
+        if (object instanceof Model.Enum) {
+            if (node.property.type !== Syntax.Identifier) {
+                warnings.push(new CompilerIssue(`enum member must be an identifier`, node));
+                return;
             }
-            
-            modifier.replace(node, replacement);
 
-        } else {
-            warnings.push(
-                Utils.makeError(NSWarning.UnknownEnumMember, `Unknown enum member '${memberName}`, node.property)
-            );
+            let nsEnum = object;
+            let memberName = node.property.name;
+            let member = nsEnum.members.get(memberName);
+
+            if (member) {
+                toSkip.add(node.object);
+                toSkip.add(node.property);
+
+                let replacement;
+                if (language == LanguageTypechecker) {
+                    replacement = nsEnum.name + "." + member.name;
+                } else {
+                    if (typeof member.value == "string") {
+                        replacement = `"${member.value}"`;
+                    } else {
+                        replacement = "" + member.value;
+                    }
+                
+                    modifier.replace(node, replacement);
+                }
+
+            } else {
+                warnings.push(new CompilerIssue(`Unknown enum member '${memberName}`, node.property));
+            }
+
+        } else if (object instanceof Model.Runtime) {
+            handleRuntimeMemberExpression(node, parent);
         }
     }
 
@@ -446,246 +489,245 @@ generate()
         }
     }
 
-    function handleNSEnumDeclaration(node)
+    function handleNXAsExpression(node)
     {
-        let length = node.declarations ? node.declarations.length : 0;
-        let last   = node;
-
-        if (length) {
-            let firstDeclaration = node.declarations[0];
-            let lastDeclaration  = node.declarations[length - 1];
-
-            for (let i = 0; i < length; i++) {
-                let declaration = node.declarations[i];
-
-                if (!declaration.init) {
-                    modifier.insert(declaration.id.end, "=" + declaration.enumValue);
-                }
-
-                if (last == node) {
-                    modifier.insert(declaration.id.start, "var ");
-                    modifier.remove(last.end, declaration.id.start);
-
-                } else {
-                    modifier.insert(last.end, "; ");
-                    modifier.replace(last.end, declaration.id.start, "var ");
-                }
-
-                last = declaration;
-            }
-
-            modifier.insert(lastDeclaration.end, ";");
-            modifier.remove(lastDeclaration.end, node.end);
-
-        } else {
-            modifier.remove(node);
+        if (language !== LanguageTypechecker) {
+            modifier.remove(node.expression.end, node.annotation.start);
         }
     }
 
-    function handleNSConstDeclaration(node)
+    function handleNXNonNullExpression(node)
     {
-        let length = node.declarations ? node.declarations.length : 0;
-        let values = [ ];
-
-        if (length) {
-            let firstDeclaration = node.declarations[0];
-
-            modifier.replace(node.start, firstDeclaration.id.start, "var ");
-
-        } else {
-            modifier.remove(node);
+        if (language !== LanguageTypechecker) {
+            modifier.remove(node.expression.end, node.end);
         }
     }
 
-    function handleNSCastExpression(node)
-    {
-        let before = "(";
-        let after  = ")";
-
-        if (language == LanguageTypechecker) {
-            before = "(<" + symbolTyper.toTypecheckerType(node.id) + ">(<any>(";
-            after  = ")))";
-        }
-
-        modifier.replace(node.start, node.argument.start, before);
-        modifier.replace(node.argument.end, node.end, after);
-    }
-
-    function handleNSAnyExpression(node)
-    {
-        let before = (language == LanguageTypechecker) ? "(<any>(" : "(";
-        let after  = (language == LanguageTypechecker) ? "))"      : ")";
-
-        modifier.replace(node.start, node.argument.start, before);
-        modifier.replace(node.argument.end, node.end, after);
-    }
-
-    function handleNSTypeAnnotation(node, parent)
+    function handleTSTypeAnnotation(node, parent)
     {
         if (language === LanguageTypechecker) {
-            let inValue  = node.value;
-            let outValue = symbolTyper.toTypecheckerType(inValue);
-
-            if (inValue != outValue) {
-                modifier.replace(node.start, node.end, ": " + outValue);
-            }
-
+            modifier.replace(node, TypePrinter.print(node, true));
         } else {
             modifier.remove(node);
         }
+
+        toSkip.add(node.value);
     }
 
-    function handleNSGlobalDeclaration(node)
+    function handleNXGlobalDeclaration(node)
     {
-        let declaration  = node.declaration;
-        let declarations = node.declarations;
+        let declaration = node.declaration;
 
-        if (optionWarnGlobalNoType) {
-            let allTyped;
+        if (declaration.type == Syntax.FunctionDeclaration) {
 
-            if (declaration) {
-                allTyped = !!declaration.annotation && _.every(declaration.params, param => !!param.annotation);
+            let replacement = SymbolUtils.getGlobalExpression(declaration.id.name, squeezer) + "=";
 
-            } else if (declarations) {
-                allTyped = _.every(declarations, declaration => !!declaration.id.annotation);
-            }
+            modifier.replace(node.start, declaration.start, replacement);
+            modifier.remove(declaration.id);
 
-            if (!allTyped) {
-                warnings.push(Utils.makeError(NSWarning.MissingTypeAnnotation, "Missing type annotation on @global", node));
-            }
-        }
-
-        if (language !== LanguageTypechecker) {
-            if (declaration) {
-                let name = symbolTyper.getSymbolForIdentifierName(declaration.id.name);
-
-                modifier.replace(node.start, declaration.start, NSRootWithGlobalPrefix + name + "=");
-                modifier.remove(declaration.id);
-
-                toSkip.add(declaration.id);
-
-            } else if (declarations) {
-                modifier.remove(node.start, declarations[0].start);
-
-                _.each(declarations, declaration => {
-                    let name = symbolTyper.getSymbolForIdentifierName(declaration.id.name);
-
-                    modifier.replace(declaration.id, NSRootWithGlobalPrefix + name);
-
-                    toSkip.add(declaration.id);
-                })
-            }
+            toSkip.add(declaration.id);
 
         } else {
-            if (declaration) {
-                modifier.replace(node.start, declaration.id.start, "(function ");
-                modifier.remove(declaration.id);
-                modifier.insert(node.end, ");");
-
-                toSkip.add(declaration.id);
-
-            } else if (declarations) {
-                modifier.replace(node.start, declarations[0].start, "(function() { var ");
-                modifier.insert(node.end, "});");
-
-                let index = 0;
-                _.each(declarations, declaration => {
-                    let replacement = "a" + index++;
-                    modifier.replace(declaration.id, replacement);
-                    toSkip.add(declaration.id);
-                });
-            }
+            modifier.remove(node);
+            toSkip.add(declaration);
         }
     }
 
     function handleFunctionDeclarationOrExpression(node)
     {
-        _.each(node.params, param => {
+        for (let param of node.params) {
             checkRestrictedUsage(param);
-        });
-    }
-
-    function handleProperty(node) 
-    {
-        let key = node.key;
-
-        if (node.computed && (key.type === Syntax.Identifier)) {
-            let nsConst = model.consts[key.name];
-
-            if (nsConst && _.isString(nsConst.value)) {
-                modifier.replace(node.start, node.value.start, nsConst.raw + ":");
-                modifier.remove(node.value.end, node.end);
-                
-                toSkip.add(key);
-            }
         }
     }
-    
-    function handleNXPropDefinition(node)
+
+    // This whole function goes away
+    function handleLegacyNXPropDefinition(node)
     {
+        function getInit(typeName) {
+            let object = scopeManager.getType(typeName)?.object;
+
+            if (object && (object instanceof Model.Type)) {
+                return getInit(object.reference);
+
+            } else if (
+                typeName == "number" ||
+                (object && (object instanceof Model.Enum))
+            ) {
+                return "0";
+
+            } else if (typeName == "boolean") {
+                return "false";
+            }
+            
+            return "null";
+        }
+    
         let name = node.key.name;
+        let isStatic = node.static;
+        let isLegacy = node.legacy;
+        let type = TypePrinter.print(node.annotation);
 
         toSkip.add(node.key);
         toSkip.add(node.annotation);
+
+        let isPrivate  = (node.modifier == "private");
+        let isReadOnly = (node.modifier == "readonly");
+        let isObserved = (node.modifier == "observed");
         
-        let property = currentClass.getPropertyWithName(name);
-        let isStatic = property.isStatic;
-        let propertySymbol = symbolTyper.getSymbolForIdentifierName(name);
-        let backingSymbol  = symbolTyper.getSymbolForIdentifierName(`_${name}`);
+        let changeArg = "";
+        if (node.decorator) {
+            changeArg = `"${node.decorator}"`;
+            isObserved = true;
+        }
+
+        let wantsGetter =  !isPrivate;
+        let wantsSetter = (!isPrivate && !isReadOnly);
+
+        let propertyName = name;
+        let backingName  = isLegacy ? `_${name}` : `#${name}`;
+        let legacySetterName   = isLegacy ? "set" + name[0].toUpperCase() + name.slice(1) : null;
+
+        if (squeezer) {
+            propertyName = squeezer.squeeze(propertyName);
+            backingName  = squeezer.squeeze(backingName);
+            legacySetterName   = legacySetterName ? squeezer.squeeze(legacySetterName) : null;
+        }
+        
         
         let result = "";
         
         let staticString = isStatic ? "static" : "";
+        
+        let annotation = "";
+        if (language === LanguageTypechecker) {
+            annotation = `: ${type}`;
+        }
 
-        if (language === LanguageEcmascript5) {
-            if (property.wantsSetter && !currentClass.getSetter(name, isStatic)) {
-                let isObserved = property.attributes.indexOf("observed") >= 0;
+        if (wantsSetter && !currentClass.hasSetter(name, isStatic)) {
+            let s = [ ];
 
-                let s = [ ];
-
-                if (isObserved) {
-                    s.push(`if (this.${backingSymbol} !== arg) {`);
-                }
-
-                s.push(`this.${backingSymbol} = arg;`);
-
-                if (isObserved) {
-                    let changeSymbol = symbolTyper.getSymbolForIdentifierName("observePropertyChange");
-                    s.push(`this.${changeSymbol}();`);
-                    s.push(`}`);
-                }
-
-                result += `${staticString} set ${propertySymbol}(arg) {${s.join(" ")} } `;
+            if (isObserved) {
+                s.push(`if (this.${backingName} !== arg) {`);
             }
+
+            s.push(`this.${backingName} = arg;`);
+
+            if (isObserved) {
+                let changeSymbol = "observePropertyChange";
                 
-            if (property.wantsSetter) {
-                let legacySetterName = property.legacySetterName;
-                let legacySetterSymbol = symbolTyper.getSymbolForIdentifierName(legacySetterName);
-
-                result += `${staticString} ${legacySetterSymbol}(arg) {this.${propertySymbol}=arg;} `; 
+                if (squeezer) changeSymbol = squeezer.squeeze(changeSymbol);
+                
+                s.push(`this.${changeSymbol}(${changeArg});`);
+                s.push(`}`);
             }
 
-            if (property.wantsGetter && !currentClass.getGetter(name, isStatic)) {
-                result += `${staticString} get ${propertySymbol}() { return this.${backingSymbol}; } `;
+            let argType = "";
+
+            result += `${staticString} set ${propertyName}(arg${annotation}) {${s.join(" ")} } `;
+        }
+            
+        if (wantsSetter && legacySetterName) {
+            result += `${staticString} ${legacySetterName}(arg${annotation}) {this.${propertyName}=arg;} `; 
+        }
+
+        if (wantsGetter && !currentClass.hasGetter(name, isStatic)) {
+            result += `${staticString} get ${propertyName}() { return this.${backingName}; } `;
+        }
+
+        let initString = "";
+        if (isLegacy && !currentClass.hasField(`_${name}`, isStatic)) {
+            let annotationValue = node.annotation?.value;
+            let initValue = "null";
+
+            if (annotationValue?.type == Syntax.TSTypeReference) {
+                initValue = getInit(annotationValue.name.name);
             }
+            
+            initString = ` = ${initValue};`;
+        }
+  
+        result += `${staticString} ${backingName}${annotation}${initString}`;
 
-            let initValue;
-            if (model.isNumericType(property.type)) {
-                initValue = "0";
-            } else if (model.isBooleanType(property.type)) {
-                initValue = "false";
-            } else {
-                initValue = "null";
-            }
+        modifier.replace(node, result);
+    }
 
-            result += `${staticString} ${backingSymbol} = ${initValue}`;
 
-        } else if (language === LanguageTypechecker) {
-            result += "<" + symbolTyper.toTypecheckerType(property.type) + "> null;";
+    function handleNXPropDefinition(node)
+    {
+        if (node.legacy) {
+            return handleLegacyNXPropDefinition(node);
+        }
+    
+        let name = node.key.name;
+        let isStatic = node.static;
+        let type = TypePrinter.print(node.annotation);
+
+        toSkip.add(node.key);
+        toSkip.add(node.annotation);
+
+        let isPrivate  = (node.modifier == "private");
+        let isReadOnly = (node.modifier == "readonly");
+        let isObserved = (node.modifier == "observed");
+        
+        let changeArg = "";
+        if (node.decorator) {
+            changeArg = `"${node.decorator}"`;
+            isObserved = true;
+        }
+
+        let wantsGetter =  !isPrivate;
+        let wantsSetter = (!isPrivate && !isReadOnly);
+
+        let propertyName = name;
+        let backingName  = `#${name}`;
+
+        if (squeezer) {
+            propertyName = squeezer.squeeze(propertyName);
+            backingName  = squeezer.squeeze(backingName);
         }
         
-        if (!result) {
-            modifier.remove(node);
+        
+        let result = "";
+        
+        let staticString = isStatic ? "static" : "";
+        
+        let annotation = "";
+        if (language === LanguageTypechecker) {
+            annotation = `: ${type}`;
+        }
+
+        if (wantsSetter && !currentClass.hasSetter(name, isStatic)) {
+            let s = [ ];
+
+            if (isObserved) {
+                s.push(`if (this.${backingName} !== arg) {`);
+            }
+
+            s.push(`this.${backingName} = arg;`);
+
+            if (isObserved) {
+                let changeSymbol = "observePropertyChange";
+                
+                if (squeezer) changeSymbol = squeezer.squeeze(changeSymbol);
+                
+                s.push(`this.${changeSymbol}(${changeArg});`);
+                s.push(`}`);
+            }
+
+            let argType = "";
+
+            result += `${staticString} set ${propertyName}(arg${annotation}) {${s.join(" ")} } `;
+        }
+            
+        if (wantsGetter && !currentClass.hasGetter(name, isStatic)) {
+            result += `${staticString} get ${propertyName}() { return this.${backingName}; } `;
+        }
+
+        result += `${staticString} ${backingName}${annotation}`;
+
+        if (node.value) {
+            result += " = ";
+            modifier.replace(node.start, node.value.start, result);
         } else {
             modifier.replace(node, result);
         }
@@ -694,58 +736,34 @@ generate()
     function handleNXFuncDefinition(node)
     {
         let isStatic = node.static;
-
-        let replacement = node.key.name;
-
-        let components = [ ];
-        let hasNamedArgument = false;
-
-        for (let param of node.params) {
-            let label = param.label?.name;
-            if (!label) label = param.name.name;
-            if (!label) label = "";
-
-            if (param.label?.name == "_") {
-                components.push("_");
-            } else {
-                components.push("_" + label.replaceAll("_", "$"));
-                hasNamedArgument = true;
-            }
-        }
-        
-        if (hasNamedArgument) {
-            replacement += components.join("");
-        }
-        
-        if (language === LanguageTypechecker) {
-            let args = [ ];
-
-            args.push("this" + " : " + symbolTyper.getSymbolForClassName(currentClass.name, isStatic) );
-
-            for (let param of node.params) {
-                let name = param.name.name;
-                let outputType = symbolTyper.toTypecheckerType(param.annotation?.value);
-                args.push(name + " : " + outputType);
-                
-                toSkip.add(param);
+        let baseName = node.key.name;
+    
+        if (language === LanguageTypechecker && baseName == "init") {
+            if (node.annotation) {
+                modifier.remove(node.annotation);
+                toSkip.add(node.annotation);
             }
             
-            toSkip.add(node.annotation);
-       
-            let definition = "(function(" + args.join(", ") + ") ";
-
-            let returnType = node.annotation?.value;
-            if (returnType == "instancetype" || returnType == "init") returnType = currentClass.name;
-            if (returnType) {
-                definition += ": " + symbolTyper.toTypecheckerType(returnType);
+            let bodyNodes = node.body.body;
+            if (bodyNodes.length > 0) {
+                modifier.insert(bodyNodes[bodyNodes.length - 1].end, " return this;");
+            } else {
+                modifier.replace(node.body, "{ return this; }");
             }
+        }
 
-            modifier.replace(node.start, node.body.start, definition);
-            modifier.replace(node.body.end, node.end, ");");
-
-        } else {
-            modifier.replace(node.start, node.key.start, isStatic ? "static " : "");
-            modifier.replace(node.key, replacement);
+        modifier.replace(node.start, node.key.start, isStatic ? "static " : "");
+        
+        let funcName = node.nx_func;
+        let keyReplacement = funcName ?? baseName;
+        
+        if (squeezer) {
+            keyReplacement = squeezer.squeeze(keyReplacement);
+        }
+        
+        if (keyReplacement != baseName) {
+            modifier.replace(node.key, keyReplacement);
+            toSkip.add(node.key);
         }
     }
 
@@ -757,59 +775,45 @@ generate()
         }
     }
 
-let path = this._file.path;
-
     traverser.traverse(function(node, parent) {
         let type = node.type;
 
         if (toSkip.has(node)) return Traverser.SkipNode;
 
-        if (type === Syntax.NSProtocolDefinition ||
-            type === Syntax.NSEnumDeclaration    ||
-            type === Syntax.NSConstDeclaration
-        ) {
+        if (shouldRemove(node)) {
             modifier.remove(node);
             return Traverser.SkipNode;
+        }
+
+        scopeManager.reenterNode(node);
+
+        if (type === Syntax.ImportDeclaration) {
+            handleImportDeclaration(node);
+            if (language != LanguageTypechecker) return Traverser.SkipNode;
 
         } else if (type === Syntax.ExportNamedDeclaration) {
-            modifier.remove(node.start, node.declaration.start);
+            handleExportDeclaration(node);
 
-        } else if (type === Syntax.NSBridgedDeclaration) {
-            modifier.remove(node.start, node.declaration.start);
-
-        } else if (type === Syntax.NSClassImplementation) {
-            currentClass = model.classes[node.id.name];
-            handleNSClassImplementation(node);
-
+        } else if (type === Syntax.ClassDeclaration || type == Syntax.ClassExpression) {
+            handleClassDeclaration(node);
+        
         } else if (type === Syntax.CallExpression) {
             handleCallExpression(node);
 
         } else if (type === Syntax.NewExpression) {
             handleNewExpression(node);
 
-        } else if (type === Syntax.NSEnumDeclaration) {
-            handleNSEnumDeclaration(node);
+        } else if (type === Syntax.NXAsExpression) {
+            handleNXAsExpression(node);
 
-        } else if (type === Syntax.NSConstDeclaration) {
-            handleNSConstDeclaration(node);
+        } else if (type === Syntax.NXNonNullExpression) {
+            handleNXNonNullExpression(node);
 
-        } else if (type === Syntax.NSCastExpression) {
-            handleNSCastExpression(node);
+        } else if (type === Syntax.TSTypeAnnotation) {
+            handleTSTypeAnnotation(node, parent);
 
-        } else if (type === Syntax.NSAnyExpression) {
-            handleNSAnyExpression(node);
-
-        } else if (type === Syntax.NSTypeAnnotation || type === "TSTypeAnnotation") {
-            handleNSTypeAnnotation(node, parent);
-
-        } else if (type === Syntax.NSGlobalDeclaration) {
-            handleNSGlobalDeclaration(node);
-
-        } else if (type === Syntax.NSPredefinedMacro) {
-            handleNSPredefinedMacro(node);
-
-        } else if (type === Syntax.NSTypeDefinition) {
-            handleNSTypeDefinition(node);
+        } else if (type === Syntax.NXGlobalDeclaration) {
+            handleNXGlobalDeclaration(node);
 
         } else if (type === Syntax.Identifier) {
             handleIdentifier(node, parent);
@@ -823,23 +827,16 @@ let path = this._file.path;
         } else if (type === Syntax.FunctionDeclaration || type === Syntax.FunctionExpression || type === Syntax.ArrowFunctionExpression) {
             handleFunctionDeclarationOrExpression(node);
 
+        } else if (type === Syntax.PropertyDefinition) {
+            handlePropertyDefinition(node);
+
         } else if (type === Syntax.MethodDefinition) {
             handleMethodDefinition(node);
-
-        } else if (type === Syntax.Super) {
-            handleSuper(node);
-
-        } else if (type === Syntax.Property) {
-            handleProperty(node);
-
-        } else if (type === Syntax.NXClassDeclaration) {
-            currentNXClass = node.nxClass;
 
         } else if (type === Syntax.NXPropDefinition) {
             handleNXPropDefinition(node);
 
         } else if (type === Syntax.NXFuncDefinition) {
-            currentFuncNode = node;
             handleNXFuncDefinition(node);
 
         } else if (type === Syntax.NXFuncParameter) {
@@ -849,26 +846,25 @@ let path = this._file.path;
         
     }, function(node, parent) {
         let type = node.type;
+        
+        scopeManager.exitNode(node);
 
-        if (type === Syntax.NSClassImplementation) {
-            currentClass = null;
-
-        } else if (type === Syntax.NXFuncDefinition) {
-            currentFuncNode = null;        
+        if (type === Syntax.ClassDeclaration || type === Syntax.ClassExpression) {
+            currentClass = classStack.pop();
         }
     });
 
-    _.each(warnings, warning => {
-        Utils.addFilePathToError(path, warning);
-    });
-
-    let lines = modifier.finish().split("\n");
-        
-    if (lines.length) {
-        lines[0] = "(function(){\"use strict\";" + lines[0];
-        lines[lines.length - 1] += "})();";    
+    for (let warning of warnings) {
+        warning.addFile(filePath);
     }
 
+    let lines = modifier.finish().split("\n");
+
+    if (lines.length && (language === LanguageEcmascript)) {
+        lines[0] = `(function(){ "use strict";` + lines[0];
+        lines[lines.length - 1] += "})();";    
+    }
+    
     return { lines, warnings };
 }
 

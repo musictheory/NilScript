@@ -1,16 +1,14 @@
 /*
-    NSFile.js
+    CompilerFile.js
     Represents a file passed into the compiler
     (c) 2013-2023 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
 import fs from "node:fs";
-import { Utils } from "../Utils.js";
 
 
-export class NSFile {
-
+export class CompilerFile {
 
 
 constructor(path)
@@ -18,8 +16,6 @@ constructor(path)
     this.path     = path;
     this.contents = null;
     this.time     = 0;
-    this.imports  = [ ];
-    this.exports  = [ ];
 
     this.contentsVersion  = 1;
     this.generatedVersion = 1;
@@ -60,6 +56,12 @@ addImport(name)
 }
 
 
+addExport(name)
+{
+    this.exports.push(name);
+}
+
+
 needsAll()
 {
     this.needsPreprocess = true;
@@ -77,8 +79,9 @@ needsParse()
 needsBuild()
 {
     this.builder      = null;
-    this.usage        = null;
-    this.declarations = null;
+    this.scopeManager = null;
+    this.imports = [ ];
+    this.exports = [ ];
 
     this.needsGenerate();
 }
@@ -94,7 +97,14 @@ needsGenerate()
 
 set error(err)
 {
-    if (err) Utils.addFilePathToError(this.path, err);
+    if (err) {
+        if (err.addFile) {
+            err.addFile(this.path);
+        } else {
+            throw err;
+        }
+    }
+
     this._error = err;
 }
 

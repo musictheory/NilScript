@@ -10,6 +10,7 @@ import { SourceMapGenerator } from "source-map";
 
 export class SourceMapper {
 
+
 constructor(files, sourceRoot)
 {
     this._generator = new SourceMapGenerator({ 

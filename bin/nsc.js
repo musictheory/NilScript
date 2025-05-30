@@ -14,12 +14,9 @@ import nilscript from "../lib/api.js";
 
 let opt = getopt.create([
     [ "o", "output=FILE",               "output .js file"],
-    [ "",  "input-state=FILE",          "input file for compiler state" ],
-    [ "",  "output-state=FILE",         "output file for compiler state" ],
     [ "",  "output-symbols=FILE",       "output file for compiler symbols JSON" ],
     [ "",  "prepend=FILE+",             "prepend file to output (without compiling)"],
     [ "",  "append=FILE+",              "append file to output (without compiling)"],
-    [ "",  "parser-source-type=TYPE",   "Passed to Esprima as sourceType.  'script' or 'module'"],
     [ "",  "source-map-file=FILE",      "output source map file" ],
     [ "",  "source-map-root=URL",       "URL to use for 'sourceRoot' in source map" ],    
     [ "s", "squeeze",                   "enable squeezer" ],
@@ -28,14 +25,12 @@ let opt = getopt.create([
 
     [ "",  "output-language=LANG",      "output language" ],
 
-    [ "",  "check-types",               "use type checker (experimental)" ],
+    [ "",  "check-types",               "use type checker" ],
     [ "",  "typescript-lib=GROUPS",     "type checker: specify built-in type declarations" ],
     [ "",  "def=FILE+",                 "type checker: specify additional definition file" ],
     [ "",  "no-implicit-any",           "type checker: disallow implicit any"              ],
     [ "",  "no-implicit-returns",       "type checker: warn about implicit returns"        ],
     [ "",  "no-unreachable-code",       "type checker: warn about unreachable code"        ],
-
-    [ "",  "warn-global-no-type",       "warn about missing type annotations on @globals" ],
 
     [ "",  "dev-dump-tmp",              "(for development)" ],
     [ "",  "dev-print-log",             "(for development)" ],
@@ -69,7 +64,7 @@ function printError(err)
         let file   = e.file   || e.filename;
         let line   = e.line   || e.lineNumber;
         let column = e.column || e.columnNumber || e.col;
-        let reason = e.reason || e.description;
+        let reason = e.reason || e.description || e.message;
 
         if (file)   result += file;
         if (line)   result += ":" + line;
@@ -132,9 +127,7 @@ if (!argv || argv.length == 0) {
 
 
 // Extract these options and delete
-let inputStateFile    = options["input-state"];     delete(options["input-state"]);
 let outputFile        = options["output"];          delete(options["output"]);
-let outputStateFile   = options["output-state"];    delete(options["output-state"]);
 let outputSymbolsFile = options["output-symbols"];  delete(options["output-symbols"]);
 
 // Extract these options, don't delete (used by compiler)
@@ -145,11 +138,6 @@ options["files"]   = readFilePairs(argv);
 options["defs"]    = readFilePairs(options["defs"]);
 options["prepend"] = readFileContents( options["prepend"] );
 options["append"]  = readFileContents( options["append"]  );
-options["state"]   = readFileContents( inputStateFile     );
-
-if (outputStateFile) {
-    options["include-state"] = true;
-}
 
 if (outputSourceMapFile) {
     options["include-map"] = true;
@@ -168,10 +156,6 @@ nilscript.compile(options).then(result => {
         fs.writeFileSync(outputFile, result.code, "utf8")
     } else if (result.code) {
         process.stdout.write(result.code);
-    }
-
-    if (outputStateFile) {
-        fs.writeFileSync(outputStateFile, JSON.stringify(result.state || { }, null, "    "), "utf8");
     }
 
     if (outputSourceMapFile) {

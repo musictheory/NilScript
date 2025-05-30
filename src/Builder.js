@@ -1,68 +1,54 @@
 /*
     Builder.js
     Scans AST and builds internal model
-    (c) 2013-2023 musictheory.net, LLC
+    (c) 2013-2024 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-
-import _ from "lodash";
-
-import { NSError   } from "./Errors.js";
-import { Syntax    } from "./ast/Tree.js";
-import { Traverser } from "./ast/Traverser.js";
-import { Utils     } from "./Utils.js";
-
-import { NSClass    } from "./model/NSClass.js";
-import { NSConst    } from "./model/NSConst.js";
-import { NSEnum     } from "./model/NSEnum.js";
-import { NSGlobal   } from "./model/NSGlobal.js";
-import { NSMethod   } from "./model/NSMethod.js";
-import { NSProperty } from "./model/NSProperty.js";
-import { NSProtocol } from "./model/NSProtocol.js";
-import { NSType     } from "./model/NSType.js";
-
-import { NXClass    } from "./model/NXClass.js";
-
+import { Syntax        } from "./ast/Tree.js";
+import { Traverser     } from "./ast/Traverser.js";
+import { TypePrinter   } from "./ast/TypePrinter.js";
+import { ScopeManager  } from "./ScopeManager.js";
+import { SymbolUtils   } from "./SymbolUtils.js";
+import { Model         } from "./model/Model.js";
+import { CompilerIssue } from "./model/CompilerIssue.js";
 
 export class Builder {
 
-constructor()
+constructor(file)
 {
     this._didBuild  = false;
     this._modelObjects = [ ];
+
+    this._file = file;
+    this._scopeManager = new ScopeManager();
+    
+    file.scopeManager = this._scopeManager;
 }
 
 
-build(nsFile)
+build()
 {
     if (this._didBuild) {
         throw new Error("Cannot call Builder.build() twice");
     }
+
+    let file = this._file;
+
+    let scopeManager = this._scopeManager;
+    let modelObjects = this._modelObjects;
     
     this._didBuild = true;
-    
-    let traverser = new Traverser(nsFile.ast);
 
-    let currentNXClass;
-    let currentClass;
-    let currentProtocol;
-    
-    let usedSelectorMap = { };
+    let traverser = new Traverser(file.ast);
 
-    let modelObjects = this._modelObjects;
-
-    let declaredClassNames    = [ ];
-    let declaredConstNames    = [ ];
-    let declaredEnumNames     = [ ];
-    let declaredGlobalNames   = [ ];
-    let declaredProtocolNames = [ ];
-    let declaredTypeNames     = [ ];
-
+    let currentClass = null;
+    let classStack = [ ];
+        
     function makeLocation(node) {
         if (node && node.loc && node.loc.start) {
             return {
-                path:   nsFile.path,
+                path:   file.path,
                 line:   node.loc.start.line,
                 column: node.loc.start.col
             }
@@ -71,10 +57,61 @@ build(nsFile)
         return null;
     }
 
-    function isIdentifierTransformable(node)
+    function getFuncLabels(nodes)
     {
-        let parent = node.ns_parent;
+        let hasNamedArgument = false;
+        let labels = [ ];
 
+        for (let node of nodes) {
+            if (node.type === Syntax.NXNamedArgument) {
+                hasNamedArgument = true;
+                labels.push(node.name.name);
+                
+            } else if (node.type === Syntax.NXFuncParameter) {
+                let label = node.label?.name;
+                
+                if (label == "_") {
+                    labels.push("");
+                } else {
+                    hasNamedArgument = true;
+                    labels.push(label ?? node.name.name);
+                }
+            
+            } else {
+                labels.push("");
+            }
+        }
+        
+        return hasNamedArgument ? labels : null;
+    }
+
+    
+/*
+
+
+        for (let param of node.params) {
+            let label = param.label?.name;
+            if (!label) label = param.name.name;
+            if (!label) label = "";
+
+            if (param.label?.name == "_") {
+                components.push("_");
+            } else {
+                components.push("_" + label.replaceAll("_", "$"));
+                hasNamedArgument = true;
+            }
+        }
+
+*/    
+
+    function isIdentifierTransformable(node, parent)
+    {
+    
+    
+        /*
+            foo["bar"]
+        */
+    
         if (parent.type === Syntax.MemberExpression) {
             // identifier.x -> true
             if (parent.object === node) {
@@ -106,200 +143,181 @@ build(nsFile)
         let specifiers = node.specifiers;
         
         if (specifiers.length == 0) {
-            Utils.throwError(NSError.NilScriptImportError, "Side-effect imports are not supported", node);
+            throw new CompilerIssue("Side-effect imports are not supported", node);
         }
         
-        _.each(node.specifiers, specifier => {
+        for (let specifier of specifiers) {
             if (specifier.type === Syntax.ImportDefaultSpecifier) {
-                Utils.throwError(NSError.NilScriptImportError, "Default imports are not supported", node);
+                throw new CompilerIssue("Default imports are not supported", node);
 
             } else if (specifier.type === Syntax.ImportNamespaceSpecifier) {
-                Utils.throwError(NSError.NilScriptImportError, "Namespace imports are not supported", node);
+                throw new CompilerIssue("Namespace imports are not supported", node);
 
-            } else if (specifier.type === ImportSpecifier) {
+            } else if (specifier.type === Syntax.ImportSpecifier) {
                 if (specifier.local.name !== specifier.imported.name) {
-                    Utils.throwError(NSError.NilScriptImportError, "Import 'as' is not supported", node);
+                    throw new CompilerIssue("Import 'as' is not supported", node);
                 }
                 
-                nsFile.addImport(specifier.imported.name);
+                let importName = specifier.imported.name;
+                file.addImport(importName);
             }
-        });
+        }
     }
 
     function handleExportDeclaration(node)
     {
+        function notSupported() {
+            throw new CompilerIssue("Export type not supported", node);
+        }
+
+        function addValue(node) {
+            let name = node.id.name;
+            file.addExport(name);
+            modelObjects.push(new Model.Value(makeLocation(node), name));
+        }
+
         if (
             node.type === Syntax.ExportAllDeclaration ||
             node.type === Syntax.ExportDefaultDeclaration ||
             node.specifiers.length > 0 ||
-            node.source 
+            node.source
         ) {
-            Utils.throwError(NSError.NilScriptExportError, "Export type not supported", node);
+            notSupported();  
         }
+        
+        if (node.declaration.type == Syntax.VariableDeclaration) {
+            if (node.declaration.kind != "const") {
+                notSupported();
+            }
+            
+            for (let declarator of node.declaration.declarations) {
+                addValue(declarator);
+            }
 
-        // if (node.declaration.type === Syntax.NSEnumDeclaration) {
-        //     let name = 
-        // }
-        //     console.log(node);
-        // }
+        } else if (node.declaration.type == Syntax.FunctionDeclaration) {
+            addValue(node.declaration);
+
+        } else if (node.declaration?.id?.name) {
+            file.addExport(node.declaration.id.name);
+
+        } else {
+            notSupported();
+        }
     }
 
     function handleCallExpression(node)
     {
-        let hasNamedArgument = false;
-        let components = [ ];
+        let funcLabels = getFuncLabels(node.arguments);
 
-        for (let argument of node.arguments) {
-            if (argument.type == Syntax.NXNamedArgument) {
-                hasNamedArgument = true;
-                components.push("_" + argument.name.name.replaceAll("_", "$"));
-            } else {
-                components.push("_");
-            }
-        }
-
-        if (hasNamedArgument) {
+        if (funcLabels) {
             let baseNode = node.callee;
             
             while (baseNode.type !== Syntax.Identifier) {
                 if (baseNode.type === Syntax.MemberExpression) {
                     baseNode = baseNode.property;
                 } else {
-                    Utils.throwError(NSError.UnnamedError, "Cannot use named arguments here.", baseNode);
+                    throw new CompilerIssue("Cannot use named arguments here.", baseNode);
                 }
             }
+            
+            node.nx_func = SymbolUtils.toFuncIdentifier({
+                base: baseNode.name,
+                labels: funcLabels
+            });
 
-            node.nx_funcName = baseNode.name + components.join("");
-            node.nx_baseNode = baseNode;
+            node.nx_base = baseNode;
         }
     }
 
-    function handleNXClassDeclaration(node)
+    function handleNewExpression(node)
     {
-        let className = node.id.name;
+        let funcLabels = getFuncLabels(node.arguments);
 
-        node.nxClass = new NXClass(makeLocation(node), className, node.superClass);
-        currentNXClass = node.nxClass;
+        if (funcLabels) {
+            node.nx_func = SymbolUtils.toFuncIdentifier({
+                base:   "init",
+                labels: funcLabels
+            });
+        }
     }
 
-    function handleNSClassImplementation(node)
+    function handlePropertyDefinition(node)
     {
-        let className = node.id.name;
-        let result;
-
-        let superClassName = node.superClass?.name ?? null;
-        let interfaceNames = node.interfaces.map(id => id.name);
-
-        let nsClass = new NSClass(makeLocation(node), className, superClassName, interfaceNames);
-        modelObjects.push(nsClass);
-        declaredClassNames.push(nsClass.name)
-
-        currentClass = nsClass;
-    }
-
-    function handleNSProtocolDefinition(node)
-    {
-        let name = node.id.name;
-
-        let inheritedNames = node.inheritanceList ?
-            _.map(node.inheritanceList.ids, id => id.name) :
-            [ ];
-
-        let nsProtocol = new NSProtocol(makeLocation(node), name, inheritedNames);
-        modelObjects.push(nsProtocol);
-        declaredProtocolNames.push(nsProtocol.name);
-
-        currentProtocol = nsProtocol;
-    }
-     
-    function handleMethodDefinition(node, parent)
-    {
-        if (
-            currentClass &&
-            parent?.type == Syntax.BlockStatement &&
-            parent?.ns_parent?.type == Syntax.NSClassImplementation
-        ) {
+        if (currentClass) {
             let isStatic = node.static;
-
-            if (node.kind == "get") {
-                currentClass.addGetter(node.key.name, isStatic, node.value.annotation?.value);
-            } else if (node.kind == "set") {
-                currentClass.addSetter(node.key.name, isStatic, node.value.params[0]?.annotation?.value);
+            let isComputed = node.computed;
+            
+            if (!isComputed) {
+                currentClass.addField(node.key.name, isStatic);
             }
         }
     }
 
-
-    function handleNXPropDefinition(node)
+    function handleMethodDefinition(node)
     {
-        let attributes = [ ];
-
-        let modifier = node.modifier;
-        if (modifier) attributes.push(modifier);
-
-        let type = node.annotation.value;
-        let name = node.key.name;
-        let isStatic = node.static;
-
-        let property = new NSProperty(makeLocation(node), name, type, isStatic, attributes);
-
         if (currentClass) {
-            currentClass.addProperty(property);
+            let isStatic = node.static;
+            let kind = node.kind;
+
+            if (kind == "constructor") {
+                currentClass.hasConstructor = true;
+
+            } else if (kind == "get") {
+                currentClass.addGetter(node.key.name, isStatic);
+
+            } else if (kind == "set") {
+                currentClass.addSetter(node.key.name, isStatic);
+            }
         }
     }
-
 
     function handleNXFuncDefinition(node)
     {
-        let params = node.params.map(param => {
-            return {
-                label: param.label?.name ?? null,
-                name:  param.name.name,
-                type:  param.annotation?.value ?? null
-            };
-        });
-        
-        let baseName   = node.key.name;
-        let returnType = node.annotation?.value ?? null;
-        
-        let method = new NSMethod(makeLocation(node), baseName, node.static, node.optional ?? false, params, returnType);
+        let funcLabels = getFuncLabels(node.params);
 
         if (currentClass) {
-            currentClass.addMethod(method);
-        } else if (currentProtocol) {
-            currentProtocol.addMethod(method);
-        }  
+            currentClass.hasFuncOrProp = true;
+        }
+
+        if (funcLabels) {
+            node.nx_func = SymbolUtils.toFuncIdentifier({
+                base: node.key.name,
+                labels: funcLabels
+            });
+        }
     }
 
-
-    function handleNSTypeDefinition(node)
+    function handleNXPropDefinition(node)
     {
-        let name = node.name;
-        let kind = node.kind;
-
-        let location = makeLocation(node);
-        let parameterNames    = [ ];
-        let parameterTypes    = [ ];
-        let parameterOptional = [ ];
-        let returnType = node.annotation ? node.annotation.value : null;
-
-        _.each(node.params, param => {
-            parameterNames.push(param.name);
-            parameterTypes.push(param.annotation ? param.annotation.value : null);
-            parameterOptional.push(param.annotation ? param.annotation.optional : null);
-        });
-
-        let nsType = new NSType(location, name, kind, parameterNames, parameterTypes, parameterOptional, returnType);
-        modelObjects.push(nsType);
-        declaredTypeNames.push(nsType.name);
+        if (currentClass) {
+            currentClass.hasFuncOrProp = true;
+            
+            if (!node.legacy) {
+                currentClass.addProp(node.key.name);
+            }
+        }
     }
 
-    function handleNSEnumDeclaration(node, parent)
+    function handleClassDeclaration(node, parent)
     {
-        let length  = node.declarations ? node.declarations.length : 0;
-        let last    = node;
-        let bridged = (parent.type === Syntax.NSBridgedDeclaration);
+        let className = node.id?.name ?? null;
 
+        let superClassName = node.superClass?.type == Syntax.Identifier ?
+            node.superClass.name :
+            null;
+
+        classStack.push(currentClass);
+        currentClass = new Model.Class(makeLocation(node), className, superClassName);
+        
+        scopeManager.declare(currentClass);
+
+        if (parent.type == Syntax.ExportNamedDeclaration) {
+            modelObjects.push(currentClass);
+        }
+    }
+
+    function handleNXEnumDeclaration(node, parent)
+    {
         function valueForInit(initNode) {
             let literalNode;
             let negative = false;
@@ -307,136 +325,152 @@ build(nsFile)
             if (initNode.type == Syntax.UnaryExpression) {
                 literalNode = initNode.argument;
                 negative = true;
+                
+                if (typeof literalNode.value != "number") {
+                    throw new CompilerIssue("Use of non-literal value with enum", initNode);
+                }
+                
             } else if (initNode.type == Syntax.Literal) {
                 literalNode = initNode;
             }
 
-            if (!literalNode || (literalNode.type != Syntax.Literal)) {
-                Utils.throwError(NSError.NonLiteralEnum, "Use of non-literal value with @enum", literalNode || initNode);
+            let value = literalNode?.value;
+
+            if (
+                !literalNode ||
+                (literalNode.type != Syntax.Literal) ||
+                (negative && (typeof value != "number"))
+            ) {
+                throw new CompilerIssue("Use of non-literal value with enum", literalNode || initNode);
             }
 
-            let value = literalNode.value;
-            if (!Number.isInteger(value)) {
-                Utils.throwError(NSError.NonIntegerEnum, "Use of non-integer value with @enum", literalNode || initNode);
-            }
+            // if (!Number.isInteger(value)) {
+            //     throw new CompilerIssue("Use of non-integer value with enum", literalNode || initNode);
+            // }
 
             return negative ? -value : value;
         }
 
         let name = node.id ? node.id.name : null;
 
-        if (!name) {
-            Utils.throwError(NSError.UnnamedEnum, "Unnamed @enum", node);
+        let modelEnum = new Model.Enum(makeLocation(node), name);
+        let nextValue = 0;
+            
+        for (let member of node.members) {
+            let currentValue;
+
+            if (member.init) {
+                currentValue = valueForInit(member.init);
+            } else if (nextValue !== undefined) {
+                currentValue = nextValue;
+            } else {
+                throw new CompilerIssue("Enum member must have an initializer", member);
+            }
+            
+            if (typeof currentValue == "number") {
+                nextValue = currentValue + 1;
+            } else {
+                nextValue = undefined;
+            }
+
+            modelEnum.addMember(makeLocation(member), member.id.name, currentValue);
         }
+        
+        scopeManager.declare(modelEnum);
 
-        let nsEnum = new NSEnum(makeLocation(node), name, bridged);
-        modelObjects.push(nsEnum);
-        declaredEnumNames.push(nsEnum.name);
+        if (parent.type == Syntax.ExportNamedDeclaration) {
+            modelObjects.push(modelEnum);
+        }
+    }
 
-        if (length) {
-            let firstDeclaration = node.declarations[0];
-            let lastDeclaration  = node.declarations[length - 1];
-            let currentValue = 0;
-            let declaration, i;
+    function handleNXInterfaceDeclaration(node, parent)
+    {
+        let modelType = new Model.Type(makeLocation(node), node.id.name, null);
 
-            for (i = 0; i < length; i++) {
-                declaration = node.declarations[i];
+        scopeManager.declare(modelType);
+        
+        if (parent.type == Syntax.ExportNamedDeclaration) {
+            modelObjects.push(modelType);
+        }
+    }
 
-                if (declaration.init) {
-                    currentValue = valueForInit(declaration.init);
+    function handleNXTypeDeclaration(node, parent)
+    {
+        let reference = null;
+
+        if (node.annotation.value.type == Syntax.TSTypeReference) {
+            reference = node.annotation.value.name.name;        
+        }
+        
+        let modelType = new Model.Type(makeLocation(node), node.id.name, reference);
+        
+        scopeManager.declare(modelType);
+
+        if (parent.type == Syntax.ExportNamedDeclaration) {
+            modelObjects.push(modelType);
+        }
+    }
+
+    function handleNXGlobalDeclaration(node)
+    {
+        let declaration = node.declaration;
+
+        if (declaration.type == Syntax.FunctionDeclaration) {
+            let name = declaration.id.name;
+            let annotation = TypePrinter.print(declaration.annotation);
+
+            let globalFunction = new Model.GlobalFunction(makeLocation(declaration), name, annotation);
+
+            for (let param of declaration.params) {
+                if (param.type != Syntax.Identifier) {
+                    throw new CompilerIssue("'global' functions may only use simple parameter lists", param);
+                }
+                
+                let paramAnnotation = TypePrinter.print(param.annotation);
+                
+                globalFunction.addParameter(param.name, !!param.optional, paramAnnotation);
+            }            
+
+            modelObjects.push(globalFunction);
+
+        } else if (declaration.type == Syntax.VariableDeclaration) {
+            for (let declarator of declaration.declarations) {
+                let init = declarator.init;
+                let raw, value;
+
+                if (init.type === Syntax.Literal) {
+                    value = init.value;
+                    raw   = init.raw;
+
+                } else if (
+                    init.type === Syntax.UnaryExpression &&
+                    (typeof init.argument.value == "number")
+                ) {
+                    value = -init.argument.value;
+                    raw   = JSON.stringify(value);
+
+                } else {
+                    throw new CompilerIssue("'global' consts must be initialized to a string or number literal.", node);
                 }
 
-                nsEnum.addMember(makeLocation(declaration), declaration.id.name, currentValue);
-
-                declaration.enumValue = currentValue;
-
-                currentValue++;
+                let name = declarator.id.name;
+                let globalConst = new Model.GlobalConst(makeLocation(declarator), name, value, raw);
+                modelObjects.push(globalConst);
             }
-        }
-    }
-
-    function handleNSConstDeclaration(node, parent)
-    {
-        let length  = node.declarations ? node.declarations.length : 0;
-        let bridged = (parent.type === Syntax.NSBridgedDeclaration);
-
-        for (let i = 0; i < length; i++) {
-            let declaration = node.declarations[i];
-            let raw;
-            let value;
-
-            let initType = declaration.init ? declaration.init.type : null;
-
-            if (initType === Syntax.Literal) {
-                value = declaration.init.value;
-                raw   = declaration.init.raw;
-
-            } else if (initType === Syntax.UnaryExpression && _.isNumber(declaration.init.argument.value)) {
-                value = -declaration.init.argument.value;
-                raw   = JSON.stringify(value);
-
-            } else {
-                Utils.throwError(NSError.NonLiteralConst, "Use of non-literal value with @const", node);
-            }
-
-            let nsConst = new NSConst(makeLocation(node), declaration.id.name, value, raw, bridged);
-            modelObjects.push(nsConst);
-            declaredConstNames.push(nsConst.name);
-        }
-    }
-
-    function handleNSGlobalDeclaration(inNode)
-    {
-        function addGlobalWithNode(node) {
-            let name = node.id.name;
-            let annotation;
-
-            if (node.type === Syntax.FunctionDeclaration ||
-                node.type === Syntax.FunctionExpression)
-            {
-                annotation = [ ];
-                annotation.push(node.annotation ? node.annotation.value : null);
-
-                _.each(node.params, function(param) {
-                    annotation.push(param.annotation ? param.annotation.value : null);
-                });
-
-            } else {
-                annotation = node.id.annotation ? node.id.annotation.value : null;
-            }
-
-            let nsGlobal = new NSGlobal(node, name, annotation);
-            modelObjects.push(nsGlobal);
-            declaredGlobalNames.push(nsGlobal.name);
-        }
-
-        if (inNode.declaration) {
-            addGlobalWithNode(inNode.declaration);
-
-        } else {
-            _.each(inNode.declarations, function(declaration) {
-                addGlobalWithNode(declaration);
-            });
         }
     }
 
     function handleIdentifier(node, parent)
     {
-        node.ns_transformable = isIdentifierTransformable(node);
+        node.ns_transformable = isIdentifierTransformable(node, parent);
     }
 
     traverser.traverse(function(node, parent) {
         let type = node.type;
 
-        if (parent) {
-            node.ns_parent = parent;
-        }
-
-        if (node.typeAnnotation) {
-            node.annotation = node.typeAnnotation;
-        }
-
         try {
+            scopeManager.enterNode(node);
+
             if (type === Syntax.ImportDeclaration) {
                 handleImportDeclaration(node);
                 
@@ -447,46 +481,41 @@ build(nsFile)
             ) {
                 handleExportDeclaration(node);
 
-            } else if (type === Syntax.NXClassDeclaration) {
-                handleNXClassDeclaration(node);
-    
-            } else if (type === Syntax.NXPropDefinition) {
-                handleNXPropDefinition(node);
-                
+            } else if (
+                type === Syntax.ClassDeclaration ||
+                type === Syntax.ClassExpression
+            ) {
+                handleClassDeclaration(node, parent);
+
+            } else if (type === Syntax.NXEnumDeclaration) {
+                handleNXEnumDeclaration(node, parent);
+
+            } else if (type === Syntax.NXInterfaceDeclaration) {
+                handleNXInterfaceDeclaration(node, parent);
+
+            } else if (type === Syntax.NXTypeDeclaration) {
+                handleNXTypeDeclaration(node, parent);
+
+            } else if (type === Syntax.PropertyDefinition) {
+                handlePropertyDefinition(node);
+
+            } else if (type === Syntax.MethodDefinition) {
+                handleMethodDefinition(node);
+
             } else if (type === Syntax.NXFuncDefinition) {
                 handleNXFuncDefinition(node);
 
-            } else if (currentNXClass && (
-                type === Syntax.NXPropDefinition ||
-                type === Syntax.NXFuncDefinition ||
-                type === Syntax.MethodDefinition ||
-                type === Syntax.PropertyDefinition
-            )) {
-                currentNXClass.addElement(node);
-
-            } else if (type === Syntax.NSClassImplementation) {
-                handleNSClassImplementation(node);
-
-            } else if (type === Syntax.NSProtocolDefinition) {
-                handleNSProtocolDefinition(node);
-
-            } else if (type === Syntax.NSTypeDefinition) {
-                handleNSTypeDefinition(node);
-
-            } else if (type === Syntax.MethodDefinition) {
-                handleMethodDefinition(node, parent);
+            } else if (type === Syntax.NXPropDefinition) {
+                handleNXPropDefinition(node);
                 
             } else if (type === Syntax.CallExpression) {
                 handleCallExpression(node);
 
-            } else if (type === Syntax.NSEnumDeclaration) {
-                handleNSEnumDeclaration(node, parent);
-
-            } else if (type === Syntax.NSConstDeclaration) {
-                handleNSConstDeclaration(node, parent);
-
-            } else if (type === Syntax.NSGlobalDeclaration) {
-                handleNSGlobalDeclaration(node);
+            } else if (type === Syntax.NewExpression) {
+                handleNewExpression(node);
+    
+            } else if (type === Syntax.NXGlobalDeclaration) {
+                handleNXGlobalDeclaration(node);
 
             } else if (type === Syntax.Identifier) {
                 handleIdentifier(node, parent);
@@ -501,7 +530,7 @@ build(nsFile)
             }
 
             if (!e.file) {
-                e.file = nsFile.path;
+                e.file = file.path;
             }
 
             throw e;
@@ -509,54 +538,21 @@ build(nsFile)
 
     }, function(node, parent) {
         let type = node.type;
+        
+        scopeManager.exitNode(node);
 
-        if (type === Syntax.NSClassImplementation) {
-            currentClass  = null;
-
-        } else if (type === Syntax.NSProtocolDefinition) {
-            currentProtocol = null;
-
-        } else if (type === Syntax.NXClassDeclaration) {
-            currentNXClass = null;        
+        if (type === Syntax.ClassDeclaration || type === Syntax.ClassExpression) {
+            currentClass = classStack.pop();
         }
     });
-
-    nsFile.uses = {
-        selectors: _.keys(usedSelectorMap).sort()
-    };
-
-    nsFile.declares = {
-        classes:   _.filter(declaredClassNames   ).sort(),
-        globals:   _.filter(declaredGlobalNames  ).sort(),
-        protocols: _.filter(declaredProtocolNames).sort(),
-        types:     _.filter(declaredTypeNames    ).sort(),
-        enums:     _.filter(declaredEnumNames    ).sort(),
-    };
 }
 
 
 addToModel(model)
 {
-    _.each(this._modelObjects, modelObject => {
-        if (modelObject instanceof NSClass) {
-            model.addClass(modelObject);
-
-        } else if (modelObject instanceof NSConst) {
-            model.addConst(modelObject);
-
-        } else if (modelObject instanceof NSEnum) {
-            model.addEnum(modelObject);
-
-        } else if (modelObject instanceof NSGlobal) {
-            model.addGlobal(modelObject);
-        
-        } else if (modelObject instanceof NSProtocol) {
-            model.addProtocol(modelObject);
-
-        } else if (modelObject instanceof NSType) {
-            model.addType(modelObject);
-        }
-    });
+    for (let object of this._modelObjects) {
+        model.add(object);
+    }
 }
 
 

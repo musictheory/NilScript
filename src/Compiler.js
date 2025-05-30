@@ -6,21 +6,23 @@
 
 
 import _    from "lodash";
-import fs   from "node:fs";
+import fs   from "node:fs/promises";
 import path from "node:path";
 
 import { Builder        } from "./Builder.js";
 import { FunctionMapper } from "./FunctionMapper.js";
 import { Generator      } from "./Generator.js";
-import { NSError        } from "./Errors.js";
 import { Parser         } from "./ast/Parser.js";
+import { ScopeManager   } from "./ScopeManager.js";
 import { SourceMapper   } from "./SourceMapper.js";
+import { Squeezer       } from "./Squeezer.js";
 import { Syntax         } from "./ast/Tree.js";
 import { Utils          } from "./Utils.js";
 
 import { NSCompileCallbackFile } from "./model/NSCompileCallbackFile.js";
-import { NSFile                } from "./model/NSFile.js";
-import { NSModel               } from "./model/NSModel.js";
+import { CompilerFile          } from "./model/CompilerFile.js";
+import { CompilerIssue         } from "./model/CompilerIssue.js";
+import { Model                 } from "./model/Model.js";
 
 import { Typechecker           } from "./typechecker/Typechecker.js";
 
@@ -30,15 +32,15 @@ const Log = Utils.log;
 const sPublicOptions = [
 
     // Input options
-    "files",                     // String or Object, files to compile
-    "prepend",                   // String or Array<String>, content/lines to prepend, not compiled
-    "append",                    // String or Array<String>, content/lines to append, not compiled
+    "files",                     // string or Object, files to compile
+    "prepend",                   // string or string[], content/lines to prepend, not compiled
+    "append",                    // string or string[], content/lines to append, not compiled
     "state",                     // Object, state from previous compile
 
     // Output options
     "output-language",           // Output language ('none' or 'es5' public, 'typechecker' for debugging only)
-    "include-map",               // Boolean, include 'map' key in results object
-    "include-state",             // Boolean, include 'state' key in results object
+    "include-map",               // boolean, include 'map' key in results object
+    "include-state",             // boolean, include 'state' key in results object
     "source-map-file",           // Output source map file name
     "source-map-root",           // Output source map root URL
 
@@ -46,28 +48,27 @@ const sPublicOptions = [
     "after-compile",             // Function, callback to call per-file after the ns->js compile
 
     // Squeezer options
-    "squeeze",                   // Boolean, enable squeezer
-    "squeeze-start-index",       // Number, start index for squeezer
-    "squeeze-end-index",         // Number, end index for squeezer"
+    "squeeze",                   // boolean, enable squeezer
+    "squeeze-start-index",       // number, start index for squeezer
+    "squeeze-end-index",         // number, end index for squeezer"
+    "squeeze-builtins",          // string[], list of identifiers to not squeeze
 
     // Typechecker options
-    "check-types",               // Boolean, enable type checker
+    "check-types",               // boolean, enable type checker
     "defs",                      // String or Object, additional typechecker defs
+    "strict",                    // boolean
     "typescript-target",         // String
     "typescript-lib",            // String, specify alternate lib.d.ts file(s)
     "no-implicit-any",           // Boolean, disallow implicit any
     "no-implicit-returns",       // Boolean, disallow implicit returns
     "no-unreachable-code",       // Boolean, inverts tsc's "--allowUnreachableCode" option
 
-    // Warnings
-    "warn-global-no-type",       // Boolean, warn about missing type annotations on @globals
-
     // Private / Development
     "dev-dump-tmp",              // Boolean, dump debug info to /tmp
     "dev-print-log",             // Boolean, print log to stdout
     "allow-private-options",     // Boolean, allow use of sPrivateOptions (see below)
 ];
-let sPublicOptionsMap = null;
+let sPublicOptionsSet = new Set(sPublicOptions);
 
 
 // Please file a GitHub issue if you wish to use these
@@ -76,7 +77,7 @@ const sPrivateOptions = [
     "include-bridged",
     "include-function-map"
 ];
-let sPrivateOptionsMap = null;
+let sPrivateOptionsSet = new Set(sPrivateOptions);
 
 
 export class Compiler {
@@ -84,11 +85,12 @@ export class Compiler {
 
 constructor()
 {
-    this._files   = null;
-    this._options = null;
-    this._defs    = null;
+    this._files   = [ ];
+    this._defs    = [ ];
+    this._options = { };
+
     this._model   = null;   
-    this._parents = null;
+    this._parents = [ ];
     this._checker = null;
     this._checkerPromise = null;
 }
@@ -96,37 +98,27 @@ constructor()
 
 _checkOptions(options)
 {
-    if (!sPublicOptionsMap) {
-        sPublicOptionsMap = { };
-        _.each(sPublicOptions, option => { sPublicOptionsMap[option] = true; });
-    }
-
-    if (!sPrivateOptionsMap) {
-        sPrivateOptionsMap = { };
-        _.each(sPrivateOptions, option => { sPrivateOptionsMap[option] = true; });
-    }
-
     let allowPrivate = options["allow-private-options"];
 
     _.each(options, (value, key) => {
-        if (                sPublicOptionsMap[ key]) return;
-        if (allowPrivate && sPrivateOptionsMap[key]) return;
+        if (                sPublicOptionsSet.has( key)) return;
+        if (allowPrivate && sPrivateOptionsSet.has(key)) return;
 
-        throw new Error("Unknown NilScript option: " + key);
+//        throw new Error("Unknown Nyx option: " + key);
     });
 }
 
 
 _extractFilesFromOptions(optionsFiles, previousFiles)
 {
-    let existingMap = { };
+    let existingMap = new Map();
     let outFiles = [ ];
 
-    _.each(previousFiles, nsFile => {
-        existingMap[nsFile.path] = nsFile;
-    });
+    for (let file of previousFiles) {
+        existingMap.set(file.path, file);
+    }
 
-    if (!_.isArray(optionsFiles)) {
+    if (!Array.isArray(optionsFiles)) {
         throw new Error("options.files must be an array");
     }
 
@@ -136,8 +128,8 @@ _extractFilesFromOptions(optionsFiles, previousFiles)
     //    contents: file contents
     //        time: file modification time
     //
-    _.each(optionsFiles, function(f) {
-        let nsFile, path, contents, time;
+    for (let f of optionsFiles) {
+        let file, path, contents, time;
 
         if (_.isString(f)) {
             path = f;
@@ -145,7 +137,7 @@ _extractFilesFromOptions(optionsFiles, previousFiles)
         } else if (_.isObject(f)) {
             path     = f.path;
             contents = f.contents;
-            time     = f.time || Date.now()
+            time     = f.time || Date.now();
 
         } else {
             throw new Error("Each member of options.files must be a string or object");
@@ -155,16 +147,16 @@ _extractFilesFromOptions(optionsFiles, previousFiles)
             throw new Error("No 'path' key in " + f);
         }
 
-        nsFile = existingMap[path] || new NSFile(path);
+        file = existingMap.get(path) ?? new CompilerFile(path);
 
         if (contents && time) {
-            nsFile.updateWithContentsAndTime(contents, time);
+            file.updateWithContentsAndTime(contents, time);
         } else {
-            nsFile.updateFromDisk();
+            file.updateFromDisk();
         }
 
-        outFiles.push(nsFile);
-    });
+        outFiles.push(file);
+    }
 
     return outFiles;
 }
@@ -172,11 +164,11 @@ _extractFilesFromOptions(optionsFiles, previousFiles)
 
 _throwErrorInFiles(files)
 {
-    _.each(files, nsFile => {
-        if (nsFile.error) {
-            throw nsFile.error;
+    for (let file of files) {
+        if (file.error) {
+            throw file.error;
         }
-    });
+    }
 }
 
 
@@ -184,31 +176,31 @@ async _preprocessFiles(files, options)
 {
     let beforeCompileCallback = options["before-compile"];
 
-    files = _.filter(files, nsFile => nsFile.needsPreprocess);
+    files = files.filter(file => file.needsPreprocess);
 
     if (!beforeCompileCallback) {
-        _.map(files, nsFile => {
-            nsFile.needsPreprocess = false;
-        });
+        for (let file of files) {
+            file.needsPreprocess = false;
+        }
 
         return;
     }
 
-    await Promise.all(_.map(files, async nsFile => {
-        let lines    = nsFile.contents.split("\n");
+    await Promise.all(files.map(async file => {
+        let lines    = file.contents.split("\n");
         let warnings = [ ];
 
-        let callbackFile = new NSCompileCallbackFile(nsFile.path, lines, warnings);
+        let callbackFile = new NSCompileCallbackFile(file.path, lines, warnings);
 
         try {
             await beforeCompileCallback(callbackFile);
-            nsFile.contents = callbackFile._lines.join("\n");
+            file.contents = callbackFile._lines.join("\n");
 
-            nsFile.needsPreprocess = false;
+            file.needsPreprocess = false;
 
         } catch (err) {
-            Log(`${nsFile.path} needsPreprocess due to error: '${err}'`);
-            nsFile.error = err;
+            Log(`${file.path} needsPreprocess due to error: '${err}'`);
+            file.error = err;
         }
     }));
 
@@ -216,30 +208,25 @@ async _preprocessFiles(files, options)
 }
 
 
-async _parseFiles(files, options)
+async _parseFiles(files)
 {
-    await Promise.all(_.map(files, async nsFile => {
-        if (!nsFile.ast) {
-            Log(`Parsing ${nsFile.path}`);
+    await Promise.all(files.map(async file => {
+        if (!file.ast) {
+            Log(`Parsing ${file.path}`);
 
             try { 
-                nsFile.ast = Parser.parse(nsFile.contents);
-                nsFile.needsGenerate();
+                file.ast = Parser.parse(file.contents);
+                file.needsGenerate();
 
             } catch (inError) {
                 let message = inError.description || inError.toString();
                 message = message.replace(/$.*Line:/, "");
 
-                let outError = new Error(message);
-
-                outError.file   = nsFile.path;
-                outError.line   = inError.loc.line;
-                outError.column = inError.loc.column;
-                outError.name   = NSError.ParseError;
-                outError.reason = message;
-
-                nsFile.needsParse();
-                nsFile.error = outError;
+                file.needsParse();
+                file.error = new CompilerIssue(message, {
+                    line:   inError.loc?.line,
+                    column: inError.loc?.column
+                });
             }
         }
     }));
@@ -248,106 +235,157 @@ async _parseFiles(files, options)
 }
 
 
-async _buildFiles(files, model, options)
+async _buildFiles(files, model)
 {
-    await Promise.all(_.map(files, async nsFile => {
+    await Promise.all(files.map(async file => {
         try {
-            if (!nsFile.builder) {
-                let builder = new Builder(options);
-                builder.build(nsFile);
-                nsFile.builder = builder;
+            if (!file.builder) {
+                let builder = new Builder(file);
+                builder.build();
+                file.builder = builder;
             }
 
-            nsFile.builder.addToModel(model);
+            file.builder.addToModel(model);
 
         } catch (err) {
-            nsFile.needsParse();
-            nsFile.error = err;
+            file.needsParse();
+            file.error = err;
         }
     }));
 
     this._throwErrorInFiles(files);
-
-    model.prepare();
 }
 
 
-async _reorderFiles(inOutFiles, model, options)
+async _fillImports(inOutFiles, model)
 {
-    let files = inOutFiles.slice(0);
-    inOutFiles.splice(0, inOutFiles.length);
+    let pastPaths = [ ];
+    let filePaths = inOutFiles.map(f => f.path);
 
-    let remainingFiles = { };
-    _.each(files, file => (remainingFiles[file.path] = file));
+    for (let file of inOutFiles) {
+        let importMap = new Map();
 
-    let dependencies = { };
+        for (let importName of file.imports) {
+            let object = model.get(importName);
+            if (!object) continue;
+            
+            let path = object.location.path;
+            let importType = ScopeManager.ImportType.Past;
 
-    _.each(model.classes, nsClass => {
-        let classPath = nsClass.location.path;
-        let superPath = nsClass.superClass?.location?.path;
+            if (path && filePaths.includes(path) && !pastPaths.includes(path)) {
+                importType = ScopeManager.ImportType.Future;
+            }
 
-        if (superPath && (superPath != classPath)) {
-            let arr = dependencies[classPath] || [ ];
-            arr.push(superPath);
-            dependencies[classPath] = arr;
+            importMap.set(importName, { object: object, importType: importType });
         }
-    });
+        
+        file.scopeManager.finish(importMap);
 
-    function addFile(path, stack) {
-        if (stack.includes(path)) {
-            stack.push(path);
-            throw new Error("Recursive class dependency detected: " + stack.join(","));
+        pastPaths.push(file.path);
+    }
+}
+
+
+async _reorderFiles(inOutFiles, model)
+{
+    let nameToDependentsMap = new Map();
+
+    let addedFiles = new Set();
+    let visitedFiles = new Set();
+    let outFiles = [ ];
+
+    for (let file of inOutFiles) {
+        let imports = file.imports;
+        let scopeManager = file.scopeManager;
+        
+        scopeManager.reset();
+        
+        for (let declaration of scopeManager.getTopLevelDeclarations()) {
+            let superClassName = declaration?.object?.superClassName;
+
+            if (superClassName && (imports.indexOf(superClassName) >= 0)) {
+                let set = nameToDependentsMap.get(superClassName) ?? new Set();
+                set.add(file);
+                nameToDependentsMap.set(superClassName, set);            
+            }
         }
-
-        stack = [...stack, path];
-
-        _.each(dependencies[path], dependency => {
-            addFile(dependency, stack);
-        });
-
-        let file = remainingFiles[path];
-        if (!file) return;
-
-        remainingFiles[path] = null;
-        inOutFiles.push(file);
     }
 
-    _.each(files, file => {
-        addFile(file.path, [ ]);
-    });
+    // console.log("--- nameToDependentsMap");
+    // for (let key of nameToDependentsMap.keys()) {
+    //     console.log(`${key} -> [`);
+    //     console.log(Array.from(nameToDependentsMap.get(key)).map(f => f.path).join(",\n"));
+    //     console.log(`]`);
+    // }
+    // console.log("---");
+    
+    function sort(toSort, reference, direction = 1) {
+        toSort.sort((a, b) => {
+            let aIndex = reference.indexOf(a);
+            let bIndex = reference.indexOf(b);
+
+            return (aIndex - bIndex) * direction;
+        });
+        
+        return toSort;
+    }
+    
+    function visit(file) {
+        if (addedFiles.has(file)) {
+            return;
+        }
+        
+        addedFiles.add(file);
+
+        for (let exportName of file.exports) {
+            let dependents = nameToDependentsMap.get(exportName) || new Set();
+            
+            for (let dependent of dependents) {
+                visit(dependent);
+            }
+        }
+        
+        outFiles.unshift(file);
+    }
+    
+    for (let file of inOutFiles.toReversed()) {
+        visit(file);
+    }
+    
+    sort(inOutFiles, outFiles, 1);
 }
 
 
-async _generateJavaScript(files, model, options)
+async _generateJavaScript(files, model, squeezer, options)
 {
     let afterCompileCallback = options["after-compile"];
 
-    await Promise.all(_.map(files, async nsFile => {
+    await Promise.all(files.map(async file => {
         try {
-            if (!nsFile.generatedLines) {
-                Log(`Generating ${nsFile.path}`);
+            if (!file.generatedLines) {
+                Log(`Generating ${file.path}`);
 
-                let generator = new Generator(nsFile, model, options);
+                let generator = new Generator(file, model, squeezer, options);
                 let result    = generator.generate();
 
-                nsFile.generatedLines    = result.lines;
-                nsFile.generatedWarnings = result.warnings || [ ];
+                file.generatedLines    = result.lines;
+                file.generatedWarnings = result.warnings || [ ];
 
                 if (afterCompileCallback) {
-                    let callbackFile = new NSCompileCallbackFile(nsFile.path, nsFile.generatedLines, nsFile.generatedWarnings);
+                    let callbackFile = new NSCompileCallbackFile(file.path, file.generatedLines, file.generatedWarnings);
 
                     await afterCompileCallback(callbackFile);
 
-                    nsFile.generatedLines    = callbackFile._lines;
-                    nsFile.generatedWarnings = callbackFile._warnings;
+                    file.generatedLines    = callbackFile._lines;
+                    file.generatedWarnings = callbackFile._warnings;
                 }
             }
 
         } catch (err) {
-            Log(`${nsFile.path} needsGenerate due to error: '${err}'`);
+            Log(`${file.path} needsGenerate due to error: '${err}'`);
 
-            nsFile.needsGenerate();
-            nsFile.error = err;
+            file.needsGenerate();
+            file.error = err;
         }
     }));
 
@@ -358,9 +396,9 @@ async _generateJavaScript(files, model, options)
 async _finish(files, options)
 {
     function getLines(arrayOrString) {
-        if (_.isArray(arrayOrString)) {
-            return _.flattenDeep(arrayOrString).join("\n").split("\n");
-        } else if (_.isString(arrayOrString)) {
+        if (Array.isArray(arrayOrString)) {
+            return arrayOrString.flat(Infinity).join("\n").split("\n");
+        } else if (typeof arrayOrString == "string") {
             return arrayOrString.split("\n");
         } else {
             return [ ];
@@ -369,6 +407,30 @@ async _finish(files, options)
 
     let prependLines = getLines( options["prepend"] );
     let appendLines  = getLines( options["append"] );
+    
+    let globalIdentifier = options["global-identifier"] ?? "__N$$__";
+    
+    // Add runtime if needed
+    if (this._parents.length == 0) {
+        let runtimeLines = (await fs.readFile(Utils.getRuntimePath()))
+            .toString()
+            .replaceAll("__N$$__", globalIdentifier.replaceAll("$", "$$$$"))
+            .split("\n");
+
+        prependLines.push(...runtimeLines);
+    }
+    
+    // Add root variable and top-level IIFE
+    {
+        prependLines.push(
+            `(function() { "use strict";`,
+            `const N$$_ = globalThis[Symbol.for("${globalIdentifier}")];`
+        );
+        
+        appendLines.splice(0, 0,
+            `})();`        
+        );
+    }
 
     let outputSourceMap   = null;
     let outputFunctionMap = null;
@@ -378,9 +440,9 @@ async _finish(files, options)
 
         mapper.add(null, prependLines);
 
-        _.each(files, nsFile => {
-            mapper.add(nsFile.path, nsFile.generatedLines);
-        });
+        for (let file of files) {
+            mapper.add(file.path, file.generatedLines);
+        }
         
         mapper.add(null, appendLines);
 
@@ -390,10 +452,10 @@ async _finish(files, options)
     if (options["include-function-map"]) {
         let functionMaps = { };
 
-        _.each(files, nsFile => {
-            let mapper = new FunctionMapper(nsFile);
-            functionMaps[nsFile.path] = mapper.map();
-        });
+        for (let file of files) {
+            let mapper = new FunctionMapper(file);
+            functionMaps[file.path] = mapper.map();
+        }
 
         outputFunctionMap = functionMaps;
     }
@@ -403,9 +465,7 @@ async _finish(files, options)
         let linesArray = [ ];   // Array<Array<String>>
 
         linesArray.push(prependLines);
-        _.each(files, nsFile => {
-            linesArray.push(nsFile.generatedLines);
-        });
+        files.forEach(file => linesArray.push(file.generatedLines));
         linesArray.push(appendLines);
 
         outputCode = Array.prototype.concat.apply([ ], linesArray).join("\n");
@@ -421,7 +481,6 @@ async _finish(files, options)
 
 uses(compiler)
 {
-    if (!this._parents) this._parents = [ ];
     this._parents.push(compiler);
 }
 
@@ -456,11 +515,9 @@ async compile(options)
         return extracted;
     }
 
-    let optionsFiles              = extractOption("files");
-    let optionsDefs               = extractOption("defs");
-    let optionsState              = extractOption("state");
-    let optionsIncludeState       = extractOption("include-state");
-    let optionsIncludeBridged     = extractOption("include-bridged");
+    let optionsFiles          = extractOption("files");
+    let optionsDefs           = extractOption("defs");
+    let optionsIncludeBridged = extractOption("include-bridged");
 
     if (extractOption("dev-print-log")) {
         Utils.enableLog();
@@ -475,7 +532,7 @@ async compile(options)
         "source-map-root"
     ]);
 
-    // Extract options.files and convert to a map of path->NSFiles
+    // Extract options.files and convert to a map of path->CompilerFiles
     let files = this._extractFilesFromOptions(optionsFiles, previousFiles);
     options.files = null;
 
@@ -493,49 +550,41 @@ async compile(options)
         _.filter(previousOptions, value => !_.isFunction(value) )
     )) {
         previousOptions = options;
-        previousModel   = new NSModel();
+        previousModel   = new Model();
 
         Log("Calling needsAll() on all files");
 
-        _.each(files, nsFile => {
-            nsFile.needsAll();
-        });
+        for (let file of files) {
+            file.needsAll();
+        }
 
         this._checker = null;
         this._checkerPromise = null;
     }
 
-    if (optionsCheckTypes && !this._checker) {
-        this._checker = new Typechecker(options);
+    let parentModels    = [ ];
+    let parentSqueezers = [ ];
+    let parentCheckers  = [ ];
+
+    for (let parent of this._parents) {
+        if (parent._model)    parentModels.push(parent._model);
+        if (parent._squeezer) parentSqueezers.push(parent._squeezer);
+        if (parent._checker)  parentCheckers.push(parent._checker);
     }
 
-    let model = new NSModel();
+    if (optionsCheckTypes && !this._checker) {
+        this._checker = new Typechecker(parentCheckers, options);
+    }
 
-    if (this._parents) {
-        let parentCheckers = [ ];
-
-        _.each(this._parents, parent => {
-            if (parent._model) {
-                model.loadState(parent._model.saveState());
-            }
-
-            if (parent._checker) {
-                parentCheckers.push(parent._checker);
-            }
-        });
-
-        if (this._checker) {
-            this._checker.parents = parentCheckers;
-        }
-
-    } else if (optionsState) {
-        model.loadState(optionsState);
-    } 
+    let model = new Model(parentModels);
+    let squeezer = null;
 
     if (options["squeeze"]) {
-        model.getSymbolTyper().setupSqueezer(
+        squeezer = new Squeezer(
+            parentSqueezers,
             options["squeeze-start-index"] || 0,
-            options["squeeze-end-index"]   || 0
+            options["squeeze-end-index"]   || 0,
+            options["squeeze-builtins"]    || [ ]
         );
     }
 
@@ -552,21 +601,22 @@ async compile(options)
 
     try {
         // Clear errors from last compile
-        _.each(files, nsFile => {
-            nsFile.error = null;
-        });
+        files.forEach(file => { file.error = null; });
 
         // Preprocess files
         await this._preprocessFiles(files, options);
 
         // Parse files
-        await this._parseFiles(files, options);
+        await this._parseFiles(files);
 
         // Build model
-        await this._buildFiles(files, model, options);
+        await this._buildFiles(files, model, squeezer);
 
-        // Reorder files
-        await this._reorderFiles(files, model, options);
+        // Reorder files based on inheritance
+        await this._reorderFiles(files, model);
+
+        // Fill imports with model objects
+        await this._fillImports(files, model);
 
         // Perform model diff
         if (!previousModel || previousModel.hasGlobalChanges(model)) {
@@ -576,15 +626,16 @@ async compile(options)
                 Log("Model has global changes, all files need generate");
             }
 
-            _.each(files, nsFile => nsFile.needsGenerate());
+            files.forEach(file => file.needsGenerate());
         }
 
         // If we get here, our current model is valid.  Save it for next time
         this._model = model;
+        this._squeezer = squeezer;
 
         // Run typechecker
         if (optionsCheckTypes) {
-            this._checker.check(model, defs, files);
+            this._checker.check(model, squeezer, defs, files);
 
             if (Typechecker.includeInCompileResults) {
                 typecheckerWarnings = await this._checker.collectWarnings();
@@ -593,7 +644,7 @@ async compile(options)
 
         // Run generator
         if (optionsOutputLanguage != "none") {
-            await this._generateJavaScript(files, model, options);
+            await this._generateJavaScript(files, model, squeezer, options);
         }
 
         // Concatenate and map output
@@ -611,38 +662,34 @@ async compile(options)
         caughtError = err;
     }
 
-    let errors = _.compact(_.map(files, nsFile => nsFile.error));
+    let errors = files.map(file => file.error).filter(error => !!error);
 
     if (caughtError && !errors.includes(caughtError)) {
         errors.unshift(caughtError);
     }
-
-    _.each(errors, error => {
-        if (!error.name || !error.name.startsWith("NilScript")) {
+    
+    for (let error of errors) {
+        if (!error instanceof CompilerIssue) {
             throw error;
         }
-    });
+    }
 
-    let warnings = _.map(files, nsFile => [
-        nsFile.generatedWarnings,
-    ]);
-
-    warnings.push(typecheckerWarnings);
+    let warnings = files
+        .map(file => file.generatedWarnings)
+        .concat(typecheckerWarnings)
+        .flat(Infinity)
+        .filter(w => !!w);
 
     let result = {
         code:        outputCode,
         map:         outputSourceMap,
         functionMap: outputFunctionMap,
         errors:      errors,
-        warnings:    _.compact(_.flattenDeep(warnings))
+        warnings:    warnings
     };
 
-    if (optionsIncludeState) {
-        result.state = model.saveState();
-    }
-
     if (options["squeeze"]) {
-        result.squeeze = model.getSqueezeMap();
+        result.squeeze = squeezer.getSqueezeMap();
     }
 
     if (optionsIncludeBridged) {

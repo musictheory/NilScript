@@ -5,19 +5,18 @@
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
-import _    from "lodash";
-
 import fs   from "node:fs";
 import path from "node:path";
 
-import { DefinitionMaker  } from "./DefinitionMaker.js";
-import { DiagnosticParser } from "./DiagnosticParser.js";
-import { TypeWorker       } from "./TypeWorker.js";
-import { Generator        } from "../Generator.js";
-import { Utils            } from "../Utils.js";
+import { CompilerIssue } from "../model/CompilerIssue.js";
+import { Generator     } from "../Generator.js";
+import { SymbolUtils   } from "../SymbolUtils.js";
+import { TypeWorker    } from "./TypeWorker.js";
+import { Utils         } from "../Utils.js";
 
 
 let sNextCheckerID = 1;
+let sNextGroupID = 1;
 let sWorkerCount = 4;
 let sWorkers;
 
@@ -25,8 +24,7 @@ let sRuntimeDefsContents;
 
 let sDidRemoveDebugDirectory = false;
 
-const DefsSuffix     = "defs.d.ts";
-const CodeSuffix     = "code.ts";
+const DefsSuffix = "defs.d.ts";
 
 const GlobalDefsPrefix = `N$-global`;
 const RuntimeDefsKey   = `N$-runtime${path.sep}${DefsSuffix}`;
@@ -48,7 +46,7 @@ export class Typechecker {
 static includeInCompileResults = true;
 
 
-constructor(options)
+constructor(parents, options)
 {
     if (!sWorkers) {
         sWorkers = [ ];
@@ -57,30 +55,44 @@ constructor(options)
             sWorkers.push(new TypeWorker());
         }
     }
-    
-    this.parents = null;
+
     
     this._checkerID = sNextCheckerID++;
+    this._groupID = parents?.[0]?._groupID ?? sNextGroupID++;
+    this._parents = parents;
     this._options = options;
     this._nextWorkerIndex = 0;
-    this._defsMap = { };
-    this._codeMap = { };
+    this._defsMap = new Map();
+    this._codeMap = new Map();
 
     this._generatorOptions = {
         "output-language": "typechecker",
         "additional-inlines": options["additional-inlines"]
     };
+    
+    console.log(options["strict"]);
 
     let tsOptions = {
         noImplicitAny:        !!options["no-implicit-any"],
         noImplicitReturns:    !!options["no-implicit-returns"],
+        
+        strictNullChecks:     !!options["strict"],
+        strictBindCallApply:  !!options["strict"],
+        strictBuiltinIteratorReturn: !!options["strict"],
+        strictFunctionTypes:    !!options["strict"],
+    
         allowUnreachableCode:  !options["no-unreachable-code"],
         target:                 options["typescript-target"],
-        lib:                    options["typescript-lib"]?.split(",")
+        lib:                    options["typescript-lib"]?.split(","),
+
+        allowArbitraryExtensions: true,
+        allowImportingTsExtensions: true,
+        module: "bundler",
+        moduleResolution: "bundler"
     };
-        
+    
     for (let i = 0; i < sWorkerCount; i++) {
-        sWorkers[i].prepare(this._checkerID, tsOptions);
+        sWorkers[i].prepare(this._checkerID, this._groupID, tsOptions);
     }
 }
 
@@ -88,16 +100,16 @@ constructor(options)
 _writeDebugInformation()
 {
     let debugTmp = "/tmp/nilscript.typechecker";
-    let usedPaths = { };
+    let usedPaths = new Set();
 
     function formatKey(key) {
         let result = key.replaceAll(/[ /]/g, "_");
 
-        while (usedPaths[result]) {
+        while (usedPaths.has(result)) {
             result = "_" + result;
         }
 
-        usedPaths[result] = true; 
+        usedPaths.add(result);
                
         return result;
     }
@@ -114,13 +126,13 @@ _writeDebugInformation()
     fs.mkdirSync(codePath, { recursive: true });
     fs.mkdirSync(defsPath, { recursive: true });
 
-    _.each(this._defsMap, (entry, key) => {
+    for (let [ key, entry ] of this._defsMap) {
         fs.writeFileSync(defsPath + path.sep + formatKey(key), entry.contents);
-    });
+    }
     
-    _.each(this._codeMap, (entry, key) => {
+    for (let [ key, entry ] of this._codeMap) {
         fs.writeFileSync(codePath + path.sep + formatKey(key), entry.contents);
-    });
+    }
 }
 
 
@@ -148,44 +160,66 @@ _updateEntry(previous, inVersion, callback)
 }
 
 
-_updateDefs(inModel, inDefs, inFiles)
+_getGlobalDefinitions(model, squeezer)
+{
+    let lines = [ ];
+
+    lines.push("declare class N$G_Globals {");
+    
+    for (let { name, params, annotation } of model.globalFunctions.values()) {
+        /*
+            Hack, right now global assert() is the only function in our sourcebase that needs
+            a type predicate
+        */
+        if (name == "assert") {
+            name = SymbolUtils.getGlobalIdentifier(name, squeezer);
+            lines.push(`${name}(condition: unknown, msg?: string): asserts condition;`);
+            continue;
+        }
+    
+        name = SymbolUtils.getGlobalIdentifier(name, squeezer);
+
+        let args = params.map(param => {
+            let optional = param.optional ? "?" : "";
+            return `${param.name}${optional}: ${param.annotation}`;
+        }).join(",");
+
+        lines.push(`${name}(${args}): ${annotation};`);
+    }
+
+    lines.push("}");
+
+    return lines.join("\n");
+}
+
+
+_updateDefs(inModel, inSqueezer, inDefs, inFiles)
 {
     let previousDefsMap = this._defsMap;
-    let defsMap = { };
+    let defsMap = new Map();
     
-    _.each(this.parents, parent => {
+    for (let parent of this._parents) {
         // Our call to getGlobalDefinitions() will include globals inherited
         // from parent Models - we need to filter out the parent defs file to avoid
         // duplicates.
         //
-        _.each(parent._defsMap, (value, key) => {
+        for (let [ key, value ] of parent._defsMap) {
             if (!key.startsWith(GlobalDefsPrefix)) {
-                defsMap[key] = value;
+                defsMap.set(key, value);
             }
-        });
-    });
-    
-    _.each(inFiles, nsFile => {
-        let defsKey = path.normalize(nsFile.path) + path.sep + DefsSuffix;
+        }
+    }
 
-        let previous = previousDefsMap[defsKey];
-        if (!previous) previous = { file: defsKey };
-
-        defsMap[defsKey] = this._updateEntry(previous, nsFile.generatedVersion, () => {
-            return (new DefinitionMaker(inModel)).getFileDefinitions(nsFile);
-        });
-    });
-
-    _.each(inDefs, nsFile => {
+    for (let nsFile of inDefs) {
         let defsKey = nsFile.path + path.sep + DefsSuffix;
 
-        defsMap[defsKey] = {
+        defsMap.set(defsKey, {
             file: defsKey,
             contents: nsFile.contents,
             version: nsFile.generatedVersion,
             original: nsFile.path
-        };
-    });
+        });
+    }
     
     // Make entry for globals
     {
@@ -194,14 +228,14 @@ _updateDefs(inModel, inDefs, inFiles)
         //
         let defsKey = `${GlobalDefsPrefix}.${this._checkerID}${path.sep}${DefsSuffix}`;
         
-        let previous = previousDefsMap[defsKey];
+        let previous = previousDefsMap.get(defsKey);
         if (!previous) previous = { file: defsKey };
+        
+        let globalDefs = this._getGlobalDefinitions(inModel, inSqueezer);
         
         // NaN forces the callback block to always run
         //
-        defsMap[defsKey] = this._updateEntry(previous, NaN, () => {
-            return (new DefinitionMaker(inModel)).getGlobalDefinitions();
-        });
+        defsMap.set(defsKey, this._updateEntry(previous, NaN, () => globalDefs));
     }
 
     // Make entry for runtime.d.ts
@@ -211,32 +245,44 @@ _updateDefs(inModel, inDefs, inFiles)
             sRuntimeDefsContents = fs.readFileSync(runtimeDefsFile) + "\n";
         }
         
-        defsMap[RuntimeDefsKey] = {
+        defsMap.set(RuntimeDefsKey, {
             file: RuntimeDefsKey,
             contents: sRuntimeDefsContents,
             version: 0
-        };
+        });
     }
 
     this._defsMap = defsMap;
 }
  
 
-_updateCode(inModel, inFiles)
+_updateCode(inModel, inSqueezer, inFiles)
 {
     let previousCodeMap = this._codeMap;
-    let codeMap = { };
+    let codeMap = new Map();
 
-    _.each(inFiles, nsFile => {
-        let codeKey = path.normalize(nsFile.path) + path.sep + CodeSuffix;
+    for (let parent of this._parents) {
+        // Our call to getGlobalDefinitions() will include globals inherited
+        // from parent Models - we need to filter out the parent defs file to avoid
+        // duplicates.
+        //
+        for (let [ key, value ] of parent._codeMap) {
+            let clonedValue = structuredClone(value);
+            clonedValue.workerIndex = NaN;
+            codeMap.set(key, clonedValue);
+        }
+    }
 
-        let previous = previousCodeMap[codeKey];
+    for (let nsFile of inFiles) {
+        let codeKey = path.normalize(nsFile.path + ".ts");
+
+        let previous = previousCodeMap.get(codeKey);
         if (!previous) previous = { file: codeKey };
         
         let entry = this._updateEntry(previous, nsFile.generatedVersion, () => {
             try {
-                let generator = new Generator(nsFile, inModel, this._generatorOptions);
-                return "export {};" + generator.generate().lines.join("\n");
+                let generator = new Generator(nsFile, inModel, inSqueezer, this._generatorOptions);
+                return generator.generate().lines.join("\n");
             } catch (err) {
                 nsFile.error = err;            
                 throw err;
@@ -253,66 +299,80 @@ _updateCode(inModel, inFiles)
         entry.workerIndex = workerIndex;
         entry.original = nsFile.path;
 
-        codeMap[codeKey] = entry;
-    });
+        codeMap.set(codeKey, entry);
+    }
 
     this._codeMap = codeMap;
 }
 
 
+_getWarnings(diagnostics, squeezer)
+{
+    let warnings = [ ];
+
+    for (let diagnostic of diagnostics) {
+        let { fileName, line, column, code, reason } = diagnostic;
+        if (!fileName) continue;
+
+        fileName = this._codeMap.get(fileName)?.original ??
+                   this._defsMap.get(fileName)?.original ??
+                   fileName;
+
+        if (!fileName) continue;
+
+        // Symbolicate reason string and remove ending colon/period
+        reason = SymbolUtils.symbolicate(reason, squeezer).replace(/[\:\.]$/, "");
+
+        let issue = new CompilerIssue(reason, {  line, column });
+        issue.addFile(fileName);
+        issue.code = code;
+
+        warnings.push(issue);
+    }
+
+    return warnings;
+}
+
+
 _makeWorkerArgsArray(inModel)
 {
-    let code = _.values(this._codeMap);
-    let defs = _.values(this._defsMap);
+    let code = Array.from(this._codeMap.values());
+    let defs = Array.from(this._defsMap.values());
 
-    return _.map(sWorkers, (unused, index) => {
+    return sWorkers.map((unused, index) => {
+        let entriesToCheck = code.filter(entry => (entry.workerIndex == index));
+
         return {
-            code: _.filter(code, entry => (entry.workerIndex == index)),
-            defs: defs
+            entries: [ ...code, ...defs ],
+            active: entriesToCheck.map(entry => entry.file)
         }
     });
 }
 
 
-check(model, defs, files)
+check(model, squeezer, defs, files)
 {
-    let options         = this._options;
-    let development     = options["dev-dump-tmp"];
-    let originalFileMap = { };
-    
-    let start = Date.now();
+    let options     = this._options;
+    let development = options["dev-dump-tmp"];
 
-    this._updateDefs(model, defs, files);
-    this._updateCode(model, files);
+    this._updateDefs(model, squeezer, defs, files);
+    this._updateCode(model, squeezer, files);
     
     if (development) {
         this._writeDebugInformation();
     }
 
     this._warningsPromise = (async () => {
-        await Promise.all(_.map(this.parents, parent => parent.collectWarnings()));
+        await Promise.all(this._parents.map(parent => parent.collectWarnings()));
     
-        let workerArgsArray = this._makeWorkerArgsArray(model, defs, files);
+        let workerArgsArray = this._makeWorkerArgsArray(model);
 
-        let diagnostics = _.flatten(
-            await Promise.all(_.map(workerArgsArray, (args, index) => {
-                let worker = sWorkers[index];
-                return worker.work(this._checkerID, args.code, args.defs);
-            }))
-        );
+        let diagnostics = await Promise.all(workerArgsArray.map((args, index) => {
+            let worker = sWorkers[index];
+            return worker.work(this._checkerID, args.entries, args.active);
+        }))
 
-        let warnings = (new DiagnosticParser(model)).getWarnings(diagnostics, filePath => {
-            if (development) {
-                let debugTmp = "/tmp/nilscript.typechecker";
-                return debugTmp + path.sep + filePath;
-            } else {
-                return this._codeMap[filePath]?.original ??
-                       this._defsMap[filePath]?.original ??
-                       filePath;
-            }
-        });
-
-        return warnings;
+        return this._getWarnings(diagnostics.flat(), squeezer);
     })();
 }
 

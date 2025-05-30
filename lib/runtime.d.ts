@@ -6,37 +6,14 @@
 */
 
 
-type N$_Selector = {
-    N$_Selector: string
-};
+declare function handleInit(instance: any, symbol: symbol, initMethod: any, ...args: any);
 
-interface N$_Runtime {
-    _g : N$_Globals;
-    noConflict() : N$_Runtime;
-    isObject(object : any) : boolean;
+interface N$R_Runtime {
+    g : N$G_Globals;
+
+    i: handleInit,
+    m: symbol,
+    n: symbol
 }
 
-declare interface N$_BaseProtocol {
-    superclass() : typeof N$_BaseClass;
-    class() : typeof N$_BaseClass;
-    className() : string;
-    respondsToSelector_(aSelector : N$_Selector) : boolean;
-    toString() : string;
-}
-
-declare class N$_BaseClass implements N$_BaseProtocol {
-    static superclass() : typeof N$_BaseClass;
-    static className() : string;
-    static class() : typeof N$_BaseClass;
-    static respondsToSelector_(aSelector : N$_Selector) : boolean;
-
-    superclass() : typeof N$_BaseClass;
-    class() : typeof N$_BaseClass;
-    className() : string;
-    respondsToSelector_(aSelector : N$_Selector) : boolean;
-    toString() : string;
-}
-
-declare var N$$_      : N$_Runtime;
-declare var nilscript : N$_Runtime;
-
+declare var N$$_: N$R_Runtime;

@@ -1,34 +1,21 @@
 /*
-    This file is heavily based on acorn-typescript:
-    https://github.com/TyrealHu/acorn-typescript
-    MIT License
-
-
+    Parser.js
+    Nyx extensions to acorn's parser
+    (c) 2024 musictheory.net, LLC
+    MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
 import {
     tokTypes as tt,
     lineBreak,
-    keywordTypes, TokenType, isIdentifierStart
+    TokenType, isIdentifierStart
 } from "acorn";
 
+import { Syntax } from "./Tree.js";
 import { TypeParser } from "./TypeParser.js";
 
-function kw(name, options = {}) {
-    options.keyword = name
-    return keywordTypes[name] = new TokenType(name, options)
-}
 
-tt._atAny      = kw("@any");
-tt._atBridged  = kw("@bridged");
-tt._atCast     = kw("@cast");
-tt._atClass    = kw("@class");
-tt._atConst    = kw("@const");
-tt._atEnd      = kw("@end");
-tt._atEnum     = kw("@enum");
-tt._atGlobal   = kw("@global");
-tt._atProtocol = kw("@protocol");
-tt._atType     = kw("@type");
+tt.atId = new TokenType("atId", { startsExpr: true });
 
 
 export class Parser extends TypeParser {
@@ -36,9 +23,10 @@ export class Parser extends TypeParser {
 static parse(contents, options)
 {
     return super.parse(contents, options ?? {
-        ecmaVersion: 2021,
+        ecmaVersion: 2022,
         sourceType: "module",
-        locations: true
+        locations: true,
+        checkPrivateFields: false
     });
 }
 
@@ -74,8 +62,8 @@ readToken(code)
 {
     if (isIdentifierStart(code, true) || code === 92 /* '\' */) {
         return this.readWord()
-    } else if (code == 64) {
-        return this.nsReadAtKeyword();
+    } else if (code === 64) {
+        return this.nxReadToken_at();
     }
     
     return this.getTokenFromCode(code)
@@ -86,13 +74,63 @@ parseBindingAtom()
 {
     let result = super.parseBindingAtom();
 
-    if (this.type == tt.colon && result.type == "Identifier") {
-        // result.typeAnnotation = this.tsParseTypeAnnotation();
-        result.annotation = this.ns_parseTypeAnnotation();
-        this.finishNode(result, "Identifier");
+    if (result.type == Syntax.Identifier) {
+        if (this.type == tt.question && this.nxAllowOptionalIdent) {
+            result.optional = true;
+            result.question = this.nxParsePunctuation();
+
+            this.finishNode(result, Syntax.Identifier);
+        }
+
+        if (this.type == tt.colon) {
+            result.annotation = this.tsParseTypeAnnotation();
+            this.finishNode(result, Syntax.Identifier);
+        }
     }
 
     return result;
+}
+
+
+parseClassField(node)
+{
+    // check for optional, if in interface
+    // check for colon and parse type
+    if (this.nxInInterface && this.eat(tt.question)) {
+        node.optional = true;
+        
+        if (this.type == tt.parenL) {
+            super.parseClassMethod(node, false, false, false);
+            return;
+        }
+    }
+
+    if (this.type == tt.colon) {
+        node.annotation = this.tsParseTypeAnnotation();
+    }
+
+    super.parseClassField(node);
+}
+
+
+parseFunctionParams(node)
+{
+    let previousAllowOptionalIdent = this.nxAllowOptionalIdent;
+    this.nxAllowOptionalIdent = true;
+    
+    super.parseFunctionParams(node);
+    
+    this.nxAllowOptionalIdent = previousAllowOptionalIdent
+}
+
+
+parseClassMethod(method, isGenerator, isAsync, allowsDirectSuper)
+{
+    if (this.nxInInterface) {
+        method.optional = this.eat(tt.question);
+    }
+
+    super.parseClassMethod(method, isGenerator, isAsync, allowsDirectSuper);
 }
 
 
@@ -100,9 +138,11 @@ shouldParseExportStatement()
 {
     return (
         this.isContextual("enum") ||
+        this.isContextual("type") ||
         super.shouldParseExportStatement()
     );
 }
+
 
 
 parseImport(node)
@@ -123,18 +163,22 @@ parseImport(node)
 
     this.semicolon();
 
-    return this.finishNode(node, "ImportDeclaration");
+    return this.finishNode(node, Syntax.ImportDeclaration);
 }
 
 
 parseFunctionBody(node, isArrowFunction, isMethod, forInit)
 {
     if (this.type == tt.colon) {
-//        node.typeAnnotation = this.tsParseTypeAnnotation();
-        node.annotation = this.ns_parseTypeAnnotation({ allowVoid: true });
+        node.annotation = this.tsParseTypeAnnotation();
     }
-
-    super.parseFunctionBody(node, isArrowFunction, isMethod, forInit);
+    
+    // Allow body-less functions and methods
+    if (!isArrowFunction && (this.type !== tt.braceL)) {
+        this.exitScope();
+    } else {
+        super.parseFunctionBody(node, isArrowFunction, isMethod, forInit);
+    }
 }
 
 
@@ -143,11 +187,29 @@ parseParenItem(item)
     let result = super.parseParenItem(item);
 
     if (this.type == tt.colon) {
-        // result.typeAnnotation = this.tsParseTypeAnnotation();
-        result.annotation = this.ns_parseTypeAnnotation();
+        result.annotation = this.tsParseTypeAnnotation();
     }
 
     return result;
+}
+
+
+parseSubscript(base, startPos, startLoc, noCalls, maybeAsyncArrow, optionalChained, forInit)
+{
+    if (
+        this.value == "!" &&
+        this.type == tt.prefix &&
+        !this.tsHasPrecedingLineBreak()
+    ) {
+        const node = this.startNodeAt(startPos, startLoc);
+
+        node.expression = base;
+        this.next();
+
+        return this.finishNode(node, Syntax.NXNonNullExpression);
+    }
+    
+    return super.parseSubscript(base, startPos, startLoc, noCalls, maybeAsyncArrow, optionalChained, forInit);
 }
 
 
@@ -181,14 +243,11 @@ parseExprList(close, allowTrailingComma, allowEmpty, refDestructuringErrors)
                 let name = this.parseIdent(true);
                 
                 if (this.type == tt.colon) {
-                    const colonNode = this.startNode();
-                    this.next();
-
                     namedArgument.name = name;
-                    namedArgument.colon = this.finishNode(colonNode, "NXColon");
+                    namedArgument.colon = this.nxParsePunctuation();
                     namedArgument.argument = this.parseMaybeAssign(false, refDestructuringErrors);
 
-                    elt = this.finishNode(namedArgument, "NXNamedArgument");
+                    elt = this.finishNode(namedArgument, Syntax.NXNamedArgument);
 
                 } else {
                     this.restoreState(state);
@@ -207,344 +266,114 @@ parseExprList(close, allowTrailingComma, allowEmpty, refDestructuringErrors)
 }
 
 
-parseMaybeUnary(sawUnary)
+parseExprOp(left, leftStartPos, leftStartLoc, minPrec, forInit)
 {
-    if (this.type == tt._atCast) {
-        return this.nsParseCastExpression();
-    } else if (this.type == tt._atAny) {
-        return this.nsParseAnyExpression();
-    } else {
-        return super.parseMaybeUnary(sawUnary);
-    }
-}
-
-
-ns_parseTypeAngleSuffix()
-{
-    const parts = [];
-    let angles = 0;
-
-    const appendNameAngle = () => {
-        let name = this.parseIdent().name;
-        
-        while (this.eat(tt.bracketL)) {
-            this.expect(tt.bracketR);
-            name += "[]";
-        }
-        
-        parts.push(name);
-
-        if (this.type == tt.relational && this.value == "<") {
-            appendAngle();
-        }
-    }
-
-    const appendAngle = () => {
-        this.next();  // Consume '<'
-        parts.push('<');
-        angles++;
-
-        // It's possible a recursive call will handle a '>>' or '>>>' in the stream,
-        // so save angles...
-        let savedAngles = angles;
-
-        appendNameAngle();
-
-        while (angles > 0 && this.eat(tt.comma)) {
-            parts.push(',');
-            appendNameAngle();
-        }
-
-        // ...and check savedAngles here.  If angles is lower, a '>>' or '>>>' already handled our '>'
-        if (angles >= savedAngles) {
-            if (angles >= 1 && this.type == tt.relational && this.value == ">") {
-                this.expect(tt.relational);
-                parts.push('>');
-                angles -= 1;
-
-            } else if (angles >= 2 && this.type == tt.bitShift && this.value == ">>") {
-                this.expect(tt.bitShift);
-                parts.push('>>');
-                angles -= 2;
-
-            } else if (angles >= 3 && this.type == tt.bitShift && this.value == ">>>") {
-                this.expect(tt.bitShift);
-                parts.push('>>>');
-                angles -= 3;
-
-            } else {
-                this.unexpected();
-            }
-        }
-    }
-
-    let isLessThan = this.type == tt.relational && this.value == "<";
-    if (!isLessThan) return "";
-    appendAngle();
-
-    return parts.join("");
-}
-
-
-ns_parseType(options)
-{
-    let name = "";
-
-    if (options && options.allowVoid && this.type == tt._void) {
-        this.next();
-        name = "void";
-
-    } else if (this.type == tt._this) {
-        this.next();
-        name = "this";
-
-    } else if (
-        this.type == tt._true ||
-        this.type == tt._false ||
-        this.type == tt._null ||
-        this.type == tt.num ||
-        this.type == tt.string
+    if (
+        (tt._in.binop > minPrec) &&
+        this.isContextual("as") &&
+        !this.tsHasPrecedingLineBreak()
     ) {
-        name += this.input.slice(this.start, this.end);
-        this.next(); 
-           
-    } else {
-        name = this.parseIdent().name;
-    }
+        const node = this.startNodeAt(leftStartPos, leftStartLoc);
+        
+        node.expression = left;
+        this.expectContextual("as");
+        node.annotation = this.tsParseTypeAnnotation(false);
 
-    if (this.type == tt.relational && this.value == "<") {
-        name += this.ns_parseTypeAngleSuffix();
-    }
-
-    while (this.eat(tt.bracketL)) {
-        this.expect(tt.bracketR);
-        name += "[]";
-    }
-
-    if (this.eat(tt.bitwiseOR)) {
-        name += "|" + this.ns_parseType(options);
-    }
-
-    return name;
-}
-
-
-ns_parseTypeAnnotation(options)
-{
-    const node = this.startNode();
-    let optional = false;
-
-    if (options && options.allowOptional) {
-        if (this.eat(tt.question)) {
-            node.optional = true;
+        // See reScan_lt_gt() in acorn-typescript
+        if (this.type === tt.relational) {
+            this.pos -= 1;
+            this.readToken_lt_gt(this.fullCharCodeAtPos());
         }
+        
+        this.finishNode(node, Syntax.NXAsExpression);
+        
+        return this.parseExprOp(node, leftStartPos, leftStartLoc, minPrec, forInit);
+
+    } else {
+        return super.parseExprOp(left, leftStartPos, leftStartLoc, minPrec, forInit);
+    }
+}
+
+
+nxReadToken_at() // '@'
+{
+    ++this.pos;
+    let code = this.fullCharCodeAtPos();
+
+    if (isIdentifierStart(code, true) || code === 92 /* '\' */) {
+        return this.finishToken(tt.atId, this.readWord1())
     }
 
-    this.expect(tt.colon);
-    node.value = this.ns_parseType(options);
-    return this.finishNode(node, "NSTypeAnnotation");
+    this.raise(this.pos, "Unexpected character '" + codePointToString(code) + "'")
 }
 
 
-ns_parseIdentifierWithAnnotation(options)
+nxParsePunctuation()
 {
     const node = this.startNode();
-
-    node.name = this.parseIdent(options.liberal).name;
-    if (!node.name) this.unexpected();
-
-    node.annotation = this.ns_parseTypeAnnotation(options);
-    return this.finishNode(node, "Identifier");
+    this.next();
+            
+    return this.finishNode(node, Syntax.NXPunctuation);
 }
+ 
 
-
-nsParseTypeDefinition()
+nxMaybeParseTypeDefinition()
 {
+    const state = this.saveState();
+    
     const node = this.startNode();
     const params = [];
 
-    this.expect(tt._atType);
+    this.eatContextual("type");
+    
+    if (this.type != tt.name) {
+        this.restoreState(state);
+        return null;
+    }
 
-    node.name = this.parseIdent().name;
+    node.id = this.parseIdent();
     node.params = params;
 
     this.expect(tt.eq);
-
-    if (this.eat(tt.braceL)) {
-        node.kind = "object";
-
-        while (!this.eat(tt.braceR)) {
-            params.push(this.ns_parseIdentifierWithAnnotation({ allowOptional: true, liberal: true }));
-
-            if (this.type != tt.braceR) {
-                this.expect(tt.comma);
-            }
-        }
-
-    } else if (this.eat(tt.bracketL)) {
-        node.kind = "tuple";
-
-        while (!this.eat(tt.bracketR)) {
-            const node = this.startNode();
-
-            node.name = "" + params.length;
-            node.annotation = {
-                type: "NSTypeAnnotation",
-                value: this.ns_parseType(),
-                optional: false
-            };
-
-            params.push(this.finishNode(node, "Identifier"));
-
-            if (this.type != tt.bracketR) {
-                this.expect(tt.comma);
-            }
-        }
-
-    } else if (this.eat(tt._function)) {
-        node.kind = "function";
-        
-        this.expect(tt.parenL);
-
-        while (!this.eat(tt.parenR)) {
-            params.push(this.ns_parseIdentifierWithAnnotation({ allowOptional: true }));
-
-            if (this.type != tt.parenR) {
-                this.expect(tt.comma);
-            }
-        }
-
-        node.annotation = this.ns_parseTypeAnnotation({ allowVoid: true });
-
-    } else if (this.type == tt.name) {
-        node.kind = "alias";
-        node.annotation = {
-            type: "NSTypeAnnotation",
-            value: this.ns_parseType(),
-            optional: false
-        };
-
-    } else {
-        this.unexpected();
-    }
+    
+    node.annotation = this.tsParseTypeAnnotation(false);
 
     this.semicolon();
 
-    return this.finishNode(node, "NSTypeDefinition");
+    return this.finishNode(node, Syntax.NXTypeDeclaration);
 }
 
-nsParseProtocolDefinitionBody()
+
+nxMaybeParseGlobalDefinition()
 {
-    const bodyNode = this.startNode();
-    bodyNode.body = [ ];
+    const state = this.saveState();
+    
+    const node = this.startNode();
+    const params = [];
 
-    while (!this.eat(tt._atEnd)) {
-        let node = this.startNode();
+    this.eatContextual("global");
 
-        if (this.eatContextual("func")) {
-            node.key = this.parseIdent(true);
-            node.optional = this.eat(tt.question);
-            node.params = [ ];
-            
-            this.expect(tt.parenL);
-
-            while (!this.eat(tt.parenR)) {
-                node.params.push(this.nsParseFuncParameter());
-            
-                if (this.type != tt.parenR) {
-                    this.expect(tt.comma);
-                }
-            }
-                
-            // node.typeAnnotation = null;
-            // if (this.type == tt.colon) {
-            //     node.typeAnnotation = this.tsParseTypeAnnotation();
-            // }
-
-            node.annotation = null;
-            if (this.type == tt.colon) {
-                node.annotation = this.ns_parseTypeAnnotation({ allowVoid: true });
-            }
-
-            this.semicolon();
-
-            bodyNode.body.push(this.finishNode(node, "NXFuncDefinition"));
-
-        } else {
-            this.unexpected();
-        }
+    if (this.type != tt._function && this.type != tt._const) {
+        this.restoreState(state);
+        return null;
     }
 
-    return this.finishNode(bodyNode, "BlockStatement");
-}
+    if (this.type == tt._function) {
 
-
-nsParseProtocolDefinition()
-{
-    const node = this.startNode();
-
-    const oldStrict = this.strict;
-    this.strict = true;
-
-    this.expect(tt._atProtocol);
-
-    node.id = this.parseIdent();
-    node.body = this.nsParseProtocolDefinitionBody();
-
-    this.strict = oldStrict;
-
-    return this.finishNode(node, "NSProtocolDefinition");
-}
-
-
-nsParseCastExpression()
-{
-    const node = this.startNode();
-
-    this.expect(tt._atCast);
-
-    this.expect(tt.parenL);
-    // node.id = this.tsParseType();
-    node.id = this.ns_parseType();
-    this.expect(tt.comma);
-
-    node.argument = this.parseExpression();
-
-    this.expect(tt.parenR);
-
-    return this.finishNode(node, "NSCastExpression");
-}
-
-
-nsParseAnyExpression()
-{
-    const node = this.startNode();
-
-    this.expect(tt._atAny);
-
-    this.expect(tt.parenL);
-    node.argument = this.parseExpression();
-    this.expect(tt.parenR);
-
-    return this.finishNode(node, "NSAnyExpression");
-}
+        const functionNode = this.startNode();
+        this.next();
+        node.declaration = this.parseFunction(functionNode, true);
     
+    } else if (this.type == tt._const) {
+        const constNode = this.startNode();
+        node.declaration = this.parseVarStatement(constNode, "const");
+    }
 
-nsParseConstDeclaration()
-{
-    const node = this.startNode();
-    
-    this.expect(tt._atConst);
-
-    this.parseVar(node, false, "NSConst", true);
-
-    this.semicolon();
-
-    return this.finishNode(node, "NSConstDeclaration");
+    return this.finishNode(node, Syntax.NXGlobalDeclaration);
 }
-    
 
-nsParseEnumMember()
+
+nxParseEnumMember()
 {
     const node = this.startNode();
     node.id   = this.parseIdent();
@@ -554,71 +383,75 @@ nsParseEnumMember()
         node.init = this.parseMaybeAssign();
     }
 
-    return this.finishNode(node, "VariableDeclarator");
+    return this.finishNode(node, Syntax.NXEnumMember);
 }
 
 
-nsParseEnumDeclaration()
+nxParseEnumDeclaration()
 {
     const node = this.startNode();
-    node.declarations = [];
-    node.id = null;
 
-    if (!this.eatContextual("enum")) {
-        this.expect(tt._atEnum);
-    }
+    this.expectContextual("enum");
 
     node.id = this.parseIdent();
+    node.members = [];
 
     this.expect(tt.braceL);
     
     while (!this.eat(tt.braceR)) {
-        node.declarations.push(this.nsParseEnumMember());
+        node.members.push(this.nxParseEnumMember());
         if (this.type != tt.braceR) this.expect(tt.comma);
     }
 
     this.semicolon();
 
-    return this.finishNode(node, "NSEnumDeclaration");
+    return this.finishNode(node, Syntax.NXEnumDeclaration);
 }
-    
 
-nsParseGlobalDeclaration()
+
+nxParseInterfaceDeclaration()
 {
+    const state = this.saveState();
+
     const node = this.startNode();
 
-    this.expect(tt._atGlobal);
-
-    if (this.type == tt._function) {
-        const functionNode = this.startNode();
-        this.next();
-        node.declaration = this.parseFunction(functionNode, true);
-
-    } else {
-        this.parseVar(node, false, "NSGlobal", true);
+    this.expectContextual("interface");
+    
+    if (this.type != tt.name) {
+        this.restoreState(state);
+        return null;
     }
 
-    return this.finishNode(node, "NSGlobalDeclaration");
+    let previousInInterface = this.nxInInterface;
+    this.nxInInterface = true;
+
+    const previousStrict = this.strict;
+    this.strict = true;
+      
+    node.id = this.parseIdent();
+    
+    let interfaceBody = this.startNode();
+    interfaceBody.body = [ ];
+
+    this.expect(tt.braceL);
+
+    while (this.type !== tt.braceR) {
+        let element = this.parseClassElement(false);
+        if (element) {
+            interfaceBody.body.push(element);
+        }
+    }
+
+    this.next();
+
+    node.body = this.finishNode(interfaceBody, Syntax.NXInterfaceBody);
+
+    this.nxInInterface = previousInInterface;
+    this.strict = previousStrict;
+
+    return this.finishNode(node, Syntax.NXInterfaceDeclaration);
 }
     
-
-nsParseBridgedDeclaration()
-{
-    const node = this.startNode();
-
-    this.expect(tt._atBridged);
-
-    if (this.type == tt._atConst) {
-        node.declaration = this.nsParseConstDeclaration();
-    } else if (this.type == tt._atEnum) {
-        node.declaration = this.nsParseEnumDeclaration();
-    } else {
-        this.unexpected();
-    }
-
-    return this.finishNode(node, "NSBridgedDeclaration");
-}
-
 
 parseClassElement(constructorAllowsSuper)
 {
@@ -642,42 +475,77 @@ parseClassElement(constructorAllowsSuper)
     let isPrivate  = !isReadonly && eat("private");
     let isObserved = !isReadonly && !isPrivate && eat("observed");
 
-    if (this.eatContextual("prop")) {
+    let canBeProp = !isAsync;
+
+    // This is a temporary hack to allow decorator-style syntax before 'prop'
+    let decorator = null;
+    if (canBeProp && (this.type == tt.atId)) {
+        decorator = this.value;
+        this.next();
+    }
+
+    let canBeFunc = !isPrivate && !isObserved && !decorator;
+
+    let isLegacy = false;
+    if (canBeProp && this.eatContextual("legacy")) {
+        isLegacy = true;
+    }
+
+    if (canBeProp && this.eatContextual("prop")) {
         let modifier = null;
 
         if      (isPrivate)  modifier = "private";
         else if (isReadonly) modifier = "readonly";
         else if (isObserved) modifier = "observed";
 
-        return this.nsParseProp(node, isStatic, modifier);
+        return this.nxParseProp(node, isStatic, modifier, decorator, isLegacy);
 
-    } else if (this.eatContextual("func")) {
-        return this.nsParseFunc(node, isStatic, isAsync);
+    } else if (canBeFunc && this.eatContextual("func")) {
+        return this.nxParseFunc(node, isStatic, isAsync);
 
-    } else {
-        if (state) this.restoreState(state);
-        return super.parseClassElement(constructorAllowsSuper);
+    } else if (isReadonly && !isAsync && !decorator) {
+        let result = super.parseClassElement(constructorAllowsSuper);
+        
+        if (result.type == Syntax.PropertyDefinition) {
+            result.static = isStatic;
+            result.readonly = isReadonly;
+
+            return result;
+        }
     }
+
+    if (state) this.restoreState(state);
+    return super.parseClassElement(constructorAllowsSuper);
 }
 
 
-nsParseProp(node, isStatic, modifier)
+nxParseProp(node, isStatic, modifier, decorator, isLegacy)
 {
-    node.static   = isStatic;
+    node.static = isStatic;
     node.modifier = modifier;
-
+    node.decorator = decorator;
+    node.legacy = isLegacy;
+    
     node.key = this.parseIdent(true);
+    node.annotation = (this.type == tt.colon) ? this.tsParseTypeAnnotation() : null;
 
-    // node.typeAnnotation = (this.type == tt.colon) ? this.tsParseTypeAnnotation() : null;
-    node.annotation = (this.type == tt.colon) ? this.ns_parseTypeAnnotation() : null;
+    if (this.eat(tt.eq)) {
+        let scope = this.currentThisScope();
+        let inClassFieldInit = scope.inClassFieldInit;
+        scope.inClassFieldInit = true;
+        node.value = this.parseMaybeAssign();
+        scope.inClassFieldInit = inClassFieldInit;
+    } else {
+        node.value = null;
+    }
 
     this.semicolon();
 
-    return this.finishNode(node, "NXPropDefinition")
+    return this.finishNode(node, Syntax.NXPropDefinition)
 }
 
 
-nsParseFuncParameter()
+nxParseFuncParameter()
 {
     const node = this.startNode();
    
@@ -686,7 +554,7 @@ nsParseFuncParameter()
     let label;
     let name;
 
-    if (this.type == tt.colon) {
+    if (this.type == tt.question || this.type == tt.colon || this.type == tt.comma || this.type == tt.parenR) {
         label = null;
         name = labelOrName;
     } else {
@@ -696,156 +564,85 @@ nsParseFuncParameter()
     
     node.label = label;
     node.name = name;
-    // node.typeAnnotation = (this.type == tt.colon) ? this.tsParseTypeAnnotation() : null;
-    node.annotation = (this.type == tt.colon) ? this.ns_parseTypeAnnotation() : null;
 
-    return this.finishNode(node, "NXFuncParameter");
+    if (this.type == tt.question) {
+        node.optional = true;
+        node.question = this.nxParsePunctuation();
+    } else {
+        node.optional = false;
+        node.question = null;
+    }
+        
+    if (this.type == tt.colon) {
+        node.annotation = (this.type == tt.colon) ? this.tsParseTypeAnnotation() : null;
+    } else {
+        node.annotation = null;
+    }
+    
+
+    return this.finishNode(node, Syntax.NXFuncParameter);
 }
 
 
-nsParseFunc(node, isStatic, isAsync)
+nxParseFunc(node, isStatic, isAsync)
 {
     node.static = isStatic;
     node.async = isAsync;
 
     node.key = this.parseIdent(true);
     node.params = [ ];
+    
+    if (this.nxInInterface) {
+        node.optional = this.eat(tt.question);
+    }
 
     this.expect(tt.parenL);
 
     let needsComma = false;
     while (!this.eat(tt.parenR)) {
         if (needsComma) this.expect(tt.comma);
-        node.params.push(this.nsParseFuncParameter());
+        node.params.push(this.nxParseFuncParameter());
         needsComma = true;
     }
     
-    // node.typeAnnotation = this.tsParseTypeAnnotation();
     if (this.type == tt.colon) {
-        node.annotation = this.ns_parseTypeAnnotation({ allowVoid: true });
+        node.annotation = this.tsParseTypeAnnotation();
     }
 
-    let flags = 66; // 2(SCOPE_FUNCTION) + 64(SCOPE_SUPER)
-    if (isAsync) flags += 4; // SCOPE_ASYNC
+    if (this.type == tt.braceL) {
+        let flags = 66; // 2(SCOPE_FUNCTION) + 64(SCOPE_SUPER)
+        if (isAsync) flags += 4; // SCOPE_ASYNC
 
-    this.enterScope(flags);
+        this.enterScope(flags);
 
-    node.body = this.parseBlock();
+        node.body = this.parseBlock();
 
-    this.exitScope();
+        this.exitScope();
+    }
 
-    return this.finishNode(node, "NXFuncDefinition");
+    return this.finishNode(node, Syntax.NXFuncDefinition);
 }
 
 
 parseStatement(context, topLevel, exports)
 {
     if (this.isContextual("enum")) {
-        return this.nsParseEnumDeclaration();
+        return this.nxParseEnumDeclaration();
+        
+    } else if (this.isContextual("interface")) {
+        return this.nxParseInterfaceDeclaration();
+
+    } else if (this.isContextual("type")) {
+        let result = this.nxMaybeParseTypeDefinition();
+        if (result) return result;
+
+    } else if (this.isContextual("global")) {
+        let result = this.nxMaybeParseGlobalDefinition();
+        if (result) return result;
     }
     
-    switch(this.type) {
-    case tt._atClass:
-        return this.nsParseAtClass();
-    case tt._atProtocol:
-        return this.nsParseProtocolDefinition();
-    case tt._atBridged:
-        return this.nsParseBridgedDeclaration();
-    case tt._atConst:
-        return this.nsParseConstDeclaration();
-    case tt._atEnum:
-        return this.nsParseEnumDeclaration();
-    case tt._atGlobal:
-        return this.nsParseGlobalDeclaration();
-    case tt._atType:
-        return this.nsParseTypeDefinition();
-    default:
-        return super.parseStatement(context, topLevel, exports);
-    }
+    return super.parseStatement(context, topLevel, exports);
 }
 
-
-nsReadAtKeyword()
-{
-    this.pos++;
-    let word = "@" + this.readWord1();
-    let type = tt.name;
-    
-    if (keywordTypes[word]) {
-        type = keywordTypes[word];
-    }
-
-    return this.finishToken(type, word);
-}
-
-
-nsParseClassImplementationBody()
-{
-    const node = this.startNode();
-
-    node.body = [ ];
-
-    while (1) {
-        const type = this.type;
-        const value = this.value;
-        
-        if (type == tt._atEnd) {
-            break;
-        
-        } else if (type == tt.name && (
-            value == "static"   ||
-            value == "private"  ||
-            value == "readonly" ||
-            value == "observed" ||
-            value == "prop"     ||
-            value == "func"     ||
-            value == "get"      ||
-            value == "set"
-        )) {
-            node.body.push(this.parseClassElement(false));
-
-        } else {
-            this.unexpected();
-        }
-    }
-
-    return this.finishNode(node, "BlockStatement")
-}
-
-
-nsParseAtClass()
-{
-    const node = this.startNode();
-
-    let wasStrict = this.strict;
-    this.strict = true;
-
-    this.expect(tt._atClass);
-
-    node.id = this.parseIdent();
-
-    node.superClass = null;
-    if (this.type == tt._extends) {
-        this.nextToken();
-        node.superClass = this.parseIdent();
-    }
-        
-    node.interfaces = [ ];
-    if (this.eatContextual("implements")) {
-        node.interfaces.push(this.parseIdent());
-
-        while (this.eat(tt.comma)) {
-            node.interfaces.push(this.parseIdent());
-        }
-    }
-
-    node.body = this.nsParseClassImplementationBody();
-
-    this.expect(tt._atEnd);
-
-    this.strict = wasStrict;
-
-    return this.finishNode(node, "NSClassImplementation")
-}
 
 }

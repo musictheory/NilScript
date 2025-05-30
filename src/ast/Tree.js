@@ -1,7 +1,7 @@
 /*
     Traverser.js
-    Extends estraverse with ability to traverse NilScript nodes
-    (c) 2013-2023 musictheory.net, LLC
+    Extends estraverse with ability to traverse Nyx nodes
+    (c) 2013-2024 musictheory.net, LLC
     MIT license, http://www.opensource.org/licenses/mit-license.php
 */
 
@@ -80,24 +80,21 @@ const ESTreeStructure = {
 };
 
 
-const NilScriptTreeStructure = {
-    NSClassImplementation: [ "id", "body" ],
-    NSConstDeclaration:    [ "declarations" ],
-    NSEnumDeclaration:     [ "declarations" ],
-    NSProtocolDefinition:  [ "id", "body" ],
-    NSCastExpression:      [ "argument" ],
-    NSAnyExpression:       [ "argument" ],
-    NSTypeAnnotation:      [ ],
-    NSGlobalDeclaration:   [ "declaration", "declarations" ],
-    NSBridgedDeclaration:  [ "declaration" ],
-    NSTypeDefinition:      [ ],
-    
-    NXClassDeclaration:    [ "id", "superClass", "body" ],
-    NXFuncDefinition:      [ "key", "params", "annotation", "body" ],
-    NXPropDefinition:      [ "key", "value", "annotation" ],
-    NXFuncParameter:       [ "label", "name", "annotation" ],
-    NXNamedArgument:       [ "name", "argument" ],
-    NXNamedArgumentColon:  [  ],
+const NyxTreeStructure = {
+    NXAsExpression:         [ "expression", "annotation" ],
+    NXBindingAtom:          [ "id", "annotation" ],
+    NXEnumDeclaration:      [ "members" ],
+    NXEnumMember:           [ "id", "init" ],
+    NXFuncDefinition:       [ "key", "params", "annotation", "body" ],
+    NXFuncParameter:        [ "label", "name", "annotation" ],
+    NXGlobalDeclaration:    [ "declaration" ],
+    NXInterfaceBody:        [ "body" ],
+    NXInterfaceDeclaration: [ "id", "body" ],
+    NXNamedArgument:        [ "name", "argument" ],
+    NXNonNullExpression:    [ "expression" ],
+    NXPropDefinition:       [ "key", "value", "annotation" ],
+    NXPunctuation:          [ ],
+    NXTypeDeclaration:      [ "id", "params", "annotation" ],
 };
 
 
@@ -115,16 +112,15 @@ const NilScriptTreeStructure = {
     5) "type" referencing an operator-like argument becomes "argument".
 */
 const TypeAnnotationTreeStructure = {
-    NullableType:        [ "argument" ],
+    NXNullableType:      [ "argument" ],
 
     TSArrayType:         [ "element" ],
-    TSConstructorType:   [ "params", "annotation" ],
     TSFunctionType:      [ "params", "annotation" ],
     TSIndexedAccessType: [ "object", "property" ],
     TSIntersectionType:  [ "elements" ],
     TSLiteralType:       [ "literal" ],
-    TSLiteralType:       [ ],
-    TSOptionalType:      [ "argument" ],
+    TSObjectMember:      [ "key", "annotation" ],
+    TSObjectType:        [ "members" ],
     TSParenthesizedType: [ "argument" ],
     TSQualifiedName:     [ "left", "right" ],
     TSRestType:          [ "argument" ],
@@ -140,7 +136,7 @@ const TypeAnnotationTreeStructure = {
 
 export const TreeStructure = Object.assign({ },
     ESTreeStructure,
-    NilScriptTreeStructure,
+    NyxTreeStructure,
     TypeAnnotationTreeStructure
 );
 

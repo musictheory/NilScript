@@ -1,6 +1,6 @@
-# NilScript
+# Nyx
 
-NilScript is a superset of the JavaScript language inspired by Objective-C.  It features a fast, simple runtime without a dynamic messaging overhead. 
+Nyx is a superset of the JavaScript language.
 
 NilScript is designed to ease the pain of syncing class interfaces (not necessarily implementations) between Objective-C projects and their web counterparts.
 
@@ -21,7 +21,7 @@ NilScript was formerly known as oj.
 - [Methods](#method)
   - [Nullish Messaging](#method-nullish)
   - [Behind the Scenes](#method-compiler)
-- [Properties and Instance Variables](#property)
+- [Properties](#property)
   - [Synthesis](#property-synthesis) 
   - [Using](#property-using)
   - [Property Attributes](#property-attributes) 
@@ -45,43 +45,136 @@ NilScript was formerly known as oj.
 - [License](#license)
 
 
+## Restrictions
+
+- All identifiers that start with `N$` (including `N$` itself) are classified as Reserved Words and may not be used.
+
+- Any identifier imported via `import` may not be used as a variable name. Likewise; the name of an `enum`, `interface`, or `type` may not be redeclared.
+
+```
+import { Foo };
+
+enum Bar { … };
+interface Baz { … };
+type MyNumber = number;
+
+let Foo = 1;          // Error: Foo may not be redeclared
+function Bar(Baz) {   // Error: Bar and Baz may not be redeclared
+    let MyNumber = 2; // Error: MyNumber may not be redeclared
+}
+```
+
+- 
+
+
+
+## Language Extensions
+
+### TypeScript annotations
+
+Nyx borrows 
+
+The following types are supported:
+
+| Attribute          | Description                                                      
+|--------------------|------------------------------------------------------------------
+| `readonly`, `readwrite`, `private` | Default is `readwrite`. `readonly` suppresses the generation of a setter. `private` suppresses the generation of both a setter and getter.
+| `getter=` | Changes the name of the getter
+| `setter=` | Changes the name of the setter
+| `change=` | Calls the selector when the property changes. See <a href="#observers">Property Observers</a>.
+
+Nyx extends 
+
+
+
+
+### Enums
+
+Similar to TypeScript or C, Nyx adds 
+
+### The `func` keyword
+
+Nyx borrows the `func` keyword from [Swift](https://docs.swift.org/swift-book/documentation/the-swift-programming-language/functions/). This enables methods to have named parameters.
+
+```
+class Greeter {
+    func greet(person: string): string {
+        return `Hello, ${person}!`;
+    }   
+}
+
+let greeter = new Greeter();
+
+// Prints "Hello, Bob!"
+console.log(greeter.greet(person: "Bob")); 
+```
+
+Function parameters may have different argument labels:
+
+```
+class Foo {
+    func someFunction(argumentLabel parameterName: number) {
+        // Inside the function body, use parameterName to reference the parameter
+        // When calling this method, use foo.someFunction(argumentLabel: 42);
+    }
+}
+```
+
+To extend the first example:
+
+```
+class Greeter {
+    func greet(person: string, from hometown: string): string {
+        return `Hello ${person} from ${hometown}!`;
+    }   
+}
+
+let greeter = new Greeter();
+
+ // Prints "Hello, Bob from Livermore!"
+console.log(greeter.greet(person: "Bob", from: "Livermore"));
+```
+
+As in Swift, argument labels may be blank by using an underscore (_).
+
+```
+class Foo {
+    func someFunction(_ firstParameterName: number, secondParameterName: number) {
+    
+    }
+}
+
+let foo = new Foo();
+foo.someFunction(1, secondParameterName: 2);
+```
+
+Rest parameters and binding destructuring patterns are not supported by `func` methods. For these, use a standard class method.
+
+
+### The prop keyword
+
+
+
+### Init-based initialization
+
+
+
+
+
+
 ### Design, Features, and Goals
 
-- NilScript derives its syntax from Objective-C, JavaScript, TypeScript, and a tiny bit of Swift.  While it should be easy to port a file to/from Objective-C, direct source compatibility is not a goal.
-
-Syntax-wise: Objective-C is part of the C family; NilScript is part of the JavaScript family. That said, several concepts from Objective-C are borrowed: the relationship between properties and instance variables, nil-messaging, method syntax, C-style enums, etc.
-
-- NilScript uses the native JavaScript runtime to call methods rather than imitating the dynamic nature of the Objective-C runtime. Implementing concepts such as message forwarding is a non-goal.
-
-- The NilScript compiler is designed for monolithic compilation. While multiple modules may be specified, the compiler should have access to all source files at build time. This allows for several types of optimizations.
-
-- NilScript focuses on being a language, not a framework. The only requirement at runtime is the `runtime.js` file.
-
-- NilScript includes a [type checker](#typechecking) which utilizes TypeScript.
-
-- NilScript includes a [built-in obfuscator](#squeeze) which hides method and class names in compiled code.
- 
 ---
 
-## <a name="class"></a>Classes
 
-While Objective-C uses `@interface` to define a class interface and `@implementation` for its implementation, NilScript combines both into `@class` (due to the lack of header files in JavaScript).
+## Legacy Extensions
 
-### <a name="class-syntax"></a>Basic syntax
+### `@const`
 
-The syntax to create an empty NilScript class looks like this:
+### `@global`
 
-```
-@class TheClass
-@end
-```
 
-To inherit from a superclass, use a colon followed by the superclass name:
 
-```
-@class TheSubClass : TheSuperClass 
-@end
-```
 
 ### <a name="class-compiler"></a>Behind the scenes (Class)
 
