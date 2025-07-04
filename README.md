@@ -1,3 +1,7 @@
+<h2>
+<i>Note: <a href="https://github.com/musictheory/Nyx">Nyx</a> is the successor to NilScript.</i>
+</h2>
+
 # NilScript
 
 NilScript is a superset of the JavaScript language inspired by the latest versions of Objective-C.  It features a fast, simple runtime without a dynamic messaging overhead. 
